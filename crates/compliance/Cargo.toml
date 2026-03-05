@@ -1,0 +1,10 @@
+﻿[package]
+name = "postcad-compliance"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+postcad-core = { workspace = true }
+postcad-registry = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

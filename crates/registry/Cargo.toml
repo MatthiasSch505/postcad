@@ -1,0 +1,9 @@
+﻿[package]
+name = "postcad-registry"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+postcad-core = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

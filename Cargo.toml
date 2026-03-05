@@ -1,0 +1,25 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/registry",
+    "crates/compliance",
+    "crates/routing",
+    "crates/audit",
+    "crates/cli",
+]
+resolver = "2"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+sha2 = "0.10"
+hex = "0.4"
+thiserror = "1"
+
+postcad-core = { path = "crates/core" }
+postcad-registry = { path = "crates/registry" }
+postcad-compliance = { path = "crates/compliance" }
+postcad-routing = { path = "crates/routing" }
+postcad-audit = { path = "crates/audit" }

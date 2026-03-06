@@ -1,6 +1,9 @@
 ﻿use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+pub mod validator;
+pub use validator::{validate_case, ValidationError};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {
     UnitedStates,

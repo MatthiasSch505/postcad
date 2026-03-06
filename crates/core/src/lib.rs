@@ -4,6 +4,9 @@ use uuid::Uuid;
 pub mod validator;
 pub use validator::{validate_case, ValidationError};
 
+pub mod refusal;
+pub use refusal::{CaseRefusal, RefusalReason};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {
     UnitedStates,

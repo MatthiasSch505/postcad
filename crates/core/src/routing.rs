@@ -1,4 +1,19 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ManufacturerId(pub String);
+
+impl ManufacturerId {
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+}
+
+impl std::fmt::Display for ManufacturerId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RoutingCandidateId(pub String);
 
 impl RoutingCandidateId {
@@ -30,7 +45,7 @@ pub enum ManufacturerEligibility {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutingCandidate {
     pub id: RoutingCandidateId,
-    pub manufacturer_id: String,
+    pub manufacturer_id: ManufacturerId,
     pub location: ManufacturingLocation,
     pub supports_case: bool,
     pub eligibility: ManufacturerEligibility,
@@ -46,7 +61,7 @@ impl RoutingCandidate {
     ) -> Self {
         Self {
             id,
-            manufacturer_id: manufacturer_id.into(),
+            manufacturer_id: ManufacturerId::new(manufacturer_id),
             location,
             supports_case,
             eligibility,
@@ -57,6 +72,27 @@ impl RoutingCandidate {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn manufacturer_id_new() {
+        let id = ManufacturerId::new("mfr-de-01");
+        assert_eq!(id.0, "mfr-de-01");
+    }
+
+    #[test]
+    fn manufacturer_id_display() {
+        let id = ManufacturerId::new("mfr-42");
+        assert_eq!(id.to_string(), "mfr-42");
+    }
+
+    #[test]
+    fn manufacturer_id_equality() {
+        let a = ManufacturerId::new("x");
+        let b = ManufacturerId::new("x");
+        let c = ManufacturerId::new("y");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
 
     #[test]
     fn candidate_id_new() {
@@ -89,7 +125,7 @@ mod tests {
             ManufacturerEligibility::Eligible,
         );
         assert_eq!(c.location, ManufacturingLocation::Domestic);
-        assert_eq!(c.manufacturer_id, "mfr-de-01");
+        assert_eq!(c.manufacturer_id, ManufacturerId::new("mfr-de-01"));
         assert!(c.supports_case);
     }
 

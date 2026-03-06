@@ -1,8 +1,23 @@
 use crate::{
-    filter_candidates, select_candidate, validate_case, CaseRefusal, RefusalReason,
-    RoutingCandidate, RoutingDecision, RoutingPolicy,
+    filter_candidates, select_candidate, validate_case, Case, CaseRefusal, DecisionContext,
+    RefusalReason, RoutingCandidate, RoutingDecision, RoutingPolicy,
 };
-use crate::Case;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoutingOutcome {
+    pub decision: RoutingDecision,
+    pub context: DecisionContext,
+}
+
+pub fn route_case_with_context(
+    case: &Case,
+    policy: RoutingPolicy,
+    candidates: &[RoutingCandidate],
+) -> RoutingOutcome {
+    let context = DecisionContext::new(case.id.clone(), candidates.len());
+    let decision = route_case(case, policy, candidates);
+    RoutingOutcome { decision, context }
+}
 
 pub fn route_case(
     case: &Case,
@@ -92,6 +107,42 @@ mod tests {
             result,
             RoutingDecision::Selected(RoutingCandidateId::new("rc-1"))
         );
+    }
+
+    #[test]
+    fn outcome_valid_case_has_correct_context() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1"), domestic_candidate("rc-2")];
+        let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
+        assert_eq!(outcome.context.case_id, case.id);
+        assert_eq!(outcome.context.candidate_count, 2);
+        assert!(outcome.decision.is_selected());
+    }
+
+    #[test]
+    fn outcome_invalid_case_returns_refused_with_correct_context() {
+        let case = invalid_case();
+        let candidates = vec![domestic_candidate("rc-1")];
+        let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
+        assert_eq!(outcome.context.case_id, case.id);
+        assert_eq!(outcome.context.candidate_count, 1);
+        assert!(outcome.decision.is_refused());
+    }
+
+    #[test]
+    fn outcome_empty_candidates_has_zero_count() {
+        let outcome = route_case_with_context(&valid_case(), RoutingPolicy::AllowDomesticOnly, &[]);
+        assert_eq!(outcome.context.candidate_count, 0);
+        assert_eq!(outcome.decision, RoutingDecision::NoEligibleCandidate);
+    }
+
+    #[test]
+    fn outcome_decision_matches_route_case() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1")];
+        let direct = route_case(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
+        let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
+        assert_eq!(outcome.decision, direct);
     }
 
     #[test]

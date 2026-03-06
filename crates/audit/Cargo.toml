@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 postcad-core = { workspace = true }
+postcad-registry = { workspace = true }
+postcad-compliance = { workspace = true }
 sha2 = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

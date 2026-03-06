@@ -1,4 +1,6 @@
 use postcad_core::{Case, RoutingCandidate, RoutingPolicy, filter_candidates, route_case_with_context};
+use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
+use postcad_compliance::ComplianceGate;
 
 use crate::{
     DecisionTrace, RoutingAuditReceipt, RoutingDecisionFingerprint, RoutingProof,
@@ -52,6 +54,72 @@ pub fn route_case_with_audit(
     }
 }
 
+/// Runs the compliance-aware deterministic routing pipeline and returns the
+/// outcome together with derived audit artifacts.
+///
+/// Candidates whose manufacturer id does not appear in `snapshots` with
+/// `is_eligible == true` are removed before routing begins. The remaining
+/// candidates follow the existing routing and audit derivation path.
+pub fn route_case_with_compliance_audit(
+    case: &Case,
+    jurisdiction: &str,
+    policy: RoutingPolicy,
+    candidates: &[RoutingCandidate],
+    snapshots: &[ManufacturerComplianceSnapshot],
+    policy_version: Option<String>,
+) -> RoutingServiceResult {
+    // Step 1: compliance pre-filter.
+    let manufacturer_ids: Vec<String> = candidates
+        .iter()
+        .map(|c| c.manufacturer_id.0.clone())
+        .collect();
+    let compliant_ids =
+        ComplianceGate::filter_compliant_manufacturers(&manufacturer_ids, snapshots);
+    let compliant_candidates: Vec<RoutingCandidate> = candidates
+        .iter()
+        .filter(|c| compliant_ids.contains(&c.manufacturer_id.0))
+        .cloned()
+        .collect();
+
+    // Step 2: policy filter (captured for DecisionTrace only).
+    let policy_filtered = filter_candidates(policy.clone(), &compliant_candidates);
+
+    // Step 3: route against the compliance-filtered candidate set.
+    let outcome = route_case_with_context(case, policy, &compliant_candidates);
+
+    // Step 4: derive audit artifacts from the compliance-filtered view.
+    let audit_receipt = RoutingAuditReceipt::from_outcome(
+        &outcome,
+        jurisdiction,
+        &compliant_candidates,
+        policy_version.clone(),
+    );
+
+    let decision_trace = DecisionTrace::from_outcome(
+        &outcome,
+        jurisdiction,
+        &compliant_candidates,
+        &policy_filtered,
+    );
+
+    let fingerprint = RoutingDecisionFingerprint::from_outcome(
+        &outcome,
+        jurisdiction,
+        &compliant_candidates,
+        policy_version,
+    );
+
+    let proof = RoutingProof::from_fingerprint(&fingerprint);
+
+    RoutingServiceResult {
+        outcome,
+        audit_receipt,
+        decision_trace,
+        fingerprint,
+        proof,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,6 +158,26 @@ mod tests {
             ManufacturerEligibility::Eligible,
         )
     }
+
+    fn eligible_snapshot(mfr_id: &str) -> ManufacturerComplianceSnapshot {
+        ManufacturerComplianceSnapshot::new(
+            mfr_id,
+            vec!["REF-001".to_string()],
+            vec!["verified".to_string()],
+            true,
+        )
+    }
+
+    fn ineligible_snapshot(mfr_id: &str) -> ManufacturerComplianceSnapshot {
+        ManufacturerComplianceSnapshot::new(
+            mfr_id,
+            vec!["REF-001".to_string()],
+            vec!["rejected".to_string()],
+            false,
+        )
+    }
+
+    // ── existing route_case_with_audit tests ─────────────────────────────────
 
     #[test]
     fn successful_routing_returns_outcome_and_audit_artifacts() {
@@ -155,7 +243,6 @@ mod tests {
 
     #[test]
     fn existing_route_case_with_context_unchanged() {
-        // verify the original core function is unaffected
         let case = valid_case();
         let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
         let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
@@ -230,6 +317,129 @@ mod tests {
             "DE",
             RoutingPolicy::AllowDomesticOnly,
             &candidates,
+            None,
+        );
+
+        assert_ne!(result_a.proof.hash_hex, result_b.proof.hash_hex);
+    }
+
+    // ── route_case_with_compliance_audit tests ────────────────────────────────
+
+    #[test]
+    fn compliance_audit_eligible_manufacturer_returns_proof_that_verifies() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let snapshots = vec![eligible_snapshot("mfr-01")];
+
+        let result = route_case_with_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            &snapshots,
+            None,
+        );
+
+        assert!(result.outcome.decision.is_selected());
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn compliance_audit_ineligible_manufacturer_is_filtered_out() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let snapshots = vec![ineligible_snapshot("mfr-01")];
+
+        let result = route_case_with_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            &snapshots,
+            None,
+        );
+
+        assert_eq!(result.outcome.decision, RoutingDecision::NoEligibleCandidate);
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn compliance_audit_manufacturer_without_snapshot_is_filtered_out() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-99")];
+
+        let result = route_case_with_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            &[], // no snapshots
+            None,
+        );
+
+        assert_eq!(result.outcome.decision, RoutingDecision::NoEligibleCandidate);
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn compliance_audit_mixed_candidates_preserve_deterministic_behavior() {
+        let case = valid_case();
+        let candidates = vec![
+            domestic_candidate("rc-1", "mfr-01"),
+            domestic_candidate("rc-2", "mfr-02"),
+            domestic_candidate("rc-3", "mfr-03"),
+        ];
+        let snapshots = vec![
+            ineligible_snapshot("mfr-01"),
+            eligible_snapshot("mfr-02"),
+            eligible_snapshot("mfr-03"),
+        ];
+
+        let result = route_case_with_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            &snapshots,
+            None,
+        );
+
+        // first compliant in original order is rc-2 / mfr-02
+        assert_eq!(
+            result.outcome.decision,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-2"))
+        );
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn compliance_audit_proof_differs_when_compliance_changes_routing_result() {
+        let case = valid_case();
+        let candidates = vec![
+            domestic_candidate("rc-1", "mfr-01"),
+            domestic_candidate("rc-2", "mfr-02"),
+        ];
+
+        // both eligible
+        let snapshots_both = vec![eligible_snapshot("mfr-01"), eligible_snapshot("mfr-02")];
+        // only mfr-02 eligible
+        let snapshots_one = vec![ineligible_snapshot("mfr-01"), eligible_snapshot("mfr-02")];
+
+        let result_a = route_case_with_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            &snapshots_both,
+            None,
+        );
+
+        let result_b = route_case_with_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            &snapshots_one,
             None,
         );
 

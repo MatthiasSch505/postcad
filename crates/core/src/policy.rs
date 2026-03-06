@@ -6,6 +6,21 @@ pub enum RoutingPolicy {
     AllowDomesticAndCrossBorder,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JurisdictionPolicy {
+    DomesticOnly,
+    DomesticAndCrossBorder,
+}
+
+impl From<JurisdictionPolicy> for RoutingPolicy {
+    fn from(jp: JurisdictionPolicy) -> Self {
+        match jp {
+            JurisdictionPolicy::DomesticOnly => RoutingPolicy::AllowDomesticOnly,
+            JurisdictionPolicy::DomesticAndCrossBorder => RoutingPolicy::AllowDomesticAndCrossBorder,
+        }
+    }
+}
+
 pub fn filter_candidates(
     policy: RoutingPolicy,
     candidates: &[RoutingCandidate],
@@ -29,6 +44,22 @@ pub fn filter_candidates(
 mod tests {
     use super::*;
     use crate::{ManufacturerEligibility, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+
+    #[test]
+    fn domestic_only_jurisdiction_maps_to_allow_domestic_only() {
+        assert_eq!(
+            RoutingPolicy::from(JurisdictionPolicy::DomesticOnly),
+            RoutingPolicy::AllowDomesticOnly
+        );
+    }
+
+    #[test]
+    fn domestic_and_cross_border_jurisdiction_maps_to_allow_both() {
+        assert_eq!(
+            RoutingPolicy::from(JurisdictionPolicy::DomesticAndCrossBorder),
+            RoutingPolicy::AllowDomesticAndCrossBorder
+        );
+    }
 
     fn domestic(id: &str) -> RoutingCandidate {
         RoutingCandidate::new(

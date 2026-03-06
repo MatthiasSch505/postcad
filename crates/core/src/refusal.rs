@@ -32,6 +32,17 @@ impl CaseRefusal {
     pub fn is_empty(&self) -> bool {
         self.reasons.is_empty()
     }
+
+    pub fn with_reason(case_id: CaseId, reason: RefusalReason) -> Self {
+        Self {
+            case_id,
+            reasons: vec![reason],
+        }
+    }
+
+    pub fn with_reasons(case_id: CaseId, reasons: Vec<RefusalReason>) -> Self {
+        Self { case_id, reasons }
+    }
 }
 
 #[cfg(test)]
@@ -70,6 +81,36 @@ mod tests {
         let id = CaseId::new();
         let r = CaseRefusal::new(id.clone());
         assert_eq!(r.case_id, id);
+    }
+
+    #[test]
+    fn with_reason_creates_one_reason() {
+        let id = CaseId::new();
+        let r = CaseRefusal::with_reason(id.clone(), RefusalReason::ValidationFailed);
+        assert_eq!(r.case_id, id);
+        assert_eq!(r.reasons.len(), 1);
+        assert!(r.reasons.contains(&RefusalReason::ValidationFailed));
+    }
+
+    #[test]
+    fn with_reasons_preserves_order() {
+        let id = CaseId::new();
+        let reasons = vec![
+            RefusalReason::UnsupportedFileType,
+            RefusalReason::MissingManufacturingMetadata,
+            RefusalReason::NoEligibleCandidate,
+        ];
+        let r = CaseRefusal::with_reasons(id.clone(), reasons);
+        assert_eq!(r.case_id, id);
+        assert_eq!(r.reasons[0], RefusalReason::UnsupportedFileType);
+        assert_eq!(r.reasons[1], RefusalReason::MissingManufacturingMetadata);
+        assert_eq!(r.reasons[2], RefusalReason::NoEligibleCandidate);
+    }
+
+    #[test]
+    fn with_reasons_empty_vec_is_allowed() {
+        let r = CaseRefusal::with_reasons(CaseId::new(), vec![]);
+        assert!(r.is_empty());
     }
 
     #[test]

@@ -1,3 +1,2 @@
-pub fn ping() -> bool {
-    true
-}
+pub mod compliance;
+pub use compliance::ComplianceGate;

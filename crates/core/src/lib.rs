@@ -7,6 +7,9 @@ pub use validator::{validate_case, ValidationError};
 pub mod refusal;
 pub use refusal::{CaseRefusal, RefusalReason};
 
+pub mod routing;
+pub use routing::{ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {
     UnitedStates,

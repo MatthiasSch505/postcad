@@ -1,4 +1,7 @@
-use postcad_core::{Case, RoutingCandidate, RoutingOutcome, RoutingPolicy, route_case_with_context};
+use postcad_core::{
+    Case, CaseRefusal, DecisionContext, RefusalReason, RoutingCandidate, RoutingDecision,
+    RoutingOutcome, RoutingPolicy, route_case_with_context,
+};
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
 
 use crate::ComplianceGate;
@@ -9,8 +12,9 @@ use crate::ComplianceGate;
 /// `ComplianceGate` are removed before routing begins. The remaining
 /// candidates are passed into the existing routing kernel unchanged.
 ///
-/// If all candidates are filtered out, routing falls through to the
-/// existing `NoEligibleCandidate` path.
+/// If candidates were present but compliance filtering removed all of them,
+/// a `RoutingDecision::Refused` with `RefusalReason::ComplianceExclusion`
+/// is returned before falling through to the generic routing path.
 pub fn route_case_with_compliance(
     case: &Case,
     policy: RoutingPolicy,
@@ -29,6 +33,18 @@ pub fn route_case_with_compliance(
         .filter(|c| compliant_ids.contains(&c.manufacturer_id.0))
         .cloned()
         .collect();
+
+    // If candidates were provided but compliance removed all of them, emit an
+    // explicit refusal rather than falling through to NoEligibleCandidate.
+    if !candidates.is_empty() && compliant_candidates.is_empty() {
+        let refusal =
+            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let context = DecisionContext::new(case.id.clone(), candidates.len(), 0);
+        return RoutingOutcome {
+            decision: RoutingDecision::Refused(refusal),
+            context,
+        };
+    }
 
     route_case_with_context(case, policy, &compliant_candidates)
 }
@@ -110,7 +126,10 @@ mod tests {
             &snapshots,
         );
 
-        assert_eq!(outcome.decision, RoutingDecision::NoEligibleCandidate);
+        assert!(matches!(
+            outcome.decision,
+            RoutingDecision::Refused(ref r) if r.reasons.contains(&RefusalReason::ComplianceExclusion)
+        ));
     }
 
     #[test]
@@ -125,7 +144,10 @@ mod tests {
             &[], // no snapshots
         );
 
-        assert_eq!(outcome.decision, RoutingDecision::NoEligibleCandidate);
+        assert!(matches!(
+            outcome.decision,
+            RoutingDecision::Refused(ref r) if r.reasons.contains(&RefusalReason::ComplianceExclusion)
+        ));
     }
 
     #[test]
@@ -158,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn all_candidates_filtered_returns_no_eligible_candidate() {
+    fn all_candidates_filtered_returns_compliance_exclusion_refusal() {
         let case = valid_case();
         let candidates = vec![
             domestic_candidate("rc-1", "mfr-01"),
@@ -173,6 +195,28 @@ mod tests {
             &snapshots,
         );
 
-        assert_eq!(outcome.decision, RoutingDecision::NoEligibleCandidate);
+        assert!(matches!(
+            outcome.decision,
+            RoutingDecision::Refused(ref r) if r.reasons.contains(&RefusalReason::ComplianceExclusion)
+        ));
+    }
+
+    #[test]
+    fn at_least_one_compliant_candidate_does_not_emit_compliance_refusal() {
+        let case = valid_case();
+        let candidates = vec![
+            domestic_candidate("rc-1", "mfr-01"),
+            domestic_candidate("rc-2", "mfr-02"),
+        ];
+        let snapshots = vec![ineligible_snapshot("mfr-01"), eligible_snapshot("mfr-02")];
+
+        let outcome = route_case_with_compliance(
+            &case,
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            &snapshots,
+        );
+
+        assert!(matches!(outcome.decision, RoutingDecision::Selected(_)));
     }
 }

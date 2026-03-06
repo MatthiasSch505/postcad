@@ -8,6 +8,7 @@ pub enum RefusalReason {
     UnsupportedJurisdiction,
     ManufacturerNotEligible,
     NoEligibleCandidate,
+    ComplianceExclusion,
     Unknown,
 }
 
@@ -121,6 +122,13 @@ mod tests {
     }
 
     #[test]
+    fn compliance_exclusion_reason() {
+        let mut r = CaseRefusal::new(CaseId::new());
+        r.add_reason(RefusalReason::ComplianceExclusion);
+        assert!(r.reasons.contains(&RefusalReason::ComplianceExclusion));
+    }
+
+    #[test]
     fn all_reason_variants_are_usable() {
         let mut r = CaseRefusal::new(CaseId::new());
         r.add_reason(RefusalReason::ValidationFailed);
@@ -129,7 +137,8 @@ mod tests {
         r.add_reason(RefusalReason::UnsupportedJurisdiction);
         r.add_reason(RefusalReason::ManufacturerNotEligible);
         r.add_reason(RefusalReason::NoEligibleCandidate);
+        r.add_reason(RefusalReason::ComplianceExclusion);
         r.add_reason(RefusalReason::Unknown);
-        assert_eq!(r.reasons.len(), 7);
+        assert_eq!(r.reasons.len(), 8);
     }
 }

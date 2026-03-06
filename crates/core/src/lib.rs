@@ -10,6 +10,9 @@ pub use refusal::{CaseRefusal, RefusalReason};
 pub mod routing;
 pub use routing::{ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
 
+pub mod decision;
+pub use decision::{DecisionContext, RoutingDecision};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {
     UnitedStates,

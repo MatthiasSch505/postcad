@@ -7,6 +7,7 @@ pub enum RefusalReason {
     MissingManufacturingMetadata,
     UnsupportedJurisdiction,
     ManufacturerNotEligible,
+    NoEligibleCandidate,
     Unknown,
 }
 
@@ -72,6 +73,13 @@ mod tests {
     }
 
     #[test]
+    fn no_eligible_candidate_reason() {
+        let mut r = CaseRefusal::new(CaseId::new());
+        r.add_reason(RefusalReason::NoEligibleCandidate);
+        assert!(r.reasons.contains(&RefusalReason::NoEligibleCandidate));
+    }
+
+    #[test]
     fn all_reason_variants_are_usable() {
         let mut r = CaseRefusal::new(CaseId::new());
         r.add_reason(RefusalReason::ValidationFailed);
@@ -79,7 +87,8 @@ mod tests {
         r.add_reason(RefusalReason::MissingManufacturingMetadata);
         r.add_reason(RefusalReason::UnsupportedJurisdiction);
         r.add_reason(RefusalReason::ManufacturerNotEligible);
+        r.add_reason(RefusalReason::NoEligibleCandidate);
         r.add_reason(RefusalReason::Unknown);
-        assert_eq!(r.reasons.len(), 6);
+        assert_eq!(r.reasons.len(), 7);
     }
 }

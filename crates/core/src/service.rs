@@ -1,7 +1,16 @@
 use crate::{
-    filter_candidates, select_candidate, validate_case, Case, CaseRefusal, DecisionContext,
+    filter_candidates, select_candidate, validate_case, Case, CaseId, CaseRefusal, DecisionContext,
     RefusalReason, RoutingCandidate, RoutingDecision, RoutingPolicy,
 };
+
+/// Constructs a `CaseRefusal` expressing that no eligible candidate remained
+/// after policy filtering. Callers may use this when building richer refusal
+/// records without changing the existing `route_case` return type.
+pub fn no_candidate_refusal(case_id: CaseId) -> CaseRefusal {
+    let mut refusal = CaseRefusal::new(case_id);
+    refusal.add_reason(RefusalReason::NoEligibleCandidate);
+    refusal
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutingOutcome {
@@ -94,6 +103,15 @@ mod tests {
             true,
             ManufacturerEligibility::Eligible,
         )
+    }
+
+    #[test]
+    fn no_candidate_refusal_carries_correct_reason() {
+        let id = crate::CaseId::new();
+        let refusal = no_candidate_refusal(id.clone());
+        assert_eq!(refusal.case_id, id);
+        assert!(refusal.reasons.contains(&RefusalReason::NoEligibleCandidate));
+        assert_eq!(refusal.reasons.len(), 1);
     }
 
     #[test]

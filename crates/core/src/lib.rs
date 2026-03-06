@@ -20,7 +20,7 @@ pub mod selection;
 pub use selection::select_candidate;
 
 pub mod service;
-pub use service::{route_case, route_case_with_context, RoutingOutcome};
+pub use service::{no_candidate_refusal, route_case, route_case_with_context, RoutingOutcome};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {

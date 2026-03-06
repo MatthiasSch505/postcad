@@ -16,6 +16,9 @@ pub use decision::{DecisionContext, RoutingDecision};
 pub mod policy;
 pub use policy::{filter_candidates, RoutingPolicy};
 
+pub mod selection;
+pub use selection::select_candidate;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {
     UnitedStates,

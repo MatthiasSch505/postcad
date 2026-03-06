@@ -19,6 +19,9 @@ pub use policy::{filter_candidates, JurisdictionPolicy, RoutingPolicy, RoutingPo
 pub mod policy_fingerprint;
 pub use policy_fingerprint::fingerprint_policy;
 
+pub mod case_fingerprint;
+pub use case_fingerprint::fingerprint_case;
+
 pub mod selection;
 pub use selection::select_candidate;
 

@@ -20,14 +20,16 @@ impl RoutingDecision {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DecisionContext {
     pub case_id: CaseId,
-    pub candidate_count: usize,
+    pub original_candidate_count: usize,
+    pub filtered_candidate_count: usize,
 }
 
 impl DecisionContext {
-    pub fn new(case_id: CaseId, candidate_count: usize) -> Self {
+    pub fn new(case_id: CaseId, original_candidate_count: usize, filtered_candidate_count: usize) -> Self {
         Self {
             case_id,
-            candidate_count,
+            original_candidate_count,
+            filtered_candidate_count,
         }
     }
 }
@@ -63,15 +65,17 @@ mod tests {
     #[test]
     fn decision_context_new() {
         let id = CaseId::new();
-        let ctx = DecisionContext::new(id.clone(), 3);
+        let ctx = DecisionContext::new(id.clone(), 5, 3);
         assert_eq!(ctx.case_id, id);
-        assert_eq!(ctx.candidate_count, 3);
+        assert_eq!(ctx.original_candidate_count, 5);
+        assert_eq!(ctx.filtered_candidate_count, 3);
     }
 
     #[test]
     fn decision_context_zero_candidates() {
-        let ctx = DecisionContext::new(CaseId::new(), 0);
-        assert_eq!(ctx.candidate_count, 0);
+        let ctx = DecisionContext::new(CaseId::new(), 0, 0);
+        assert_eq!(ctx.original_candidate_count, 0);
+        assert_eq!(ctx.filtered_candidate_count, 0);
     }
 
     #[test]

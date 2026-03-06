@@ -14,8 +14,22 @@ pub fn route_case_with_context(
     policy: RoutingPolicy,
     candidates: &[RoutingCandidate],
 ) -> RoutingOutcome {
-    let context = DecisionContext::new(case.id.clone(), candidates.len());
-    let decision = route_case(case, policy, candidates);
+    let original_count = candidates.len();
+
+    if validate_case(case).is_err() {
+        let mut refusal = CaseRefusal::new(case.id.clone());
+        refusal.add_reason(RefusalReason::ValidationFailed);
+        let context = DecisionContext::new(case.id.clone(), original_count, 0);
+        return RoutingOutcome {
+            decision: RoutingDecision::Refused(refusal),
+            context,
+        };
+    }
+
+    let filtered = filter_candidates(policy, candidates);
+    let filtered_count = filtered.len();
+    let decision = select_candidate(case.id.clone(), &filtered);
+    let context = DecisionContext::new(case.id.clone(), original_count, filtered_count);
     RoutingOutcome { decision, context }
 }
 
@@ -115,7 +129,8 @@ mod tests {
         let candidates = vec![domestic_candidate("rc-1"), domestic_candidate("rc-2")];
         let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
         assert_eq!(outcome.context.case_id, case.id);
-        assert_eq!(outcome.context.candidate_count, 2);
+        assert_eq!(outcome.context.original_candidate_count, 2);
+        assert_eq!(outcome.context.filtered_candidate_count, 2);
         assert!(outcome.decision.is_selected());
     }
 
@@ -125,15 +140,32 @@ mod tests {
         let candidates = vec![domestic_candidate("rc-1")];
         let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
         assert_eq!(outcome.context.case_id, case.id);
-        assert_eq!(outcome.context.candidate_count, 1);
+        assert_eq!(outcome.context.original_candidate_count, 1);
+        assert_eq!(outcome.context.filtered_candidate_count, 0);
         assert!(outcome.decision.is_refused());
     }
 
     #[test]
     fn outcome_empty_candidates_has_zero_count() {
         let outcome = route_case_with_context(&valid_case(), RoutingPolicy::AllowDomesticOnly, &[]);
-        assert_eq!(outcome.context.candidate_count, 0);
+        assert_eq!(outcome.context.original_candidate_count, 0);
+        assert_eq!(outcome.context.filtered_candidate_count, 0);
         assert_eq!(outcome.decision, RoutingDecision::NoEligibleCandidate);
+    }
+
+    #[test]
+    fn outcome_policy_reduces_filtered_count() {
+        let case = valid_case();
+        // 2 cross-border, 1 domestic — domestic-only should filter to 1
+        let candidates = vec![
+            cross_border_candidate("rc-cb1"),
+            cross_border_candidate("rc-cb2"),
+            domestic_candidate("rc-d1"),
+        ];
+        let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
+        assert_eq!(outcome.context.original_candidate_count, 3);
+        assert_eq!(outcome.context.filtered_candidate_count, 1);
+        assert!(outcome.decision.is_selected());
     }
 
     #[test]

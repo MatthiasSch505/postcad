@@ -13,6 +13,9 @@ pub use routing::{ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
 pub mod decision;
 pub use decision::{DecisionContext, RoutingDecision};
 
+pub mod policy;
+pub use policy::{filter_candidates, RoutingPolicy};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {
     UnitedStates,

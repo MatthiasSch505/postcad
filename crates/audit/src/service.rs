@@ -1,12 +1,16 @@
 use postcad_core::{Case, RoutingCandidate, RoutingPolicy, filter_candidates, route_case_with_context};
 
-use crate::{DecisionTrace, RoutingAuditReceipt};
+use crate::{
+    DecisionTrace, RoutingAuditReceipt, RoutingDecisionFingerprint, RoutingProof,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutingServiceResult {
     pub outcome: postcad_core::RoutingOutcome,
     pub audit_receipt: RoutingAuditReceipt,
     pub decision_trace: DecisionTrace,
+    pub fingerprint: RoutingDecisionFingerprint,
+    pub proof: RoutingProof,
 }
 
 /// Runs the deterministic routing pipeline and returns the outcome together
@@ -28,16 +32,23 @@ pub fn route_case_with_audit(
         &outcome,
         jurisdiction,
         candidates,
-        policy_version,
+        policy_version.clone(),
     );
 
     let decision_trace =
         DecisionTrace::from_outcome(&outcome, jurisdiction, candidates, &filtered);
 
+    let fingerprint =
+        RoutingDecisionFingerprint::from_outcome(&outcome, jurisdiction, candidates, policy_version);
+
+    let proof = RoutingProof::from_fingerprint(&fingerprint);
+
     RoutingServiceResult {
         outcome,
         audit_receipt,
         decision_trace,
+        fingerprint,
+        proof,
     }
 }
 
@@ -149,5 +160,79 @@ mod tests {
         let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
         let outcome = route_case_with_context(&case, RoutingPolicy::AllowDomesticOnly, &candidates);
         assert!(matches!(outcome.decision, RoutingDecision::Selected(_)));
+    }
+
+    #[test]
+    fn successful_routing_returns_proof_that_verifies() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-de-01")];
+
+        let result = route_case_with_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
+        );
+
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn refusal_routing_returns_proof_that_verifies() {
+        let case = invalid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-de-01")];
+
+        let result = route_case_with_audit(
+            &case,
+            "US",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
+        );
+
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn proof_canonical_payload_matches_fingerprint_canonical_string() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+
+        let result = route_case_with_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
+        );
+
+        assert_eq!(
+            result.proof.canonical_payload,
+            result.fingerprint.canonical_string()
+        );
+    }
+
+    #[test]
+    fn proof_changes_when_routing_result_changes() {
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+
+        let result_a = route_case_with_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
+        );
+
+        let result_b = route_case_with_audit(
+            &invalid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
+        );
+
+        assert_ne!(result_a.proof.hash_hex, result_b.proof.hash_hex);
     }
 }

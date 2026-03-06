@@ -19,6 +19,9 @@ pub use policy::{filter_candidates, RoutingPolicy};
 pub mod selection;
 pub use selection::select_candidate;
 
+pub mod service;
+pub use service::route_case;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Country {
     UnitedStates,

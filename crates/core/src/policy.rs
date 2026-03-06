@@ -21,6 +21,35 @@ impl From<JurisdictionPolicy> for RoutingPolicy {
     }
 }
 
+/// A routing policy together with optional compliance metadata.
+///
+/// Wraps the existing `RoutingPolicy` and carries an optional
+/// `compliance_profile_name` that downstream services can use to look up a
+/// `RequiredEvidenceProfile` without changing routing semantics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoutingPolicyConfig {
+    pub routing_policy: RoutingPolicy,
+    pub compliance_profile_name: Option<String>,
+}
+
+impl RoutingPolicyConfig {
+    pub fn new(routing_policy: RoutingPolicy) -> Self {
+        Self {
+            routing_policy,
+            compliance_profile_name: None,
+        }
+    }
+
+    pub fn with_compliance_profile(mut self, name: impl Into<String>) -> Self {
+        self.compliance_profile_name = Some(name.into());
+        self
+    }
+
+    pub fn compliance_profile_name(&self) -> Option<&str> {
+        self.compliance_profile_name.as_deref()
+    }
+}
+
 pub fn filter_candidates(
     policy: RoutingPolicy,
     candidates: &[RoutingCandidate],
@@ -132,5 +161,26 @@ mod tests {
         let _ = filter_candidates(RoutingPolicy::AllowDomesticOnly, &candidates);
         // original still has both entries
         assert_eq!(candidates.len(), 2);
+    }
+
+    #[test]
+    fn policy_config_with_compliance_profile_returns_profile_name() {
+        let config = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+            .with_compliance_profile("de_milling_v1");
+        assert_eq!(config.compliance_profile_name(), Some("de_milling_v1"));
+    }
+
+    #[test]
+    fn policy_config_without_compliance_profile_returns_none() {
+        let config = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly);
+        assert_eq!(config.compliance_profile_name(), None);
+    }
+
+    #[test]
+    fn policy_config_routing_policy_is_preserved() {
+        let config = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticAndCrossBorder)
+            .with_compliance_profile("us_fda_v2");
+        assert_eq!(config.routing_policy, RoutingPolicy::AllowDomesticAndCrossBorder);
+        assert_eq!(config.compliance_profile_name(), Some("us_fda_v2"));
     }
 }

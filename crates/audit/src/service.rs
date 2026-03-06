@@ -1,6 +1,12 @@
-use postcad_core::{Case, RoutingCandidate, RoutingPolicy, filter_candidates, route_case_with_context};
+use postcad_core::{
+    Case, RoutingCandidate, RoutingPolicy, RoutingPolicyConfig,
+    filter_candidates, fingerprint_policy, route_case_with_context,
+};
+use postcad_registry::attestation::EvidenceAttestation;
+use postcad_registry::evidence::EligibilityEvidence;
+use postcad_registry::profile::{manufacturer_satisfies_profile, RequiredEvidenceProfile};
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
-use postcad_compliance::ComplianceGate;
+use postcad_compliance::{ComplianceGate, route_case_with_profile_compliance};
 
 use crate::{
     DecisionTrace, RoutingAuditReceipt, RoutingDecisionFingerprint, RoutingProof,
@@ -13,6 +19,7 @@ pub struct RoutingServiceResult {
     pub decision_trace: DecisionTrace,
     pub fingerprint: RoutingDecisionFingerprint,
     pub proof: RoutingProof,
+    pub policy_fingerprint: String,
 }
 
 /// Runs the deterministic routing pipeline and returns the outcome together
@@ -27,6 +34,9 @@ pub fn route_case_with_audit(
     // Capture filtered candidates before routing so DecisionTrace can
     // distinguish eligible from rejected without a second filter pass.
     let filtered = filter_candidates(policy.clone(), candidates);
+
+    let policy_config = RoutingPolicyConfig::new(policy.clone());
+    let policy_fingerprint = fingerprint_policy(&policy_config);
 
     let outcome = route_case_with_context(case, policy, candidates);
 
@@ -51,6 +61,7 @@ pub fn route_case_with_audit(
         decision_trace,
         fingerprint,
         proof,
+        policy_fingerprint,
     }
 }
 
@@ -83,6 +94,9 @@ pub fn route_case_with_compliance_audit(
 
     // Step 2: policy filter (captured for DecisionTrace only).
     let policy_filtered = filter_candidates(policy.clone(), &compliant_candidates);
+
+    let policy_config = RoutingPolicyConfig::new(policy.clone());
+    let policy_fingerprint = fingerprint_policy(&policy_config);
 
     // Step 3: route against the compliance-filtered candidate set.
     let outcome = route_case_with_context(case, policy, &compliant_candidates);
@@ -117,6 +131,94 @@ pub fn route_case_with_compliance_audit(
         decision_trace,
         fingerprint,
         proof,
+        policy_fingerprint,
+    }
+}
+
+/// Runs the profile-aware compliance routing pipeline and returns the outcome
+/// together with derived audit artifacts.
+///
+/// The policy's `compliance_profile_name` drives pre-filtering: candidates
+/// whose manufacturer does not satisfy the named `RequiredEvidenceProfile` are
+/// removed before routing begins. If no profile name is set, standard routing
+/// is used without compliance filtering. Audit artifacts are derived from the
+/// compliance-filtered candidate view.
+pub fn route_case_with_profile_compliance_audit(
+    case: &Case,
+    jurisdiction: &str,
+    policy: RoutingPolicyConfig,
+    candidates: &[RoutingCandidate],
+    evidence: &[EligibilityEvidence],
+    attestations: &[EvidenceAttestation],
+    profiles: &[RequiredEvidenceProfile],
+    policy_version: Option<String>,
+) -> RoutingServiceResult {
+    // Step 1: run profile compliance routing.
+    let policy_fingerprint = fingerprint_policy(&policy);
+    let outcome = route_case_with_profile_compliance(
+        case,
+        policy.clone(),
+        candidates,
+        evidence,
+        attestations,
+        profiles,
+    );
+
+    // Step 2: recompute compliant candidates for audit artifact derivation.
+    let compliant_candidates: Vec<RoutingCandidate> =
+        match policy.compliance_profile_name.as_deref() {
+            None => candidates.to_vec(),
+            Some(name) => match profiles.iter().find(|p| p.profile_name == name) {
+                Some(profile) => candidates
+                    .iter()
+                    .filter(|c| {
+                        manufacturer_satisfies_profile(
+                            &c.manufacturer_id.0,
+                            evidence,
+                            attestations,
+                            profile,
+                        )
+                    })
+                    .cloned()
+                    .collect(),
+                None => Vec::new(),
+            },
+        };
+
+    // Step 3: policy filter (captured for DecisionTrace only).
+    let policy_filtered = filter_candidates(policy.routing_policy, &compliant_candidates);
+
+    // Step 4: derive audit artifacts from the compliance-filtered view.
+    let audit_receipt = RoutingAuditReceipt::from_outcome(
+        &outcome,
+        jurisdiction,
+        &compliant_candidates,
+        policy_version.clone(),
+    );
+
+    let decision_trace = DecisionTrace::from_outcome(
+        &outcome,
+        jurisdiction,
+        &compliant_candidates,
+        &policy_filtered,
+    );
+
+    let fingerprint = RoutingDecisionFingerprint::from_outcome(
+        &outcome,
+        jurisdiction,
+        &compliant_candidates,
+        policy_version,
+    );
+
+    let proof = RoutingProof::from_fingerprint(&fingerprint);
+
+    RoutingServiceResult {
+        outcome,
+        audit_receipt,
+        decision_trace,
+        fingerprint,
+        proof,
+        policy_fingerprint,
     }
 }
 
@@ -126,8 +228,11 @@ mod tests {
     use postcad_core::{
         Case, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
         Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision,
-        RoutingPolicy,
+        RoutingPolicy, RoutingPolicyConfig, fingerprint_policy,
     };
+    use postcad_registry::attestation::EvidenceAttestation;
+    use postcad_registry::evidence::EligibilityEvidence;
+    use postcad_registry::profile::RequiredEvidenceProfile;
 
     fn valid_case() -> Case {
         Case::new(DentalCase {
@@ -444,5 +549,308 @@ mod tests {
         );
 
         assert_ne!(result_a.proof.hash_hex, result_b.proof.hash_hex);
+    }
+
+    // ── route_case_with_profile_compliance_audit tests ────────────────────────
+
+    fn iso_evidence(mfr: &str, reference: &str) -> EligibilityEvidence {
+        EligibilityEvidence::new(mfr, "iso_cert", reference)
+    }
+
+    fn verified_attestation(mfr: &str, reference: &str) -> EvidenceAttestation {
+        EvidenceAttestation::new(mfr, reference, "registry-authority", "verified")
+    }
+
+    fn rejected_attestation(mfr: &str, reference: &str) -> EvidenceAttestation {
+        EvidenceAttestation::new(mfr, reference, "registry-authority", "rejected")
+    }
+
+    fn iso_profile() -> RequiredEvidenceProfile {
+        RequiredEvidenceProfile::new("iso_only_v1", vec!["iso_cert".to_string()])
+    }
+
+    #[test]
+    fn profile_compliance_audit_verified_evidence_selects_and_proof_verifies() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let evidence = vec![iso_evidence("mfr-01", "ISO-9001-2024")];
+        let attestations = vec![verified_attestation("mfr-01", "ISO-9001-2024")];
+        let profiles = vec![iso_profile()];
+        let policy = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+            .with_compliance_profile("iso_only_v1");
+
+        let result = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            policy,
+            &candidates,
+            &evidence,
+            &attestations,
+            &profiles,
+            None,
+        );
+
+        assert!(result.outcome.decision.is_selected());
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn profile_compliance_audit_rejected_evidence_returns_compliance_refusal_and_proof_verifies() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let evidence = vec![iso_evidence("mfr-01", "ISO-9001-2024")];
+        let attestations = vec![rejected_attestation("mfr-01", "ISO-9001-2024")];
+        let profiles = vec![iso_profile()];
+        let policy = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+            .with_compliance_profile("iso_only_v1");
+
+        let result = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            policy,
+            &candidates,
+            &evidence,
+            &attestations,
+            &profiles,
+            None,
+        );
+
+        assert!(result.outcome.decision.is_refused());
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn profile_compliance_audit_no_profile_falls_back_to_normal_routing() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let policy = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly);
+
+        let result = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            policy,
+            &candidates,
+            &[],
+            &[],
+            &[],
+            None,
+        );
+
+        assert!(result.outcome.decision.is_selected());
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn profile_compliance_audit_mixed_candidates_preserve_deterministic_ordering() {
+        let case = valid_case();
+        let candidates = vec![
+            domestic_candidate("rc-1", "mfr-01"),
+            domestic_candidate("rc-2", "mfr-02"),
+            domestic_candidate("rc-3", "mfr-03"),
+        ];
+        let evidence = vec![
+            iso_evidence("mfr-01", "ISO-A"),
+            iso_evidence("mfr-02", "ISO-B"),
+            iso_evidence("mfr-03", "ISO-C"),
+        ];
+        let attestations = vec![
+            rejected_attestation("mfr-01", "ISO-A"),
+            verified_attestation("mfr-02", "ISO-B"),
+            verified_attestation("mfr-03", "ISO-C"),
+        ];
+        let profiles = vec![iso_profile()];
+        let policy = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+            .with_compliance_profile("iso_only_v1");
+
+        let result = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            policy,
+            &candidates,
+            &evidence,
+            &attestations,
+            &profiles,
+            None,
+        );
+
+        // mfr-01 filtered; first remaining in original order is rc-2 / mfr-02.
+        assert_eq!(
+            result.outcome.decision,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-2"))
+        );
+        assert!(result.proof.verify());
+    }
+
+    #[test]
+    fn profile_compliance_audit_proof_differs_when_filtering_changes_result() {
+        let case = valid_case();
+        let candidates = vec![
+            domestic_candidate("rc-1", "mfr-01"),
+            domestic_candidate("rc-2", "mfr-02"),
+        ];
+        let evidence = vec![
+            iso_evidence("mfr-01", "ISO-A"),
+            iso_evidence("mfr-02", "ISO-B"),
+        ];
+        // both verified
+        let attestations_both = vec![
+            verified_attestation("mfr-01", "ISO-A"),
+            verified_attestation("mfr-02", "ISO-B"),
+        ];
+        // only mfr-02 verified
+        let attestations_one = vec![
+            rejected_attestation("mfr-01", "ISO-A"),
+            verified_attestation("mfr-02", "ISO-B"),
+        ];
+        let profiles = vec![iso_profile()];
+
+        let result_a = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+                .with_compliance_profile("iso_only_v1"),
+            &candidates,
+            &evidence,
+            &attestations_both,
+            &profiles,
+            None,
+        );
+
+        let result_b = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+                .with_compliance_profile("iso_only_v1"),
+            &candidates,
+            &evidence,
+            &attestations_one,
+            &profiles,
+            None,
+        );
+
+        assert_ne!(result_a.proof.hash_hex, result_b.proof.hash_hex);
+    }
+
+    // ── policy_fingerprint field tests ────────────────────────────────────────
+
+    #[test]
+    fn route_case_with_audit_policy_fingerprint_matches_direct_fingerprint() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let policy = RoutingPolicy::AllowDomesticOnly;
+        let expected = fingerprint_policy(&RoutingPolicyConfig::new(policy.clone()));
+
+        let result = route_case_with_audit(&case, "DE", policy, &candidates, None);
+
+        assert_eq!(result.policy_fingerprint, expected);
+    }
+
+    #[test]
+    fn route_case_with_compliance_audit_policy_fingerprint_matches_direct_fingerprint() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let snapshots = vec![eligible_snapshot("mfr-01")];
+        let policy = RoutingPolicy::AllowDomesticOnly;
+        let expected = fingerprint_policy(&RoutingPolicyConfig::new(policy.clone()));
+
+        let result = route_case_with_compliance_audit(
+            &case, "DE", policy, &candidates, &snapshots, None,
+        );
+
+        assert_eq!(result.policy_fingerprint, expected);
+    }
+
+    #[test]
+    fn route_case_with_profile_compliance_audit_policy_fingerprint_matches_direct_fingerprint() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let evidence = vec![iso_evidence("mfr-01", "ISO-9001-2024")];
+        let attestations = vec![verified_attestation("mfr-01", "ISO-9001-2024")];
+        let profiles = vec![iso_profile()];
+        let policy = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+            .with_compliance_profile("iso_only_v1");
+        let expected = fingerprint_policy(&policy);
+
+        let result = route_case_with_profile_compliance_audit(
+            &case, "DE", policy, &candidates, &evidence, &attestations, &profiles, None,
+        );
+
+        assert_eq!(result.policy_fingerprint, expected);
+    }
+
+    #[test]
+    fn different_routing_policies_produce_different_policy_fingerprints() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+
+        let result_domestic = route_case_with_audit(
+            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+        );
+        let result_cross = route_case_with_audit(
+            &case, "DE", RoutingPolicy::AllowDomesticAndCrossBorder, &candidates, None,
+        );
+
+        assert_ne!(result_domestic.policy_fingerprint, result_cross.policy_fingerprint);
+    }
+
+    #[test]
+    fn same_policy_produces_same_policy_fingerprint_across_calls() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+
+        let result_a = route_case_with_audit(
+            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+        );
+        let result_b = route_case_with_audit(
+            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+        );
+
+        assert_eq!(result_a.policy_fingerprint, result_b.policy_fingerprint);
+    }
+
+    #[test]
+    fn policy_fingerprint_is_64_hex_chars() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+
+        let result = route_case_with_audit(
+            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+        );
+
+        assert_eq!(result.policy_fingerprint.len(), 64);
+        assert!(result.policy_fingerprint.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn profile_compliance_audit_with_and_without_profile_have_different_policy_fingerprints() {
+        let case = valid_case();
+        let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
+        let evidence = vec![iso_evidence("mfr-01", "ISO-9001-2024")];
+        let attestations = vec![verified_attestation("mfr-01", "ISO-9001-2024")];
+        let profiles = vec![iso_profile()];
+
+        let with_profile = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
+                .with_compliance_profile("iso_only_v1"),
+            &candidates,
+            &evidence,
+            &attestations,
+            &profiles,
+            None,
+        );
+        let without_profile = route_case_with_profile_compliance_audit(
+            &case,
+            "DE",
+            RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly),
+            &candidates,
+            &evidence,
+            &attestations,
+            &profiles,
+            None,
+        );
+
+        assert_ne!(with_profile.policy_fingerprint, without_profile.policy_fingerprint);
     }
 }

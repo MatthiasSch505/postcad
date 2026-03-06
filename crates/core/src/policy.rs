@@ -28,7 +28,7 @@ pub fn filter_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+    use crate::{ManufacturerEligibility, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
 
     fn domestic(id: &str) -> RoutingCandidate {
         RoutingCandidate::new(
@@ -36,6 +36,7 @@ mod tests {
             "mfr-domestic",
             ManufacturingLocation::Domestic,
             true,
+            ManufacturerEligibility::Eligible,
         )
     }
 
@@ -45,6 +46,7 @@ mod tests {
             "mfr-cross",
             ManufacturingLocation::CrossBorder,
             true,
+            ManufacturerEligibility::Eligible,
         )
     }
 
@@ -54,6 +56,7 @@ mod tests {
             "mfr-unknown",
             ManufacturingLocation::Unknown,
             true,
+            ManufacturerEligibility::Unknown,
         )
     }
 

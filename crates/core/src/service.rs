@@ -23,8 +23,8 @@ pub fn route_case(
 mod tests {
     use super::*;
     use crate::{
-        Case, Country, DentalCase, FileType, ManufacturingLocation, Material, ProcedureType,
-        RoutingCandidate, RoutingCandidateId, RoutingPolicy,
+        Case, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
+        Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingPolicy,
     };
 
     fn valid_case() -> Case {
@@ -53,6 +53,7 @@ mod tests {
             "mfr-01",
             ManufacturingLocation::Domestic,
             true,
+            ManufacturerEligibility::Eligible,
         )
     }
 
@@ -62,6 +63,7 @@ mod tests {
             "mfr-02",
             ManufacturingLocation::CrossBorder,
             true,
+            ManufacturerEligibility::Eligible,
         )
     }
 

@@ -8,7 +8,7 @@ pub mod refusal;
 pub use refusal::{CaseRefusal, RefusalReason};
 
 pub mod routing;
-pub use routing::{ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+pub use routing::{ManufacturerEligibility, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
 
 pub mod decision;
 pub use decision::{DecisionContext, RoutingDecision};

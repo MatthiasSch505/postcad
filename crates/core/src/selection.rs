@@ -13,7 +13,7 @@ pub fn select_candidate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CaseId, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+    use crate::{CaseId, ManufacturerEligibility, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
 
     fn candidate(id: &str) -> RoutingCandidate {
         RoutingCandidate::new(
@@ -21,6 +21,7 @@ mod tests {
             "mfr-01",
             ManufacturingLocation::Domestic,
             true,
+            ManufacturerEligibility::Eligible,
         )
     }
 

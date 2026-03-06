@@ -21,11 +21,19 @@ pub enum ManufacturingLocation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManufacturerEligibility {
+    Eligible,
+    Ineligible,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutingCandidate {
     pub id: RoutingCandidateId,
     pub manufacturer_id: String,
     pub location: ManufacturingLocation,
     pub supports_case: bool,
+    pub eligibility: ManufacturerEligibility,
 }
 
 impl RoutingCandidate {
@@ -34,12 +42,14 @@ impl RoutingCandidate {
         manufacturer_id: impl Into<String>,
         location: ManufacturingLocation,
         supports_case: bool,
+        eligibility: ManufacturerEligibility,
     ) -> Self {
         Self {
             id,
             manufacturer_id: manufacturer_id.into(),
             location,
             supports_case,
+            eligibility,
         }
     }
 }
@@ -76,6 +86,7 @@ mod tests {
             "mfr-de-01",
             ManufacturingLocation::Domestic,
             true,
+            ManufacturerEligibility::Eligible,
         );
         assert_eq!(c.location, ManufacturingLocation::Domestic);
         assert_eq!(c.manufacturer_id, "mfr-de-01");
@@ -89,6 +100,7 @@ mod tests {
             "mfr-us-07",
             ManufacturingLocation::CrossBorder,
             true,
+            ManufacturerEligibility::Eligible,
         );
         assert_eq!(c.location, ManufacturingLocation::CrossBorder);
     }
@@ -100,6 +112,7 @@ mod tests {
             "mfr-unknown",
             ManufacturingLocation::Unknown,
             false,
+            ManufacturerEligibility::Unknown,
         );
         assert_eq!(c.location, ManufacturingLocation::Unknown);
         assert!(!c.supports_case);
@@ -112,8 +125,45 @@ mod tests {
             "mfr-jp-02",
             ManufacturingLocation::Domestic,
             false,
+            ManufacturerEligibility::Ineligible,
         );
         assert!(!c.supports_case);
+    }
+
+    #[test]
+    fn eligible_candidate() {
+        let c = RoutingCandidate::new(
+            RoutingCandidateId::new("rc-e"),
+            "mfr-01",
+            ManufacturingLocation::Domestic,
+            true,
+            ManufacturerEligibility::Eligible,
+        );
+        assert_eq!(c.eligibility, ManufacturerEligibility::Eligible);
+    }
+
+    #[test]
+    fn ineligible_candidate() {
+        let c = RoutingCandidate::new(
+            RoutingCandidateId::new("rc-i"),
+            "mfr-02",
+            ManufacturingLocation::Domestic,
+            false,
+            ManufacturerEligibility::Ineligible,
+        );
+        assert_eq!(c.eligibility, ManufacturerEligibility::Ineligible);
+    }
+
+    #[test]
+    fn unknown_eligibility_candidate() {
+        let c = RoutingCandidate::new(
+            RoutingCandidateId::new("rc-u"),
+            "mfr-03",
+            ManufacturingLocation::Unknown,
+            false,
+            ManufacturerEligibility::Unknown,
+        );
+        assert_eq!(c.eligibility, ManufacturerEligibility::Unknown);
     }
 
     #[test]
@@ -123,6 +173,7 @@ mod tests {
             "mfr-fr-03",
             ManufacturingLocation::CrossBorder,
             true,
+            ManufacturerEligibility::Eligible,
         );
         assert_eq!(c.clone(), c);
     }

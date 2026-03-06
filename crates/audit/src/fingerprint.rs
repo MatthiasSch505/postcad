@@ -95,10 +95,11 @@ impl RoutingDecisionFingerprint {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proof::RoutingProof;
     use postcad_core::{
-        Case, Country, DecisionContext, DentalCase, FileType, ManufacturerEligibility,
-        ManufacturingLocation, Material, ProcedureType, RoutingCandidate, RoutingCandidateId,
-        RoutingDecision, RoutingOutcome,
+        Case, CaseRefusal, Country, DecisionContext, DentalCase, FileType, ManufacturerEligibility,
+        ManufacturingLocation, Material, ProcedureType, RefusalReason, RoutingCandidate,
+        RoutingCandidateId, RoutingDecision, RoutingOutcome,
     };
 
     fn make_case() -> Case {
@@ -151,10 +152,7 @@ mod tests {
     fn refusal_outcome_builds_refused_fingerprint() {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
-        let refusal = postcad_core::CaseRefusal::with_reason(
-            case.id.clone(),
-            postcad_core::RefusalReason::ValidationFailed,
-        );
+        let refusal = CaseRefusal::with_reason(case.id.clone(), RefusalReason::ValidationFailed);
         let outcome = make_outcome(
             &case,
             RoutingDecision::Refused(refusal),
@@ -166,6 +164,76 @@ mod tests {
         assert_eq!(fp.final_status, "refused");
         assert!(fp.selected_manufacturer_id.is_none());
         assert_eq!(fp.refusal_code, Some("ValidationFailed".to_string()));
+    }
+
+    #[test]
+    fn compliance_exclusion_refusal_builds_refused_fingerprint() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-01")];
+        let refusal =
+            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Refused(refusal),
+            candidates.len(),
+        );
+
+        let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
+
+        assert_eq!(fp.final_status, "refused");
+        assert!(fp.selected_manufacturer_id.is_none());
+        assert_eq!(fp.refusal_code, Some("ComplianceExclusion".to_string()));
+    }
+
+    #[test]
+    fn compliance_exclusion_refusal_code_appears_in_canonical_string() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-01")];
+        let refusal =
+            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Refused(refusal),
+            candidates.len(),
+        );
+
+        let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
+        let s = fp.canonical_string();
+
+        assert!(s.contains("refusal_code=ComplianceExclusion"));
+        assert!(s.contains("final_status=refused"));
+    }
+
+    #[test]
+    fn different_refusal_codes_produce_different_proof_hashes() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-01")];
+
+        let refusal_compliance =
+            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let outcome_compliance = make_outcome(
+            &case,
+            RoutingDecision::Refused(refusal_compliance),
+            candidates.len(),
+        );
+
+        let refusal_validation =
+            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ValidationFailed);
+        let outcome_validation = make_outcome(
+            &case,
+            RoutingDecision::Refused(refusal_validation),
+            candidates.len(),
+        );
+
+        let fp_a =
+            RoutingDecisionFingerprint::from_outcome(&outcome_compliance, "DE", &candidates, None);
+        let fp_b =
+            RoutingDecisionFingerprint::from_outcome(&outcome_validation, "DE", &candidates, None);
+
+        let proof_a = RoutingProof::from_fingerprint(&fp_a);
+        let proof_b = RoutingProof::from_fingerprint(&fp_b);
+
+        assert_ne!(proof_a.hash_hex, proof_b.hash_hex);
     }
 
     #[test]

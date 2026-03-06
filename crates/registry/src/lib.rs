@@ -5,7 +5,7 @@ pub mod attestation;
 pub use attestation::{evidence_attestation_status, evidence_is_attested, EvidenceAttestation};
 
 pub mod snapshot;
-pub use snapshot::{build_compliance_snapshot, ManufacturerComplianceSnapshot};
+pub use snapshot::{build_compliance_snapshot, build_compliance_snapshot_for_profile, ManufacturerComplianceSnapshot};
 
 pub mod profile;
 pub use profile::{manufacturer_satisfies_profile, RequiredEvidenceProfile};

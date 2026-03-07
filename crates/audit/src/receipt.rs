@@ -1,6 +1,7 @@
 use postcad_core::{RoutingCandidate, RoutingDecision, RoutingOutcome};
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RoutingAuditReceipt {
     pub case_id: String,
     pub jurisdiction: String,
@@ -45,19 +46,14 @@ impl RoutingAuditReceipt {
                 let code = refusal
                     .reasons
                     .first()
-                    .map(|r| format!("{:?}", r))
-                    .unwrap_or_else(|| "Unknown".to_string());
+                    .map(|r| r.code().to_string())
+                    .unwrap_or_else(|| "unknown".to_string());
 
-                let message = if refusal.reasons.is_empty() {
-                    "Case refused with no specific reason".to_string()
-                } else {
-                    refusal
-                        .reasons
-                        .iter()
-                        .map(|r| format!("{:?}", r))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                };
+                let message = refusal
+                    .reasons
+                    .first()
+                    .map(|r| r.message().to_string())
+                    .unwrap_or_else(|| "Case refused with no specific reason".to_string());
 
                 Self {
                     case_id,
@@ -75,8 +71,8 @@ impl RoutingAuditReceipt {
                 jurisdiction,
                 selected_manufacturer_id: None,
                 candidate_ids_considered,
-                refusal_code: Some("NoEligibleCandidate".to_string()),
-                refusal_message: Some("No eligible candidate found after filtering".to_string()),
+                refusal_code: Some("no_eligible_candidates".to_string()),
+                refusal_message: Some("No eligible candidate found".to_string()),
                 policy_version,
             },
         }
@@ -170,7 +166,7 @@ mod tests {
         assert_eq!(receipt.case_id, case.id.to_string());
         assert_eq!(receipt.jurisdiction, "US");
         assert!(receipt.selected_manufacturer_id.is_none());
-        assert_eq!(receipt.refusal_code, Some("ValidationFailed".to_string()));
+        assert_eq!(receipt.refusal_code, Some("invalid_input".to_string()));
         assert!(receipt.refusal_message.is_some());
         assert_eq!(receipt.policy_version, Some("v1".to_string()));
     }
@@ -186,9 +182,70 @@ mod tests {
         assert!(receipt.selected_manufacturer_id.is_none());
         assert_eq!(
             receipt.refusal_code,
-            Some("NoEligibleCandidate".to_string())
+            Some("no_eligible_candidates".to_string())
         );
         assert!(receipt.refusal_message.is_some());
+    }
+
+    // ── canonical JSON ────────────────────────────────────────────────────────
+
+    #[test]
+    fn receipt_canonical_json_is_identical_for_same_input() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            candidates.len(),
+        );
+        let receipt = RoutingAuditReceipt::from_outcome(&outcome, "DE", &candidates, None);
+
+        let json_a = crate::canonical::to_canonical_json(&receipt);
+        let json_b = crate::canonical::to_canonical_json(&receipt);
+        assert_eq!(json_a, json_b);
+    }
+
+    #[test]
+    fn receipt_canonical_json_contains_case_id_and_jurisdiction() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            candidates.len(),
+        );
+        let receipt = RoutingAuditReceipt::from_outcome(&outcome, "DE", &candidates, None);
+        let json = crate::canonical::to_canonical_json(&receipt);
+
+        assert!(json.contains(&case.id.to_string()));
+        assert!(json.contains("\"DE\""));
+    }
+
+    #[test]
+    fn receipt_canonical_json_is_compact() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            candidates.len(),
+        );
+        let receipt = RoutingAuditReceipt::from_outcome(&outcome, "DE", &candidates, None);
+        let json = crate::canonical::to_canonical_json(&receipt);
+
+        assert!(!json.ends_with('\n'));
+        assert!(!json.contains("\n  "));
+    }
+
+    #[test]
+    fn receipt_refused_canonical_json_uses_stable_refusal_code() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, candidates.len());
+        let receipt = RoutingAuditReceipt::from_outcome(&outcome, "DE", &candidates, None);
+        let json = crate::canonical::to_canonical_json(&receipt);
+
+        assert!(json.contains("\"no_eligible_candidates\""));
     }
 
     #[test]

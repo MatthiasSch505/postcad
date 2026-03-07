@@ -1,3 +1,6 @@
+pub mod canonical;
+pub use canonical::to_canonical_json;
+
 pub mod receipt;
 pub use receipt::RoutingAuditReceipt;
 

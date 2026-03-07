@@ -1,8 +1,9 @@
 use sha2::{Digest, Sha256};
 
 use crate::fingerprint::RoutingDecisionFingerprint;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RoutingProof {
     pub canonical_payload: String,
     pub hash_hex: String,
@@ -117,5 +118,39 @@ mod tests {
         let mut proof = RoutingProof::from_fingerprint(&selected_fingerprint());
         proof.hash_hex = "0000000000000000000000000000000000000000000000000000000000000000".to_string();
         assert!(!proof.verify());
+    }
+
+    // ── canonical JSON ────────────────────────────────────────────────────────
+
+    #[test]
+    fn proof_canonical_json_is_identical_for_same_input() {
+        let proof = RoutingProof::from_fingerprint(&selected_fingerprint());
+        let json_a = crate::canonical::to_canonical_json(&proof);
+        let json_b = crate::canonical::to_canonical_json(&proof);
+        assert_eq!(json_a, json_b);
+    }
+
+    #[test]
+    fn proof_canonical_json_is_compact() {
+        let proof = RoutingProof::from_fingerprint(&selected_fingerprint());
+        let json = crate::canonical::to_canonical_json(&proof);
+        assert!(!json.ends_with('\n'));
+        assert!(!json.contains("\n  "));
+    }
+
+    #[test]
+    fn proof_canonical_json_contains_hash_hex() {
+        let proof = RoutingProof::from_fingerprint(&selected_fingerprint());
+        let json = crate::canonical::to_canonical_json(&proof);
+        assert!(json.contains(&proof.hash_hex));
+    }
+
+    #[test]
+    fn different_proofs_produce_different_canonical_json() {
+        let proof_a = RoutingProof::from_fingerprint(&selected_fingerprint());
+        let proof_b = RoutingProof::from_fingerprint(&refused_fingerprint());
+        let json_a = crate::canonical::to_canonical_json(&proof_a);
+        let json_b = crate::canonical::to_canonical_json(&proof_b);
+        assert_ne!(json_a, json_b);
     }
 }

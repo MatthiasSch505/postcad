@@ -282,6 +282,7 @@ dependencies = [
  "postcad-core",
  "postcad-registry",
  "serde",
+ "serde_json",
  "sha2",
  "thiserror",
 ]

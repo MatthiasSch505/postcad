@@ -1,6 +1,7 @@
 use postcad_core::{RoutingCandidate, RoutingDecision, RoutingOutcome};
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RoutingDecisionFingerprint {
     pub case_id: String,
     pub jurisdiction: String,

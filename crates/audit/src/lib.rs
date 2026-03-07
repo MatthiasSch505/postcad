@@ -1,6 +1,9 @@
 pub mod canonical;
 pub use canonical::to_canonical_json;
 
+pub mod chain;
+pub use chain::{AuditEvent, AuditEntry, AuditLog};
+
 pub mod receipt;
 pub use receipt::RoutingAuditReceipt;
 

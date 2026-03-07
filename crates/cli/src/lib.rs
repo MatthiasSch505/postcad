@@ -5,6 +5,7 @@ use postcad_core::{
     RoutingPolicy, fingerprint_case,
 };
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
+use postcad_registry::validate_snapshots;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
@@ -75,6 +76,8 @@ pub enum CliError {
     ParseError(#[from] serde_json::Error),
     #[error("invalid field value: {0}")]
     InvalidField(String),
+    #[error("snapshot validation failed: {0}")]
+    SnapshotValidation(String),
 }
 
 // ── Public entrypoint ─────────────────────────────────────────────────────────
@@ -96,6 +99,9 @@ pub fn route_case_from_json(
     let snapshots = build_snapshots(&snapshots_input);
     let policy = parse_routing_policy(case_input.routing_policy.as_deref())?;
     let jurisdiction = case_input.jurisdiction.as_deref().unwrap_or("global");
+
+    validate_snapshots(&snapshots)
+        .map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
 
     let case_fp = fingerprint_case(&case);
 
@@ -543,13 +549,77 @@ mod tests {
             {"id":"rc-2","manufacturer_id":"mfr-02","location":"domestic","accepts_case":true,"eligibility":"eligible"}
         ]"#;
         let snapshots = r#"[
-            {"manufacturer_id":"mfr-01","evidence_references":[],"attestation_statuses":[],"is_eligible":true},
-            {"manufacturer_id":"mfr-02","evidence_references":[],"attestation_statuses":[],"is_eligible":true}
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-A"],"attestation_statuses":["verified"],"is_eligible":true},
+            {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["verified"],"is_eligible":true}
         ]"#;
         let output = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
 
         // rc-1 is first eligible in original slice order
         assert_eq!(output.selected_candidate_id, Some("rc-1".to_string()));
+    }
+
+    // ── Test 5: snapshot validation ───────────────────────────────────────────
+
+    #[test]
+    fn snapshot_with_duplicate_manufacturer_id_returns_error() {
+        let snapshots = r#"[
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-001"],"attestation_statuses":["verified"],"is_eligible":true},
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-002"],"attestation_statuses":["verified"],"is_eligible":true}
+        ]"#;
+        let result = route_case_from_json(CASE_JSON, CANDIDATES_JSON, snapshots);
+        assert!(matches!(result, Err(CliError::SnapshotValidation(_))));
+    }
+
+    #[test]
+    fn snapshot_eligible_with_no_evidence_returns_error() {
+        let snapshots = r#"[
+            {"manufacturer_id":"mfr-01","evidence_references":[],"attestation_statuses":[],"is_eligible":true}
+        ]"#;
+        let result = route_case_from_json(CASE_JSON, CANDIDATES_JSON, snapshots);
+        assert!(matches!(result, Err(CliError::SnapshotValidation(_))));
+    }
+
+    #[test]
+    fn snapshot_eligible_with_only_rejected_attestation_returns_error() {
+        let snapshots = r#"[
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-001"],"attestation_statuses":["rejected"],"is_eligible":true}
+        ]"#;
+        let result = route_case_from_json(CASE_JSON, CANDIDATES_JSON, snapshots);
+        assert!(matches!(result, Err(CliError::SnapshotValidation(_))));
+    }
+
+    #[test]
+    fn snapshot_with_duplicate_evidence_reference_returns_error() {
+        let snapshots = r#"[
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-001","REF-001"],"attestation_statuses":["verified"],"is_eligible":true}
+        ]"#;
+        let result = route_case_from_json(CASE_JSON, CANDIDATES_JSON, snapshots);
+        assert!(matches!(result, Err(CliError::SnapshotValidation(_))));
+    }
+
+    #[test]
+    fn snapshot_with_more_attestations_than_evidence_returns_error() {
+        let snapshots = r#"[
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-001"],"attestation_statuses":["verified","verified"],"is_eligible":true}
+        ]"#;
+        let result = route_case_from_json(CASE_JSON, CANDIDATES_JSON, snapshots);
+        assert!(matches!(result, Err(CliError::SnapshotValidation(_))));
+    }
+
+    #[test]
+    fn snapshot_with_empty_manufacturer_id_returns_error() {
+        let snapshots = r#"[
+            {"manufacturer_id":"","evidence_references":[],"attestation_statuses":[],"is_eligible":false}
+        ]"#;
+        let result = route_case_from_json(CASE_JSON, CANDIDATES_JSON, snapshots);
+        assert!(matches!(result, Err(CliError::SnapshotValidation(_))));
+    }
+
+    #[test]
+    fn valid_snapshot_does_not_return_validation_error() {
+        let result =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -559,8 +629,8 @@ mod tests {
             {"id":"rc-2","manufacturer_id":"mfr-02","location":"domestic","accepts_case":true,"eligibility":"eligible"}
         ]"#;
         let snapshots = r#"[
-            {"manufacturer_id":"mfr-01","evidence_references":[],"attestation_statuses":[],"is_eligible":false},
-            {"manufacturer_id":"mfr-02","evidence_references":[],"attestation_statuses":[],"is_eligible":true}
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-A"],"attestation_statuses":["rejected"],"is_eligible":false},
+            {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["verified"],"is_eligible":true}
         ]"#;
         let output = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
 

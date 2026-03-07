@@ -9,3 +9,6 @@ pub use snapshot::{build_compliance_snapshot, build_compliance_snapshot_for_prof
 
 pub mod profile;
 pub use profile::{manufacturer_satisfies_profile, RequiredEvidenceProfile};
+
+pub mod snapshot_validator;
+pub use snapshot_validator::{validate_snapshots, SnapshotValidationError};

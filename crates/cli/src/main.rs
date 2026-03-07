@@ -1,7 +1,7 @@
 use std::fs;
 use std::process;
 
-use postcad_cli::route_case_from_json;
+use postcad_cli::{route_case_from_json, CliError};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -65,7 +65,11 @@ fn run_route_case(args: &[String]) {
     let output = match route_case_from_json(&case_json, &candidates_json, &snapshots_json) {
         Ok(o) => o,
         Err(e) => {
-            eprintln!("error: {}", e);
+            if json_output {
+                println!("{}", error_to_json(&e));
+            } else {
+                eprintln!("error: {}", e);
+            }
             process::exit(1);
         }
     };
@@ -113,6 +117,19 @@ fn print_help() {
     println!("    material             zirconia | pmma | emax | cobalt_chrome | titanium | other:<name>");
     println!("    procedure            crown | bridge | veneer | implant | denture | other:<name>");
     println!("    file_type            stl | obj | ply | three_mf | other:<name>");
+}
+
+fn error_to_json(e: &CliError) -> String {
+    let code = match e {
+        CliError::ParseError(_) => "ParseError",
+        CliError::InvalidField(_) => "InvalidField",
+        CliError::SnapshotValidation(_) => "SnapshotValidation",
+    };
+    serde_json::json!({
+        "error": code,
+        "detail": e.to_string()
+    })
+    .to_string()
 }
 
 fn require_arg<'a>(val: Option<&'a str>, flag: &str) -> &'a str {

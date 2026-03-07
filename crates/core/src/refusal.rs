@@ -12,6 +12,41 @@ pub enum RefusalReason {
     Unknown,
 }
 
+impl RefusalReason {
+    /// Stable machine-readable code for this refusal reason.
+    ///
+    /// These strings are part of the public contract and must not change once
+    /// published. Add new variants rather than renaming existing codes.
+    pub fn code(&self) -> &'static str {
+        match self {
+            RefusalReason::ValidationFailed => "invalid_input",
+            RefusalReason::UnsupportedFileType => "unsupported_case",
+            RefusalReason::MissingManufacturingMetadata => "invalid_input",
+            RefusalReason::UnsupportedJurisdiction => "unsupported_case",
+            RefusalReason::ManufacturerNotEligible => "compliance_failed",
+            RefusalReason::NoEligibleCandidate => "no_eligible_candidates",
+            RefusalReason::ComplianceExclusion => "compliance_failed",
+            RefusalReason::Unknown => "unknown",
+        }
+    }
+
+    /// Human-readable description of this refusal reason.
+    pub fn message(&self) -> &'static str {
+        match self {
+            RefusalReason::ValidationFailed => "Case failed validation",
+            RefusalReason::UnsupportedFileType => "File type is not supported",
+            RefusalReason::MissingManufacturingMetadata => {
+                "Required manufacturing metadata is missing"
+            }
+            RefusalReason::UnsupportedJurisdiction => "Jurisdiction is not supported",
+            RefusalReason::ManufacturerNotEligible => "Manufacturer is not eligible",
+            RefusalReason::NoEligibleCandidate => "No eligible candidate found",
+            RefusalReason::ComplianceExclusion => "Compliance requirements not met",
+            RefusalReason::Unknown => "Unknown refusal reason",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CaseRefusal {
     pub case_id: CaseId,
@@ -126,6 +161,43 @@ mod tests {
         let mut r = CaseRefusal::new(CaseId::new());
         r.add_reason(RefusalReason::ComplianceExclusion);
         assert!(r.reasons.contains(&RefusalReason::ComplianceExclusion));
+    }
+
+    // ── code() and message() ─────────────────────────────────────────────────
+
+    #[test]
+    fn all_variants_have_stable_codes() {
+        assert_eq!(RefusalReason::ValidationFailed.code(), "invalid_input");
+        assert_eq!(RefusalReason::UnsupportedFileType.code(), "unsupported_case");
+        assert_eq!(RefusalReason::MissingManufacturingMetadata.code(), "invalid_input");
+        assert_eq!(RefusalReason::UnsupportedJurisdiction.code(), "unsupported_case");
+        assert_eq!(RefusalReason::ManufacturerNotEligible.code(), "compliance_failed");
+        assert_eq!(RefusalReason::NoEligibleCandidate.code(), "no_eligible_candidates");
+        assert_eq!(RefusalReason::ComplianceExclusion.code(), "compliance_failed");
+        assert_eq!(RefusalReason::Unknown.code(), "unknown");
+    }
+
+    #[test]
+    fn code_is_stable_across_calls() {
+        let r = RefusalReason::ComplianceExclusion;
+        assert_eq!(r.code(), r.code());
+    }
+
+    #[test]
+    fn all_variants_have_non_empty_messages() {
+        let variants = [
+            RefusalReason::ValidationFailed,
+            RefusalReason::UnsupportedFileType,
+            RefusalReason::MissingManufacturingMetadata,
+            RefusalReason::UnsupportedJurisdiction,
+            RefusalReason::ManufacturerNotEligible,
+            RefusalReason::NoEligibleCandidate,
+            RefusalReason::ComplianceExclusion,
+            RefusalReason::Unknown,
+        ];
+        for v in &variants {
+            assert!(!v.message().is_empty(), "empty message for {:?}", v);
+        }
     }
 
     #[test]

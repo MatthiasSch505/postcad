@@ -45,7 +45,7 @@ impl RoutingDecisionFingerprint {
                 let refusal_code = refusal
                     .reasons
                     .first()
-                    .map(|r| format!("{:?}", r));
+                    .map(|r| r.code().to_string());
 
                 Self {
                     case_id,
@@ -64,7 +64,7 @@ impl RoutingDecisionFingerprint {
                 selected_manufacturer_id: None,
                 candidate_ids_considered,
                 final_status: "refused".to_string(),
-                refusal_code: Some("NoEligibleCandidate".to_string()),
+                refusal_code: Some("no_eligible_candidates".to_string()),
                 policy_version,
             },
         }
@@ -163,7 +163,7 @@ mod tests {
 
         assert_eq!(fp.final_status, "refused");
         assert!(fp.selected_manufacturer_id.is_none());
-        assert_eq!(fp.refusal_code, Some("ValidationFailed".to_string()));
+        assert_eq!(fp.refusal_code, Some("invalid_input".to_string()));
     }
 
     #[test]
@@ -182,7 +182,7 @@ mod tests {
 
         assert_eq!(fp.final_status, "refused");
         assert!(fp.selected_manufacturer_id.is_none());
-        assert_eq!(fp.refusal_code, Some("ComplianceExclusion".to_string()));
+        assert_eq!(fp.refusal_code, Some("compliance_failed".to_string()));
     }
 
     #[test]
@@ -200,7 +200,7 @@ mod tests {
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
         let s = fp.canonical_string();
 
-        assert!(s.contains("refusal_code=ComplianceExclusion"));
+        assert!(s.contains("refusal_code=compliance_failed"));
         assert!(s.contains("final_status=refused"));
     }
 

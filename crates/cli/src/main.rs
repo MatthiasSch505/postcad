@@ -87,7 +87,7 @@ fn run_route_case(args: &[String]) {
         println!("case_fingerprint:     {}", output.case_fingerprint);
         if let Some(r) = &output.refusal {
             println!("refusal_code:         {}", r.code);
-            println!("refusal_reasons:      {}", r.reasons.join(", "));
+            println!("refusal_message:      {}", r.message);
         }
     }
 }
@@ -121,13 +121,13 @@ fn print_help() {
 
 fn error_to_json(e: &CliError) -> String {
     let code = match e {
-        CliError::ParseError(_) => "ParseError",
-        CliError::InvalidField(_) => "InvalidField",
-        CliError::SnapshotValidation(_) => "SnapshotValidation",
+        CliError::ParseError(_) => "invalid_input",
+        CliError::InvalidField(_) => "invalid_input",
+        CliError::SnapshotValidation(_) => "invalid_snapshot",
     };
     serde_json::json!({
-        "error": code,
-        "detail": e.to_string()
+        "code": code,
+        "message": e.to_string()
     })
     .to_string()
 }

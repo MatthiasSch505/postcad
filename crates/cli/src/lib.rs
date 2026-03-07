@@ -1,7 +1,7 @@
 use postcad_audit::{route_case_with_compliance_audit, RoutingServiceResult};
 use postcad_core::{
     Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
-    Material, ProcedureType, RefusalReason, RoutingCandidate, RoutingCandidateId, RoutingDecision,
+    Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision,
     RoutingPolicy, fingerprint_case,
 };
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
@@ -65,7 +65,7 @@ pub struct RouteCaseOutput {
 #[derive(Debug, Serialize, PartialEq)]
 pub struct RefusalOutput {
     pub code: String,
-    pub reasons: Vec<String>,
+    pub message: String,
 }
 
 // ── Error type ────────────────────────────────────────────────────────────────
@@ -185,21 +185,21 @@ fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutpu
             case_fingerprint: case_fp,
             refusal: None,
         },
-        RoutingDecision::Refused(r) => RouteCaseOutput {
-            outcome: "refused".to_string(),
-            selected_candidate_id: None,
-            routing_proof_hash: proof_hash,
-            policy_fingerprint: policy_fp,
-            case_fingerprint: case_fp,
-            refusal: Some(RefusalOutput {
-                code: r
-                    .reasons
-                    .first()
-                    .map(reason_str)
-                    .unwrap_or_else(|| "Unknown".to_string()),
-                reasons: r.reasons.iter().map(reason_str).collect(),
-            }),
-        },
+        RoutingDecision::Refused(r) => {
+            let (code, message) = r
+                .reasons
+                .first()
+                .map(|reason| (reason.code().to_string(), reason.message().to_string()))
+                .unwrap_or_else(|| ("unknown".to_string(), "Unknown refusal reason".to_string()));
+            RouteCaseOutput {
+                outcome: "refused".to_string(),
+                selected_candidate_id: None,
+                routing_proof_hash: proof_hash,
+                policy_fingerprint: policy_fp,
+                case_fingerprint: case_fp,
+                refusal: Some(RefusalOutput { code, message }),
+            }
+        }
         RoutingDecision::NoEligibleCandidate => RouteCaseOutput {
             outcome: "refused".to_string(),
             selected_candidate_id: None,
@@ -207,8 +207,8 @@ fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutpu
             policy_fingerprint: policy_fp,
             case_fingerprint: case_fp,
             refusal: Some(RefusalOutput {
-                code: "NoEligibleCandidate".to_string(),
-                reasons: vec!["NoEligibleCandidate".to_string()],
+                code: "no_eligible_candidates".to_string(),
+                message: "No eligible candidate found".to_string(),
             }),
         },
     }
@@ -287,10 +287,6 @@ fn parse_routing_policy(s: Option<&str>) -> Result<RoutingPolicy, CliError> {
         "allow_domestic_and_cross_border" => Ok(RoutingPolicy::AllowDomesticAndCrossBorder),
         other => Err(CliError::InvalidField(format!("unknown routing_policy: {}", other))),
     }
-}
-
-fn reason_str(r: &RefusalReason) -> String {
-    format!("{:?}", r)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -400,7 +396,7 @@ mod tests {
         assert_eq!(output.outcome, "refused");
         assert!(output.selected_candidate_id.is_none());
         let refusal = output.refusal.expect("refusal should be present");
-        assert_eq!(refusal.code, "NoEligibleCandidate");
+        assert_eq!(refusal.code, "no_eligible_candidates");
     }
 
     #[test]

@@ -1,4 +1,7 @@
-use postcad_audit::{route_case_with_compliance_audit, RoutingServiceResult};
+use postcad_audit::{
+    route_case_with_compliance_audit, DecisionTrace, RoutingAuditReceipt, RoutingProof,
+    RoutingServiceResult,
+};
 use postcad_core::{
     Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
     Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision,
@@ -60,12 +63,25 @@ pub struct RouteCaseOutput {
     pub policy_fingerprint: String,
     pub case_fingerprint: String,
     pub refusal: Option<RefusalOutput>,
+    pub audit: AuditOutput,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
 pub struct RefusalOutput {
     pub code: String,
     pub message: String,
+}
+
+/// Full audit artifacts emitted alongside the routing decision.
+///
+/// `proof.canonical_payload` + `proof.hash_hex` allow any consumer to
+/// independently verify the proof by recomputing SHA-256(`canonical_payload`)
+/// and comparing to `hash_hex`.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct AuditOutput {
+    pub receipt: RoutingAuditReceipt,
+    pub trace: DecisionTrace,
+    pub proof: RoutingProof,
 }
 
 // ── Error type ────────────────────────────────────────────────────────────────
@@ -175,6 +191,11 @@ fn build_snapshots(inputs: &[SnapshotInput]) -> Vec<ManufacturerComplianceSnapsh
 fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutput {
     let proof_hash = result.proof.hash_hex.clone();
     let policy_fp = result.policy_fingerprint.clone();
+    let audit = AuditOutput {
+        receipt: result.audit_receipt,
+        trace: result.decision_trace,
+        proof: result.proof,
+    };
 
     match result.outcome.decision {
         RoutingDecision::Selected(id) => RouteCaseOutput {
@@ -184,6 +205,7 @@ fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutpu
             policy_fingerprint: policy_fp,
             case_fingerprint: case_fp,
             refusal: None,
+            audit,
         },
         RoutingDecision::Refused(r) => {
             let (code, message) = r
@@ -198,6 +220,7 @@ fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutpu
                 policy_fingerprint: policy_fp,
                 case_fingerprint: case_fp,
                 refusal: Some(RefusalOutput { code, message }),
+                audit,
             }
         }
         RoutingDecision::NoEligibleCandidate => RouteCaseOutput {
@@ -210,6 +233,7 @@ fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutpu
                 code: "no_eligible_candidates".to_string(),
                 message: "No eligible candidate found".to_string(),
             }),
+            audit,
         },
     }
 }

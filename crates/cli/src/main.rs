@@ -85,6 +85,7 @@ fn run_route_case(args: &[String]) {
         println!("routing_proof_hash:   {}", output.routing_proof_hash);
         println!("policy_fingerprint:   {}", output.policy_fingerprint);
         println!("case_fingerprint:     {}", output.case_fingerprint);
+        println!("proof_payload:        {}", output.audit.proof.canonical_payload.replace('\n', "\\n"));
         if let Some(r) = &output.refusal {
             println!("refusal_code:         {}", r.code);
             println!("refusal_message:      {}", r.message);

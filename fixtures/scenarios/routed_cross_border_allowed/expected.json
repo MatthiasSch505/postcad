@@ -1,0 +1,32 @@
+{
+  "outcome": "routed",
+  "selected_candidate_id": "rc-de-01",
+  "routing_proof_hash": "1c732afa38a937899d3e62fc562eeb807b43fe6b88130943c7d851e53abe3fa3",
+  "policy_fingerprint": "c6167ec7ca3e50b2d6d8ad135dbb3467f0a67b5a68a7ec91df14bec9b1b841b3",
+  "case_fingerprint": "781ec6d59258c32f4c4364ff56c68825668e1528a1823b0362f36e9c46190518",
+  "refusal": null,
+  "audit": {
+    "receipt": {
+      "case_id": "50000000-0000-0000-0000-000000000005",
+      "jurisdiction": "FR",
+      "selected_manufacturer_id": "mfr-de-01",
+      "candidate_ids_considered": ["rc-de-01"],
+      "refusal_code": null,
+      "refusal_message": null,
+      "policy_version": null
+    },
+    "trace": {
+      "case_id": "50000000-0000-0000-0000-000000000005",
+      "jurisdiction": "FR",
+      "evaluated_candidate_ids": ["rc-de-01"],
+      "eligible_candidate_ids": ["rc-de-01"],
+      "rejected_candidate_ids": [],
+      "selected_manufacturer_id": "mfr-de-01",
+      "final_status": "selected"
+    },
+    "proof": {
+      "canonical_payload": "case_id=50000000-0000-0000-0000-000000000005\njurisdiction=FR\nselected_manufacturer_id=mfr-de-01\ncandidate_ids=rc-de-01\nfinal_status=selected\nrefusal_code=\npolicy_version=",
+      "hash_hex": "1c732afa38a937899d3e62fc562eeb807b43fe6b88130943c7d851e53abe3fa3"
+    }
+  }
+}

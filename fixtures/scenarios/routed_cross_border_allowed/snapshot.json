@@ -1,0 +1,8 @@
+[
+  {
+    "manufacturer_id": "mfr-de-01",
+    "evidence_references": ["ISO-9001-2024"],
+    "attestation_statuses": ["verified"],
+    "is_eligible": true
+  }
+]

@@ -96,6 +96,17 @@ pub enum CliError {
     SnapshotValidation(String),
 }
 
+impl CliError {
+    /// Stable machine-readable code for this error, used in the JSON envelope.
+    pub fn code(&self) -> &'static str {
+        match self {
+            CliError::ParseError(_) => "parse_error",
+            CliError::InvalidField(_) => "parse_error",
+            CliError::SnapshotValidation(_) => "invalid_snapshot",
+        }
+    }
+}
+
 // ── Public entrypoint ─────────────────────────────────────────────────────────
 
 /// Runs the compliance-aware routing pipeline from raw JSON strings.

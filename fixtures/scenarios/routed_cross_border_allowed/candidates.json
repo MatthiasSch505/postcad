@@ -1,0 +1,9 @@
+[
+  {
+    "id": "rc-de-01",
+    "manufacturer_id": "mfr-de-01",
+    "location": "cross_border",
+    "accepts_case": true,
+    "eligibility": "eligible"
+  }
+]

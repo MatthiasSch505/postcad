@@ -1,0 +1,10 @@
+{
+  "case_id": "30000000-0000-0000-0000-000000000003",
+  "jurisdiction": "JP",
+  "routing_policy": "allow_domestic_only",
+  "patient_country": "japan",
+  "manufacturer_country": "germany",
+  "material": "emax",
+  "procedure": "veneer",
+  "file_type": "ply"
+}

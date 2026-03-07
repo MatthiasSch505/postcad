@@ -1,0 +1,10 @@
+{
+  "case_id": "40000000-0000-0000-0000-000000000004",
+  "jurisdiction": "FR",
+  "routing_policy": "allow_domestic_only",
+  "patient_country": "france",
+  "manufacturer_country": "france",
+  "material": "titanium",
+  "procedure": "implant",
+  "file_type": "three_mf"
+}

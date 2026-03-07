@@ -1,0 +1,10 @@
+{
+  "case_id": "50000000-0000-0000-0000-000000000005",
+  "jurisdiction": "FR",
+  "routing_policy": "allow_domestic_and_cross_border",
+  "patient_country": "france",
+  "manufacturer_country": "germany",
+  "material": "cobalt_chrome",
+  "procedure": "denture",
+  "file_type": "stl"
+}

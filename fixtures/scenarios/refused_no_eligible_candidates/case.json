@@ -1,0 +1,10 @@
+{
+  "case_id": "20000000-0000-0000-0000-000000000002",
+  "jurisdiction": "US",
+  "routing_policy": "allow_domestic_only",
+  "patient_country": "united_states",
+  "manufacturer_country": "united_states",
+  "material": "pmma",
+  "procedure": "bridge",
+  "file_type": "obj"
+}

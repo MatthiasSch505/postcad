@@ -1,32 +1,37 @@
 use std::fs;
 use std::process;
 
-use postcad_cli::{route_case_from_json, CliError};
+use postcad_cli::route_case_from_json;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    // Pre-scan for --json so top-level error paths can emit the envelope.
+    let json_output = args.iter().any(|a| a.as_str() == "--json");
 
-    // Dispatch subcommand.
     match args.get(1).map(String::as_str) {
         Some("route-case") => run_route_case(&args[2..]),
         Some("--help") | Some("-h") | Some("help") => print_help(),
-        Some(other) => {
-            eprintln!("error: unknown subcommand '{}'", other);
-            print_help();
-            process::exit(1);
-        }
-        None => {
-            print_help();
-            process::exit(1);
-        }
+        Some(other) => emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            &format!("unknown subcommand '{}'", other),
+        ),
+        None => emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "no subcommand provided; run with 'help' for usage",
+        ),
     }
 }
 
 fn run_route_case(args: &[String]) {
+    // Pre-scan for --json before touching any other flag so all error paths
+    // in this function can emit the JSON envelope.
+    let json_output = args.iter().any(|a| a.as_str() == "--json");
+
     let mut case_path: Option<&str> = None;
     let mut candidates_path: Option<&str> = None;
     let mut snapshot_path: Option<&str> = None;
-    let mut json_output = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -44,34 +49,41 @@ fn run_route_case(args: &[String]) {
                 i += 2;
             }
             "--json" => {
-                json_output = true;
                 i += 1;
             }
-            other => {
-                eprintln!("error: unknown flag '{}'", other);
-                process::exit(1);
-            }
+            other => emit_error_and_exit(
+                json_output,
+                "invalid_arguments",
+                &format!("unknown flag '{}'", other),
+            ),
         }
     }
 
-    let case_path = require_arg(case_path, "--case");
-    let candidates_path = require_arg(candidates_path, "--candidates");
-    let snapshot_path = require_arg(snapshot_path, "--snapshot");
+    let case_path = case_path.unwrap_or_else(|| {
+        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --case")
+    });
+    let candidates_path = candidates_path.unwrap_or_else(|| {
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --candidates",
+        )
+    });
+    let snapshot_path = snapshot_path.unwrap_or_else(|| {
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --snapshot",
+        )
+    });
 
-    let case_json = read_file(case_path);
-    let candidates_json = read_file(candidates_path);
-    let snapshots_json = read_file(snapshot_path);
+    let case_json = read_file_or_exit(json_output, case_path);
+    let candidates_json = read_file_or_exit(json_output, candidates_path);
+    let snapshots_json = read_file_or_exit(json_output, snapshot_path);
 
     let output = match route_case_from_json(&case_json, &candidates_json, &snapshots_json) {
         Ok(o) => o,
-        Err(e) => {
-            if json_output {
-                println!("{}", error_to_json(&e));
-            } else {
-                eprintln!("error: {}", e);
-            }
-            process::exit(1);
-        }
+        Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
     };
 
     if json_output {
@@ -80,12 +92,15 @@ fn run_route_case(args: &[String]) {
         println!("outcome:              {}", output.outcome);
         println!(
             "selected_candidate:   {}",
-            output.selected_candidate_id.as_deref().unwrap_or("—")
+            output.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
         );
         println!("routing_proof_hash:   {}", output.routing_proof_hash);
         println!("policy_fingerprint:   {}", output.policy_fingerprint);
         println!("case_fingerprint:     {}", output.case_fingerprint);
-        println!("proof_payload:        {}", output.audit.proof.canonical_payload.replace('\n', "\\n"));
+        println!(
+            "proof_payload:        {}",
+            output.audit.proof.canonical_payload.replace('\n', "\\n")
+        );
         if let Some(r) = &output.refusal {
             println!("refusal_code:         {}", r.code);
             println!("refusal_message:      {}", r.message);
@@ -93,8 +108,36 @@ fn run_route_case(args: &[String]) {
     }
 }
 
+/// Emits a stable JSON error envelope (in --json mode) or a plain error line,
+/// then exits with code 1. Returns `!` so it can appear in `unwrap_or_else`.
+fn emit_error_and_exit(json_output: bool, code: &str, message: &str) -> ! {
+    if json_output {
+        println!(
+            "{}",
+            serde_json::json!({
+                "outcome": "error",
+                "code": code,
+                "message": message
+            })
+        );
+    } else {
+        eprintln!("error: {}", message);
+    }
+    process::exit(1)
+}
+
+fn read_file_or_exit(json_output: bool, path: &str) -> String {
+    fs::read_to_string(path).unwrap_or_else(|e| {
+        emit_error_and_exit(
+            json_output,
+            "io_error",
+            &format!("cannot read '{}': {}", path, e),
+        )
+    })
+}
+
 fn print_help() {
-    println!("postcad-cli — deterministic dental case routing");
+    println!("postcad-cli \u{2014} deterministic dental case routing");
     println!();
     println!("USAGE:");
     println!("    postcad-cli <subcommand> [options]");
@@ -118,34 +161,4 @@ fn print_help() {
     println!("    material             zirconia | pmma | emax | cobalt_chrome | titanium | other:<name>");
     println!("    procedure            crown | bridge | veneer | implant | denture | other:<name>");
     println!("    file_type            stl | obj | ply | three_mf | other:<name>");
-}
-
-fn error_to_json(e: &CliError) -> String {
-    let code = match e {
-        CliError::ParseError(_) => "invalid_input",
-        CliError::InvalidField(_) => "invalid_input",
-        CliError::SnapshotValidation(_) => "invalid_snapshot",
-    };
-    serde_json::json!({
-        "code": code,
-        "message": e.to_string()
-    })
-    .to_string()
-}
-
-fn require_arg<'a>(val: Option<&'a str>, flag: &str) -> &'a str {
-    match val {
-        Some(v) => v,
-        None => {
-            eprintln!("error: missing required argument {}", flag);
-            process::exit(1);
-        }
-    }
-}
-
-fn read_file(path: &str) -> String {
-    fs::read_to_string(path).unwrap_or_else(|e| {
-        eprintln!("error: cannot read '{}': {}", path, e);
-        process::exit(1);
-    })
 }

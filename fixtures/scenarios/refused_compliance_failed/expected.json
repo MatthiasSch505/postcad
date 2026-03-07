@@ -1,0 +1,35 @@
+{
+  "outcome": "refused",
+  "selected_candidate_id": null,
+  "routing_proof_hash": "ae50118658300a3959ddd694f1fed59dbfa86fb62c5e3fecb055050b934f84f1",
+  "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
+  "case_fingerprint": "3da778f2b939103dae2f03a25dd2591f46ad49e9b4089d7607442390ec0e469f",
+  "refusal": {
+    "code": "no_eligible_candidates",
+    "message": "No eligible candidate found"
+  },
+  "audit": {
+    "receipt": {
+      "case_id": "30000000-0000-0000-0000-000000000003",
+      "jurisdiction": "JP",
+      "selected_manufacturer_id": null,
+      "candidate_ids_considered": [],
+      "refusal_code": "no_eligible_candidates",
+      "refusal_message": "No eligible candidate found",
+      "policy_version": null
+    },
+    "trace": {
+      "case_id": "30000000-0000-0000-0000-000000000003",
+      "jurisdiction": "JP",
+      "evaluated_candidate_ids": [],
+      "eligible_candidate_ids": [],
+      "rejected_candidate_ids": [],
+      "selected_manufacturer_id": null,
+      "final_status": "refused"
+    },
+    "proof": {
+      "canonical_payload": "case_id=30000000-0000-0000-0000-000000000003\njurisdiction=JP\nselected_manufacturer_id=\ncandidate_ids=\nfinal_status=refused\nrefusal_code=no_eligible_candidates\npolicy_version=",
+      "hash_hex": "ae50118658300a3959ddd694f1fed59dbfa86fb62c5e3fecb055050b934f84f1"
+    }
+  }
+}

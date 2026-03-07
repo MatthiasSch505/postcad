@@ -4,8 +4,8 @@ use postcad_audit::{
 };
 use postcad_core::{
     Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
-    Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision,
-    RoutingPolicy, fingerprint_case,
+    Material, ProcedureType, RefusalExplanation, RoutingCandidate, RoutingCandidateId,
+    RoutingDecision, RoutingPolicy, fingerprint_case,
 };
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
 use postcad_registry::validate_snapshots;
@@ -70,6 +70,7 @@ pub struct RouteCaseOutput {
 pub struct RefusalOutput {
     pub code: String,
     pub message: String,
+    pub explanation: RefusalExplanation,
 }
 
 /// Full audit artifacts emitted alongside the routing decision.
@@ -77,11 +78,16 @@ pub struct RefusalOutput {
 /// `proof.canonical_payload` + `proof.hash_hex` allow any consumer to
 /// independently verify the proof by recomputing SHA-256(`canonical_payload`)
 /// and comparing to `hash_hex`.
+///
+/// `refusal_explanation` is present only for refused outcomes; it is omitted
+/// from the serialized JSON for routed outcomes.
 #[derive(Debug, Serialize, PartialEq)]
 pub struct AuditOutput {
     pub receipt: RoutingAuditReceipt,
     pub trace: DecisionTrace,
     pub proof: RoutingProof,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refusal_explanation: Option<RefusalExplanation>,
 }
 
 // ── Error type ────────────────────────────────────────────────────────────────
@@ -130,6 +136,7 @@ pub fn route_case_from_json(
     validate_snapshots(&snapshots)
         .map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
 
+    let all_candidate_ids: Vec<String> = candidates.iter().map(|c| c.id.0.clone()).collect();
     let case_fp = fingerprint_case(&case);
 
     let result = route_case_with_compliance_audit(
@@ -141,7 +148,7 @@ pub fn route_case_from_json(
         None,
     );
 
-    Ok(build_output(result, case_fp))
+    Ok(build_output(result, case_fp, all_candidate_ids))
 }
 
 // ── Conversion helpers ────────────────────────────────────────────────────────
@@ -199,14 +206,15 @@ fn build_snapshots(inputs: &[SnapshotInput]) -> Vec<ManufacturerComplianceSnapsh
         .collect()
 }
 
-fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutput {
+fn build_output(
+    result: RoutingServiceResult,
+    case_fp: String,
+    all_candidate_ids: Vec<String>,
+) -> RouteCaseOutput {
     let proof_hash = result.proof.hash_hex.clone();
     let policy_fp = result.policy_fingerprint.clone();
-    let audit = AuditOutput {
-        receipt: result.audit_receipt,
-        trace: result.decision_trace,
-        proof: result.proof,
-    };
+    // Read before moving into the match arm.
+    let considered_count = result.audit_receipt.candidate_ids_considered.len();
 
     match result.outcome.decision {
         RoutingDecision::Selected(id) => RouteCaseOutput {
@@ -216,7 +224,12 @@ fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutpu
             policy_fingerprint: policy_fp,
             case_fingerprint: case_fp,
             refusal: None,
-            audit,
+            audit: AuditOutput {
+                receipt: result.audit_receipt,
+                trace: result.decision_trace,
+                proof: result.proof,
+                refusal_explanation: None,
+            },
         },
         RoutingDecision::Refused(r) => {
             let (code, message) = r
@@ -224,28 +237,69 @@ fn build_output(result: RoutingServiceResult, case_fp: String) -> RouteCaseOutpu
                 .first()
                 .map(|reason| (reason.code().to_string(), reason.message().to_string()))
                 .unwrap_or_else(|| ("unknown".to_string(), "Unknown refusal reason".to_string()));
+            let failed_constraint = match code.as_str() {
+                "invalid_input" | "unsupported_case" => "case_validation",
+                "compliance_failed" => "compliance_gate",
+                _ => "unknown",
+            }
+            .to_string();
+            let explanation = RefusalExplanation {
+                refusal_code: code.clone(),
+                evaluated_candidate_ids: all_candidate_ids,
+                failed_constraint,
+            };
             RouteCaseOutput {
                 outcome: "refused".to_string(),
                 selected_candidate_id: None,
                 routing_proof_hash: proof_hash,
                 policy_fingerprint: policy_fp,
                 case_fingerprint: case_fp,
-                refusal: Some(RefusalOutput { code, message }),
-                audit,
+                refusal: Some(RefusalOutput {
+                    code,
+                    message,
+                    explanation: explanation.clone(),
+                }),
+                audit: AuditOutput {
+                    receipt: result.audit_receipt,
+                    trace: result.decision_trace,
+                    proof: result.proof,
+                    refusal_explanation: Some(explanation),
+                },
             }
         }
-        RoutingDecision::NoEligibleCandidate => RouteCaseOutput {
-            outcome: "refused".to_string(),
-            selected_candidate_id: None,
-            routing_proof_hash: proof_hash,
-            policy_fingerprint: policy_fp,
-            case_fingerprint: case_fp,
-            refusal: Some(RefusalOutput {
-                code: "no_eligible_candidates".to_string(),
-                message: "No eligible candidate found".to_string(),
-            }),
-            audit,
-        },
+        RoutingDecision::NoEligibleCandidate => {
+            let failed_constraint = if all_candidate_ids.is_empty() {
+                "no_input_candidates"
+            } else if considered_count == 0 {
+                "compliance_gate"
+            } else {
+                "routing_policy"
+            }
+            .to_string();
+            let explanation = RefusalExplanation {
+                refusal_code: "no_eligible_candidates".to_string(),
+                evaluated_candidate_ids: all_candidate_ids,
+                failed_constraint,
+            };
+            RouteCaseOutput {
+                outcome: "refused".to_string(),
+                selected_candidate_id: None,
+                routing_proof_hash: proof_hash,
+                policy_fingerprint: policy_fp,
+                case_fingerprint: case_fp,
+                refusal: Some(RefusalOutput {
+                    code: "no_eligible_candidates".to_string(),
+                    message: "No eligible candidate found".to_string(),
+                    explanation: explanation.clone(),
+                }),
+                audit: AuditOutput {
+                    receipt: result.audit_receipt,
+                    trace: result.decision_trace,
+                    proof: result.proof,
+                    refusal_explanation: Some(explanation),
+                },
+            }
+        }
     }
 }
 
@@ -666,5 +720,101 @@ mod tests {
         let output = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
 
         assert_eq!(output.selected_candidate_id, Some("rc-2".to_string()));
+    }
+
+    // ── Test 6: refusal explanation ───────────────────────────────────────────
+
+    #[test]
+    fn refused_output_includes_explanation() {
+        let output =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+
+        let refusal = output.refusal.expect("refusal must be present");
+        assert_eq!(refusal.explanation.refusal_code, "no_eligible_candidates");
+        assert!(!refusal.explanation.evaluated_candidate_ids.is_empty());
+        assert!(!refusal.explanation.failed_constraint.is_empty());
+    }
+
+    #[test]
+    fn refused_explanation_evaluated_candidate_ids_are_deterministic() {
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        assert_eq!(
+            a.refusal.unwrap().explanation.evaluated_candidate_ids,
+            b.refusal.unwrap().explanation.evaluated_candidate_ids,
+        );
+    }
+
+    #[test]
+    fn refused_explanation_evaluated_candidate_ids_match_input_candidates() {
+        let output =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let refusal = output.refusal.unwrap();
+        // CANDIDATES_JSON has one candidate with id "rc-1"
+        assert_eq!(refusal.explanation.evaluated_candidate_ids, vec!["rc-1"]);
+    }
+
+    #[test]
+    fn refused_explanation_failed_constraint_is_compliance_gate_when_snapshot_rejects() {
+        let output =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let refusal = output.refusal.unwrap();
+        assert_eq!(refusal.explanation.failed_constraint, "compliance_gate");
+    }
+
+    #[test]
+    fn refused_explanation_failed_constraint_is_compliance_gate_when_no_snapshot() {
+        let output =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, EMPTY_SNAPSHOTS_JSON).unwrap();
+        let refusal = output.refusal.unwrap();
+        assert_eq!(refusal.explanation.failed_constraint, "compliance_gate");
+    }
+
+    #[test]
+    fn refused_explanation_failed_constraint_is_no_input_candidates_when_empty_list() {
+        let empty_candidates = r#"[]"#;
+        let output =
+            route_case_from_json(CASE_JSON, empty_candidates, EMPTY_SNAPSHOTS_JSON).unwrap();
+        let refusal = output.refusal.unwrap();
+        assert_eq!(refusal.explanation.evaluated_candidate_ids, Vec::<String>::new());
+        assert_eq!(refusal.explanation.failed_constraint, "no_input_candidates");
+    }
+
+    #[test]
+    fn routed_output_has_no_refusal_and_no_audit_explanation() {
+        let output =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert!(output.refusal.is_none());
+        assert!(output.audit.refusal_explanation.is_none());
+    }
+
+    #[test]
+    fn refused_audit_refusal_explanation_matches_refusal_explanation() {
+        let output =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let refusal_expl = output.refusal.unwrap().explanation;
+        let audit_expl = output.audit.refusal_explanation.unwrap();
+        assert_eq!(refusal_expl, audit_expl);
+    }
+
+    #[test]
+    fn multi_candidate_refused_explanation_lists_all_input_candidates() {
+        let candidates = r#"[
+            {"id":"rc-1","manufacturer_id":"mfr-01","location":"domestic","accepts_case":true,"eligibility":"eligible"},
+            {"id":"rc-2","manufacturer_id":"mfr-02","location":"domestic","accepts_case":true,"eligibility":"eligible"}
+        ]"#;
+        let snapshots = r#"[
+            {"manufacturer_id":"mfr-01","evidence_references":["REF-A"],"attestation_statuses":["rejected"],"is_eligible":false},
+            {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["rejected"],"is_eligible":false}
+        ]"#;
+        let output = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
+        let refusal = output.refusal.unwrap();
+        assert_eq!(
+            refusal.explanation.evaluated_candidate_ids,
+            vec!["rc-1", "rc-2"]
+        );
+        assert_eq!(refusal.explanation.failed_constraint, "compliance_gate");
     }
 }

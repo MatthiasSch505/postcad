@@ -1,4 +1,21 @@
+use serde::Serialize;
+
 use crate::CaseId;
+
+/// Machine-readable explanation attached to every refused routing outcome.
+///
+/// All fields are stable strings — no prose, no timestamps.
+/// `failed_constraint` identifies which pipeline stage blocked routing:
+/// - `"case_validation"` — the case itself was invalid
+/// - `"compliance_gate"` — all candidates were removed by compliance pre-filtering
+/// - `"routing_policy"` — all compliant candidates were removed by the routing policy filter
+/// - `"no_input_candidates"` — the candidate list was empty before any filtering
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RefusalExplanation {
+    pub refusal_code: String,
+    pub evaluated_candidate_ids: Vec<String>,
+    pub failed_constraint: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RefusalReason {

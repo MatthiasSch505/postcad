@@ -6,7 +6,14 @@
   "case_fingerprint": "ab8bad6ca571335fd673c9e1feca0e0d525c7a48b02a32161b41ea831a4a2d53",
   "refusal": {
     "code": "no_eligible_candidates",
-    "message": "No eligible candidate found"
+    "message": "No eligible candidate found",
+    "explanation": {
+      "refusal_code": "no_eligible_candidates",
+      "evaluated_candidate_ids": [
+        "rc-us-01"
+      ],
+      "failed_constraint": "compliance_gate"
+    }
   },
   "audit": {
     "receipt": {
@@ -30,6 +37,13 @@
     "proof": {
       "canonical_payload": "{\"case_id\":\"20000000-0000-0000-0000-000000000002\",\"jurisdiction\":\"US\",\"selected_manufacturer_id\":null,\"candidate_ids_considered\":[],\"final_status\":\"refused\",\"refusal_code\":\"no_eligible_candidates\",\"policy_version\":null}",
       "hash_hex": "3cbea85678a212a005e202233de59a21a7bf001c52b2aa4b3130d6bc40dd4858"
+    },
+    "refusal_explanation": {
+      "refusal_code": "no_eligible_candidates",
+      "evaluated_candidate_ids": [
+        "rc-us-01"
+      ],
+      "failed_constraint": "compliance_gate"
     }
   }
 }

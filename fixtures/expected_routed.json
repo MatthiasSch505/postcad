@@ -1,0 +1,8 @@
+{
+  "outcome": "routed",
+  "selected_candidate_id": "rc-de-01",
+  "routing_proof_hash": "3ac359a2cdc59097aca66da6fb599e16e9f8afb2fa5f390b31f05236d0596377",
+  "policy_fingerprint": "c6167ec7ca3e50b2d6d8ad135dbb3467f0a67b5a68a7ec91df14bec9b1b841b3",
+  "case_fingerprint": "cac65ccc28ed43ed93eb44adf64e93d966c551f0e8da6fc2d53382d46b306121",
+  "refusal": null
+}

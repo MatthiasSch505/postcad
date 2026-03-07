@@ -290,6 +290,7 @@ dependencies = [
 name = "postcad-cli"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "postcad-audit",
  "postcad-compliance",
  "postcad-core",
@@ -298,6 +299,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]

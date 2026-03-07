@@ -71,25 +71,12 @@ impl RoutingDecisionFingerprint {
         }
     }
 
+    /// Returns the canonical JSON representation of this fingerprint.
+    ///
+    /// This is the byte string fed into SHA-256 to produce the proof hash.
+    /// Field order follows struct declaration order; `None` serializes as `null`.
     pub fn canonical_string(&self) -> String {
-        let selected = self
-            .selected_manufacturer_id
-            .as_deref()
-            .unwrap_or("");
-        let candidate_ids = self.candidate_ids_considered.join(",");
-        let refusal_code = self.refusal_code.as_deref().unwrap_or("");
-        let policy_version = self.policy_version.as_deref().unwrap_or("");
-
-        format!(
-            "case_id={}\njurisdiction={}\nselected_manufacturer_id={}\ncandidate_ids={}\nfinal_status={}\nrefusal_code={}\npolicy_version={}",
-            self.case_id,
-            self.jurisdiction,
-            selected,
-            candidate_ids,
-            self.final_status,
-            refusal_code,
-            policy_version,
-        )
+        crate::to_canonical_json(self)
     }
 }
 
@@ -201,8 +188,8 @@ mod tests {
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
         let s = fp.canonical_string();
 
-        assert!(s.contains("refusal_code=compliance_failed"));
-        assert!(s.contains("final_status=refused"));
+        assert!(s.contains("\"refusal_code\":\"compliance_failed\""));
+        assert!(s.contains("\"final_status\":\"refused\""));
     }
 
     #[test]
@@ -265,11 +252,15 @@ mod tests {
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "JP", &candidates, None);
         let s = fp.canonical_string();
 
-        assert!(s.contains("candidate_ids=rc-a,rc-b,rc-c"));
+        // Candidates serialize as a JSON array in original order.
+        let a_pos = s.find("\"rc-a\"").unwrap();
+        let b_pos = s.find("\"rc-b\"").unwrap();
+        let c_pos = s.find("\"rc-c\"").unwrap();
+        assert!(a_pos < b_pos && b_pos < c_pos);
     }
 
     #[test]
-    fn missing_optional_fields_serialize_as_empty_strings() {
+    fn missing_optional_fields_serialize_as_null() {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-01")];
         let outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, candidates.len());
@@ -277,9 +268,25 @@ mod tests {
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
         let s = fp.canonical_string();
 
-        assert!(s.contains("selected_manufacturer_id=\n"));
-        assert!(s.contains("policy_version="));
-        // policy_version at end — check it ends with empty value
-        assert!(s.ends_with("policy_version="));
+        assert!(s.contains("\"selected_manufacturer_id\":null"));
+        assert!(s.contains("\"policy_version\":null"));
+    }
+
+    #[test]
+    fn canonical_string_is_compact_json() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            candidates.len(),
+        );
+        let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
+        let s = fp.canonical_string();
+
+        assert!(s.starts_with('{'));
+        assert!(s.ends_with('}'));
+        assert!(!s.contains('\n'));
+        assert!(!s.contains("  "));
     }
 }

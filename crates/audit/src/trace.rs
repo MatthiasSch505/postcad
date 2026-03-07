@@ -180,6 +180,95 @@ mod tests {
         assert_eq!(trace.rejected_candidate_ids, vec!["rc-b", "rc-c"]);
     }
 
+    // ── canonical JSON ────────────────────────────────────────────────────────
+
+    #[test]
+    fn trace_canonical_json_is_identical_for_same_input() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let filtered = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            candidates.len(),
+            filtered.len(),
+        );
+        let trace = DecisionTrace::from_outcome(&outcome, "DE", &candidates, &filtered);
+
+        let json_a = crate::canonical::to_canonical_json(&trace);
+        let json_b = crate::canonical::to_canonical_json(&trace);
+        assert_eq!(json_a, json_b);
+    }
+
+    #[test]
+    fn trace_canonical_json_is_compact() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let filtered = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            candidates.len(),
+            filtered.len(),
+        );
+        let trace = DecisionTrace::from_outcome(&outcome, "DE", &candidates, &filtered);
+        let json = crate::canonical::to_canonical_json(&trace);
+
+        assert!(!json.ends_with('\n'));
+        assert!(!json.contains("\n  "));
+    }
+
+    #[test]
+    fn trace_canonical_json_contains_case_id_and_jurisdiction() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            candidates.len(),
+            candidates.len(),
+        );
+        let trace = DecisionTrace::from_outcome(&outcome, "DE", &candidates, &candidates);
+        let json = crate::canonical::to_canonical_json(&trace);
+
+        assert!(json.contains(&case.id.to_string()));
+        assert!(json.contains("\"DE\""));
+    }
+
+    #[test]
+    fn trace_canonical_json_refused_uses_refused_status() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-01")];
+        let outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, 1, 0);
+        let trace = DecisionTrace::from_outcome(&outcome, "DE", &candidates, &[]);
+        let json = crate::canonical::to_canonical_json(&trace);
+
+        assert!(json.contains("\"refused\""));
+    }
+
+    #[test]
+    fn different_traces_produce_different_canonical_json() {
+        let case = make_case();
+        let candidates = vec![make_candidate("rc-1", "mfr-01")];
+        let filtered = vec![make_candidate("rc-1", "mfr-01")];
+
+        let selected_outcome = make_outcome(
+            &case,
+            RoutingDecision::Selected(RoutingCandidateId::new("rc-1")),
+            1,
+            1,
+        );
+        let refused_outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, 1, 0);
+
+        let trace_a = DecisionTrace::from_outcome(&selected_outcome, "DE", &candidates, &filtered);
+        let trace_b = DecisionTrace::from_outcome(&refused_outcome, "JP", &candidates, &[]);
+
+        assert_ne!(
+            crate::canonical::to_canonical_json(&trace_a),
+            crate::canonical::to_canonical_json(&trace_b)
+        );
+    }
+
     #[test]
     fn missing_eligibility_detail_falls_back_to_empty() {
         let case = make_case();

@@ -4,6 +4,9 @@ pub use canonical::to_canonical_json;
 pub mod chain;
 pub use chain::{AuditEvent, AuditEntry, AuditLog};
 
+pub mod verify;
+pub use verify::{verify_receipt, VerificationFailure, VerificationResult};
+
 pub mod receipt;
 pub use receipt::RoutingAuditReceipt;
 

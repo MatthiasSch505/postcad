@@ -14,7 +14,7 @@ pub mod decision;
 pub use decision::{DecisionContext, RoutingDecision};
 
 pub mod policy;
-pub use policy::{filter_candidates, JurisdictionPolicy, PolicyManifest, RoutingPolicy, RoutingPolicyConfig};
+pub use policy::{filter_candidates, JurisdictionPolicy, RoutingPolicy, RoutingPolicyConfig};
 
 pub mod policy_fingerprint;
 pub use policy_fingerprint::fingerprint_policy;

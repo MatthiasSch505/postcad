@@ -1,4 +1,4 @@
-use postcad_cli::route_case_from_json;
+use postcad_cli::{route_case_from_json, verify_receipt_from_policy_json};
 use serde_json::Value;
 
 fn fixtures_dir() -> std::path::PathBuf {
@@ -79,6 +79,39 @@ fn golden_refused_output_matches_expected() {
     let expected: Value = as_json_value(&read_fixture("expected_refused.json"));
 
     assert_eq!(actual, expected);
+}
+
+// ── verify-receipt golden tests ───────────────────────────────────────────────
+
+fn verify_scenario(name: &str) {
+    let receipt_json = read_scenario_file(name, "expected.json");
+    let case_json = read_scenario_file(name, "case.json");
+    let policy_json = read_scenario_file(name, "policy.json");
+
+    verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json)
+        .unwrap_or_else(|reason| {
+            panic!("verify-receipt for scenario '{}' failed: {}", name, reason)
+        });
+}
+
+#[test]
+fn verify_receipt_routed_domestic_allowed() {
+    verify_scenario("routed_domestic_allowed");
+}
+
+#[test]
+fn verify_receipt_routed_cross_border_allowed() {
+    verify_scenario("routed_cross_border_allowed");
+}
+
+#[test]
+fn verify_receipt_refused_no_eligible_candidates() {
+    verify_scenario("refused_no_eligible_candidates");
+}
+
+#[test]
+fn verify_receipt_refused_compliance_failed() {
+    verify_scenario("refused_compliance_failed");
 }
 
 // ── Scenario corpus ───────────────────────────────────────────────────────────

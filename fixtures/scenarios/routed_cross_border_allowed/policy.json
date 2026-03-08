@@ -1,0 +1,21 @@
+{
+  "jurisdiction": "FR",
+  "routing_policy": "allow_domestic_and_cross_border",
+  "candidates": [
+    {
+      "id": "rc-de-01",
+      "manufacturer_id": "mfr-de-01",
+      "location": "cross_border",
+      "accepts_case": true,
+      "eligibility": "eligible"
+    }
+  ],
+  "snapshots": [
+    {
+      "manufacturer_id": "mfr-de-01",
+      "evidence_references": ["ISO-9001-2024"],
+      "attestation_statuses": ["verified"],
+      "is_eligible": true
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "jurisdiction": "FR",
+  "routing_policy": "allow_domestic_only",
+  "candidates": [
+    {
+      "id": "rc-fr-01",
+      "manufacturer_id": "mfr-fr-01",
+      "location": "domestic",
+      "accepts_case": true,
+      "eligibility": "eligible"
+    }
+  ],
+  "snapshots": [
+    {
+      "manufacturer_id": "mfr-fr-01",
+      "evidence_references": [],
+      "attestation_statuses": [],
+      "is_eligible": true
+    }
+  ]
+}

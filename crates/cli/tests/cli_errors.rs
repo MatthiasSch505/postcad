@@ -145,7 +145,10 @@ fn refusal_returns_refused_domain_json_not_error() {
     assert!(success);
     assert_eq!(json["outcome"], "refused");
     assert_ne!(json["outcome"], "error");
-    assert!(json.get("audit").is_some());
+    // Receipt fields are present on refused outcomes.
+    assert!(json["routing_proof_hash"].is_string());
+    assert!(json["refusal_code"].is_string());
+    assert!(json["audit_entry_hash"].is_string());
 }
 
 // ── Successful route ──────────────────────────────────────────────────────────
@@ -165,5 +168,8 @@ fn successful_route_returns_routed_domain_json() {
     ]);
     assert!(success);
     assert_eq!(json["outcome"], "routed");
-    assert!(json["audit"]["proof"]["hash_hex"].is_string());
+    // Receipt fields are present on routed outcomes.
+    assert!(json["routing_proof_hash"].is_string());
+    assert!(json["case_fingerprint"].is_string());
+    assert!(json["audit_entry_hash"].is_string());
 }

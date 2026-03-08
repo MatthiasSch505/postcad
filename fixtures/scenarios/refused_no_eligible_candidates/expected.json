@@ -1,49 +1,18 @@
 {
   "outcome": "refused",
-  "selected_candidate_id": null,
-  "routing_proof_hash": "3cbea85678a212a005e202233de59a21a7bf001c52b2aa4b3130d6bc40dd4858",
-  "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
   "case_fingerprint": "ab8bad6ca571335fd673c9e1feca0e0d525c7a48b02a32161b41ea831a4a2d53",
+  "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
+  "routing_proof_hash": "3cbea85678a212a005e202233de59a21a7bf001c52b2aa4b3130d6bc40dd4858",
+  "selected_candidate_id": null,
+  "refusal_code": "no_eligible_candidates",
+  "audit_seq": 0,
+  "audit_entry_hash": "81a576050a9cf5932636900e567cab10ca7fcc6c87ac30de0ef2eaae58298401",
+  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
   "refusal": {
-    "code": "no_eligible_candidates",
     "message": "No eligible candidate found",
-    "explanation": {
-      "refusal_code": "no_eligible_candidates",
-      "evaluated_candidate_ids": [
-        "rc-us-01"
-      ],
-      "failed_constraint": "compliance_gate"
-    }
-  },
-  "audit": {
-    "receipt": {
-      "case_id": "20000000-0000-0000-0000-000000000002",
-      "jurisdiction": "US",
-      "selected_manufacturer_id": null,
-      "candidate_ids_considered": [],
-      "refusal_code": "no_eligible_candidates",
-      "refusal_message": "No eligible candidate found",
-      "policy_version": null
-    },
-    "trace": {
-      "case_id": "20000000-0000-0000-0000-000000000002",
-      "jurisdiction": "US",
-      "evaluated_candidate_ids": [],
-      "eligible_candidate_ids": [],
-      "rejected_candidate_ids": [],
-      "selected_manufacturer_id": null,
-      "final_status": "refused"
-    },
-    "proof": {
-      "canonical_payload": "{\"case_id\":\"20000000-0000-0000-0000-000000000002\",\"jurisdiction\":\"US\",\"selected_manufacturer_id\":null,\"candidate_ids_considered\":[],\"final_status\":\"refused\",\"refusal_code\":\"no_eligible_candidates\",\"policy_version\":null}",
-      "hash_hex": "3cbea85678a212a005e202233de59a21a7bf001c52b2aa4b3130d6bc40dd4858"
-    },
-    "refusal_explanation": {
-      "refusal_code": "no_eligible_candidates",
-      "evaluated_candidate_ids": [
-        "rc-us-01"
-      ],
-      "failed_constraint": "compliance_gate"
-    }
+    "evaluated_candidate_ids": [
+      "rc-us-01"
+    ],
+    "failed_constraint": "compliance_gate"
   }
 }

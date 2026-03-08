@@ -1,15 +1,36 @@
-use postcad_audit::{
-    route_case_with_compliance_audit, DecisionTrace, RoutingAuditReceipt, RoutingProof,
-    RoutingServiceResult,
-};
+//! CLI library for the `route-case` pipeline.
+//!
+//! # Module layout
+//!
+//! - [`receipt`] — public receipt contract (no internal type deps; stable API)
+//! - This file — input DTOs, error types, pipeline entry point, mapping layer,
+//!   field parsers, and tests
+//!
+//! # Mapping layer
+//!
+//! [`map_result_to_receipt`] is the single translation point between internal
+//! routing/audit domain types and the public [`RoutingReceipt`] contract. All
+//! knowledge of `RoutingServiceResult`, `RoutingDecision`, `AuditLog`, etc.
+//! lives in that function and the helpers it calls. The [`RoutingReceipt`] type
+//! itself has no dependency on internal crates.
+
+pub mod receipt;
+pub use receipt::{ReceiptVerificationResult, RefusalDetail, RoutingReceipt};
+
+// ── Internal imports (used only by the mapping layer and pipeline helpers) ───
+
+use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, route_case_with_compliance_audit};
 use postcad_core::{
     Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
-    Material, ProcedureType, RefusalExplanation, RoutingCandidate, RoutingCandidateId,
-    RoutingDecision, RoutingPolicy, fingerprint_case,
+    Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision, RoutingPolicy,
+    RoutingPolicyConfig, fingerprint_case, fingerprint_policy,
 };
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
 use postcad_registry::validate_snapshots;
-use serde::{Deserialize, Serialize};
+
+// ── External imports (shared by DTOs, errors, and tests) ─────────────────────
+
+use serde::Deserialize;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -53,41 +74,18 @@ pub struct SnapshotInput {
     pub is_eligible: bool,
 }
 
-// ── Output DTOs ───────────────────────────────────────────────────────────────
-
-#[derive(Debug, Serialize, PartialEq)]
-pub struct RouteCaseOutput {
-    pub outcome: String,
-    pub selected_candidate_id: Option<String>,
-    pub routing_proof_hash: String,
-    pub policy_fingerprint: String,
-    pub case_fingerprint: String,
-    pub refusal: Option<RefusalOutput>,
-    pub audit: AuditOutput,
-}
-
-#[derive(Debug, Serialize, PartialEq)]
-pub struct RefusalOutput {
-    pub code: String,
-    pub message: String,
-    pub explanation: RefusalExplanation,
-}
-
-/// Full audit artifacts emitted alongside the routing decision.
+/// Routing configuration bundle read from `--policy`.
 ///
-/// `proof.canonical_payload` + `proof.hash_hex` allow any consumer to
-/// independently verify the proof by recomputing SHA-256(`canonical_payload`)
-/// and comparing to `hash_hex`.
-///
-/// `refusal_explanation` is present only for refused outcomes; it is omitted
-/// from the serialized JSON for routed outcomes.
-#[derive(Debug, Serialize, PartialEq)]
-pub struct AuditOutput {
-    pub receipt: RoutingAuditReceipt,
-    pub trace: DecisionTrace,
-    pub proof: RoutingProof,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub refusal_explanation: Option<RefusalExplanation>,
+/// Combines the routing policy settings with the candidate list and compliance
+/// snapshots, giving the `verify-receipt` command a single input document that
+/// covers everything the routing kernel needs besides the case itself.
+#[derive(Debug, Deserialize)]
+pub struct PolicyInput {
+    pub jurisdiction: Option<String>,
+    pub routing_policy: Option<String>,
+    pub compliance_profile: Option<String>,
+    pub candidates: Vec<CandidateInput>,
+    pub snapshots: Vec<SnapshotInput>,
 }
 
 // ── Error type ────────────────────────────────────────────────────────────────
@@ -113,16 +111,19 @@ impl CliError {
     }
 }
 
-// ── Public entrypoint ─────────────────────────────────────────────────────────
+// ── Public pipeline entry point ───────────────────────────────────────────────
 
-/// Runs the compliance-aware routing pipeline from raw JSON strings.
+/// Runs the compliance-aware routing pipeline from raw JSON strings and returns
+/// the public [`RoutingReceipt`].
 ///
-/// This is the testable pure core of the `route-case` command. No file I/O.
+/// This is the testable pure core of the `route-case` command. No file I/O,
+/// no timestamps, no randomness. Internal domain types are consumed here and
+/// translated into the stable receipt contract via [`map_result_to_receipt`].
 pub fn route_case_from_json(
     case_json: &str,
     candidates_json: &str,
     snapshots_json: &str,
-) -> Result<RouteCaseOutput, CliError> {
+) -> Result<RoutingReceipt, CliError> {
     let case_input: CaseInput = serde_json::from_str(case_json)?;
     let candidates_input: Vec<CandidateInput> = serde_json::from_str(candidates_json)?;
     let snapshots_input: Vec<SnapshotInput> = serde_json::from_str(snapshots_json)?;
@@ -136,8 +137,12 @@ pub fn route_case_from_json(
     validate_snapshots(&snapshots)
         .map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
 
-    let all_candidate_ids: Vec<String> = candidates.iter().map(|c| c.id.0.clone()).collect();
-    let case_fp = fingerprint_case(&case);
+    // Capture input candidate IDs before compliance filtering so that refusal
+    // detail can report the full evaluated set.
+    let all_input_candidate_ids: Vec<String> =
+        candidates.iter().map(|c| c.id.0.clone()).collect();
+
+    let case_fingerprint = fingerprint_case(&case);
 
     let result = route_case_with_compliance_audit(
         &case,
@@ -148,10 +153,337 @@ pub fn route_case_from_json(
         None,
     );
 
-    Ok(build_output(result, case_fp, all_candidate_ids))
+    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids))
 }
 
-// ── Conversion helpers ────────────────────────────────────────────────────────
+/// Verifies a routing receipt against the original inputs that produced it.
+///
+/// Re-runs the pipeline with the same inputs, then compares the recomputed
+/// receipt against the provided one field-by-field. Returns `"valid"` when all
+/// fields match; `"mismatch"` with a list of differing field names otherwise.
+///
+/// The receipt JSON must be the output of a previous `route-case --json` run.
+/// Any parse or pipeline error is returned as a [`CliError`].
+pub fn verify_receipt_from_json(
+    receipt_json: &str,
+    case_json: &str,
+    candidates_json: &str,
+    snapshots_json: &str,
+) -> Result<ReceiptVerificationResult, CliError> {
+    let provided: RoutingReceipt = serde_json::from_str(receipt_json)?;
+    let recomputed = route_case_from_json(case_json, candidates_json, snapshots_json)?;
+
+    let mut mismatched: Vec<String> = Vec::new();
+
+    macro_rules! check {
+        ($field:ident) => {
+            if provided.$field != recomputed.$field {
+                mismatched.push(stringify!($field).to_string());
+            }
+        };
+    }
+
+    check!(outcome);
+    check!(case_fingerprint);
+    check!(policy_fingerprint);
+    check!(routing_proof_hash);
+    check!(selected_candidate_id);
+    check!(refusal_code);
+    check!(audit_seq);
+    check!(audit_entry_hash);
+    check!(audit_previous_hash);
+    check!(refusal);
+
+    if mismatched.is_empty() {
+        Ok(ReceiptVerificationResult { result: "valid".to_string(), mismatched_fields: None })
+    } else {
+        Ok(ReceiptVerificationResult {
+            result: "mismatch".to_string(),
+            mismatched_fields: Some(mismatched),
+        })
+    }
+}
+
+/// Verifies a routing receipt step-by-step against a case and policy document.
+///
+/// Returns `Ok(())` when all checks pass (`VERIFIED`).
+/// Returns `Err(reason)` at the first failing check (`VERIFICATION FAILED`).
+///
+/// Verification order:
+/// 1. Receipt JSON parses into the public schema.
+/// 2. `case_fingerprint` matches the provided case input.
+/// 3. `policy_fingerprint` matches the provided policy input.
+/// 4–6. Recomputed routing proof hash matches `routing_proof_hash`.
+/// 7. Audit entry hash and previous hash match the chain linkage fields.
+pub fn verify_receipt_from_policy_json(
+    receipt_json: &str,
+    case_json: &str,
+    policy_json: &str,
+) -> Result<(), String> {
+    // Step 1: parse receipt.
+    let receipt: RoutingReceipt = serde_json::from_str(receipt_json)
+        .map_err(|e| format!("receipt parse error: {}", e))?;
+
+    // Step 2: build case, compute case_fingerprint.
+    let case_input: CaseInput = serde_json::from_str(case_json)
+        .map_err(|e| format!("case parse error: {}", e))?;
+    let case = build_case(&case_input)
+        .map_err(|e| format!("case build error: {}", e))?;
+    let computed_case_fp = fingerprint_case(&case);
+    if computed_case_fp != receipt.case_fingerprint {
+        return Err(format!(
+            "case_fingerprint mismatch: receipt has {}, computed {}",
+            receipt.case_fingerprint, computed_case_fp
+        ));
+    }
+
+    // Step 3: build policy config, compute policy_fingerprint.
+    let policy_input: PolicyInput = serde_json::from_str(policy_json)
+        .map_err(|e| format!("policy parse error: {}", e))?;
+    let routing_policy = parse_routing_policy(policy_input.routing_policy.as_deref())
+        .map_err(|e| format!("policy build error: {}", e))?;
+    let policy_config = match &policy_input.compliance_profile {
+        Some(p) => RoutingPolicyConfig::new(routing_policy.clone()).with_compliance_profile(p),
+        None => RoutingPolicyConfig::new(routing_policy.clone()),
+    };
+    let computed_policy_fp = fingerprint_policy(&policy_config);
+    if computed_policy_fp != receipt.policy_fingerprint {
+        return Err(format!(
+            "policy_fingerprint mismatch: receipt has {}, computed {}",
+            receipt.policy_fingerprint, computed_policy_fp
+        ));
+    }
+
+    // Steps 4–6: re-run routing kernel, verify proof hash.
+    let jurisdiction = policy_input.jurisdiction.as_deref().unwrap_or("global");
+    let candidates = build_candidates(&policy_input.candidates)
+        .map_err(|e| format!("candidates build error: {}", e))?;
+    let snapshots = build_snapshots(&policy_input.snapshots);
+    validate_snapshots(&snapshots)
+        .map_err(|e| format!("snapshot validation error: {}", e))?;
+
+    let result = route_case_with_compliance_audit(
+        &case,
+        jurisdiction,
+        routing_policy,
+        &candidates,
+        &snapshots,
+        None,
+    );
+
+    if result.proof.hash_hex != receipt.routing_proof_hash {
+        return Err(format!(
+            "routing_proof_hash mismatch: receipt has {}, computed {}",
+            receipt.routing_proof_hash, result.proof.hash_hex
+        ));
+    }
+
+    // Step 7: verify audit chain linkage by reconstructing the AuditEvent.
+    let case_id_str = case.id.0.to_string();
+    let audit_event = match &result.outcome.decision {
+        RoutingDecision::Selected(selected_id) => AuditEvent::CaseRouted {
+            case_id: case_id_str,
+            proof_hash: result.proof.hash_hex.clone(),
+            selected_candidate_id: selected_id.0.clone(),
+        },
+        RoutingDecision::Refused(_) | RoutingDecision::NoEligibleCandidate => {
+            let refusal_code = receipt.refusal_code.clone().unwrap_or_else(|| "unknown".to_string());
+            AuditEvent::CaseRefused {
+                case_id: case_id_str,
+                proof_hash: result.proof.hash_hex.clone(),
+                refusal_code,
+            }
+        }
+    };
+    let mut log = AuditLog::new();
+    let entry = log.append(audit_event);
+
+    if entry.hash != receipt.audit_entry_hash {
+        return Err(format!(
+            "audit_entry_hash mismatch: receipt has {}, computed {}",
+            receipt.audit_entry_hash, entry.hash
+        ));
+    }
+    if entry.previous_hash != receipt.audit_previous_hash {
+        return Err(format!(
+            "audit_previous_hash mismatch: receipt has {}, computed {}",
+            receipt.audit_previous_hash, entry.previous_hash
+        ));
+    }
+
+    Ok(())
+}
+
+// ── Mapping layer ─────────────────────────────────────────────────────────────
+
+/// Translates an internal [`RoutingServiceResult`] into the public
+/// [`RoutingReceipt`] contract.
+///
+/// This function is the single point of coupling between the internal routing
+/// and audit domain types and the external CLI output schema. All field
+/// extraction from internal types happens here; nothing internal leaks into
+/// the returned value.
+///
+/// An `AuditLog` entry is appended to generate the chain linkage fields. The
+/// log is local to this call (seq always starts at 0), producing a
+/// self-contained, independently verifiable audit anchor per invocation.
+fn map_result_to_receipt(
+    result: RoutingServiceResult,
+    case_fingerprint: String,
+    all_input_candidate_ids: Vec<String>,
+) -> RoutingReceipt {
+    // Extract primitive values from internal types before the match so they
+    // are not accidentally referenced after `result` is partially moved.
+    let routing_proof_hash: String = result.proof.hash_hex.clone();
+    let policy_fingerprint: String = result.policy_fingerprint.clone();
+    let case_id_str: String = result.audit_receipt.case_id.clone();
+    let compliant_candidate_count: usize =
+        result.audit_receipt.candidate_ids_considered.len();
+
+    match result.outcome.decision {
+        RoutingDecision::Selected(selected_id) => {
+            let selected_candidate_id = selected_id.0.clone();
+
+            let audit_event = AuditEvent::CaseRouted {
+                case_id: case_id_str,
+                proof_hash: routing_proof_hash.clone(),
+                selected_candidate_id: selected_candidate_id.clone(),
+            };
+            let (audit_seq, audit_entry_hash, audit_previous_hash) =
+                append_audit_entry(audit_event);
+
+            RoutingReceipt {
+                outcome: "routed".to_string(),
+                case_fingerprint,
+                policy_fingerprint,
+                routing_proof_hash,
+                selected_candidate_id: Some(selected_candidate_id),
+                refusal_code: None,
+                audit_seq,
+                audit_entry_hash,
+                audit_previous_hash,
+                refusal: None,
+            }
+        }
+
+        RoutingDecision::Refused(case_refusal) => {
+            let (refusal_code, message) = extract_refusal_fields(&case_refusal);
+            let failed_constraint = refusal_code_to_constraint(&refusal_code);
+
+            let audit_event = AuditEvent::CaseRefused {
+                case_id: case_id_str,
+                proof_hash: routing_proof_hash.clone(),
+                refusal_code: refusal_code.clone(),
+            };
+            let (audit_seq, audit_entry_hash, audit_previous_hash) =
+                append_audit_entry(audit_event);
+
+            RoutingReceipt {
+                outcome: "refused".to_string(),
+                case_fingerprint,
+                policy_fingerprint,
+                routing_proof_hash,
+                selected_candidate_id: None,
+                refusal_code: Some(refusal_code),
+                audit_seq,
+                audit_entry_hash,
+                audit_previous_hash,
+                refusal: Some(RefusalDetail {
+                    message,
+                    evaluated_candidate_ids: all_input_candidate_ids,
+                    failed_constraint,
+                }),
+            }
+        }
+
+        RoutingDecision::NoEligibleCandidate => {
+            let refusal_code = "no_eligible_candidates".to_string();
+            let failed_constraint = no_candidate_constraint(
+                all_input_candidate_ids.len(),
+                compliant_candidate_count,
+            );
+
+            let audit_event = AuditEvent::CaseRefused {
+                case_id: case_id_str,
+                proof_hash: routing_proof_hash.clone(),
+                refusal_code: refusal_code.clone(),
+            };
+            let (audit_seq, audit_entry_hash, audit_previous_hash) =
+                append_audit_entry(audit_event);
+
+            RoutingReceipt {
+                outcome: "refused".to_string(),
+                case_fingerprint,
+                policy_fingerprint,
+                routing_proof_hash,
+                selected_candidate_id: None,
+                refusal_code: Some(refusal_code),
+                audit_seq,
+                audit_entry_hash,
+                audit_previous_hash,
+                refusal: Some(RefusalDetail {
+                    message: "No eligible candidate found".to_string(),
+                    evaluated_candidate_ids: all_input_candidate_ids,
+                    failed_constraint,
+                }),
+            }
+        }
+    }
+}
+
+/// Appends one event to a fresh `AuditLog` and returns the resulting
+/// `(seq, entry_hash, previous_hash)` triple as owned `String`/`u64` values.
+///
+/// The log is local to this call; callers receive only the primitive fields
+/// they need for the receipt, not the `AuditEntry` or `AuditLog` types.
+fn append_audit_entry(event: AuditEvent) -> (u64, String, String) {
+    let mut log = AuditLog::new();
+    let entry = log.append(event);
+    (entry.seq, entry.hash.clone(), entry.previous_hash.clone())
+}
+
+/// Extracts `(code, message)` strings from a `CaseRefusal`.
+///
+/// Falls back to stable sentinel strings when no reason is recorded so the
+/// receipt always carries non-empty fields.
+fn extract_refusal_fields(
+    refusal: &postcad_core::CaseRefusal,
+) -> (String, String) {
+    refusal
+        .reasons
+        .first()
+        .map(|r| (r.code().to_string(), r.message().to_string()))
+        .unwrap_or_else(|| {
+            ("unknown".to_string(), "Unknown refusal reason".to_string())
+        })
+}
+
+/// Maps a stable refusal code string to the `failed_constraint` label used in
+/// [`RefusalDetail`].
+fn refusal_code_to_constraint(code: &str) -> String {
+    match code {
+        "invalid_input" | "unsupported_case" => "case_validation",
+        "compliance_failed" => "compliance_gate",
+        _ => "unknown",
+    }
+    .to_string()
+}
+
+/// Derives the `failed_constraint` label for a `NoEligibleCandidate` outcome
+/// based on how many candidates were present before and after compliance
+/// filtering.
+fn no_candidate_constraint(input_count: usize, compliant_count: usize) -> String {
+    if input_count == 0 {
+        "no_input_candidates"
+    } else if compliant_count == 0 {
+        "compliance_gate"
+    } else {
+        "routing_policy"
+    }
+    .to_string()
+}
+
+// ── Input construction helpers ────────────────────────────────────────────────
 
 fn build_case(input: &CaseInput) -> Result<Case, CliError> {
     let dental_case = DentalCase {
@@ -204,103 +536,6 @@ fn build_snapshots(inputs: &[SnapshotInput]) -> Vec<ManufacturerComplianceSnapsh
             )
         })
         .collect()
-}
-
-fn build_output(
-    result: RoutingServiceResult,
-    case_fp: String,
-    all_candidate_ids: Vec<String>,
-) -> RouteCaseOutput {
-    let proof_hash = result.proof.hash_hex.clone();
-    let policy_fp = result.policy_fingerprint.clone();
-    // Read before moving into the match arm.
-    let considered_count = result.audit_receipt.candidate_ids_considered.len();
-
-    match result.outcome.decision {
-        RoutingDecision::Selected(id) => RouteCaseOutput {
-            outcome: "routed".to_string(),
-            selected_candidate_id: Some(id.0),
-            routing_proof_hash: proof_hash,
-            policy_fingerprint: policy_fp,
-            case_fingerprint: case_fp,
-            refusal: None,
-            audit: AuditOutput {
-                receipt: result.audit_receipt,
-                trace: result.decision_trace,
-                proof: result.proof,
-                refusal_explanation: None,
-            },
-        },
-        RoutingDecision::Refused(r) => {
-            let (code, message) = r
-                .reasons
-                .first()
-                .map(|reason| (reason.code().to_string(), reason.message().to_string()))
-                .unwrap_or_else(|| ("unknown".to_string(), "Unknown refusal reason".to_string()));
-            let failed_constraint = match code.as_str() {
-                "invalid_input" | "unsupported_case" => "case_validation",
-                "compliance_failed" => "compliance_gate",
-                _ => "unknown",
-            }
-            .to_string();
-            let explanation = RefusalExplanation {
-                refusal_code: code.clone(),
-                evaluated_candidate_ids: all_candidate_ids,
-                failed_constraint,
-            };
-            RouteCaseOutput {
-                outcome: "refused".to_string(),
-                selected_candidate_id: None,
-                routing_proof_hash: proof_hash,
-                policy_fingerprint: policy_fp,
-                case_fingerprint: case_fp,
-                refusal: Some(RefusalOutput {
-                    code,
-                    message,
-                    explanation: explanation.clone(),
-                }),
-                audit: AuditOutput {
-                    receipt: result.audit_receipt,
-                    trace: result.decision_trace,
-                    proof: result.proof,
-                    refusal_explanation: Some(explanation),
-                },
-            }
-        }
-        RoutingDecision::NoEligibleCandidate => {
-            let failed_constraint = if all_candidate_ids.is_empty() {
-                "no_input_candidates"
-            } else if considered_count == 0 {
-                "compliance_gate"
-            } else {
-                "routing_policy"
-            }
-            .to_string();
-            let explanation = RefusalExplanation {
-                refusal_code: "no_eligible_candidates".to_string(),
-                evaluated_candidate_ids: all_candidate_ids,
-                failed_constraint,
-            };
-            RouteCaseOutput {
-                outcome: "refused".to_string(),
-                selected_candidate_id: None,
-                routing_proof_hash: proof_hash,
-                policy_fingerprint: policy_fp,
-                case_fingerprint: case_fp,
-                refusal: Some(RefusalOutput {
-                    code: "no_eligible_candidates".to_string(),
-                    message: "No eligible candidate found".to_string(),
-                    explanation: explanation.clone(),
-                }),
-                audit: AuditOutput {
-                    receipt: result.audit_receipt,
-                    trace: result.decision_trace,
-                    proof: result.proof,
-                    refusal_explanation: Some(explanation),
-                },
-            }
-        }
-    }
 }
 
 // ── Field parsers ─────────────────────────────────────────────────────────────
@@ -430,42 +665,42 @@ mod tests {
 
     #[test]
     fn routed_case_returns_selected_outcome() {
-        let output = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
             .expect("routing should succeed");
 
-        assert_eq!(output.outcome, "routed");
-        assert_eq!(output.selected_candidate_id, Some("rc-1".to_string()));
-        assert!(output.refusal.is_none());
+        assert_eq!(receipt.outcome, "routed");
+        assert_eq!(receipt.selected_candidate_id, Some("rc-1".to_string()));
+        assert!(receipt.refusal_code.is_none());
+        assert!(receipt.refusal.is_none());
     }
 
     #[test]
     fn routed_case_proof_hash_is_64_hex_chars() {
-        let output = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
 
-        assert_eq!(output.routing_proof_hash.len(), 64);
-        assert!(output.routing_proof_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(receipt.routing_proof_hash.len(), 64);
+        assert!(receipt.routing_proof_hash.chars().all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
     fn routed_case_policy_fingerprint_is_64_hex_chars() {
-        let output = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
 
-        assert_eq!(output.policy_fingerprint.len(), 64);
+        assert_eq!(receipt.policy_fingerprint.len(), 64);
     }
 
     #[test]
     fn routed_case_case_fingerprint_is_64_hex_chars() {
-        let output = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
 
-        assert_eq!(output.case_fingerprint.len(), 64);
+        assert_eq!(receipt.case_fingerprint.len(), 64);
     }
 
     #[test]
     fn routed_case_with_fixed_case_id_is_deterministic() {
-        // Same case_id -> same case_fingerprint across calls.
         let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
@@ -479,31 +714,30 @@ mod tests {
 
     #[test]
     fn refused_case_ineligible_snapshot_returns_refused_outcome() {
-        let output = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
             .expect("parse should succeed");
 
-        assert_eq!(output.outcome, "refused");
-        assert!(output.selected_candidate_id.is_none());
-        let refusal = output.refusal.expect("refusal should be present");
-        assert_eq!(refusal.code, "no_eligible_candidates");
+        assert_eq!(receipt.outcome, "refused");
+        assert!(receipt.selected_candidate_id.is_none());
+        assert_eq!(receipt.refusal_code.as_deref(), Some("no_eligible_candidates"));
     }
 
     #[test]
     fn refused_case_no_snapshots_returns_refused_outcome() {
-        let output = route_case_from_json(CASE_JSON, CANDIDATES_JSON, EMPTY_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, EMPTY_SNAPSHOTS_JSON)
             .expect("parse should succeed");
 
-        assert_eq!(output.outcome, "refused");
-        assert!(output.selected_candidate_id.is_none());
-        assert!(output.refusal.is_some());
+        assert_eq!(receipt.outcome, "refused");
+        assert!(receipt.selected_candidate_id.is_none());
+        assert!(receipt.refusal_code.is_some());
     }
 
     #[test]
     fn refused_case_proof_hash_is_present() {
-        let output = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
 
-        assert_eq!(output.routing_proof_hash.len(), 64);
+        assert_eq!(receipt.routing_proof_hash.len(), 64);
     }
 
     #[test]
@@ -604,11 +838,11 @@ mod tests {
             "procedure": "crown",
             "file_type": "stl"
         }"#;
-        let output = route_case_from_json(case_json, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(case_json, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
 
-        assert_eq!(output.outcome, "routed");
-        assert_eq!(output.selected_candidate_id, Some("rc-1".to_string()));
+        assert_eq!(receipt.outcome, "routed");
+        assert_eq!(receipt.selected_candidate_id, Some("rc-1".to_string()));
     }
 
     #[test]
@@ -620,11 +854,11 @@ mod tests {
             "procedure": "crown",
             "file_type": "stl"
         }"#;
-        let output = route_case_from_json(case_no_id, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+        let receipt = route_case_from_json(case_no_id, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
 
-        assert_eq!(output.outcome, "routed");
-        assert_eq!(output.case_fingerprint.len(), 64);
+        assert_eq!(receipt.outcome, "routed");
+        assert_eq!(receipt.case_fingerprint.len(), 64);
     }
 
     #[test]
@@ -637,10 +871,9 @@ mod tests {
             {"manufacturer_id":"mfr-01","evidence_references":["REF-A"],"attestation_statuses":["verified"],"is_eligible":true},
             {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["verified"],"is_eligible":true}
         ]"#;
-        let output = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
+        let receipt = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
 
-        // rc-1 is first eligible in original slice order
-        assert_eq!(output.selected_candidate_id, Some("rc-1".to_string()));
+        assert_eq!(receipt.selected_candidate_id, Some("rc-1".to_string()));
     }
 
     // ── Test 5: snapshot validation ───────────────────────────────────────────
@@ -717,90 +950,80 @@ mod tests {
             {"manufacturer_id":"mfr-01","evidence_references":["REF-A"],"attestation_statuses":["rejected"],"is_eligible":false},
             {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["verified"],"is_eligible":true}
         ]"#;
-        let output = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
+        let receipt = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
 
-        assert_eq!(output.selected_candidate_id, Some("rc-2".to_string()));
+        assert_eq!(receipt.selected_candidate_id, Some("rc-2".to_string()));
     }
 
-    // ── Test 6: refusal explanation ───────────────────────────────────────────
+    // ── Test 6: refusal detail ────────────────────────────────────────────────
 
     #[test]
-    fn refused_output_includes_explanation() {
-        let output =
+    fn refused_output_includes_refusal_detail() {
+        let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
-        let refusal = output.refusal.expect("refusal must be present");
-        assert_eq!(refusal.explanation.refusal_code, "no_eligible_candidates");
-        assert!(!refusal.explanation.evaluated_candidate_ids.is_empty());
-        assert!(!refusal.explanation.failed_constraint.is_empty());
+        assert_eq!(receipt.refusal_code.as_deref(), Some("no_eligible_candidates"));
+        let detail = receipt.refusal.expect("refusal detail must be present");
+        assert!(!detail.evaluated_candidate_ids.is_empty());
+        assert!(!detail.failed_constraint.is_empty());
     }
 
     #[test]
-    fn refused_explanation_evaluated_candidate_ids_are_deterministic() {
+    fn refused_detail_evaluated_candidate_ids_are_deterministic() {
         let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
         let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
             .unwrap();
         assert_eq!(
-            a.refusal.unwrap().explanation.evaluated_candidate_ids,
-            b.refusal.unwrap().explanation.evaluated_candidate_ids,
+            a.refusal.unwrap().evaluated_candidate_ids,
+            b.refusal.unwrap().evaluated_candidate_ids,
         );
     }
 
     #[test]
-    fn refused_explanation_evaluated_candidate_ids_match_input_candidates() {
-        let output =
+    fn refused_detail_evaluated_candidate_ids_match_input_candidates() {
+        let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        let refusal = output.refusal.unwrap();
-        // CANDIDATES_JSON has one candidate with id "rc-1"
-        assert_eq!(refusal.explanation.evaluated_candidate_ids, vec!["rc-1"]);
+        let detail = receipt.refusal.unwrap();
+        assert_eq!(detail.evaluated_candidate_ids, vec!["rc-1"]);
     }
 
     #[test]
-    fn refused_explanation_failed_constraint_is_compliance_gate_when_snapshot_rejects() {
-        let output =
+    fn refused_detail_failed_constraint_is_compliance_gate_when_snapshot_rejects() {
+        let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        let refusal = output.refusal.unwrap();
-        assert_eq!(refusal.explanation.failed_constraint, "compliance_gate");
+        let detail = receipt.refusal.unwrap();
+        assert_eq!(detail.failed_constraint, "compliance_gate");
     }
 
     #[test]
-    fn refused_explanation_failed_constraint_is_compliance_gate_when_no_snapshot() {
-        let output =
+    fn refused_detail_failed_constraint_is_compliance_gate_when_no_snapshot() {
+        let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, EMPTY_SNAPSHOTS_JSON).unwrap();
-        let refusal = output.refusal.unwrap();
-        assert_eq!(refusal.explanation.failed_constraint, "compliance_gate");
+        let detail = receipt.refusal.unwrap();
+        assert_eq!(detail.failed_constraint, "compliance_gate");
     }
 
     #[test]
-    fn refused_explanation_failed_constraint_is_no_input_candidates_when_empty_list() {
+    fn refused_detail_failed_constraint_is_no_input_candidates_when_empty_list() {
         let empty_candidates = r#"[]"#;
-        let output =
+        let receipt =
             route_case_from_json(CASE_JSON, empty_candidates, EMPTY_SNAPSHOTS_JSON).unwrap();
-        let refusal = output.refusal.unwrap();
-        assert_eq!(refusal.explanation.evaluated_candidate_ids, Vec::<String>::new());
-        assert_eq!(refusal.explanation.failed_constraint, "no_input_candidates");
+        let detail = receipt.refusal.unwrap();
+        assert_eq!(detail.evaluated_candidate_ids, Vec::<String>::new());
+        assert_eq!(detail.failed_constraint, "no_input_candidates");
     }
 
     #[test]
-    fn routed_output_has_no_refusal_and_no_audit_explanation() {
-        let output =
+    fn routed_output_has_no_refusal_code_and_no_refusal_detail() {
+        let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        assert!(output.refusal.is_none());
-        assert!(output.audit.refusal_explanation.is_none());
+        assert!(receipt.refusal_code.is_none());
+        assert!(receipt.refusal.is_none());
     }
 
     #[test]
-    fn refused_audit_refusal_explanation_matches_refusal_explanation() {
-        let output =
-            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        let refusal_expl = output.refusal.unwrap().explanation;
-        let audit_expl = output.audit.refusal_explanation.unwrap();
-        assert_eq!(refusal_expl, audit_expl);
-    }
-
-    #[test]
-    fn multi_candidate_refused_explanation_lists_all_input_candidates() {
+    fn multi_candidate_refused_detail_lists_all_input_candidates() {
         let candidates = r#"[
             {"id":"rc-1","manufacturer_id":"mfr-01","location":"domestic","accepts_case":true,"eligibility":"eligible"},
             {"id":"rc-2","manufacturer_id":"mfr-02","location":"domestic","accepts_case":true,"eligibility":"eligible"}
@@ -809,12 +1032,307 @@ mod tests {
             {"manufacturer_id":"mfr-01","evidence_references":["REF-A"],"attestation_statuses":["rejected"],"is_eligible":false},
             {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["rejected"],"is_eligible":false}
         ]"#;
-        let output = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
-        let refusal = output.refusal.unwrap();
+        let receipt = route_case_from_json(CASE_JSON, candidates, snapshots).unwrap();
+        let detail = receipt.refusal.unwrap();
+        assert_eq!(detail.evaluated_candidate_ids, vec!["rc-1", "rc-2"]);
+        assert_eq!(detail.failed_constraint, "compliance_gate");
+    }
+
+    // ── Test 7: audit chain linkage ───────────────────────────────────────────
+
+    #[test]
+    fn routed_receipt_audit_entry_hash_is_64_hex_chars() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+
+        assert_eq!(receipt.audit_entry_hash.len(), 64);
+        assert!(receipt.audit_entry_hash.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn refused_receipt_audit_entry_hash_is_64_hex_chars() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+
+        assert_eq!(receipt.audit_entry_hash.len(), 64);
+        assert!(receipt.audit_entry_hash.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn receipt_audit_seq_is_zero() {
+        let routed = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let refused = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+
+        assert_eq!(routed.audit_seq, 0);
+        assert_eq!(refused.audit_seq, 0);
+    }
+
+    #[test]
+    fn receipt_audit_previous_hash_is_genesis() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+
         assert_eq!(
-            refusal.explanation.evaluated_candidate_ids,
-            vec!["rc-1", "rc-2"]
+            receipt.audit_previous_hash,
+            "0000000000000000000000000000000000000000000000000000000000000000"
         );
-        assert_eq!(refusal.explanation.failed_constraint, "compliance_gate");
+    }
+
+    #[test]
+    fn routed_receipt_audit_entry_hash_is_deterministic_for_fixed_case_id() {
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+
+        assert_eq!(a.audit_entry_hash, b.audit_entry_hash);
+        assert_eq!(a.audit_previous_hash, b.audit_previous_hash);
+        assert_eq!(a.audit_seq, b.audit_seq);
+    }
+
+    #[test]
+    fn refused_receipt_audit_entry_hash_is_deterministic_for_fixed_case_id() {
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+
+        assert_eq!(a.audit_entry_hash, b.audit_entry_hash);
+    }
+
+    #[test]
+    fn routed_and_refused_produce_different_audit_entry_hashes() {
+        let routed =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let refused =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+
+        assert_ne!(routed.audit_entry_hash, refused.audit_entry_hash);
+    }
+
+    // ── Test 8: verify_receipt_from_policy_json ──────────────────────────────
+
+    // CASE_JSON has no routing_policy → defaults to allow_domestic_and_cross_border.
+    // POLICY_JSON must use the same policy so policy_fingerprints match.
+    const POLICY_JSON: &str = r#"{
+        "jurisdiction": "DE",
+        "routing_policy": "allow_domestic_and_cross_border",
+        "candidates": [{
+            "id": "rc-1",
+            "manufacturer_id": "mfr-01",
+            "location": "domestic",
+            "accepts_case": true,
+            "eligibility": "eligible"
+        }],
+        "snapshots": [{
+            "manufacturer_id": "mfr-01",
+            "evidence_references": ["REF-001"],
+            "attestation_statuses": ["verified"],
+            "is_eligible": true
+        }]
+    }"#;
+
+    const POLICY_INELIGIBLE_JSON: &str = r#"{
+        "jurisdiction": "DE",
+        "routing_policy": "allow_domestic_and_cross_border",
+        "candidates": [{
+            "id": "rc-1",
+            "manufacturer_id": "mfr-01",
+            "location": "domestic",
+            "accepts_case": true,
+            "eligibility": "eligible"
+        }],
+        "snapshots": [{
+            "manufacturer_id": "mfr-01",
+            "evidence_references": ["REF-001"],
+            "attestation_statuses": ["rejected"],
+            "is_eligible": false
+        }]
+    }"#;
+
+    #[test]
+    fn verify_receipt_from_policy_json_valid_for_routed_case() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .expect("should be VERIFIED");
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_valid_for_refused_case() {
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_INELIGIBLE_JSON)
+            .expect("should be VERIFIED");
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_on_tampered_case_fingerprint() {
+        let mut receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        receipt.case_fingerprint =
+            "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .unwrap_err();
+        assert!(err.contains("case_fingerprint mismatch"), "got: {}", err);
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_on_tampered_policy_fingerprint() {
+        let mut receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        receipt.policy_fingerprint =
+            "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .unwrap_err();
+        assert!(err.contains("policy_fingerprint mismatch"), "got: {}", err);
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_on_tampered_proof_hash() {
+        let mut receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        receipt.routing_proof_hash =
+            "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .unwrap_err();
+        assert!(err.contains("routing_proof_hash mismatch"), "got: {}", err);
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_on_tampered_audit_entry_hash() {
+        let mut receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        receipt.audit_entry_hash =
+            "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .unwrap_err();
+        assert!(err.contains("audit_entry_hash mismatch"), "got: {}", err);
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_on_wrong_inputs() {
+        // Receipt produced with eligible snapshot; verify with ineligible policy.
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_INELIGIBLE_JSON)
+            .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    // ── Test 9: verify_receipt_from_json (legacy) ─────────────────────────────
+
+    fn receipt_json_for(case: &str, candidates: &str, snapshots: &str) -> String {
+        let receipt = route_case_from_json(case, candidates, snapshots).unwrap();
+        serde_json::to_string(&receipt).unwrap()
+    }
+
+    #[test]
+    fn verify_receipt_valid_for_routed_case() {
+        let receipt_json = receipt_json_for(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
+        let result = verify_receipt_from_json(
+            &receipt_json,
+            CASE_JSON,
+            CANDIDATES_JSON,
+            ELIGIBLE_SNAPSHOTS_JSON,
+        )
+        .unwrap();
+
+        assert_eq!(result.result, "valid");
+        assert!(result.mismatched_fields.is_none());
+    }
+
+    #[test]
+    fn verify_receipt_valid_for_refused_case() {
+        let receipt_json =
+            receipt_json_for(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON);
+        let result = verify_receipt_from_json(
+            &receipt_json,
+            CASE_JSON,
+            CANDIDATES_JSON,
+            INELIGIBLE_SNAPSHOTS_JSON,
+        )
+        .unwrap();
+
+        assert_eq!(result.result, "valid");
+        assert!(result.mismatched_fields.is_none());
+    }
+
+    #[test]
+    fn verify_receipt_mismatch_when_outcome_tampered() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        // Tamper outcome field in the serialized JSON.
+        let tampered = serde_json::to_string(&receipt)
+            .unwrap()
+            .replace("\"routed\"", "\"refused\"");
+
+        let result = verify_receipt_from_json(
+            &tampered,
+            CASE_JSON,
+            CANDIDATES_JSON,
+            ELIGIBLE_SNAPSHOTS_JSON,
+        )
+        .unwrap();
+
+        assert_eq!(result.result, "mismatch");
+        let fields = result.mismatched_fields.unwrap();
+        assert!(fields.contains(&"outcome".to_string()));
+    }
+
+    #[test]
+    fn verify_receipt_mismatch_when_routing_proof_hash_tampered() {
+        let mut receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        receipt.routing_proof_hash =
+            "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+        let tampered = serde_json::to_string(&receipt).unwrap();
+
+        let result = verify_receipt_from_json(
+            &tampered,
+            CASE_JSON,
+            CANDIDATES_JSON,
+            ELIGIBLE_SNAPSHOTS_JSON,
+        )
+        .unwrap();
+
+        assert_eq!(result.result, "mismatch");
+        let fields = result.mismatched_fields.unwrap();
+        assert!(fields.contains(&"routing_proof_hash".to_string()));
+    }
+
+    #[test]
+    fn verify_receipt_mismatch_when_wrong_inputs_provided() {
+        // Receipt was produced for routed case; verify against refused inputs.
+        let receipt_json = receipt_json_for(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
+        let result = verify_receipt_from_json(
+            &receipt_json,
+            CASE_JSON,
+            CANDIDATES_JSON,
+            INELIGIBLE_SNAPSHOTS_JSON,
+        )
+        .unwrap();
+
+        assert_eq!(result.result, "mismatch");
+        assert!(result.mismatched_fields.is_some());
+    }
+
+    #[test]
+    fn verify_receipt_parse_error_on_invalid_receipt_json() {
+        let result =
+            verify_receipt_from_json(r#"not json"#, CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
+        assert!(matches!(result, Err(CliError::ParseError(_))));
     }
 }

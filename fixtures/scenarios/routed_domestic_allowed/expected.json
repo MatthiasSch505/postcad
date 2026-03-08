@@ -1,32 +1,11 @@
 {
   "outcome": "routed",
-  "selected_candidate_id": "rc-de-01",
-  "routing_proof_hash": "cf00c3ed98c60f7241ed8562db5e2401fd14633ba38b408b450a841d15cee321",
-  "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
   "case_fingerprint": "87fa5a7fa9d19e20f0a5bf1267e2e3ffd29151d4e8100fc6cae8a4c025ca6618",
-  "refusal": null,
-  "audit": {
-    "receipt": {
-      "case_id": "10000000-0000-0000-0000-000000000001",
-      "jurisdiction": "DE",
-      "selected_manufacturer_id": "mfr-de-01",
-      "candidate_ids_considered": ["rc-de-01"],
-      "refusal_code": null,
-      "refusal_message": null,
-      "policy_version": null
-    },
-    "trace": {
-      "case_id": "10000000-0000-0000-0000-000000000001",
-      "jurisdiction": "DE",
-      "evaluated_candidate_ids": ["rc-de-01"],
-      "eligible_candidate_ids": ["rc-de-01"],
-      "rejected_candidate_ids": [],
-      "selected_manufacturer_id": "mfr-de-01",
-      "final_status": "selected"
-    },
-    "proof": {
-      "canonical_payload": "{\"case_id\":\"10000000-0000-0000-0000-000000000001\",\"jurisdiction\":\"DE\",\"selected_manufacturer_id\":\"mfr-de-01\",\"candidate_ids_considered\":[\"rc-de-01\"],\"final_status\":\"selected\",\"refusal_code\":null,\"policy_version\":null}",
-      "hash_hex": "cf00c3ed98c60f7241ed8562db5e2401fd14633ba38b408b450a841d15cee321"
-    }
-  }
+  "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
+  "routing_proof_hash": "cf00c3ed98c60f7241ed8562db5e2401fd14633ba38b408b450a841d15cee321",
+  "selected_candidate_id": "rc-de-01",
+  "refusal_code": null,
+  "audit_seq": 0,
+  "audit_entry_hash": "1c6ab4fa6560e9caee6f90b4a667c1d50d6074e6bb12a96c9c1bbaf845a61337",
+  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000"
 }

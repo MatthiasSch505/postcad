@@ -1,0 +1,14 @@
+{
+  "jurisdiction": "US",
+  "routing_policy": "allow_domestic_only",
+  "candidates": [
+    {
+      "id": "rc-us-01",
+      "manufacturer_id": "mfr-us-01",
+      "location": "domestic",
+      "accepts_case": true,
+      "eligibility": "eligible"
+    }
+  ],
+  "snapshots": []
+}

@@ -1,7 +1,7 @@
 use std::fs;
 use std::process;
 
-use postcad_cli::route_case_from_json;
+use postcad_cli::{route_case_from_json, verify_receipt_from_policy_json};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -10,6 +10,7 @@ fn main() {
 
     match args.get(1).map(String::as_str) {
         Some("route-case") => run_route_case(&args[2..]),
+        Some("verify-receipt") => run_verify_receipt(&args[2..]),
         Some("--help") | Some("-h") | Some("help") => print_help(),
         Some(other) => emit_error_and_exit(
             json_output,
@@ -81,29 +82,100 @@ fn run_route_case(args: &[String]) {
     let candidates_json = read_file_or_exit(json_output, candidates_path);
     let snapshots_json = read_file_or_exit(json_output, snapshot_path);
 
-    let output = match route_case_from_json(&case_json, &candidates_json, &snapshots_json) {
-        Ok(o) => o,
+    let receipt = match route_case_from_json(&case_json, &candidates_json, &snapshots_json) {
+        Ok(r) => r,
         Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
     };
 
     if json_output {
-        println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
     } else {
-        println!("outcome:              {}", output.outcome);
+        println!("outcome:              {}", receipt.outcome);
         println!(
             "selected_candidate:   {}",
-            output.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
+            receipt.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
         );
-        println!("routing_proof_hash:   {}", output.routing_proof_hash);
-        println!("policy_fingerprint:   {}", output.policy_fingerprint);
-        println!("case_fingerprint:     {}", output.case_fingerprint);
         println!(
-            "proof_payload:        {}",
-            output.audit.proof.canonical_payload.replace('\n', "\\n")
+            "refusal_code:         {}",
+            receipt.refusal_code.as_deref().unwrap_or("\u{2014}")
         );
-        if let Some(r) = &output.refusal {
-            println!("refusal_code:         {}", r.code);
-            println!("refusal_message:      {}", r.message);
+        println!("routing_proof_hash:   {}", receipt.routing_proof_hash);
+        println!("policy_fingerprint:   {}", receipt.policy_fingerprint);
+        println!("case_fingerprint:     {}", receipt.case_fingerprint);
+        println!("audit_seq:            {}", receipt.audit_seq);
+        println!("audit_entry_hash:     {}", receipt.audit_entry_hash);
+        println!("audit_previous_hash:  {}", receipt.audit_previous_hash);
+        if let Some(detail) = &receipt.refusal {
+            println!("refusal_message:      {}", detail.message);
+            println!("failed_constraint:    {}", detail.failed_constraint);
+        }
+    }
+}
+
+fn run_verify_receipt(args: &[String]) {
+    let json_output = args.iter().any(|a| a.as_str() == "--json");
+
+    let mut receipt_path: Option<&str> = None;
+    let mut case_path: Option<&str> = None;
+    let mut policy_path: Option<&str> = None;
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--receipt" => {
+                receipt_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--case" => {
+                case_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--policy" => {
+                policy_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--json" => {
+                i += 1;
+            }
+            other => emit_error_and_exit(
+                json_output,
+                "invalid_arguments",
+                &format!("unknown flag '{}'", other),
+            ),
+        }
+    }
+
+    let receipt_path = receipt_path.unwrap_or_else(|| {
+        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --receipt")
+    });
+    let case_path = case_path.unwrap_or_else(|| {
+        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --case")
+    });
+    let policy_path = policy_path.unwrap_or_else(|| {
+        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --policy")
+    });
+
+    let receipt_json = read_file_or_exit(json_output, receipt_path);
+    let case_json = read_file_or_exit(json_output, case_path);
+    let policy_json = read_file_or_exit(json_output, policy_path);
+
+    match verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json) {
+        Ok(()) => {
+            if json_output {
+                println!("{}", serde_json::json!({"result": "VERIFIED"}));
+            } else {
+                println!("VERIFIED");
+            }
+        }
+        Err(reason) => {
+            if json_output {
+                println!(
+                    "{}",
+                    serde_json::json!({"result": "VERIFICATION FAILED", "reason": reason})
+                );
+            } else {
+                println!("VERIFICATION FAILED: {}", reason);
+            }
         }
     }
 }
@@ -143,14 +215,22 @@ fn print_help() {
     println!("    postcad-cli <subcommand> [options]");
     println!();
     println!("SUBCOMMANDS:");
-    println!("    route-case    Route a dental case through the compliance pipeline");
-    println!("    help          Print this help message");
+    println!("    route-case       Route a dental case through the compliance pipeline");
+    println!("    verify-receipt   Verify a routing receipt against its original inputs");
+    println!("    help             Print this help message");
     println!();
     println!("OPTIONS (route-case):");
     println!("    --case <path>         Path to case JSON file");
     println!("    --candidates <path>   Path to candidates JSON array file");
     println!("    --snapshot <path>     Path to compliance snapshots JSON array file");
     println!("    --json                Emit output as JSON");
+    println!();
+    println!("OPTIONS (verify-receipt):");
+    println!("    --receipt <path>   Path to the receipt JSON file to verify");
+    println!("    --case <path>      Path to the original case JSON file");
+    println!("    --policy <path>    Path to the policy JSON file (jurisdiction, routing_policy,");
+    println!("                       compliance_profile, candidates, snapshots)");
+    println!("    --json             Emit output as JSON");
     println!();
     println!("CASE JSON FIELDS:");
     println!("    case_id              (optional) UUID string; generated if absent");

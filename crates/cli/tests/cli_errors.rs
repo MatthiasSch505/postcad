@@ -151,6 +151,122 @@ fn refusal_returns_refused_domain_json_not_error() {
     assert!(json["audit_entry_hash"].is_string());
 }
 
+// ── verify-receipt ────────────────────────────────────────────────────────────
+
+/// Route a scenario to produce a receipt, then verify it with the same inputs.
+/// Exit code must be 0 and stdout must indicate success.
+#[test]
+fn verify_receipt_exits_0_when_verification_succeeds() {
+    let s = scenario("routed_domestic_allowed");
+    // Route to get the receipt JSON.
+    let out = std::process::Command::new(bin())
+        .args([
+            "route-case",
+            "--json",
+            "--case",
+            s.join("case.json").to_str().unwrap(),
+            "--candidates",
+            s.join("candidates.json").to_str().unwrap(),
+            "--snapshot",
+            s.join("snapshot.json").to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to spawn route-case");
+    assert!(out.status.success(), "route-case must succeed");
+    let receipt_json = String::from_utf8_lossy(&out.stdout).into_owned();
+
+    // Write receipt to a temp file for the verify-receipt invocation.
+    let tmp = std::env::temp_dir().join("postcad_test_verify_receipt_success.json");
+    std::fs::write(&tmp, &receipt_json).expect("failed to write temp receipt");
+
+    let (success, json) = run(&[
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(success, "verify-receipt must exit 0 when verification succeeds");
+    assert_eq!(json["result"], "VERIFIED");
+}
+
+/// Tamper one field in a valid receipt and verify it with the same inputs.
+/// Exit code must be 1 and stdout must indicate failure.
+#[test]
+fn verify_receipt_exits_1_when_receipt_is_tampered() {
+    let s = scenario("routed_domestic_allowed");
+    let out = std::process::Command::new(bin())
+        .args([
+            "route-case",
+            "--json",
+            "--case",
+            s.join("case.json").to_str().unwrap(),
+            "--candidates",
+            s.join("candidates.json").to_str().unwrap(),
+            "--snapshot",
+            s.join("snapshot.json").to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to spawn route-case");
+    assert!(out.status.success());
+    let receipt_json = String::from_utf8_lossy(&out.stdout);
+
+    // Tamper the routing_proof_hash field.
+    let mut receipt: serde_json::Value =
+        serde_json::from_str(receipt_json.trim()).expect("receipt must be valid JSON");
+    receipt["routing_proof_hash"] =
+        serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
+    let tampered = serde_json::to_string(&receipt).unwrap();
+
+    let tmp = std::env::temp_dir().join("postcad_test_verify_receipt_tampered.json");
+    std::fs::write(&tmp, &tampered).expect("failed to write temp receipt");
+
+    let (success, json) = run(&[
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when receipt is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert!(json["reason"].is_string(), "response must include a reason string");
+}
+
+/// Omitting --candidates must exit 1 with the stable invalid_arguments envelope.
+#[test]
+fn verify_receipt_missing_candidates_exits_1_with_invalid_arguments() {
+    let s = scenario("routed_domestic_allowed");
+    let tmp = std::env::temp_dir().join("postcad_test_dummy_receipt.json");
+    std::fs::write(&tmp, "{}").expect("failed to write dummy receipt");
+
+    let (success, json) = run(&[
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        // --candidates intentionally omitted
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when --candidates is missing");
+    assert_eq!(json["outcome"], "error");
+    assert_eq!(json["code"], "invalid_arguments");
+    assert!(json["message"].as_str().unwrap().contains("--candidates"));
+}
+
 // ── Successful route ──────────────────────────────────────────────────────────
 
 #[test]

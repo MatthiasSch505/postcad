@@ -189,6 +189,7 @@ fn run_verify_receipt(args: &[String]) {
             } else {
                 println!("VERIFICATION FAILED: {}", reason);
             }
+            process::exit(1);
         }
     }
 }

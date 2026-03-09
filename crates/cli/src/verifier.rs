@@ -62,6 +62,18 @@ impl VerificationFailure {
         )
     }
 
+    // ── Candidate snapshot mismatch ──────────────────────────────────────────
+
+    pub fn candidate_snapshot_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "candidate_snapshot_hash_mismatch",
+            format!(
+                "candidate_snapshot_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
     // ── Routing proof mismatch ────────────────────────────────────────────────
 
     pub fn routing_proof_hash_mismatch(receipt: &str, computed: &str) -> Self {

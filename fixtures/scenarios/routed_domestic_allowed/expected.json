@@ -3,6 +3,7 @@
   "case_fingerprint": "87fa5a7fa9d19e20f0a5bf1267e2e3ffd29151d4e8100fc6cae8a4c025ca6618",
   "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
   "routing_proof_hash": "cf00c3ed98c60f7241ed8562db5e2401fd14633ba38b408b450a841d15cee321",
+  "candidate_snapshot_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
   "selected_candidate_id": "rc-de-01",
   "refusal_code": null,
   "audit_seq": 0,

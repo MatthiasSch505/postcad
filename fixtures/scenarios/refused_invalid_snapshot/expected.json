@@ -1,5 +1,5 @@
 {
-  "outcome": "error",
   "code": "invalid_snapshot",
-  "message": "snapshot validation failed: snapshot for 'mfr-fr-01' is marked eligible but has no evidence references"
+  "message": "snapshot validation failed: snapshot for 'mfr-fr-01' is marked eligible but has no evidence references",
+  "outcome": "error"
 }

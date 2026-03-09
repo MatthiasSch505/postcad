@@ -1,7 +1,7 @@
 use std::fs;
 use std::process;
 
-use postcad_cli::{route_case_from_json, verify_receipt_from_policy_json};
+use postcad_cli::{route_case_from_json, verify_receipt_from_inputs};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -118,6 +118,7 @@ fn run_verify_receipt(args: &[String]) {
     let mut receipt_path: Option<&str> = None;
     let mut case_path: Option<&str> = None;
     let mut policy_path: Option<&str> = None;
+    let mut candidates_path: Option<&str> = None;
 
     let mut i = 0;
     while i < args.len() {
@@ -132,6 +133,10 @@ fn run_verify_receipt(args: &[String]) {
             }
             "--policy" => {
                 policy_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--candidates" => {
+                candidates_path = args.get(i + 1).map(String::as_str);
                 i += 2;
             }
             "--json" => {
@@ -154,12 +159,20 @@ fn run_verify_receipt(args: &[String]) {
     let policy_path = policy_path.unwrap_or_else(|| {
         emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --policy")
     });
+    let candidates_path = candidates_path.unwrap_or_else(|| {
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --candidates",
+        )
+    });
 
     let receipt_json = read_file_or_exit(json_output, receipt_path);
     let case_json = read_file_or_exit(json_output, case_path);
     let policy_json = read_file_or_exit(json_output, policy_path);
+    let candidates_json = read_file_or_exit(json_output, candidates_path);
 
-    match verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json) {
+    match verify_receipt_from_inputs(&receipt_json, &case_json, &policy_json, &candidates_json) {
         Ok(()) => {
             if json_output {
                 println!("{}", serde_json::json!({"result": "VERIFIED"}));
@@ -226,11 +239,12 @@ fn print_help() {
     println!("    --json                Emit output as JSON");
     println!();
     println!("OPTIONS (verify-receipt):");
-    println!("    --receipt <path>   Path to the receipt JSON file to verify");
-    println!("    --case <path>      Path to the original case JSON file");
-    println!("    --policy <path>    Path to the policy JSON file (jurisdiction, routing_policy,");
-    println!("                       compliance_profile, candidates, snapshots)");
-    println!("    --json             Emit output as JSON");
+    println!("    --receipt <path>      Path to the receipt JSON file to verify");
+    println!("    --case <path>         Path to the original case JSON file");
+    println!("    --policy <path>       Path to the policy JSON file (jurisdiction,");
+    println!("                          routing_policy, compliance_profile, snapshots)");
+    println!("    --candidates <path>   Path to the candidates JSON array file");
+    println!("    --json                Emit output as JSON");
     println!();
     println!("CASE JSON FIELDS:");
     println!("    case_id              (optional) UUID string; generated if absent");

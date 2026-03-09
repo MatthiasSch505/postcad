@@ -9,12 +9,14 @@
 //! Any change to the field names or types here is a breaking change to the
 //! CLI surface; internal refactors should not require touching this file.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Stable input bundle for the `verify-receipt` command.
 ///
 /// Parsed from `--policy policy.json`. All fields that have a sensible default
 /// are `Option<String>` and documented with their default value.
+/// `candidates` is optional: it may be absent when candidates are provided via
+/// a separate `--candidates` argument (the preferred path for `verify-receipt`).
 #[derive(Debug, Deserialize)]
 pub struct RoutingPolicyBundle {
     /// Jurisdiction code (e.g. `"DE"`, `"US"`). Defaults to `"global"`.
@@ -24,14 +26,16 @@ pub struct RoutingPolicyBundle {
     pub routing_policy: Option<String>,
     /// Optional compliance profile name used for evidence-based filtering.
     pub compliance_profile: Option<String>,
-    /// Routing candidates to evaluate.
+    /// Routing candidates to evaluate. Defaults to empty when absent; callers
+    /// that supply a separate `candidates.json` should omit this field.
+    #[serde(default)]
     pub candidates: Vec<CandidateEntry>,
     /// Compliance snapshots for the manufacturers referenced in `candidates`.
     pub snapshots: Vec<SnapshotEntry>,
 }
 
 /// One routing candidate entry within a [`RoutingPolicyBundle`].
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CandidateEntry {
     /// Stable routing candidate identifier.
     pub id: String,

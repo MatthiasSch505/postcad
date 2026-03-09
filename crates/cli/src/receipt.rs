@@ -30,6 +30,8 @@ pub struct RoutingReceipt {
     pub policy_fingerprint: String,
     /// SHA-256 of the canonical routing decision fingerprint.
     pub routing_proof_hash: String,
+    /// SHA-256 of the canonical candidate snapshot used at routing time.
+    pub candidate_snapshot_hash: String,
     /// ID of the selected routing candidate. `null` when refused.
     pub selected_candidate_id: Option<String>,
     /// Machine-readable refusal code. `null` when routed.

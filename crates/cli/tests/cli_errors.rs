@@ -1199,3 +1199,32 @@ fn verify_receipt_rejects_tampered_audit_previous_hash_with_stable_code() {
         "code must identify the audit chain-linkage failure");
     assert!(json["reason"].is_string(), "reason must be present");
 }
+
+/// A receipt with audit_entry_hash removed entirely (structurally broken audit
+/// chain — missing required linkage field) must fail with the stable code
+/// "receipt_parse_failed".
+///
+/// audit_entry_hash is a non-optional String in RoutingReceipt. Removing it
+/// causes serde deserialization to fail before any semantic check fires.
+#[test]
+fn verify_receipt_rejects_missing_audit_entry_hash_field_with_stable_code() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    receipt_val.as_object_mut().unwrap().remove("audit_entry_hash");
+    let broken = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("missing_audit_entry_hash", &broken);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 for a structurally broken receipt");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(json["code"], "receipt_parse_failed",
+        "missing required audit linkage field must produce receipt_parse_failed");
+}

@@ -1167,3 +1167,35 @@ fn verify_receipt_rejects_tampered_audit_entry_hash_with_stable_code() {
         "code must identify the audit binding failure");
     assert!(json["reason"].is_string(), "reason must be present");
 }
+
+/// Tampering audit_previous_hash (the chain-linkage field that binds this
+/// audit entry to its predecessor) must produce exit 1 and the stable code
+/// "audit_previous_hash_mismatch".
+///
+/// receipt_hash is recomputed after the tamper so the artifact-integrity check
+/// passes and the audit-chain semantic check fires.
+#[test]
+fn verify_receipt_rejects_tampered_audit_previous_hash_with_stable_code() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    receipt_val["audit_previous_hash"] =
+        serde_json::json!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_audit_previous_hash", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when audit_previous_hash is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(json["code"], "audit_previous_hash_mismatch",
+        "code must identify the audit chain-linkage failure");
+    assert!(json["reason"].is_string(), "reason must be present");
+}

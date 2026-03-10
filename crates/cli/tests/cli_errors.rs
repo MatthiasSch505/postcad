@@ -1263,3 +1263,36 @@ fn verify_receipt_rejects_tampered_eligible_candidate_ids_hash_with_stable_code(
         "code must identify the eligible candidate set commitment failure");
     assert!(json["reason"].is_string(), "reason must be present");
 }
+
+/// Tampering selection_input_candidate_ids_hash (which commits to the ordered
+/// list of candidates presented to the deterministic selector) must produce
+/// exit 1 and the stable code "selection_input_candidate_ids_hash_mismatch".
+///
+/// Unlike eligible_candidate_ids_hash, this hash is order-sensitive: any
+/// reordering of the selector input produces a different value. receipt_hash
+/// is recomputed so the artifact check passes and the field-specific check fires.
+#[test]
+fn verify_receipt_rejects_tampered_selection_input_candidate_ids_hash_with_stable_code() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    receipt_val["selection_input_candidate_ids_hash"] =
+        serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_selection_input_ids_hash", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when selection_input_candidate_ids_hash is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(json["code"], "selection_input_candidate_ids_hash_mismatch",
+        "code must identify the selector input ordering commitment failure");
+    assert!(json["reason"].is_string(), "reason must be present");
+}

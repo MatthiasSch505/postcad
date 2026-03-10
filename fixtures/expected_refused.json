@@ -3,6 +3,7 @@
   "outcome": "refused",
   "case_fingerprint": "cac65ccc28ed43ed93eb44adf64e93d966c551f0e8da6fc2d53382d46b306121",
   "policy_fingerprint": "c6167ec7ca3e50b2d6d8ad135dbb3467f0a67b5a68a7ec91df14bec9b1b841b3",
+  "policy_version": null,
   "routing_proof_hash": "306fd16df5928606fc96ee447eb5c1693777c34ebf4bfbe172d7dcbeb384e3fb",
   "registry_snapshot_hash": "8d23e16a544357deb4bd16f6a34e839baaae11c90a481d2ed63487a4d6d95903",
   "candidate_pool_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
@@ -20,5 +21,5 @@
     ],
     "failed_constraint": "compliance_gate"
   },
-  "receipt_hash": "e78660412eb8902b48fe50ca3230a56ebd523725dbec8f4d9d2de12c55bcd724"
+  "receipt_hash": "98c74ed96fc62a4501a64be182dc87501d8335ca192a16a6323b60fe1f0fa5ce"
 }

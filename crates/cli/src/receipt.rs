@@ -34,6 +34,14 @@ pub struct RoutingReceipt {
     pub case_fingerprint: String,
     /// SHA-256 of the canonical policy configuration.
     pub policy_fingerprint: String,
+    /// Explicit policy/ruleset version label supplied by the policy bundle
+    /// (e.g. `"v1"`, `"2024-01"`). `null` when no version was declared.
+    ///
+    /// Committed into [`routing_proof_hash`] via the
+    /// `RoutingDecisionFingerprint`; verification fails if the version
+    /// recorded here differs from the version in the policy bundle supplied
+    /// to `verify-receipt`.
+    pub policy_version: Option<String>,
     /// SHA-256 of the canonical routing decision fingerprint.
     pub routing_proof_hash: String,
     /// SHA-256 of the canonical registry snapshot committed at routing time.

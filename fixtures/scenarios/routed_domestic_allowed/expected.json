@@ -3,6 +3,7 @@
   "outcome": "routed",
   "case_fingerprint": "87fa5a7fa9d19e20f0a5bf1267e2e3ffd29151d4e8100fc6cae8a4c025ca6618",
   "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
+  "policy_version": null,
   "routing_proof_hash": "362d82cd727c51842dd95606255e781963b737aa21efd3a2d239ecf93c9e4b70",
   "registry_snapshot_hash": "e98be1da4308d1c19e6f025fc5c8c812488766815fbc7c6a32d4436698167603",
   "candidate_pool_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
@@ -13,5 +14,5 @@
   "audit_seq": 0,
   "audit_entry_hash": "3cc745efbcc0e20276930f98907db8e2304508a51a3011b2b21361758f0f535b",
   "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-  "receipt_hash": "55c98f79124c5f82039dac6a2619f8d0f848083bb29af99c1a5088a01f0384d8"
+  "receipt_hash": "ceadc652eb30a899b037fc8107894e596a4bf8ca23838b4d76fe60d6c9169dbb"
 }

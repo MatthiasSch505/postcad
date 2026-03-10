@@ -26,6 +26,13 @@ pub struct RoutingPolicyBundle {
     pub routing_policy: Option<String>,
     /// Optional compliance profile name used for evidence-based filtering.
     pub compliance_profile: Option<String>,
+    /// Explicit policy/ruleset version label (e.g. `"v1"`, `"2024-01"`).
+    ///
+    /// When set, this string is committed into the routing receipt and
+    /// `RoutingDecisionFingerprint`, binding it to the proof hash. Verification
+    /// fails if the version in the policy bundle differs from the version
+    /// recorded in the receipt.
+    pub policy_version: Option<String>,
     /// Routing candidates to evaluate. Defaults to empty when absent; callers
     /// that supply a separate `candidates.json` should omit this field.
     #[serde(default)]

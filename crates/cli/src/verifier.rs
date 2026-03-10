@@ -85,6 +85,18 @@ impl VerificationFailure {
         )
     }
 
+    // ── Policy version mismatch ───────────────────────────────────────────────
+
+    pub fn policy_version_mismatch(receipt: &str, bundle: &str) -> Self {
+        Self::new(
+            "policy_version_mismatch",
+            format!(
+                "policy_version mismatch: receipt has {}, policy bundle has {}",
+                receipt, bundle
+            ),
+        )
+    }
+
     // ── Candidate pool hash mismatch ─────────────────────────────────────────
 
     pub fn candidate_pool_hash_mismatch(receipt: &str, computed: &str) -> Self {

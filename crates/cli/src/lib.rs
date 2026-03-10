@@ -130,7 +130,7 @@ pub fn route_case_from_json(
         policy,
         &candidates,
         &snapshots,
-        None,
+        None, // no policy_version in the three-file path
     );
 
     Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash))
@@ -175,7 +175,7 @@ pub fn route_case_from_policy_json(
         policy,
         &candidates,
         &snapshots,
-        None,
+        policy_input.policy_version.clone(),
     );
 
     Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash))
@@ -211,6 +211,7 @@ pub fn verify_receipt_from_json(
     check!(outcome);
     check!(case_fingerprint);
     check!(policy_fingerprint);
+    check!(policy_version);
     check!(routing_proof_hash);
     check!(registry_snapshot_hash);
     check!(candidate_pool_hash);
@@ -345,6 +346,14 @@ pub fn verify_receipt_from_policy_json(
         ));
     }
 
+    // Step 3c: verify policy_version matches the receipt commitment.
+    if policy_input.policy_version != receipt.policy_version {
+        return Err(VerificationFailure::policy_version_mismatch(
+            receipt.policy_version.as_deref().unwrap_or("(none)"),
+            policy_input.policy_version.as_deref().unwrap_or("(none)"),
+        ));
+    }
+
     // Step 3b: verify candidate_pool_hash from policy's embedded candidates.
     let computed_candidate_hash = hash_candidate_pool(&policy_input.candidates);
     if computed_candidate_hash != receipt.candidate_pool_hash {
@@ -368,7 +377,7 @@ pub fn verify_receipt_from_policy_json(
         routing_policy,
         &candidates,
         &snapshots,
-        None,
+        policy_input.policy_version.clone(),
     );
 
     if result.proof.hash_hex != receipt.routing_proof_hash {
@@ -512,6 +521,14 @@ pub fn verify_receipt_from_inputs(
         ));
     }
 
+    // Step 4b: verify policy_version matches the receipt commitment.
+    if policy_input.policy_version != receipt.policy_version {
+        return Err(VerificationFailure::policy_version_mismatch(
+            receipt.policy_version.as_deref().unwrap_or("(none)"),
+            policy_input.policy_version.as_deref().unwrap_or("(none)"),
+        ));
+    }
+
     // Steps 5–6: re-run routing with candidates from candidates.json + snapshots
     // from policy.json, verify proof hash.
     let jurisdiction = policy_input.jurisdiction.as_deref().unwrap_or("global");
@@ -527,7 +544,7 @@ pub fn verify_receipt_from_inputs(
         routing_policy,
         &candidates,
         &snapshots,
-        None,
+        policy_input.policy_version.clone(),
     );
 
     if result.proof.hash_hex != receipt.routing_proof_hash {
@@ -616,6 +633,7 @@ fn map_result_to_receipt(
     // are not accidentally referenced after `result` is partially moved.
     let routing_proof_hash: String = result.proof.hash_hex.clone();
     let policy_fingerprint: String = result.policy_fingerprint.clone();
+    let policy_version: Option<String> = result.audit_receipt.policy_version.clone();
     let case_id_str: String = result.audit_receipt.case_id.clone();
     let compliant_candidate_count: usize =
         result.audit_receipt.candidate_ids_considered.len();
@@ -646,6 +664,7 @@ fn map_result_to_receipt(
                 outcome: "routed".to_string(),
                 case_fingerprint,
                 policy_fingerprint,
+                policy_version,
                 routing_proof_hash,
                 registry_snapshot_hash,
                 candidate_pool_hash,
@@ -678,6 +697,7 @@ fn map_result_to_receipt(
                 outcome: "refused".to_string(),
                 case_fingerprint,
                 policy_fingerprint,
+                policy_version,
                 routing_proof_hash,
                 registry_snapshot_hash,
                 candidate_pool_hash,
@@ -717,6 +737,7 @@ fn map_result_to_receipt(
                 outcome: "refused".to_string(),
                 case_fingerprint,
                 policy_fingerprint,
+                policy_version,
                 routing_proof_hash,
                 registry_snapshot_hash,
                 candidate_pool_hash,
@@ -2529,5 +2550,146 @@ mod tests {
             verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
                 .unwrap_err();
         assert_eq!(err.code, "receipt_hash_mismatch");
+    }
+
+    // ── Test 17: policy_version commitment ────────────────────────────────────
+
+    const POLICY_WITH_VERSION_JSON: &str = r#"{
+        "jurisdiction": "DE",
+        "routing_policy": "allow_domestic_and_cross_border",
+        "policy_version": "v1",
+        "candidates": [{
+            "id": "rc-1",
+            "manufacturer_id": "mfr-01",
+            "location": "domestic",
+            "accepts_case": true,
+            "eligibility": "eligible"
+        }],
+        "snapshots": [{
+            "manufacturer_id": "mfr-01",
+            "evidence_references": ["REF-001"],
+            "attestation_statuses": ["verified"],
+            "is_eligible": true
+        }]
+    }"#;
+
+    #[test]
+    fn policy_version_is_committed_in_receipt() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        assert_eq!(receipt.policy_version, Some("v1".to_string()));
+    }
+
+    #[test]
+    fn receipt_without_policy_version_has_null_version() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).unwrap();
+        assert!(receipt.policy_version.is_none());
+    }
+
+    #[test]
+    fn policy_version_changes_routing_proof_hash() {
+        let receipt_no_version = route_case_from_policy_json(CASE_JSON, POLICY_JSON).unwrap();
+        let receipt_with_version =
+            route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        // policy_version feeds into RoutingDecisionFingerprint → proof hash.
+        assert_ne!(
+            receipt_no_version.routing_proof_hash,
+            receipt_with_version.routing_proof_hash
+        );
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_passes_with_correct_policy_version() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_WITH_VERSION_JSON)
+            .expect("should be VERIFIED");
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_when_policy_version_tampered_in_receipt() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        // Recompute receipt_hash after tampering so it passes the artifact hash check,
+        // then check that the explicit policy_version comparison fires.
+        let mut raw: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+        raw["policy_version"] = serde_json::json!("v-tampered");
+        // Recompute receipt_hash over the tampered object.
+        raw.as_object_mut().unwrap().remove("receipt_hash");
+        let without_hash = serde_json::to_string(&raw).unwrap();
+        use sha2::{Digest, Sha256};
+        let new_hash = format!("{:x}", Sha256::digest(without_hash.as_bytes()));
+        raw["receipt_hash"] = serde_json::json!(new_hash);
+        let receipt_json = serde_json::to_string(&raw).unwrap();
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_WITH_VERSION_JSON)
+            .unwrap_err();
+        assert_eq!(err.code, "policy_version_mismatch");
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_when_bundle_version_differs_from_receipt() {
+        // Receipt was issued with "v1"; verifier supplies a bundle with "v2".
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let policy_v2 = POLICY_WITH_VERSION_JSON.replace("\"v1\"", "\"v2\"");
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, &policy_v2)
+            .unwrap_err();
+        assert_eq!(err.code, "policy_version_mismatch");
+    }
+
+    #[test]
+    fn verify_receipt_from_policy_json_fails_when_bundle_has_no_version_but_receipt_does() {
+        // Receipt was issued with "v1"; verifier supplies a bundle with no version.
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .unwrap_err();
+        assert_eq!(err.code, "policy_version_mismatch");
+    }
+
+    #[test]
+    fn verify_receipt_from_inputs_passes_with_correct_policy_version() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+        // verify_receipt_from_inputs uses policy.json for snapshots/version,
+        // candidates.json separately. Build a policy-only bundle (no candidates).
+        let policy_only = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "policy_version": "v1",
+            "snapshots": [{
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001"],
+                "attestation_statuses": ["verified"],
+                "is_eligible": true
+            }]
+        }"#;
+
+        verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_only, CANDIDATES_JSON)
+            .expect("should be VERIFIED");
+    }
+
+    #[test]
+    fn verify_receipt_from_inputs_fails_when_policy_version_differs() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+        let policy_wrong_version = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "policy_version": "v2",
+            "snapshots": [{
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001"],
+                "attestation_statuses": ["verified"],
+                "is_eligible": true
+            }]
+        }"#;
+
+        let err =
+            verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_wrong_version, CANDIDATES_JSON)
+                .unwrap_err();
+        assert_eq!(err.code, "policy_version_mismatch");
     }
 }

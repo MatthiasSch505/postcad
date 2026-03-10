@@ -1002,3 +1002,33 @@ fn verify_receipt_rejects_zeroed_receipt_hash_field_with_stable_code() {
     assert_eq!(json["code"], "receipt_hash_mismatch");
     assert!(json["reason"].is_string(), "reason must be present");
 }
+
+/// A receipt JSON with an extra unknown top-level field must still verify
+/// successfully. Extra fields are silently dropped during deserialization;
+/// receipt_hash covers only the known struct fields, so the hash still matches.
+///
+/// This test locks the forward-compatibility behavior: unrecognised fields
+/// introduced by a future schema version (or by tooling) do not break
+/// verification against the current pipeline.
+#[test]
+fn verify_receipt_tolerates_extra_top_level_field() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    // Inject a synthetic unknown field that would appear in a hypothetical
+    // future schema revision or third-party annotation.
+    receipt_val["_unknown_future_field"] = serde_json::json!("should be ignored");
+    let receipt_content = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("extra_field", &receipt_content);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(success, "verify-receipt must exit 0 when receipt has an extra unknown field");
+    assert_eq!(json["result"], "VERIFIED");
+}

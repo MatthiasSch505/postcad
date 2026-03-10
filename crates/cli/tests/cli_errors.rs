@@ -1228,3 +1228,38 @@ fn verify_receipt_rejects_missing_audit_entry_hash_field_with_stable_code() {
     assert_eq!(json["code"], "receipt_parse_failed",
         "missing required audit linkage field must produce receipt_parse_failed");
 }
+
+/// Tampering eligible_candidate_ids_hash (which commits to the sorted set of
+/// candidates that survived compliance and policy filtering) must produce exit 1
+/// and the stable code "eligible_candidate_ids_hash_mismatch".
+///
+/// In the current receipt design the eligible candidate set is stored as a
+/// canonical sorted hash, not a raw array. Introducing any inconsistency —
+/// including one that would arise from reordering the underlying IDs before
+/// hashing — is represented by substituting a wrong hash value. receipt_hash
+/// is recomputed so the artifact check passes and the field-specific check fires.
+#[test]
+fn verify_receipt_rejects_tampered_eligible_candidate_ids_hash_with_stable_code() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    receipt_val["eligible_candidate_ids_hash"] =
+        serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_eligible_ids_hash", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when eligible_candidate_ids_hash is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(json["code"], "eligible_candidate_ids_hash_mismatch",
+        "code must identify the eligible candidate set commitment failure");
+    assert!(json["reason"].is_string(), "reason must be present");
+}

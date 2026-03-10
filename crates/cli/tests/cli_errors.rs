@@ -462,6 +462,36 @@ fn route_case_refused_envelope_contract() {
     );
 }
 
+/// The refused_compliance_failed scenario (different case and snapshot from
+/// refused_no_eligible_candidates) must produce the same structural refusal
+/// envelope. This test locks the essential shape for the second refusal path
+/// without duplicating the full field-by-field assertions of
+/// route_case_refused_envelope_contract.
+#[test]
+fn route_case_refused_compliance_failed_basic_shape() {
+    let s = scenario("refused_compliance_failed");
+    let (success, json) = route_scenario(&s);
+    assert!(success, "route-case must exit 0 on a refused outcome");
+    assert_eq!(json["outcome"], "refused");
+    assert_eq!(json["schema_version"], "1");
+    // receipt_hash must be a 64-char hex string (artifact integrity commitment).
+    assert!(is_64_char_hex(json["receipt_hash"].as_str().unwrap_or("")),
+        "receipt_hash must be a 64-char hex string");
+    // selected_candidate_id must be null on any refused outcome.
+    assert!(json["selected_candidate_id"].is_null(),
+        "selected_candidate_id must be null on a refused outcome");
+    // refusal_code must be a non-null string.
+    assert!(json["refusal_code"].is_string(),
+        "refusal_code must be a string on a refused outcome");
+    // refusal block must be present with its three required sub-fields.
+    assert!(json["refusal"].is_object(), "refusal must be an object");
+    assert!(json["refusal"]["message"].is_string(), "refusal.message must be a string");
+    assert!(json["refusal"]["evaluated_candidate_ids"].is_array(),
+        "refusal.evaluated_candidate_ids must be an array");
+    assert!(json["refusal"]["failed_constraint"].is_string(),
+        "refusal.failed_constraint must be a string");
+}
+
 /// The verify-receipt VERIFIED envelope must be exactly {result: "VERIFIED"}.
 #[test]
 fn verify_receipt_verified_envelope_contract() {

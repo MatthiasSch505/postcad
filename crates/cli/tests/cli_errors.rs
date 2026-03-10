@@ -1079,3 +1079,33 @@ fn verify_receipt_tolerates_different_key_order() {
     assert!(success, "verify-receipt must exit 0 when key order differs from alphabetical");
     assert_eq!(json["result"], "VERIFIED");
 }
+
+/// A receipt JSON that is pretty-printed (with newlines and indentation) must
+/// still verify successfully.
+///
+/// serde_json::from_str is whitespace-agnostic; hash_receipt_content hashes
+/// the re-serialised struct (compact JSON from BTreeMap), not the raw input
+/// bytes. Insignificant whitespace in the input has no effect on the hash.
+///
+/// This test locks the pretty-print tolerance at the CLI boundary, ensuring
+/// that receipts formatted for human readability are accepted by the verifier.
+#[test]
+fn verify_receipt_tolerates_pretty_printed_input() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    // Serialize with indentation (serde_json pretty-print).
+    let pretty = serde_json::to_string_pretty(&receipt_val).unwrap();
+    let tmp = write_tmp("pretty_receipt", &pretty);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(success, "verify-receipt must exit 0 for a pretty-printed receipt");
+    assert_eq!(json["result"], "VERIFIED");
+}

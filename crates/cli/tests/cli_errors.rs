@@ -1134,3 +1134,36 @@ fn route_case_receipt_hash_is_deterministic_across_subprocess_invocations() {
         "receipt_hash must be identical across separate route-case invocations for the same inputs"
     );
 }
+
+/// Tampering audit_entry_hash (the hash binding the routing decision to the
+/// immutable audit log entry) must produce exit 1 and the stable code
+/// "audit_entry_hash_mismatch".
+///
+/// receipt_hash is recomputed after the tamper so the artifact-integrity check
+/// passes and the audit-binding check fires. This mirrors the pattern used for
+/// routing_proof_hash and candidate_pool_hash tamper tests.
+#[test]
+fn verify_receipt_rejects_tampered_audit_entry_hash_with_stable_code() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    receipt_val["audit_entry_hash"] =
+        serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_audit_entry_hash", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when audit_entry_hash is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(json["code"], "audit_entry_hash_mismatch",
+        "code must identify the audit binding failure");
+    assert!(json["reason"].is_string(), "reason must be present");
+}

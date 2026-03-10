@@ -3,13 +3,13 @@
   "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
   "audit_seq": 0,
   "candidate_order_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "candidate_pool_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
+  "candidate_pool_hash": "f552cc047a9ad6fc217b4c786ba6786ccce49bcde4e8cb39cdfc8528a855c884",
   "case_fingerprint": "3da778f2b939103dae2f03a25dd2591f46ad49e9b4089d7607442390ec0e469f",
   "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "outcome": "refused",
   "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
   "policy_version": null,
-  "receipt_hash": "dad13b5c59d1c125591b218d0a84e0e7c39a5d0d2677db8a66062cf8b3a96530",
+  "receipt_hash": "6e3384c8197f32c90da7b895445316abf59dead950d6a054b02643c1351c88ee",
   "refusal": {
     "evaluated_candidate_ids": [
       "rc-de-01"

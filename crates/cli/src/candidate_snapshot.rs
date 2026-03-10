@@ -154,6 +154,40 @@ pub(crate) fn hash_candidate_order(ids: &[String]) -> String {
     format!("{:x}", digest)
 }
 
+// ── Compliance-derived pool hash helper ───────────────────────────────────────
+
+/// Recomputes the candidate pool hash with `eligibility` derived from the
+/// compliance gate output, replacing the declared field on each entry.
+///
+/// For every entry:
+/// - `"eligible"` when `manufacturer_id` is in `compliant_manufacturer_ids`
+/// - `"ineligible"` otherwise
+///
+/// All other fields (`id`, `manufacturer_id`, `location`, `accepts_case`) are
+/// copied verbatim. The derived pool is sorted and hashed using the same
+/// canonical representation as [`hash_candidate_pool`].
+///
+/// Using this function in both the routing pipeline and receipt verification
+/// makes `candidate_pool_hash` reproducible from routing input + registry
+/// snapshots + routing policy — independent of the caller-declared eligibility.
+pub(crate) fn hash_candidate_pool_from_compliance(
+    entries: &[CandidateEntry],
+    compliant_manufacturer_ids: &[String],
+) -> String {
+    let derived: Vec<CandidateEntry> = entries
+        .iter()
+        .map(|e| CandidateEntry {
+            eligibility: if compliant_manufacturer_ids.contains(&e.manufacturer_id) {
+                "eligible".to_string()
+            } else {
+                "ineligible".to_string()
+            },
+            ..e.clone()
+        })
+        .collect();
+    hash_candidate_pool(&derived)
+}
+
 // ── Pool hash helper ──────────────────────────────────────────────────────────
 
 /// Computes the canonical SHA-256 hash of a candidate pool.

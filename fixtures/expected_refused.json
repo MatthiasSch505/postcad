@@ -7,7 +7,7 @@
   "policy_version": null,
   "routing_proof_hash": "421e5a106505763988b8e778484f68d23843e2c69aea8a052a8c752a0b91c207",
   "registry_snapshot_hash": "8d23e16a544357deb4bd16f6a34e839baaae11c90a481d2ed63487a4d6d95903",
-  "candidate_pool_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
+  "candidate_pool_hash": "f552cc047a9ad6fc217b4c786ba6786ccce49bcde4e8cb39cdfc8528a855c884",
   "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "selection_input_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "candidate_order_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -35,5 +35,5 @@
     "routing_policy": "allow_domestic_and_cross_border"
   },
   "routing_input_hash": "2ceb645596c04e0bd0cd995d074d20235356c1740d1231d10acd14062252d364",
-  "receipt_hash": "4b0cabebe1089284ad46649525ba08123438062ef8aeece3277bf8a9b5a97a11"
+  "receipt_hash": "bd3b97dc5efddff25fd77f2bff35641710a923e383b612cad65defaaf81eb1b9"
 }

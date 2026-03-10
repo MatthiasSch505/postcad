@@ -22,7 +22,7 @@ pub mod policy_bundle;
 pub use policy_bundle::{CandidateEntry, RoutingPolicyBundle, SnapshotEntry};
 
 mod candidate_snapshot;
-use candidate_snapshot::{hash_candidate_order, hash_candidate_pool, hash_eligible_ids, hash_selector_input};
+use candidate_snapshot::{hash_candidate_order, hash_candidate_pool_from_compliance, hash_eligible_ids, hash_selector_input};
 
 pub mod verifier;
 pub use verifier::VerificationFailure;
@@ -30,6 +30,7 @@ pub use verifier::VerificationFailure;
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
 use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, hash_registry_snapshots, route_case_with_compliance_audit};
+use postcad_compliance::ComplianceGate;
 use postcad_routing::ROUTING_KERNEL_VERSION;
 use postcad_core::{
     Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
@@ -114,9 +115,15 @@ pub fn route_case_from_json(
     validate_snapshots(&snapshots)
         .map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
 
-    // Bind the candidate snapshot before compliance filtering so the hash
-    // covers exactly the pool presented at routing time.
-    let candidate_pool_hash = hash_candidate_pool(&candidates_input);
+    // Bind the candidate pool hash using eligibility derived from the registry
+    // snapshots, not the caller-declared field. This makes candidate_pool_hash
+    // reproducible from routing input + registry snapshots + routing policy.
+    let candidate_mfr_ids: Vec<String> =
+        candidates_input.iter().map(|c| c.manufacturer_id.clone()).collect();
+    let compliant_ids_for_hash =
+        ComplianceGate::filter_compliant_manufacturers(&candidate_mfr_ids, &snapshots);
+    let candidate_pool_hash =
+        hash_candidate_pool_from_compliance(&candidates_input, &compliant_ids_for_hash);
 
     // Capture input candidate IDs before compliance filtering so that refusal
     // detail can report the full evaluated set.
@@ -176,7 +183,12 @@ pub fn route_case_from_policy_json(
     validate_snapshots(&snapshots)
         .map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
 
-    let candidate_pool_hash = hash_candidate_pool(&policy_input.candidates);
+    let candidate_mfr_ids: Vec<String> =
+        policy_input.candidates.iter().map(|c| c.manufacturer_id.clone()).collect();
+    let compliant_ids_for_hash =
+        ComplianceGate::filter_compliant_manufacturers(&candidate_mfr_ids, &snapshots);
+    let candidate_pool_hash =
+        hash_candidate_pool_from_compliance(&policy_input.candidates, &compliant_ids_for_hash);
 
     let all_input_candidate_ids: Vec<String> =
         candidates.iter().map(|c| c.id.0.clone()).collect();
@@ -506,15 +518,6 @@ pub fn verify_receipt_from_policy_json(
         ));
     }
 
-    // Step 3b: verify candidate_pool_hash from policy's embedded candidates.
-    let computed_candidate_hash = hash_candidate_pool(&policy_input.candidates);
-    if computed_candidate_hash != receipt.candidate_pool_hash {
-        return Err(VerificationFailure::candidate_pool_hash_mismatch(
-            &receipt.candidate_pool_hash,
-            &computed_candidate_hash,
-        ));
-    }
-
     // Steps 4–6: re-run routing kernel, verify proof hash.
     let jurisdiction = policy_input.jurisdiction.as_deref().unwrap_or("global");
     let candidates = build_candidates(&policy_input.candidates)
@@ -535,6 +538,30 @@ pub fn verify_receipt_from_policy_json(
             &receipt.registry_snapshot_hash,
             &computed_registry_hash,
         ));
+    }
+
+    // Step 3e: verify candidate pool reproducibility.
+    // Recompute eligibility for each candidate from the registry snapshot
+    // using the same compliance gate logic applied at routing time, then
+    // compare the resulting hash to the committed candidate_pool_hash.
+    // Detects any inconsistency between the provided snapshot state and the
+    // pool hash recorded in the receipt, including cases where the registry
+    // eligibility was modified after the receipt was issued.
+    {
+        let mfr_ids: Vec<String> = policy_input.candidates
+            .iter()
+            .map(|c| c.manufacturer_id.clone())
+            .collect();
+        let compliant_ids =
+            ComplianceGate::filter_compliant_manufacturers(&mfr_ids, &snapshots);
+        let reproduced_hash =
+            hash_candidate_pool_from_compliance(&policy_input.candidates, &compliant_ids);
+        if reproduced_hash != receipt.candidate_pool_hash {
+            return Err(VerificationFailure::candidate_pool_hash_mismatch(
+                &receipt.candidate_pool_hash,
+                &reproduced_hash,
+            ));
+        }
     }
 
     let result = route_case_with_compliance_audit(
@@ -742,16 +769,9 @@ pub fn verify_receipt_from_inputs(
         ));
     }
 
-    // Step 3: parse candidates, verify candidate_pool_hash.
+    // Step 3: parse candidates (hash verified in step 4d after snapshots are loaded).
     let candidates_input: Vec<CandidateEntry> = serde_json::from_str(candidates_json)
         .map_err(|e| VerificationFailure::policy_bundle_parse_failed(e.to_string()))?;
-    let computed_candidate_hash = hash_candidate_pool(&candidates_input);
-    if computed_candidate_hash != receipt.candidate_pool_hash {
-        return Err(VerificationFailure::candidate_pool_hash_mismatch(
-            &receipt.candidate_pool_hash,
-            &computed_candidate_hash,
-        ));
-    }
 
     // Step 4: build policy config, compute policy_fingerprint.
     let policy_input: RoutingPolicyBundle = serde_json::from_str(policy_json)
@@ -795,6 +815,22 @@ pub fn verify_receipt_from_inputs(
             &receipt.registry_snapshot_hash,
             &computed_registry_hash,
         ));
+    }
+
+    // Step 4d: verify candidate pool reproducibility.
+    {
+        let mfr_ids: Vec<String> =
+            candidates_input.iter().map(|c| c.manufacturer_id.clone()).collect();
+        let compliant_ids =
+            ComplianceGate::filter_compliant_manufacturers(&mfr_ids, &snapshots);
+        let reproduced_hash =
+            hash_candidate_pool_from_compliance(&candidates_input, &compliant_ids);
+        if reproduced_hash != receipt.candidate_pool_hash {
+            return Err(VerificationFailure::candidate_pool_hash_mismatch(
+                &receipt.candidate_pool_hash,
+                &reproduced_hash,
+            ));
+        }
     }
 
     let result = route_case_with_compliance_audit(
@@ -2269,12 +2305,15 @@ mod tests {
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
-        let policy_no_candidates = r#"{
+        // Use the original snapshots so registry_snapshot_hash matches.
+        // The tampered candidates reference mfr-tampered, which has no eligible snapshot,
+        // so the reproduced candidate_pool_hash will differ from the receipt's committed hash.
+        let policy_original_snapshots = r#"{
             "jurisdiction": "DE",
             "routing_policy": "allow_domestic_and_cross_border",
             "snapshots": [{
-                "manufacturer_id": "mfr-tampered",
-                "evidence_references": ["REF-X"],
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001"],
                 "attestation_statuses": ["verified"],
                 "is_eligible": true
             }]
@@ -2288,7 +2327,7 @@ mod tests {
         let err = verify_receipt_from_inputs(
             &receipt_json,
             CASE_JSON,
-            policy_no_candidates,
+            policy_original_snapshots,
             tampered_candidates,
         )
         .unwrap_err();
@@ -2303,7 +2342,10 @@ mod tests {
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
-        // Policy with different candidates than those used during routing.
+        // Policy with the original snapshots but a different candidate list.
+        // registry_snapshot_hash matches; candidate_pool_hash diverges because
+        // mfr-02 is not in the snapshot set (only mfr-01 is), so it comes out
+        // ineligible and the reproduced hash differs from the committed hash.
         let policy_different_candidates = r#"{
             "jurisdiction": "DE",
             "routing_policy": "allow_domestic_and_cross_border",
@@ -2315,8 +2357,8 @@ mod tests {
                 "eligibility": "eligible"
             }],
             "snapshots": [{
-                "manufacturer_id": "mfr-02",
-                "evidence_references": ["REF-002"],
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001"],
                 "attestation_statuses": ["verified"],
                 "is_eligible": true
             }]
@@ -2452,7 +2494,10 @@ mod tests {
         let receipt = route_case_from_json(CASE_JSON, two_candidates, two_snapshots).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
-        // Policy bundle presents only rc-1, omitting rc-2.
+        // Policy bundle presents only rc-1, omitting rc-2, but retains BOTH
+        // original snapshots so registry_snapshot_hash still matches.
+        // The reproduced candidate_pool_hash differs because the original receipt
+        // committed a pool of two candidates (rc-1 eligible, rc-2 ineligible).
         let policy_one_candidate = r#"{
             "jurisdiction": "DE",
             "routing_policy": "allow_domestic_and_cross_border",
@@ -2463,12 +2508,10 @@ mod tests {
                 "accepts_case": true,
                 "eligibility": "eligible"
             }],
-            "snapshots": [{
-                "manufacturer_id": "mfr-01",
-                "evidence_references": ["REF-A"],
-                "attestation_statuses": ["verified"],
-                "is_eligible": true
-            }]
+            "snapshots": [
+                {"manufacturer_id":"mfr-01","evidence_references":["REF-A"],"attestation_statuses":["verified"],"is_eligible":true},
+                {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["rejected"],"is_eligible":false}
+            ]
         }"#;
 
         let err =
@@ -2481,6 +2524,112 @@ mod tests {
             "unexpected message: {}",
             err.message
         );
+    }
+
+    // ── Test 12b: candidate pool reproducibility ──────────────────────────────
+    //
+    // These tests verify step 4d: the verifier re-derives the candidate pool
+    // hash from the snapshot compliance gate and asserts it equals the committed
+    // candidate_pool_hash.  Two pairs: one per verification path, each with a
+    // success case and an eligibility-tamper case.
+
+    #[test]
+    fn pool_reproducibility_succeeds_via_policy_json() {
+        // Baseline: route then verify with the same eligible snapshot.
+        // Step 4d must pass because the compliance-derived hash matches.
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .expect("verify should pass: snapshot eligibility matches committed pool hash");
+    }
+
+    #[test]
+    fn pool_reproducibility_succeeds_via_inputs() {
+        // Baseline: route then verify via the two-file path with the same snapshot.
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let policy_no_candidates = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "snapshots": [{
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001"],
+                "attestation_statuses": ["verified"],
+                "is_eligible": true
+            }]
+        }"#;
+
+        verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_no_candidates, CANDIDATES_JSON)
+            .expect("verify should pass: snapshot eligibility matches committed pool hash");
+    }
+
+    #[test]
+    fn pool_reproducibility_tamper_fails_via_policy_json() {
+        // Tamper scenario: route with eligible snapshot → `candidate_pool_hash`
+        // reflects mfr-01 as eligible.  Then tamper the receipt so that
+        // `registry_snapshot_hash` now matches the INELIGIBLE snapshot while
+        // `candidate_pool_hash` is left unchanged.  The verifier must detect the
+        // inconsistency in step 4d and return `candidate_pool_hash_mismatch`.
+        let receipt_eligible =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        // Independently route with the ineligible snapshot to obtain its
+        // `registry_snapshot_hash` without manually computing the hash.
+        let receipt_ineligible =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+
+        // Construct tampered receipt: keep candidate_pool_hash from the eligible
+        // routing but replace registry_snapshot_hash with the ineligible value,
+        // then recompute receipt_hash for self-consistency.
+        let mut tampered = receipt_eligible;
+        tampered.registry_snapshot_hash = receipt_ineligible.registry_snapshot_hash;
+        let tampered_json = tamper_field_recompute_hash(tampered);
+
+        // Verify against the ineligible policy: step 4c passes (registry hash
+        // now matches), but step 4d must fail because the committed
+        // candidate_pool_hash reflects the eligible pool, not the ineligible one.
+        let err =
+            verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_INELIGIBLE_JSON)
+                .unwrap_err();
+        assert_eq!(err.code, "candidate_pool_hash_mismatch");
+        assert!(err.message.contains("candidate_pool_hash mismatch"), "got: {}", err.message);
+    }
+
+    #[test]
+    fn pool_reproducibility_tamper_fails_via_inputs() {
+        // Same tamper as above but exercised through the two-file verification path.
+        let receipt_eligible =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt_ineligible =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+
+        let mut tampered = receipt_eligible;
+        tampered.registry_snapshot_hash = receipt_ineligible.registry_snapshot_hash;
+        let tampered_json = tamper_field_recompute_hash(tampered);
+
+        let policy_ineligible_no_candidates = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "snapshots": [{
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001"],
+                "attestation_statuses": ["rejected"],
+                "is_eligible": false
+            }]
+        }"#;
+
+        let err = verify_receipt_from_inputs(
+            &tampered_json,
+            CASE_JSON,
+            policy_ineligible_no_candidates,
+            CANDIDATES_JSON,
+        )
+        .unwrap_err();
+        assert_eq!(err.code, "candidate_pool_hash_mismatch");
+        assert!(err.message.contains("candidate_pool_hash mismatch"), "got: {}", err.message);
     }
 
     // ── order independence ────────────────────────────────────────────────────

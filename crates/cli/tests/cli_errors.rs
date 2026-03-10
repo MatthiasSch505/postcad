@@ -910,3 +910,34 @@ fn verify_receipt_verified_json_has_no_code_field() {
     assert_eq!(json["result"], "VERIFIED");
     assert!(json["code"].is_null(), "VERIFIED envelope must not include a code field");
 }
+
+/// Directly zeroing the receipt_hash field (all other fields valid) must
+/// produce exit 1, result "VERIFICATION FAILED", and code "receipt_hash_mismatch".
+///
+/// This is distinct from `tampering_field_without_updating_receipt_hash_yields_receipt_hash_mismatch`,
+/// which reaches the same code via an *indirect* path (tampers another field and
+/// leaves receipt_hash stale). This test targets the receipt_hash field itself.
+#[test]
+fn verify_receipt_rejects_zeroed_receipt_hash_field_with_stable_code() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    // Zero out receipt_hash directly; all other fields remain correct.
+    receipt_val["receipt_hash"] =
+        serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("zeroed_receipt_hash", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when receipt_hash is zeroed");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(json["code"], "receipt_hash_mismatch");
+    assert!(json["reason"].is_string(), "reason must be present");
+}

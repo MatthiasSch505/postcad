@@ -1,13 +1,15 @@
 # PostCAD
 
-Deterministic, rule-based routing platform for dental CAD manufacturing. Sits after
-design and before production: verifies manufacturer certifications, checks regulatory
-constraints by country, routes cases to eligible manufacturers, and records an
-immutable audit trail.
+Deterministic, verifiable routing core for dental CAD manufacturing decisions.
 
-Every routing decision produces a cryptographically verifiable receipt. Every receipt
-can be independently verified against the original inputs without access to the routing
-engine.
+PostCAD sits between CAD design and production. It evaluates regulatory compliance
+by destination country, selects an eligible manufacturer via a deterministic kernel,
+and records every decision in an append-only audit chain. The output is a
+cryptographically verifiable receipt that can be independently checked without
+access to the routing engine.
+
+**No AI. No randomness. No timestamps in routing logic. Every decision carries a
+machine-readable reason code.**
 
 ---
 
@@ -48,28 +50,40 @@ cargo run -p postcad-cli -- route-case --json \
 
 ---
 
-## Receipt structure
+## Verification guarantees
 
-A routing receipt (`schema_version: "1"`) contains:
+`verify-receipt` recomputes every hash from the original inputs and compares against
+the receipt. It does not trust any field value in the receipt itself.
 
-| Field | Description |
+| What is detected | Failure code |
 |---|---|
-| `schema_version` | Always `"1"` for this pipeline. Checked before all other fields. |
-| `outcome` | `"routed"` or `"refused"`. |
-| `case_fingerprint` | SHA-256 of the canonical case payload. |
-| `policy_fingerprint` | SHA-256 of the routing policy bundle. |
-| `routing_proof_hash` | SHA-256 of the canonical routing decision. |
-| `candidate_pool_hash` | SHA-256 of the full input candidate pool (sorted by id, order-independent). |
-| `eligible_candidate_ids_hash` | SHA-256 of the sorted eligible candidate ID list after compliance and policy filtering. Order-independent. |
-| `selection_input_candidate_ids_hash` | SHA-256 of the candidate ID list in the exact order presented to the deterministic selector. **Order-sensitive.** |
-| `selected_candidate_id` | ID of the selected candidate. `null` on refused outcomes. |
-| `refusal_code` | Machine-readable refusal reason. `null` on routed outcomes. |
-| `audit_seq` | Sequence number of the audit log entry (0-indexed). |
-| `audit_entry_hash` | SHA-256 of the audit log entry that records this decision. |
-| `audit_previous_hash` | SHA-256 of the preceding audit entry (64 zeros for genesis). |
-| `receipt_hash` | SHA-256 of all other receipt fields (canonical BTreeMap serialization). Computed last; verified first. |
+| Any receipt field modified after issuance | `receipt_hash_mismatch` |
+| Routing proof tampered or recomputed from different inputs | `routing_proof_hash_mismatch` |
+| Candidate pool changed (manufacturer added, removed, or modified) | `candidate_pool_hash_mismatch` |
+| Eligible candidate set changed after compliance filtering | `eligible_candidate_ids_hash_mismatch` |
+| Order of candidates presented to the selector changed | `selection_input_candidate_ids_hash_mismatch` |
+| Audit log entry content modified | `audit_entry_hash_mismatch` |
+| Audit chain linkage broken (entry deleted or reordered) | `audit_previous_hash_mismatch` |
+| Receipt missing required fields | `receipt_parse_failed` |
+| Schema version absent, wrong type, or unsupported | `missing_receipt_schema_version` · `invalid_receipt_schema_version` · `unsupported_receipt_schema_version` |
 
-See `examples/valid_routed_receipt.json` and `examples/valid_refusal_receipt.json`.
+Artifact integrity (`receipt_hash`) is verified before any semantic check. All
+failure codes are stable across versions.
+
+---
+
+## Scope and non-goals
+
+PostCAD is a **routing decision engine and audit infrastructure layer**. It is not:
+
+- **A CAD tool.** PostCAD receives completed case files; it does not produce or
+  modify design geometry.
+- **A lab marketplace.** PostCAD selects from a pre-configured candidate pool; it
+  does not discover, negotiate with, or manage manufacturer relationships.
+- **An AI optimizer.** Routing is fully deterministic and rule-based. Given the same
+  case and the same eligible candidates, PostCAD always produces the same decision.
+- **A manufacturing operator.** PostCAD issues a routing decision. It does not
+  dispatch jobs, track production, or communicate with lab systems.
 
 ---
 
@@ -111,6 +125,31 @@ deletion or reordering of entries breaks the chain and is detectable by
 **Independent verifier.** `verify-receipt` recomputes every hash from the original
 inputs and compares against the receipt. It does not trust the receipt's own field
 values. Failure produces a stable `code` identifying the specific broken commitment.
+
+---
+
+## Receipt structure
+
+A routing receipt (`schema_version: "1"`) contains:
+
+| Field | Description |
+|---|---|
+| `schema_version` | Always `"1"` for this pipeline. Checked before all other fields. |
+| `outcome` | `"routed"` or `"refused"`. |
+| `case_fingerprint` | SHA-256 of the canonical case payload. |
+| `policy_fingerprint` | SHA-256 of the routing policy bundle. |
+| `routing_proof_hash` | SHA-256 of the canonical routing decision. |
+| `candidate_pool_hash` | SHA-256 of the full input candidate pool (sorted by id, order-independent). |
+| `eligible_candidate_ids_hash` | SHA-256 of the sorted eligible candidate ID list after compliance and policy filtering. Order-independent. |
+| `selection_input_candidate_ids_hash` | SHA-256 of the candidate ID list in the exact order presented to the deterministic selector. **Order-sensitive.** |
+| `selected_candidate_id` | ID of the selected candidate. `null` on refused outcomes. |
+| `refusal_code` | Machine-readable refusal reason. `null` on routed outcomes. |
+| `audit_seq` | Sequence number of the audit log entry (0-indexed). |
+| `audit_entry_hash` | SHA-256 of the audit log entry that records this decision. |
+| `audit_previous_hash` | SHA-256 of the preceding audit entry (64 zeros for genesis). |
+| `receipt_hash` | SHA-256 of all other receipt fields (canonical BTreeMap serialization). Computed last; verified first. |
+
+See `examples/valid_routed_receipt.json` and `examples/valid_refusal_receipt.json`.
 
 ---
 

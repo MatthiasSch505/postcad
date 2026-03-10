@@ -492,6 +492,31 @@ fn route_case_refused_compliance_failed_basic_shape() {
         "refusal.failed_constraint must be a string");
 }
 
+/// The routed_cross_border_allowed scenario (different case and policy from
+/// routed_domestic_allowed) must produce the same structural routed envelope.
+/// This test locks the essential shape for the cross-border routing policy path
+/// without duplicating the full field-by-field assertions of
+/// route_case_routed_envelope_contract.
+#[test]
+fn route_case_routed_cross_border_basic_shape() {
+    let s = scenario("routed_cross_border_allowed");
+    let (success, json) = route_scenario(&s);
+    assert!(success, "route-case must exit 0 on a routed outcome");
+    assert_eq!(json["outcome"], "routed");
+    assert_eq!(json["schema_version"], "1");
+    // receipt_hash must be a 64-char hex string (artifact integrity commitment).
+    assert!(is_64_char_hex(json["receipt_hash"].as_str().unwrap_or("")),
+        "receipt_hash must be a 64-char hex string");
+    // selected_candidate_id must be a non-empty string on any routed outcome.
+    let selected = json["selected_candidate_id"].as_str()
+        .expect("selected_candidate_id must be a string on a routed outcome");
+    assert!(!selected.is_empty(), "selected_candidate_id must not be empty");
+    // refusal_code must be null on a routed outcome.
+    assert!(json["refusal_code"].is_null(), "refusal_code must be null on a routed outcome");
+    // refusal block must be absent on a routed outcome.
+    assert!(json["refusal"].is_null(), "refusal must be null on a routed outcome");
+}
+
 /// The verify-receipt VERIFIED envelope must be exactly {result: "VERIFIED"}.
 #[test]
 fn verify_receipt_verified_envelope_contract() {

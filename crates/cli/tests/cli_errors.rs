@@ -919,9 +919,13 @@ fn verify_receipt_failed_json_includes_stable_code_candidate_pool_hash() {
 }
 
 /// Tampering routing_proof_hash without updating receipt_hash must produce
-/// receipt_hash_mismatch — the artifact-integrity layer fires first.
+/// receipt_canonicalization_mismatch — the artifact-integrity layer fires first.
+///
+/// Step 1b recomputes SHA-256(canonicalize_receipt(receipt)) and compares it to
+/// the stored receipt_hash. Any field change without a matching receipt_hash
+/// recomputation fails here before any field-specific check runs.
 #[test]
-fn tampering_field_without_updating_receipt_hash_yields_receipt_hash_mismatch() {
+fn tampering_field_without_updating_receipt_hash_yields_receipt_canonicalization_mismatch() {
     let s = scenario("routed_domestic_allowed");
     let (route_ok, mut receipt_val) = route_scenario(&s);
     assert!(route_ok);
@@ -941,7 +945,7 @@ fn tampering_field_without_updating_receipt_hash_yields_receipt_hash_mismatch() 
     ]);
     assert!(!success);
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "receipt_hash_mismatch",
+    assert_eq!(json["code"], "receipt_canonicalization_mismatch",
         "artifact-integrity check must fire before field-specific checks");
 }
 
@@ -973,9 +977,11 @@ fn verify_receipt_verified_json_has_no_code_field() {
 }
 
 /// Directly zeroing the receipt_hash field (all other fields valid) must
-/// produce exit 1, result "VERIFICATION FAILED", and code "receipt_hash_mismatch".
+/// produce exit 1, result "VERIFICATION FAILED", and code
+/// "receipt_canonicalization_mismatch".
 ///
-/// This is distinct from `tampering_field_without_updating_receipt_hash_yields_receipt_hash_mismatch`,
+/// This is distinct from
+/// `tampering_field_without_updating_receipt_hash_yields_receipt_canonicalization_mismatch`,
 /// which reaches the same code via an *indirect* path (tampers another field and
 /// leaves receipt_hash stale). This test targets the receipt_hash field itself.
 #[test]
@@ -999,7 +1005,7 @@ fn verify_receipt_rejects_zeroed_receipt_hash_field_with_stable_code() {
     ]);
     assert!(!success, "verify-receipt must exit 1 when receipt_hash is zeroed");
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "receipt_hash_mismatch");
+    assert_eq!(json["code"], "receipt_canonicalization_mismatch");
     assert!(json["reason"].is_string(), "reason must be present");
 }
 
@@ -1541,5 +1547,89 @@ fn verify_receipt_rejects_kernel_version_mismatch() {
     assert!(
         reason.contains("routing_kernel_version"),
         "reason must identify 'routing_kernel_version', got: {:?}", reason
+    );
+}
+
+// ── Registry snapshot hash verification ──────────────────────────────────────
+
+/// Verifying an unmodified receipt against the original inputs must succeed.
+/// Establishes the registry snapshot hash check baseline.
+#[test]
+fn verify_receipt_registry_snapshot_unchanged_passes() {
+    let s = scenario("routed_domestic_allowed");
+    // Route with the 3-input form; policy.json carries the same snapshot data.
+    let (route_ok, receipt_val) = route_scenario(&s);
+    assert!(route_ok, "route-case must succeed");
+
+    let receipt_content = serde_json::to_string(&receipt_val).unwrap();
+    let receipt_tmp = write_tmp("registry_snapshot_valid_receipt", &receipt_content);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", receipt_tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(success, "verify-receipt must succeed with unchanged inputs; got: {:?}", json);
+    assert_eq!(json["result"], "VERIFIED");
+}
+
+/// Providing a policy bundle whose snapshots differ from those used at routing
+/// time must cause `verify-receipt` to exit 1 with stable code
+/// `registry_snapshot_hash_mismatch`.
+///
+/// The check fires as a self-contained step before the full routing replay,
+/// so it does not require re-running the routing kernel to detect the tamper.
+///
+/// Test flow:
+///  1. Route a case via the 3-input form (case.json, candidates.json,
+///     snapshot.json) to produce a valid receipt.
+///  2. Build a modified policy bundle whose snapshots differ from snapshot.json
+///     (attestation_statuses flipped, is_eligible set to false). The
+///     candidates and routing_policy are unchanged so policy_fingerprint and
+///     candidate_pool_hash checks pass.
+///  3. Run verify-receipt with the original receipt and the tampered policy.
+///  4. Assert exit 1 and code "registry_snapshot_hash_mismatch".
+#[test]
+fn verify_receipt_registry_snapshot_mismatch_is_detected() {
+    let s = scenario("routed_domestic_allowed");
+
+    // Route with the 3-input form to produce a receipt.
+    let (route_ok, receipt_val) = route_scenario(&s);
+    assert!(route_ok, "route-case must succeed before tampering");
+
+    let receipt_content = serde_json::to_string(&receipt_val).unwrap();
+    let receipt_tmp = write_tmp("registry_snapshot_receipt", &receipt_content);
+
+    // Load policy.json and mutate the snapshot attestation status so the
+    // registry_snapshot_hash changes while candidates and routing_policy remain
+    // identical (policy_fingerprint and candidate_pool_hash are unaffected).
+    let policy_str = std::fs::read_to_string(s.join("policy.json"))
+        .expect("policy.json must be readable");
+    let mut policy_val: serde_json::Value =
+        serde_json::from_str(&policy_str).expect("policy.json must parse");
+    policy_val["snapshots"][0]["attestation_statuses"] = serde_json::json!(["rejected"]);
+    policy_val["snapshots"][0]["is_eligible"] = serde_json::json!(false);
+    let tampered_policy = serde_json::to_string(&policy_val).unwrap();
+    let policy_tmp = write_tmp("tampered_registry_policy", &tampered_policy);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", receipt_tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", policy_tmp.to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 on registry snapshot mismatch");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(
+        json["code"], "registry_snapshot_hash_mismatch",
+        "failure code must be registry_snapshot_hash_mismatch, got: {:?}", json["code"]
+    );
+    let reason = json["reason"].as_str().expect("reason must be a string");
+    assert!(
+        reason.contains("registry_snapshot_hash"),
+        "reason must identify 'registry_snapshot_hash', got: {:?}", reason
     );
 }

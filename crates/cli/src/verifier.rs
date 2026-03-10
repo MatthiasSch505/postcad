@@ -185,6 +185,20 @@ impl VerificationFailure {
         )
     }
 
+    /// Fired when the canonical SHA-256 of the receipt (deterministic key order,
+    /// compact, UTF-8) does not match the `receipt_hash` field stored in the
+    /// receipt. Indicates the receipt was either tampered or hashed using a
+    /// non-canonical serialization form.
+    pub fn receipt_canonicalization_mismatch(stored: &str, computed: &str) -> Self {
+        Self::new(
+            "receipt_canonicalization_mismatch",
+            format!(
+                "receipt_hash canonicalization mismatch: stored {}, canonical hash {}",
+                stored, computed
+            ),
+        )
+    }
+
     // ── Routing proof mismatch ────────────────────────────────────────────────
 
     pub fn routing_proof_hash_mismatch(receipt: &str, computed: &str) -> Self {
@@ -214,6 +228,18 @@ impl VerificationFailure {
             "audit_previous_hash_mismatch",
             format!(
                 "audit_previous_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
+    // ── Registry snapshot hash mismatch ──────────────────────────────────────
+
+    pub fn registry_snapshot_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "registry_snapshot_hash_mismatch",
+            format!(
+                "registry_snapshot_hash mismatch: receipt has {}, computed {}",
                 receipt, computed
             ),
         )

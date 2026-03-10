@@ -29,7 +29,7 @@ pub use verifier::VerificationFailure;
 
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
-use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, route_case_with_compliance_audit};
+use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, hash_registry_snapshots, route_case_with_compliance_audit};
 use postcad_routing::ROUTING_KERNEL_VERSION;
 use postcad_core::{
     Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
@@ -267,23 +267,39 @@ pub fn verify_receipt_from_json(
     }
 }
 
-/// Computes the canonical artifact-integrity hash for a receipt.
+/// Returns the canonical JSON string of a receipt, excluding the `receipt_hash`
+/// field itself to avoid circular hashing.
 ///
-/// Serializes the full receipt to a `serde_json::Value` (which produces an
-/// alphabetically ordered JSON object via `serde_json`'s BTreeMap), removes the
-/// `receipt_hash` field to avoid circular hashing, serializes to a compact JSON
-/// string, and returns `SHA-256(bytes)` as a 64-character lowercase hex string.
+/// Canonical form guarantees:
+/// - Keys sorted alphabetically (serde_json's default BTreeMap representation)
+/// - No whitespace (compact serialization)
+/// - Stable UTF-8 encoding
 ///
-/// This path is used identically during generation (in [`finalize_receipt`]) and
-/// during verification, guaranteeing the same canonical form in both directions.
-fn hash_receipt_content(receipt: &RoutingReceipt) -> String {
+/// This is the single authoritative serialization path for receipt hashing.
+/// Both generation ([`finalize_receipt`]) and verification use this function,
+/// guaranteeing byte-identical results across machines and serialization formats.
+///
+/// `receipt_hash` is always computed as:
+///
+/// ```text
+/// SHA-256(canonicalize_receipt(receipt_without_receipt_hash))
+/// ```
+pub(crate) fn canonicalize_receipt(receipt: &RoutingReceipt) -> String {
     let mut obj =
         serde_json::to_value(receipt).expect("RoutingReceipt serialization must not fail");
     obj.as_object_mut()
         .expect("RoutingReceipt must serialize as a JSON object")
         .remove("receipt_hash");
-    let canonical =
-        serde_json::to_string(&obj).expect("canonical receipt serialization must not fail");
+    serde_json::to_string(&obj).expect("canonical receipt serialization must not fail")
+}
+
+/// Computes the canonical artifact-integrity hash for a receipt.
+///
+/// Returns `SHA-256(canonicalize_receipt(receipt))` as a 64-character lowercase
+/// hex string. Uses [`canonicalize_receipt`] so that the same canonical form is
+/// used identically during generation ([`finalize_receipt`]) and verification.
+fn hash_receipt_content(receipt: &RoutingReceipt) -> String {
+    let canonical = canonicalize_receipt(receipt);
     let digest = Sha256::digest(canonical.as_bytes());
     format!("{:x}", digest)
 }
@@ -405,9 +421,14 @@ pub fn verify_receipt_from_policy_json(
         .map_err(|e| VerificationFailure::receipt_parse_failed(e.to_string()))?;
 
     // Step 1b: validate full artifact receipt_hash before any semantic check.
+    // Recomputes SHA-256(canonicalize_receipt(receipt)) and compares to the
+    // stored field. Fires receipt_canonicalization_mismatch rather than the
+    // generic receipt_hash_mismatch because the failure is always a canonical
+    // hash discrepancy — either the receipt was tampered or it was hashed using
+    // a non-canonical serialization form.
     let computed_receipt_hash = hash_receipt_content(&receipt);
     if computed_receipt_hash != receipt.receipt_hash {
-        return Err(VerificationFailure::receipt_hash_mismatch(
+        return Err(VerificationFailure::receipt_canonicalization_mismatch(
             &receipt.receipt_hash,
             &computed_receipt_hash,
         ));
@@ -501,6 +522,20 @@ pub fn verify_receipt_from_policy_json(
     let snapshots = build_snapshots(&policy_input.snapshots);
     validate_snapshots(&snapshots)
         .map_err(|e| VerificationFailure::policy_bundle_parse_failed(e.to_string()))?;
+
+    // Step 3d: verify registry_snapshot_hash against the provided snapshot
+    // material. This is a self-contained check using the policy bundle's
+    // embedded snapshots — the same input used during routing — so no routing
+    // replay is required. Any change to the snapshot set (manufacturer_id,
+    // eligibility flags, evidence references, attestation statuses) produces a
+    // different hash and fails immediately before the full routing replay.
+    let computed_registry_hash = hash_registry_snapshots(&snapshots);
+    if computed_registry_hash != receipt.registry_snapshot_hash {
+        return Err(VerificationFailure::registry_snapshot_hash_mismatch(
+            &receipt.registry_snapshot_hash,
+            &computed_registry_hash,
+        ));
+    }
 
     let result = route_case_with_compliance_audit(
         &case,
@@ -648,9 +683,14 @@ pub fn verify_receipt_from_inputs(
         .map_err(|e| VerificationFailure::receipt_parse_failed(e.to_string()))?;
 
     // Step 1b: validate full artifact receipt_hash before any semantic check.
+    // Recomputes SHA-256(canonicalize_receipt(receipt)) and compares to the
+    // stored field. Fires receipt_canonicalization_mismatch rather than the
+    // generic receipt_hash_mismatch because the failure is always a canonical
+    // hash discrepancy — either the receipt was tampered or it was hashed using
+    // a non-canonical serialization form.
     let computed_receipt_hash = hash_receipt_content(&receipt);
     if computed_receipt_hash != receipt.receipt_hash {
-        return Err(VerificationFailure::receipt_hash_mismatch(
+        return Err(VerificationFailure::receipt_canonicalization_mismatch(
             &receipt.receipt_hash,
             &computed_receipt_hash,
         ));
@@ -746,6 +786,16 @@ pub fn verify_receipt_from_inputs(
     let snapshots = build_snapshots(&policy_input.snapshots);
     validate_snapshots(&snapshots)
         .map_err(|e| VerificationFailure::policy_bundle_parse_failed(e.to_string()))?;
+
+    // Step 4c: verify registry_snapshot_hash against the provided snapshot
+    // material (from policy.json). Self-contained before the routing replay.
+    let computed_registry_hash = hash_registry_snapshots(&snapshots);
+    if computed_registry_hash != receipt.registry_snapshot_hash {
+        return Err(VerificationFailure::registry_snapshot_hash_mismatch(
+            &receipt.registry_snapshot_hash,
+            &computed_registry_hash,
+        ));
+    }
 
     let result = route_case_with_compliance_audit(
         &case,
@@ -2810,8 +2860,8 @@ mod tests {
 
         let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
             .unwrap_err();
-        assert_eq!(err.code, "receipt_hash_mismatch");
-        assert!(err.message.contains("receipt_hash mismatch"));
+        assert_eq!(err.code, "receipt_canonicalization_mismatch");
+        assert!(err.message.contains("canonicalization mismatch"));
     }
 
     #[test]
@@ -2826,7 +2876,7 @@ mod tests {
 
         let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
             .unwrap_err();
-        assert_eq!(err.code, "receipt_hash_mismatch");
+        assert_eq!(err.code, "receipt_canonicalization_mismatch");
     }
 
     #[test]
@@ -2841,7 +2891,7 @@ mod tests {
         let err =
             verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
                 .unwrap_err();
-        assert_eq!(err.code, "receipt_hash_mismatch");
+        assert_eq!(err.code, "receipt_canonicalization_mismatch");
     }
 
     // ── Test 17: policy_version commitment ────────────────────────────────────
@@ -3361,5 +3411,186 @@ mod tests {
         let err = verify_receipt_from_inputs(&tampered, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
             .unwrap_err();
         assert_eq!(err.code, "routing_decision_hash_mismatch");
+    }
+
+    // ── Test 22: canonical receipt serialization ──────────────────────────────
+
+    /// Verifies that `receipt_hash` is determined solely by the receipt's logical
+    /// content — not by the byte representation (pretty vs. compact JSON).
+    ///
+    /// `canonicalize_receipt` strips whitespace and sorts keys alphabetically,
+    /// so the same receipt fields always produce the same hash regardless of how
+    /// the outer JSON was formatted.
+    #[test]
+    fn receipt_hash_deterministic_across_serializations() {
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+
+        // Two serialization forms of the same receipt.
+        let pretty_json = serde_json::to_string_pretty(&receipt)
+            .expect("pretty serialization must not fail");
+        let compact_json = serde_json::to_string(&receipt)
+            .expect("compact serialization must not fail");
+
+        // Sanity: the two forms must differ (pretty adds whitespace).
+        assert_ne!(pretty_json, compact_json, "pretty and compact JSON must differ");
+
+        // Parse each form back into a RoutingReceipt.
+        let from_pretty: RoutingReceipt =
+            serde_json::from_str(&pretty_json).expect("pretty receipt must parse");
+        let from_compact: RoutingReceipt =
+            serde_json::from_str(&compact_json).expect("compact receipt must parse");
+
+        // receipt_hash embedded in the receipt must be identical — it was computed
+        // canonically at generation time and is a field of the struct value, not
+        // of the byte string.
+        assert_eq!(
+            from_pretty.receipt_hash, from_compact.receipt_hash,
+            "receipt_hash must be identical regardless of outer serialization format",
+        );
+
+        // canonicalize_receipt must produce the same canonical string from either form.
+        let canon_from_pretty = canonicalize_receipt(&from_pretty);
+        let canon_from_compact = canonicalize_receipt(&from_compact);
+        assert_eq!(
+            canon_from_pretty, canon_from_compact,
+            "canonicalize_receipt must be idempotent across serialization forms",
+        );
+
+        // And the hash we recompute from the canonical form must match the stored field.
+        assert_eq!(
+            from_pretty.receipt_hash,
+            hash_receipt_content(&from_pretty),
+            "receipt_hash must match the recomputed canonical hash",
+        );
+    }
+
+    /// [`canonicalize_receipt`] must produce compact JSON (no whitespace) with
+    /// keys in ascending alphabetical order and no `receipt_hash` field.
+    #[test]
+    fn canonicalize_receipt_is_compact_sorted_and_excludes_receipt_hash() {
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let canonical = canonicalize_receipt(&receipt);
+
+        // Must be valid JSON.
+        let parsed: serde_json::Value =
+            serde_json::from_str(&canonical).expect("canonical output must be valid JSON");
+
+        // Must not contain the receipt_hash field.
+        assert!(
+            parsed.get("receipt_hash").is_none(),
+            "canonical form must not include receipt_hash",
+        );
+
+        // Must be compact — no ASCII whitespace outside of string values.
+        // Checking for newlines and leading spaces (the signature of pretty-print).
+        assert!(!canonical.contains('\n'), "canonical form must not contain newlines");
+        assert!(!canonical.contains("  "), "canonical form must not contain double spaces");
+
+        // Keys must be in alphabetical order: verify a few anchor positions.
+        let audit_pos = canonical.find("\"audit_entry_hash\"").expect("audit_entry_hash present");
+        let candidate_pos =
+            canonical.find("\"candidate_order_hash\"").expect("candidate_order_hash present");
+        let routing_pos = canonical.find("\"routing_input\"").expect("routing_input present");
+        assert!(audit_pos < candidate_pos, "audit_entry_hash must precede candidate_order_hash");
+        assert!(candidate_pos < routing_pos, "candidate_order_hash must precede routing_input");
+    }
+
+    // ── Test 23: registry_snapshot_hash verification ──────────────────────────
+
+    /// Verifying with exactly the same policy bundle (including snapshots) must
+    /// succeed. Establishes the baseline that the registry snapshot hash check
+    /// does not block valid receipts.
+    #[test]
+    fn verify_receipt_from_policy_json_passes_with_correct_registry_snapshot() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
+            .expect("verification must succeed when snapshot material is unchanged");
+    }
+
+    /// Providing a policy bundle whose snapshots differ from those used at
+    /// routing time must fail with `registry_snapshot_hash_mismatch` before
+    /// the routing replay executes.
+    #[test]
+    fn verify_receipt_from_policy_json_fails_on_registry_snapshot_tamper() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        // Build a policy bundle with a mutated snapshot (is_eligible flipped).
+        let tampered_policy = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "candidates": [{
+                "id": "rc-1",
+                "manufacturer_id": "mfr-01",
+                "location": "domestic",
+                "accepts_case": true,
+                "eligibility": "eligible"
+            }],
+            "snapshots": [{
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001"],
+                "attestation_statuses": ["rejected"],
+                "is_eligible": false
+            }]
+        }"#;
+
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, tampered_policy)
+            .expect_err("verification must fail on snapshot tamper");
+        assert_eq!(
+            err.code, "registry_snapshot_hash_mismatch",
+            "wrong failure code; got: {:?}", err.code
+        );
+        assert!(
+            err.message.contains("registry_snapshot_hash"),
+            "message must identify the field; got: {:?}", err.message
+        );
+    }
+
+    /// Verifying with both the four-artifact inputs correct must succeed.
+    #[test]
+    fn verify_receipt_from_inputs_passes_with_correct_registry_snapshot() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+            .expect("verification must succeed when snapshot material is unchanged");
+    }
+
+    /// Providing a policy.json whose snapshots differ from routing time must
+    /// fail with `registry_snapshot_hash_mismatch` in the four-artifact path.
+    #[test]
+    fn verify_receipt_from_inputs_fails_on_registry_snapshot_tamper() {
+        let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        let tampered_policy = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "candidates": [{
+                "id": "rc-1",
+                "manufacturer_id": "mfr-01",
+                "location": "domestic",
+                "accepts_case": true,
+                "eligibility": "eligible"
+            }],
+            "snapshots": [{
+                "manufacturer_id": "mfr-01",
+                "evidence_references": ["REF-001-tampered"],
+                "attestation_statuses": ["verified"],
+                "is_eligible": true
+            }]
+        }"#;
+
+        let err =
+            verify_receipt_from_inputs(&receipt_json, CASE_JSON, tampered_policy, CANDIDATES_JSON)
+                .expect_err("verification must fail on snapshot tamper");
+        assert_eq!(
+            err.code, "registry_snapshot_hash_mismatch",
+            "wrong failure code; got: {:?}", err.code
+        );
     }
 }

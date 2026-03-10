@@ -486,8 +486,14 @@ fn verify_receipt_verified_envelope_contract() {
     ]);
     assert!(success, "verify-receipt must exit 0 on VERIFIED");
     assert_eq!(json["result"], "VERIFIED");
-    // The VERIFIED envelope must not include extraneous fields.
-    assert!(json["reason"].is_null(), "VERIFIED envelope must not include a reason field");
+    // The VERIFIED envelope must contain exactly one key: "result".
+    // This locks the complete shape and catches any silent additions.
+    let keys: Vec<&str> = json.as_object()
+        .expect("VERIFIED response must be a JSON object")
+        .keys()
+        .map(|k| k.as_str())
+        .collect();
+    assert_eq!(keys, vec!["result"], "VERIFIED envelope must have exactly one key, got: {:?}", keys);
 }
 
 /// The verify-receipt VERIFICATION FAILED envelope must include result and reason,

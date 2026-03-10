@@ -1109,3 +1109,28 @@ fn verify_receipt_tolerates_pretty_printed_input() {
     assert!(success, "verify-receipt must exit 0 for a pretty-printed receipt");
     assert_eq!(json["result"], "VERIFIED");
 }
+
+/// Two separate route-case subprocess invocations for the same inputs must
+/// produce identical receipt_hash values.
+///
+/// The unit-level test (receipt_hash_is_deterministic_for_same_inputs) covers
+/// in-process determinism. This test locks the same invariant at the CLI
+/// boundary: the full route-case binary, including I/O, serialisation, and
+/// serde round-trips, must produce a stable receipt_hash across runs.
+#[test]
+fn route_case_receipt_hash_is_deterministic_across_subprocess_invocations() {
+    let s = scenario("routed_domestic_allowed");
+    let (ok_a, json_a) = route_scenario(&s);
+    let (ok_b, json_b) = route_scenario(&s);
+    assert!(ok_a && ok_b, "both route-case invocations must succeed");
+
+    let hash_a = json_a["receipt_hash"].as_str()
+        .expect("receipt_hash must be a string in first invocation");
+    let hash_b = json_b["receipt_hash"].as_str()
+        .expect("receipt_hash must be a string in second invocation");
+
+    assert_eq!(
+        hash_a, hash_b,
+        "receipt_hash must be identical across separate route-case invocations for the same inputs"
+    );
+}

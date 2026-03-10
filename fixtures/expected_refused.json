@@ -10,6 +10,8 @@
   "candidate_pool_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
   "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "selection_input_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "candidate_order_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "routing_decision_hash": "63f0fde9e847840781b63d5924baaec0bc3cb776d11fc6a815a4166aa0df2433",
   "selected_candidate_id": null,
   "refusal_code": "no_eligible_candidates",
   "audit_seq": 0,
@@ -33,5 +35,5 @@
     "routing_policy": "allow_domestic_and_cross_border"
   },
   "routing_input_hash": "2ceb645596c04e0bd0cd995d074d20235356c1740d1231d10acd14062252d364",
-  "receipt_hash": "a4cedfa233267b574d83613aeceb835e9375dff07208b62e6090fbfd6c81ca20"
+  "receipt_hash": "4b0cabebe1089284ad46649525ba08123438062ef8aeece3277bf8a9b5a97a11"
 }

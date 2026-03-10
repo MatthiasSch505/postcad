@@ -1342,6 +1342,168 @@ fn verify_receipt_rejects_tampered_routing_input() {
     );
 }
 
+/// Tampering `candidate_order_hash` (the canonical sorted-order commitment for
+/// the eligible candidate list) must produce exit 1 and stable code
+/// `candidate_order_hash_mismatch`.
+///
+/// Test flow:
+///  1. Route a case to produce a valid receipt.
+///  2. Replace `candidate_order_hash` with a zeroed value.
+///  3. Recompute `receipt_hash` so the artifact-integrity check passes.
+///  4. Assert `verify-receipt` fails with code `candidate_order_hash_mismatch`.
+#[test]
+fn verify_receipt_rejects_candidate_order_change() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok, "route-case must succeed before tampering");
+
+    receipt_val["candidate_order_hash"] =
+        serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_candidate_order_hash", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when candidate_order_hash is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(
+        json["code"], "candidate_order_hash_mismatch",
+        "failure code must be candidate_order_hash_mismatch, got: {:?}", json["code"]
+    );
+    let reason = json["reason"].as_str().expect("reason must be a string");
+    assert!(
+        reason.contains("candidate_order_hash"),
+        "reason must identify 'candidate_order_hash', got: {:?}", reason
+    );
+}
+
+/// Modifying `selected_candidate_id` without updating `routing_decision_hash`
+/// must cause `verify-receipt` to exit 1 with stable code
+/// `routing_decision_hash_mismatch`.
+///
+/// Test flow:
+///  1. Route a case to produce a valid receipt.
+///  2. Replace `selected_candidate_id` with a different value.
+///  3. Recompute `receipt_hash` so the artifact-integrity check passes.
+///  4. Leave `routing_decision_hash` stale (not updated).
+///  5. Assert `verify-receipt` fails with code `routing_decision_hash_mismatch`.
+#[test]
+fn verify_receipt_rejects_decision_change() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok, "route-case must succeed before tampering");
+
+    // Change selected_candidate_id to a fabricated value.
+    receipt_val["selected_candidate_id"] = serde_json::json!("rc-attacker-injected");
+    // Recompute receipt_hash so the artifact-integrity check passes.
+    // routing_decision_hash is intentionally left stale.
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_decision_candidate", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when selected_candidate_id is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(
+        json["code"], "routing_decision_hash_mismatch",
+        "failure code must be routing_decision_hash_mismatch, got: {:?}", json["code"]
+    );
+    let reason = json["reason"].as_str().expect("reason must be a string");
+    assert!(
+        reason.contains("routing_decision_hash"),
+        "reason must identify 'routing_decision_hash', got: {:?}", reason
+    );
+}
+
+/// Modifying `selected_candidate_id` while keeping all self-contained hashes
+/// consistent must cause `verify-receipt` to exit 1 with stable code
+/// `routing_decision_replay_mismatch`.
+///
+/// This test covers the explicit post-replay comparison step (step 4e/5e).
+/// The attacker:
+///  1. Routes a case to produce a genuine receipt.
+///  2. Replaces `selected_candidate_id` with a fabricated value.
+///  3. Recomputes `routing_decision_hash` with the fabricated value so that
+///     the self-contained step-1e check passes.
+///  4. Recomputes `receipt_hash` so the artifact-integrity check passes.
+///  5. Does NOT touch `routing_proof_hash` (cannot forge without the kernel).
+///
+/// The replay step re-runs the routing kernel on the original inputs, which
+/// produces the original `selected_candidate_id`. The explicit comparison then
+/// catches the discrepancy between the replayed decision and the tampered field.
+///
+/// Test flow:
+///  1. Route a case to produce a valid receipt.
+///  2. Replace `selected_candidate_id` with a fabricated value.
+///  3. Recompute `routing_decision_hash` with the fabricated value.
+///  4. Recompute `receipt_hash`.
+///  5. Assert `verify-receipt` fails with code `routing_decision_replay_mismatch`.
+#[test]
+fn verify_receipt_replay_detects_decision_change() {
+    use sha2::{Digest, Sha256};
+
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok, "route-case must succeed before tampering");
+
+    // Fabricate a different selected_candidate_id.
+    let injected_id = "rc-replay-injected";
+    receipt_val["selected_candidate_id"] = serde_json::json!(injected_id);
+
+    // Recompute routing_decision_hash consistently with the fabricated id so
+    // that the self-contained step-1e check passes (only the replay step fires).
+    let decision_type = receipt_val["outcome"].as_str().unwrap().to_string();
+    let policy_version = receipt_val["policy_version"].clone();
+    let reason = receipt_val["refusal_code"].clone();
+    let routing_kernel_version = receipt_val["routing_kernel_version"].as_str().unwrap().to_string();
+    let decision_obj = serde_json::json!({
+        "decision_type": decision_type,
+        "policy_version": policy_version,
+        "reason": reason,
+        "routing_kernel_version": routing_kernel_version,
+        "selected_candidate_id": injected_id,
+    });
+    let canonical = serde_json::to_string(&decision_obj).unwrap();
+    let new_decision_hash = format!("{:x}", Sha256::digest(canonical.as_bytes()));
+    receipt_val["routing_decision_hash"] = serde_json::json!(new_decision_hash);
+
+    // Recompute receipt_hash last so the artifact-integrity check passes.
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_replay_decision", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when selected_candidate_id is replay-tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(
+        json["code"], "routing_decision_replay_mismatch",
+        "failure code must be routing_decision_replay_mismatch, got: {:?}", json["code"]
+    );
+    let reason_str = json["reason"].as_str().expect("reason must be a string");
+    assert!(
+        reason_str.contains("replay"),
+        "reason must mention 'replay', got: {:?}", reason_str
+    );
+}
+
 /// Modifying `routing_kernel_version` to an unknown value and recomputing
 /// `receipt_hash` must cause `verify-receipt` to exit 1 with stable code
 /// `routing_kernel_version_mismatch`.

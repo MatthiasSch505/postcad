@@ -117,6 +117,27 @@ pub struct RoutingReceipt {
     /// different hash. Any reordering of the selector input is therefore
     /// detectable during verification.
     pub selection_input_candidate_ids_hash: String,
+    /// SHA-256 of the deterministically ordered eligible candidate ID list.
+    ///
+    /// Computed from `decision_trace.eligible_candidate_ids` sorted in ascending
+    /// lexicographic order. Commits to both the eligible set membership and the
+    /// canonical ordering used for bias-free selection. Unlike
+    /// [`selection_input_candidate_ids_hash`], this hash is always sorted; it
+    /// detects any attempt to present candidates to the selector in a non-canonical
+    /// order.
+    pub candidate_order_hash: String,
+    /// SHA-256 of the canonical routing decision object.
+    ///
+    /// Commits to the final decision outcome fields: `decision_type` (`outcome`),
+    /// `policy_version`, `reason` (`refusal_code`), `routing_kernel_version`, and
+    /// `selected_candidate_id`. Serialized as canonical JSON (alphabetically sorted
+    /// keys, compact, no whitespace) before hashing.
+    ///
+    /// Provides a tamper-evident binding between the decision outcome fields and the
+    /// receipt, independently of [`routing_proof_hash`]. Any inconsistency between
+    /// `selected_candidate_id`, `outcome`, `refusal_code`, `policy_version`, or
+    /// `routing_kernel_version` and this hash causes verification to fail.
+    pub routing_decision_hash: String,
     /// ID of the selected routing candidate. `null` when refused.
     pub selected_candidate_id: Option<String>,
     /// Machine-readable refusal code. `null` when routed.

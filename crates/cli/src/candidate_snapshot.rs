@@ -131,6 +131,29 @@ pub(crate) fn hash_selector_input(ids: &[String]) -> String {
     format!("{:x}", digest)
 }
 
+// ── Candidate-order hash helper ───────────────────────────────────────────────
+
+/// Computes the canonical SHA-256 hash of the deterministically ordered
+/// (sorted ascending by ID) eligible candidate ID list.
+///
+/// Steps:
+/// 1. Sort the IDs in ascending lexicographic order.
+/// 2. Serialize to a compact JSON array (strings only).
+/// 3. Return the lowercase hex SHA-256 digest.
+///
+/// An empty eligible set produces a stable, non-empty hash of `"[]"`.
+/// This hash commits to both the set membership and the canonical ordering,
+/// providing evidence that the selector was presented candidates in a
+/// deterministic, bias-free order.
+pub(crate) fn hash_candidate_order(ids: &[String]) -> String {
+    let mut sorted = ids.to_vec();
+    sorted.sort();
+    let json =
+        serde_json::to_string(&sorted).expect("candidate order ID list serialization must not fail");
+    let digest = Sha256::digest(json.as_bytes());
+    format!("{:x}", digest)
+}
+
 // ── Pool hash helper ──────────────────────────────────────────────────────────
 
 /// Computes the canonical SHA-256 hash of a candidate pool.

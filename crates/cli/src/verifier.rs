@@ -121,6 +121,26 @@ impl VerificationFailure {
         )
     }
 
+    pub fn routing_decision_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "routing_decision_hash_mismatch",
+            format!(
+                "routing_decision_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
+    pub fn candidate_order_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "candidate_order_hash_mismatch",
+            format!(
+                "candidate_order_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
     pub fn eligible_candidate_ids_hash_mismatch(receipt: &str, computed: &str) -> Self {
         Self::new(
             "eligible_candidate_ids_hash_mismatch",
@@ -196,6 +216,15 @@ impl VerificationFailure {
                 "audit_previous_hash mismatch: receipt has {}, computed {}",
                 receipt, computed
             ),
+        )
+    }
+
+    // ── Routing replay mismatch ───────────────────────────────────────────────
+
+    pub fn routing_decision_replay_mismatch(detail: &str) -> Self {
+        Self::new(
+            "routing_decision_replay_mismatch",
+            format!("routing decision replay mismatch: {}", detail),
         )
     }
 }

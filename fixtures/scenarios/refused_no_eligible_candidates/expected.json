@@ -2,13 +2,14 @@
   "audit_entry_hash": "04b8388655041e8de67dfa5bba6731e0de25ea815ca511b5eca6e44af7e36e01",
   "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
   "audit_seq": 0,
+  "candidate_order_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "candidate_pool_hash": "84762ab3efd339fb5dab562758e16da060090eb802174fb3d8a1517ecf455a97",
   "case_fingerprint": "ab8bad6ca571335fd673c9e1feca0e0d525c7a48b02a32161b41ea831a4a2d53",
   "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "outcome": "refused",
   "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
   "policy_version": null,
-  "receipt_hash": "7828cd8f5e6e069f2684010885ebaa1a1b16625b1707543f1679d8e10b551ae6",
+  "receipt_hash": "513c1555db2072f701563e91b3249418adc18665dac29a1430231aec2978d828",
   "refusal": {
     "evaluated_candidate_ids": [
       "rc-us-01"
@@ -18,6 +19,7 @@
   },
   "refusal_code": "no_eligible_candidates",
   "registry_snapshot_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "routing_decision_hash": "63f0fde9e847840781b63d5924baaec0bc3cb776d11fc6a815a4166aa0df2433",
   "routing_input": {
     "case_id": "20000000-0000-0000-0000-000000000002",
     "file_type": "obj",

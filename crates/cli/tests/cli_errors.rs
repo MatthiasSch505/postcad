@@ -1032,3 +1032,50 @@ fn verify_receipt_tolerates_extra_top_level_field() {
     assert!(success, "verify-receipt must exit 0 when receipt has an extra unknown field");
     assert_eq!(json["result"], "VERIFIED");
 }
+
+/// A receipt JSON with the same semantic content but a different top-level key
+/// order must still verify successfully.
+///
+/// serde_json uses BTreeMap (no preserve_order feature), so any JSON input is
+/// normalised to alphabetical key order immediately on parse. hash_receipt_content
+/// re-serialises from the RoutingReceipt struct through the same BTreeMap path,
+/// so the computed hash is always identical regardless of the input key order.
+///
+/// This test constructs a JSON string where `schema_version` and `receipt_hash`
+/// appear first (before the alphabetically-earlier `audit_*` fields), confirming
+/// that the verifier is order-independent at the CLI boundary.
+#[test]
+fn verify_receipt_tolerates_different_key_order() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, receipt_val) = route_scenario(&s);
+    assert!(route_ok);
+
+    // Extract the two fields that will be moved to the front.
+    let schema_version = receipt_val["schema_version"].to_string();
+    let receipt_hash_val = receipt_val["receipt_hash"].to_string();
+
+    // Build the remainder without those two fields (serde_json will still sort
+    // the remaining keys, but schema_version and receipt_hash will now appear
+    // before the alphabetically-earlier audit_* fields).
+    let mut rest = receipt_val.clone();
+    rest.as_object_mut().unwrap().remove("schema_version");
+    rest.as_object_mut().unwrap().remove("receipt_hash");
+    let rest_json = serde_json::to_string(&rest).unwrap();
+    // Strip outer braces to inline as a continuation.
+    let rest_inner = &rest_json[1..rest_json.len() - 1];
+
+    let scrambled = format!(
+        r#"{{"schema_version":{schema_version},"receipt_hash":{receipt_hash_val},{rest_inner}}}"#
+    );
+
+    let tmp = write_tmp("key_order", &scrambled);
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(success, "verify-receipt must exit 0 when key order differs from alphabetical");
+    assert_eq!(json["result"], "VERIFIED");
+}

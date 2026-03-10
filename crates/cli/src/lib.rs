@@ -16,7 +16,7 @@
 //! itself has no dependency on internal crates.
 
 pub mod receipt;
-pub use receipt::{RECEIPT_SCHEMA_VERSION, ReceiptVerificationResult, RefusalDetail, RoutingReceipt};
+pub use receipt::{RECEIPT_SCHEMA_VERSION, ReceiptVerificationResult, RefusalDetail, RoutingInputEnvelope, RoutingReceipt};
 
 pub mod policy_bundle;
 pub use policy_bundle::{CandidateEntry, RoutingPolicyBundle, SnapshotEntry};
@@ -30,6 +30,7 @@ pub use verifier::VerificationFailure;
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
 use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, route_case_with_compliance_audit};
+use postcad_routing::ROUTING_KERNEL_VERSION;
 use postcad_core::{
     Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
     Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision, RoutingPolicy,
@@ -124,6 +125,19 @@ pub fn route_case_from_json(
 
     let case_fingerprint = fingerprint_case(&case);
 
+    let routing_input = RoutingInputEnvelope {
+        case_id: case.id.to_string(),
+        file_type: case_input.file_type.clone(),
+        jurisdiction: jurisdiction.to_string(),
+        manufacturer_country: case_input.manufacturer_country.clone(),
+        material: case_input.material.clone(),
+        patient_country: case_input.patient_country.clone(),
+        procedure: case_input.procedure.clone(),
+        routing_policy: case_input.routing_policy.as_deref()
+            .unwrap_or("allow_domestic_and_cross_border")
+            .to_string(),
+    };
+
     let result = route_case_with_compliance_audit(
         &case,
         jurisdiction,
@@ -133,7 +147,7 @@ pub fn route_case_from_json(
         None, // no policy_version in the three-file path
     );
 
-    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash))
+    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input))
 }
 
 /// Runs the compliance-aware routing pipeline from a case JSON and a policy
@@ -169,6 +183,19 @@ pub fn route_case_from_policy_json(
 
     let case_fingerprint = fingerprint_case(&case);
 
+    let routing_input = RoutingInputEnvelope {
+        case_id: case.id.to_string(),
+        file_type: case_input.file_type.clone(),
+        jurisdiction: jurisdiction.to_string(),
+        manufacturer_country: case_input.manufacturer_country.clone(),
+        material: case_input.material.clone(),
+        patient_country: case_input.patient_country.clone(),
+        procedure: case_input.procedure.clone(),
+        routing_policy: policy_input.routing_policy.as_deref()
+            .unwrap_or("allow_domestic_and_cross_border")
+            .to_string(),
+    };
+
     let result = route_case_with_compliance_audit(
         &case,
         jurisdiction,
@@ -178,7 +205,7 @@ pub fn route_case_from_policy_json(
         policy_input.policy_version.clone(),
     );
 
-    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash))
+    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input))
 }
 
 /// Verifies a routing receipt against the original inputs that produced it.
@@ -208,6 +235,7 @@ pub fn verify_receipt_from_json(
         };
     }
 
+    check!(routing_kernel_version);
     check!(outcome);
     check!(case_fingerprint);
     check!(policy_fingerprint);
@@ -223,6 +251,8 @@ pub fn verify_receipt_from_json(
     check!(audit_entry_hash);
     check!(audit_previous_hash);
     check!(refusal);
+    check!(routing_input);
+    check!(routing_input_hash);
     check!(receipt_hash);
 
     if mismatched.is_empty() {
@@ -263,6 +293,23 @@ fn hash_receipt_content(receipt: &RoutingReceipt) -> String {
 fn finalize_receipt(mut receipt: RoutingReceipt) -> RoutingReceipt {
     receipt.receipt_hash = hash_receipt_content(&receipt);
     receipt
+}
+
+/// Computes the canonical SHA-256 hash of a [`RoutingInputEnvelope`].
+///
+/// Serializes the envelope to a `serde_json::Value` (which uses BTreeMap for
+/// objects, giving alphabetically sorted keys), then to a compact JSON string,
+/// then returns `SHA-256(bytes)` as a 64-character lowercase hex string.
+///
+/// This is the same canonical-JSON approach used by [`hash_receipt_content`],
+/// ensuring that both functions produce stable, reproducible hashes.
+fn hash_routing_input(envelope: &RoutingInputEnvelope) -> String {
+    let obj =
+        serde_json::to_value(envelope).expect("RoutingInputEnvelope serialization must not fail");
+    let canonical =
+        serde_json::to_string(&obj).expect("canonical routing input serialization must not fail");
+    let digest = Sha256::digest(canonical.as_bytes());
+    format!("{:x}", digest)
 }
 
 /// Validates the `schema_version` field in a raw receipt JSON value.
@@ -313,6 +360,24 @@ pub fn verify_receipt_from_policy_json(
         return Err(VerificationFailure::receipt_hash_mismatch(
             &receipt.receipt_hash,
             &computed_receipt_hash,
+        ));
+    }
+
+    // Step 1c: verify routing_input_hash is consistent with receipt.routing_input.
+    // This is a self-contained check — no original input files required.
+    let computed_routing_input_hash = hash_routing_input(&receipt.routing_input);
+    if computed_routing_input_hash != receipt.routing_input_hash {
+        return Err(VerificationFailure::routing_input_hash_mismatch(
+            &receipt.routing_input_hash,
+            &computed_routing_input_hash,
+        ));
+    }
+
+    // Step 1d: verify routing_kernel_version matches the current pipeline.
+    if receipt.routing_kernel_version != ROUTING_KERNEL_VERSION {
+        return Err(VerificationFailure::routing_kernel_version_mismatch(
+            &receipt.routing_kernel_version,
+            ROUTING_KERNEL_VERSION,
         ));
     }
 
@@ -480,6 +545,23 @@ pub fn verify_receipt_from_inputs(
         ));
     }
 
+    // Step 1c: verify routing_input_hash is consistent with receipt.routing_input.
+    let computed_routing_input_hash = hash_routing_input(&receipt.routing_input);
+    if computed_routing_input_hash != receipt.routing_input_hash {
+        return Err(VerificationFailure::routing_input_hash_mismatch(
+            &receipt.routing_input_hash,
+            &computed_routing_input_hash,
+        ));
+    }
+
+    // Step 1d: verify routing_kernel_version matches the current pipeline.
+    if receipt.routing_kernel_version != ROUTING_KERNEL_VERSION {
+        return Err(VerificationFailure::routing_kernel_version_mismatch(
+            &receipt.routing_kernel_version,
+            ROUTING_KERNEL_VERSION,
+        ));
+    }
+
     // Step 2: build case, compute case_fingerprint.
     let case_input: CaseInput = serde_json::from_str(case_json)
         .map_err(|e| VerificationFailure::case_parse_failed(e.to_string()))?;
@@ -628,6 +710,7 @@ fn map_result_to_receipt(
     case_fingerprint: String,
     all_input_candidate_ids: Vec<String>,
     candidate_pool_hash: String,
+    routing_input: RoutingInputEnvelope,
 ) -> RoutingReceipt {
     // Extract primitive values from internal types before the match so they
     // are not accidentally referenced after `result` is partially moved.
@@ -646,6 +729,7 @@ fn map_result_to_receipt(
         hash_eligible_ids(&result.decision_trace.eligible_candidate_ids);
     let selection_input_candidate_ids_hash: String =
         hash_selector_input(&result.decision_trace.eligible_candidate_ids);
+    let routing_input_hash: String = hash_routing_input(&routing_input);
 
     match result.outcome.decision {
         RoutingDecision::Selected(selected_id) => {
@@ -661,6 +745,7 @@ fn map_result_to_receipt(
 
             finalize_receipt(RoutingReceipt {
                 schema_version: RECEIPT_SCHEMA_VERSION.to_string(),
+                routing_kernel_version: ROUTING_KERNEL_VERSION.to_string(),
                 outcome: "routed".to_string(),
                 case_fingerprint,
                 policy_fingerprint,
@@ -676,6 +761,8 @@ fn map_result_to_receipt(
                 audit_entry_hash,
                 audit_previous_hash,
                 refusal: None,
+                routing_input,
+                routing_input_hash,
                 receipt_hash: String::new(),
             })
         }
@@ -694,6 +781,7 @@ fn map_result_to_receipt(
 
             finalize_receipt(RoutingReceipt {
                 schema_version: RECEIPT_SCHEMA_VERSION.to_string(),
+                routing_kernel_version: ROUTING_KERNEL_VERSION.to_string(),
                 outcome: "refused".to_string(),
                 case_fingerprint,
                 policy_fingerprint,
@@ -713,6 +801,8 @@ fn map_result_to_receipt(
                     evaluated_candidate_ids: all_input_candidate_ids,
                     failed_constraint,
                 }),
+                routing_input,
+                routing_input_hash,
                 receipt_hash: String::new(),
             })
         }
@@ -734,6 +824,7 @@ fn map_result_to_receipt(
 
             finalize_receipt(RoutingReceipt {
                 schema_version: RECEIPT_SCHEMA_VERSION.to_string(),
+                routing_kernel_version: ROUTING_KERNEL_VERSION.to_string(),
                 outcome: "refused".to_string(),
                 case_fingerprint,
                 policy_fingerprint,
@@ -753,6 +844,8 @@ fn map_result_to_receipt(
                     evaluated_candidate_ids: all_input_candidate_ids,
                     failed_constraint,
                 }),
+                routing_input,
+                routing_input_hash,
                 receipt_hash: String::new(),
             })
         }
@@ -2691,5 +2784,188 @@ mod tests {
             verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_wrong_version, CANDIDATES_JSON)
                 .unwrap_err();
         assert_eq!(err.code, "policy_version_mismatch");
+    }
+
+    // ── Test 18: routing_kernel_version commitment ────────────────────────────
+
+    #[test]
+    fn routing_kernel_version_is_present_in_receipt() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_eq!(receipt.routing_kernel_version, "postcad-routing-v1");
+    }
+
+    #[test]
+    fn routing_kernel_version_is_deterministic() {
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_eq!(a.routing_kernel_version, b.routing_kernel_version);
+    }
+
+    #[test]
+    fn verify_receipt_accepts_correct_routing_kernel_version() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap();
+    }
+
+    #[test]
+    fn verify_receipt_rejects_unknown_routing_kernel_version() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+        v["routing_kernel_version"] = serde_json::json!("postcad-routing-v0");
+        // Recompute receipt_hash so artifact check passes; version check fires instead.
+        let without_hash = {
+            let mut obj = v.clone();
+            obj.as_object_mut().unwrap().remove("receipt_hash");
+            use sha2::{Digest, Sha256};
+            let canonical = serde_json::to_string(&obj).unwrap();
+            format!("{:x}", Sha256::digest(canonical.as_bytes()))
+        };
+        v["receipt_hash"] = serde_json::json!(without_hash);
+        let tampered_json = serde_json::to_string(&v).unwrap();
+        let err = verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON).unwrap_err();
+        assert_eq!(err.code, "routing_kernel_version_mismatch");
+    }
+
+    #[test]
+    fn verify_receipt_from_inputs_rejects_unknown_routing_kernel_version() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+        v["routing_kernel_version"] = serde_json::json!("postcad-routing-v99");
+        let without_hash = {
+            let mut obj = v.clone();
+            obj.as_object_mut().unwrap().remove("receipt_hash");
+            use sha2::{Digest, Sha256};
+            let canonical = serde_json::to_string(&obj).unwrap();
+            format!("{:x}", Sha256::digest(canonical.as_bytes()))
+        };
+        v["receipt_hash"] = serde_json::json!(without_hash);
+        let tampered_json = serde_json::to_string(&v).unwrap();
+        let err = verify_receipt_from_inputs(&tampered_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON).unwrap_err();
+        assert_eq!(err.code, "routing_kernel_version_mismatch");
+    }
+
+    // ── Test 19: routing_input_hash commitment ────────────────────────────────
+
+    #[test]
+    fn routing_input_is_present_in_receipt() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_eq!(receipt.routing_input.case_id, "00000000-0000-0000-0000-000000000001");
+        assert_eq!(receipt.routing_input.jurisdiction, "DE");
+        assert_eq!(receipt.routing_input.material, "zirconia");
+        assert_eq!(receipt.routing_input.procedure, "crown");
+        assert_eq!(receipt.routing_input.patient_country, "united_states");
+        assert_eq!(receipt.routing_input.manufacturer_country, "germany");
+        assert_eq!(receipt.routing_input.file_type, "stl");
+    }
+
+    #[test]
+    fn routing_input_hash_is_64_hex_chars() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_eq!(receipt.routing_input_hash.len(), 64);
+        assert!(receipt.routing_input_hash.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn routing_input_hash_is_deterministic() {
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_eq!(a.routing_input_hash, b.routing_input_hash);
+    }
+
+    #[test]
+    fn routing_input_hash_changes_when_procedure_changes() {
+        let case_bridge = r#"{
+            "case_id": "00000000-0000-0000-0000-000000000001",
+            "jurisdiction": "DE",
+            "patient_country": "united_states",
+            "manufacturer_country": "germany",
+            "material": "zirconia",
+            "procedure": "bridge",
+            "file_type": "stl"
+        }"#;
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b = route_case_from_json(case_bridge, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_ne!(a.routing_input_hash, b.routing_input_hash);
+    }
+
+    #[test]
+    fn routing_input_hash_changes_when_jurisdiction_changes() {
+        let case_us = r#"{
+            "case_id": "00000000-0000-0000-0000-000000000001",
+            "jurisdiction": "US",
+            "patient_country": "united_states",
+            "manufacturer_country": "germany",
+            "material": "zirconia",
+            "procedure": "crown",
+            "file_type": "stl"
+        }"#;
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b = route_case_from_json(case_us, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_ne!(a.routing_input_hash, b.routing_input_hash);
+    }
+
+    #[test]
+    fn routing_input_hash_is_committed_in_receipt_hash() {
+        // A receipt with a mutated routing_input_hash must not verify.
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+        v["routing_input_hash"] = serde_json::json!(
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        );
+        // Recompute receipt_hash to pass artifact check, but routing_input_hash mismatch fires.
+        let without_hash = {
+            let mut obj = v.clone();
+            obj.as_object_mut().unwrap().remove("receipt_hash");
+            use sha2::{Digest, Sha256};
+            let canonical = serde_json::to_string(&obj).unwrap();
+            format!("{:x}", Sha256::digest(canonical.as_bytes()))
+        };
+        v["receipt_hash"] = serde_json::json!(without_hash);
+        let tampered_json = serde_json::to_string(&v).unwrap();
+        let err = verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON)
+            .unwrap_err();
+        assert_eq!(err.code, "routing_input_hash_mismatch");
+    }
+
+    #[test]
+    fn verify_receipt_rejects_tampered_routing_input_procedure() {
+        // Mutate routing_input.procedure (analogous to "device_type") without
+        // updating routing_input_hash, but do update receipt_hash.
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+        v["routing_input"]["procedure"] = serde_json::json!("bridge");
+        // Recompute receipt_hash to pass artifact check.
+        let without_hash = {
+            let mut obj = v.clone();
+            obj.as_object_mut().unwrap().remove("receipt_hash");
+            use sha2::{Digest, Sha256};
+            let canonical = serde_json::to_string(&obj).unwrap();
+            format!("{:x}", Sha256::digest(canonical.as_bytes()))
+        };
+        v["receipt_hash"] = serde_json::json!(without_hash);
+        let tampered_json = serde_json::to_string(&v).unwrap();
+        let err = verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON)
+            .unwrap_err();
+        assert_eq!(err.code, "routing_input_hash_mismatch");
+    }
+
+    #[test]
+    fn verify_receipt_from_inputs_rejects_tampered_routing_input() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+        v["routing_input"]["jurisdiction"] = serde_json::json!("JP");
+        let without_hash = {
+            let mut obj = v.clone();
+            obj.as_object_mut().unwrap().remove("receipt_hash");
+            use sha2::{Digest, Sha256};
+            let canonical = serde_json::to_string(&obj).unwrap();
+            format!("{:x}", Sha256::digest(canonical.as_bytes()))
+        };
+        v["receipt_hash"] = serde_json::json!(without_hash);
+        let tampered_json = serde_json::to_string(&v).unwrap();
+        let err = verify_receipt_from_inputs(&tampered_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+            .unwrap_err();
+        assert_eq!(err.code, "routing_input_hash_mismatch");
     }
 }

@@ -1,6 +1,6 @@
 use postcad_core::{
     Case, RoutingCandidate, RoutingPolicy, RoutingPolicyConfig,
-    filter_candidates, fingerprint_policy, route_case_with_context,
+    filter_candidates, fingerprint_case, fingerprint_policy, route_case_with_context,
 };
 use postcad_registry::attestation::EvidenceAttestation;
 use postcad_registry::evidence::EligibilityEvidence;
@@ -41,18 +41,22 @@ pub fn route_case_with_audit(
 
     let outcome = route_case_with_context(case, policy, candidates);
 
+    let input_case_hash = fingerprint_case(case);
+
     let audit_receipt = RoutingAuditReceipt::from_outcome(
         &outcome,
         jurisdiction,
         candidates,
         policy_version.clone(),
-    );
+    )
+    .with_input_case_hash(Some(input_case_hash.clone()));
 
     let decision_trace =
         DecisionTrace::from_outcome(&outcome, jurisdiction, candidates, &filtered);
 
     let fingerprint =
-        RoutingDecisionFingerprint::from_outcome(&outcome, jurisdiction, candidates, policy_version);
+        RoutingDecisionFingerprint::from_outcome(&outcome, jurisdiction, candidates, policy_version)
+        .with_input_case_hash(Some(input_case_hash));
 
     let proof = RoutingProof::from_fingerprint(&fingerprint);
 
@@ -93,10 +97,11 @@ pub fn route_case_with_compliance_audit(
         .cloned()
         .collect();
 
-    // Step 2: compute the registry snapshot commitment from the full snapshot
-    // slice before any filtering — this binds the receipt to the exact registry
-    // state presented at routing time.
+    // Step 2: compute the registry snapshot commitment and the input case hash,
+    // both before any filtering — they bind the proof to the exact registry
+    // state and case payload presented at routing time.
     let registry_snapshot_hash = hash_registry_snapshots(snapshots);
+    let input_case_hash = fingerprint_case(case);
 
     // Step 3: policy filter (captured for DecisionTrace only).
     let policy_filtered = filter_candidates(policy.clone(), &compliant_candidates);
@@ -116,7 +121,8 @@ pub fn route_case_with_compliance_audit(
         &compliant_candidates,
         policy_version.clone(),
     )
-    .with_registry_snapshot_hash(Some(registry_snapshot_hash.clone()));
+    .with_registry_snapshot_hash(Some(registry_snapshot_hash.clone()))
+    .with_input_case_hash(Some(input_case_hash.clone()));
 
     let decision_trace = DecisionTrace::from_outcome(
         &outcome,
@@ -131,7 +137,8 @@ pub fn route_case_with_compliance_audit(
         &compliant_candidates,
         policy_version,
     )
-    .with_registry_snapshot_hash(Some(registry_snapshot_hash));
+    .with_registry_snapshot_hash(Some(registry_snapshot_hash))
+    .with_input_case_hash(Some(input_case_hash));
 
     let proof = RoutingProof::from_fingerprint(&fingerprint);
 
@@ -164,6 +171,7 @@ pub fn route_case_with_profile_compliance_audit(
     policy_version: Option<String>,
 ) -> RoutingServiceResult {
     // Step 1: run profile compliance routing.
+    let input_case_hash = fingerprint_case(case);
     let policy_fingerprint = fingerprint_policy(&policy);
     let outcome = route_case_with_profile_compliance(
         case,
@@ -204,7 +212,8 @@ pub fn route_case_with_profile_compliance_audit(
         jurisdiction,
         &compliant_candidates,
         policy_version.clone(),
-    );
+    )
+    .with_input_case_hash(Some(input_case_hash.clone()));
 
     let decision_trace = DecisionTrace::from_outcome(
         &outcome,
@@ -218,7 +227,8 @@ pub fn route_case_with_profile_compliance_audit(
         jurisdiction,
         &compliant_candidates,
         policy_version,
-    );
+    )
+    .with_input_case_hash(Some(input_case_hash));
 
     let proof = RoutingProof::from_fingerprint(&fingerprint);
 

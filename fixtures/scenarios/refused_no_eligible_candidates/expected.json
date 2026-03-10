@@ -1,25 +1,37 @@
 {
-  "schema_version": "1",
-  "outcome": "refused",
+  "audit_entry_hash": "04b8388655041e8de67dfa5bba6731e0de25ea815ca511b5eca6e44af7e36e01",
+  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "audit_seq": 0,
+  "candidate_pool_hash": "84762ab3efd339fb5dab562758e16da060090eb802174fb3d8a1517ecf455a97",
   "case_fingerprint": "ab8bad6ca571335fd673c9e1feca0e0d525c7a48b02a32161b41ea831a4a2d53",
+  "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "outcome": "refused",
   "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
   "policy_version": null,
-  "routing_proof_hash": "16e44b35673a3efcc47c3a30748be6f65b750ddecfe8d9049b433db61e3dae81",
-  "registry_snapshot_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "candidate_pool_hash": "84762ab3efd339fb5dab562758e16da060090eb802174fb3d8a1517ecf455a97",
-  "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "selection_input_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "selected_candidate_id": null,
-  "refusal_code": "no_eligible_candidates",
-  "audit_seq": 0,
-  "audit_entry_hash": "aa203b8d096161d33a4fb23186e21b2286f9289cc52c0813dd30f13c579d16c2",
-  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "receipt_hash": "7828cd8f5e6e069f2684010885ebaa1a1b16625b1707543f1679d8e10b551ae6",
   "refusal": {
-    "message": "No eligible candidate found",
     "evaluated_candidate_ids": [
       "rc-us-01"
     ],
-    "failed_constraint": "compliance_gate"
+    "failed_constraint": "compliance_gate",
+    "message": "No eligible candidate found"
   },
-  "receipt_hash": "a6b156b03d7ec3e07c49c640bb4e85ad57b742934ef334549e8f07bc626f463c"
+  "refusal_code": "no_eligible_candidates",
+  "registry_snapshot_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "routing_input": {
+    "case_id": "20000000-0000-0000-0000-000000000002",
+    "file_type": "obj",
+    "jurisdiction": "US",
+    "manufacturer_country": "united_states",
+    "material": "pmma",
+    "patient_country": "united_states",
+    "procedure": "bridge",
+    "routing_policy": "allow_domestic_only"
+  },
+  "routing_input_hash": "547b5fcd4c2725e553b98b0482653cf3845b6f6c76430ac7c59d14bd56c221ed",
+  "routing_kernel_version": "postcad-routing-v1",
+  "routing_proof_hash": "bbf1cfa703649c84a7185f4b6ffe3f79ad23e309e9b41625c84efb380f96ca2e",
+  "schema_version": "1",
+  "selected_candidate_id": null,
+  "selection_input_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
 }

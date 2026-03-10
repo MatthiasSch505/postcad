@@ -14,6 +14,10 @@ pub struct RoutingDecisionFingerprint {
     /// `None` when routing ran without a compliance snapshot (e.g. plain
     /// `route_case_with_audit`). Covered by the proof hash.
     pub registry_snapshot_hash: Option<String>,
+    /// SHA-256 of the canonical case content (all fields of `DentalCase` plus
+    /// `case_id`). Computed via `fingerprint_case`. Covered by the proof hash,
+    /// binding the proof to the full case payload rather than just the UUID.
+    pub input_case_hash: Option<String>,
 }
 
 impl RoutingDecisionFingerprint {
@@ -44,6 +48,7 @@ impl RoutingDecisionFingerprint {
                     refusal_code: None,
                     policy_version,
                     registry_snapshot_hash: None,
+                    input_case_hash: None,
                 }
             }
 
@@ -62,6 +67,7 @@ impl RoutingDecisionFingerprint {
                     refusal_code,
                     policy_version,
                     registry_snapshot_hash: None,
+                    input_case_hash: None,
                 }
             }
 
@@ -74,6 +80,7 @@ impl RoutingDecisionFingerprint {
                 refusal_code: Some("no_eligible_candidates".to_string()),
                 policy_version,
                 registry_snapshot_hash: None,
+                input_case_hash: None,
             },
         }
     }
@@ -84,6 +91,16 @@ impl RoutingDecisionFingerprint {
     /// routing time. The hash is then covered by [`RoutingProof`]'s SHA-256.
     pub fn with_registry_snapshot_hash(mut self, hash: Option<String>) -> Self {
         self.registry_snapshot_hash = hash;
+        self
+    }
+
+    /// Sets the input case hash on this fingerprint, consuming `self`.
+    ///
+    /// Should always be called with `Some(fingerprint_case(case))`. The hash
+    /// binds the proof to the full case payload (all DentalCase fields + id),
+    /// closing the gap where `case_id` alone could not detect field mutations.
+    pub fn with_input_case_hash(mut self, hash: Option<String>) -> Self {
+        self.input_case_hash = hash;
         self
     }
 

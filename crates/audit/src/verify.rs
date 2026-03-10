@@ -86,6 +86,12 @@ pub fn verify_receipt(receipt: &RoutingAuditReceipt, proof: &RoutingProof) -> Ve
         });
     }
 
+    if fp.input_case_hash != receipt.input_case_hash {
+        return VerificationResult::Invalid(VerificationFailure::FieldMismatch {
+            field: "input_case_hash",
+        });
+    }
+
     // Derive expected final_status from the receipt and compare.
     let expected_status = if receipt.selected_manufacturer_id.is_some() {
         "selected"
@@ -454,6 +460,131 @@ mod tests {
             result_a.audit_receipt.registry_snapshot_hash,
             result_b.audit_receipt.registry_snapshot_hash
         );
+    }
+
+    // ── input case hash ───────────────────────────────────────────────────────
+
+    #[test]
+    fn input_case_hash_is_present_and_valid_in_compliance_audit() {
+        let result = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        let hash = result.audit_receipt.input_case_hash.as_ref().expect("input_case_hash must be Some");
+        assert_eq!(hash.len(), 64);
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(
+            verify_receipt(&result.audit_receipt, &result.proof),
+            VerificationResult::Valid
+        );
+    }
+
+    #[test]
+    fn tampered_input_case_hash_in_receipt_returns_field_mismatch() {
+        let result = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        let mut receipt = result.audit_receipt.clone();
+        receipt.input_case_hash =
+            Some("0000000000000000000000000000000000000000000000000000000000000000".to_string());
+        assert_eq!(
+            verify_receipt(&receipt, &result.proof),
+            VerificationResult::Invalid(VerificationFailure::FieldMismatch {
+                field: "input_case_hash"
+            })
+        );
+    }
+
+    #[test]
+    fn different_case_content_produces_different_input_case_hash() {
+        use postcad_core::{Material, DentalCase};
+        let case_a = valid_case();
+        let case_b = Case::new(DentalCase {
+            material: Material::Titanium,
+            ..case_a.dental_case.clone()
+        });
+
+        let result_a = route_case_with_compliance_audit(
+            &case_a,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        let result_b = route_case_with_compliance_audit(
+            &case_b,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        assert_ne!(
+            result_a.audit_receipt.input_case_hash,
+            result_b.audit_receipt.input_case_hash
+        );
+    }
+
+    #[test]
+    fn input_case_hash_is_stable_for_equivalent_case() {
+        use crate::service::route_case_with_audit;
+        let case = valid_case();
+        let result_a = route_case_with_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            None,
+        );
+        let result_b = route_case_with_audit(
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            None,
+        );
+        assert_eq!(
+            result_a.audit_receipt.input_case_hash,
+            result_b.audit_receipt.input_case_hash
+        );
+    }
+
+    #[test]
+    fn input_case_hash_changes_proof_hash() {
+        use postcad_core::{Material, DentalCase};
+        let case_a = valid_case();
+        let case_b = Case::new(DentalCase {
+            material: Material::Titanium,
+            ..case_a.dental_case.clone()
+        });
+
+        let result_a = route_case_with_compliance_audit(
+            &case_a,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        let result_b = route_case_with_compliance_audit(
+            &case_b,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        assert_ne!(result_a.proof.hash_hex, result_b.proof.hash_hex);
     }
 
     #[test]

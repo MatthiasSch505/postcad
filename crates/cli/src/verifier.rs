@@ -46,6 +46,18 @@ impl VerificationFailure {
         )
     }
 
+    // ── Routing kernel version mismatch ──────────────────────────────────────
+
+    pub fn routing_kernel_version_mismatch(receipt: &str, expected: &str) -> Self {
+        Self::new(
+            "routing_kernel_version_mismatch",
+            format!(
+                "routing_kernel_version mismatch: receipt has {:?}, expected {:?}",
+                receipt, expected
+            ),
+        )
+    }
+
     // ── Parse failures ────────────────────────────────────────────────────────
 
     pub fn receipt_parse_failed(detail: impl Into<String>) -> Self {
@@ -124,6 +136,18 @@ impl VerificationFailure {
             "selection_input_candidate_ids_hash_mismatch",
             format!(
                 "selection_input_candidate_ids_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
+    // ── Routing input envelope hash mismatch ─────────────────────────────────
+
+    pub fn routing_input_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "routing_input_hash_mismatch",
+            format!(
+                "routing_input_hash mismatch: receipt has {}, computed {}",
                 receipt, computed
             ),
         )

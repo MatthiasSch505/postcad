@@ -1296,3 +1296,88 @@ fn verify_receipt_rejects_tampered_selection_input_candidate_ids_hash_with_stabl
         "code must identify the selector input ordering commitment failure");
     assert!(json["reason"].is_string(), "reason must be present");
 }
+
+/// Mutating `routing_input.procedure` (the domain analog of "device type")
+/// without updating `routing_input_hash` must be detected as a
+/// `routing_input_hash_mismatch` failure even when `receipt_hash` is recomputed.
+///
+/// The test:
+///  1. Routes a case to produce a valid receipt.
+///  2. Modifies `routing_input.procedure` to a different value.
+///  3. Recomputes `receipt_hash` so the artifact-integrity check passes.
+///  4. Calls `verify-receipt` and asserts failure with stable code
+///     `routing_input_hash_mismatch`.
+#[test]
+fn verify_receipt_rejects_tampered_routing_input() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok, "route-case must succeed before tampering");
+
+    // Mutate routing_input.procedure (analogous to "device_type" in the routing
+    // input envelope) without updating routing_input_hash.
+    receipt_val["routing_input"]["procedure"] = serde_json::json!("bridge");
+    // Recompute receipt_hash so the artifact-integrity check passes and the
+    // routing_input_hash_mismatch check fires instead.
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_routing_input", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 when routing_input is tampered");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(
+        json["code"], "routing_input_hash_mismatch",
+        "failure code must be routing_input_hash_mismatch, got: {:?}", json["code"]
+    );
+    let reason = json["reason"].as_str().expect("reason must be a string");
+    assert!(
+        reason.contains("routing_input_hash"),
+        "reason must identify 'routing_input_hash', got: {:?}", reason
+    );
+}
+
+/// Modifying `routing_kernel_version` to an unknown value and recomputing
+/// `receipt_hash` must cause `verify-receipt` to exit 1 with stable code
+/// `routing_kernel_version_mismatch`.
+///
+/// Test flow:
+///  1. Route a case to produce a valid receipt.
+///  2. Replace `routing_kernel_version` with a fictitious future version.
+///  3. Recompute `receipt_hash` so the artifact-integrity check passes.
+///  4. Assert `verify-receipt` fails with code `routing_kernel_version_mismatch`.
+#[test]
+fn verify_receipt_rejects_kernel_version_mismatch() {
+    let s = scenario("routed_domestic_allowed");
+    let (route_ok, mut receipt_val) = route_scenario(&s);
+    assert!(route_ok, "route-case must succeed before tampering");
+
+    receipt_val["routing_kernel_version"] = serde_json::json!("postcad-routing-v99");
+    receipt_val["receipt_hash"] = serde_json::json!(recompute_receipt_hash(&receipt_val));
+    let tampered = serde_json::to_string(&receipt_val).unwrap();
+    let tmp = write_tmp("tampered_kernel_version", &tampered);
+
+    let (success, json) = run(&[
+        "verify-receipt", "--json",
+        "--receipt", tmp.to_str().unwrap(),
+        "--case", s.join("case.json").to_str().unwrap(),
+        "--policy", s.join("policy.json").to_str().unwrap(),
+        "--candidates", s.join("candidates.json").to_str().unwrap(),
+    ]);
+    assert!(!success, "verify-receipt must exit 1 on routing_kernel_version mismatch");
+    assert_eq!(json["result"], "VERIFICATION FAILED");
+    assert_eq!(
+        json["code"], "routing_kernel_version_mismatch",
+        "failure code must be routing_kernel_version_mismatch, got: {:?}", json["code"]
+    );
+    let reason = json["reason"].as_str().expect("reason must be a string");
+    assert!(
+        reason.contains("routing_kernel_version"),
+        "reason must identify 'routing_kernel_version', got: {:?}", reason
+    );
+}

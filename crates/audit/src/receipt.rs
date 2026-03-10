@@ -13,6 +13,10 @@ pub struct RoutingAuditReceipt {
     /// SHA-256 of the canonical registry snapshot used at routing time.
     /// `None` when routing ran without a compliance snapshot.
     pub registry_snapshot_hash: Option<String>,
+    /// SHA-256 of the canonical case content (all DentalCase fields + case_id).
+    /// `None` when not computed (legacy path). Matches the `input_case_hash` in
+    /// the accompanying [`RoutingDecisionFingerprint`].
+    pub input_case_hash: Option<String>,
 }
 
 impl RoutingAuditReceipt {
@@ -43,6 +47,7 @@ impl RoutingAuditReceipt {
                     refusal_message: None,
                     policy_version,
                     registry_snapshot_hash: None,
+                    input_case_hash: None,
                 }
             }
 
@@ -68,6 +73,7 @@ impl RoutingAuditReceipt {
                     refusal_message: Some(message),
                     policy_version,
                     registry_snapshot_hash: None,
+                    input_case_hash: None,
                 }
             }
 
@@ -80,6 +86,7 @@ impl RoutingAuditReceipt {
                 refusal_message: Some("No eligible candidate found".to_string()),
                 policy_version,
                 registry_snapshot_hash: None,
+                input_case_hash: None,
             },
         }
     }
@@ -90,6 +97,14 @@ impl RoutingAuditReceipt {
     /// routing time.
     pub fn with_registry_snapshot_hash(mut self, hash: Option<String>) -> Self {
         self.registry_snapshot_hash = hash;
+        self
+    }
+
+    /// Sets the input case hash on this receipt, consuming `self`.
+    ///
+    /// Call after [`from_outcome`] with `Some(fingerprint_case(case))`.
+    pub fn with_input_case_hash(mut self, hash: Option<String>) -> Self {
+        self.input_case_hash = hash;
         self
     }
 }

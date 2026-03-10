@@ -10,6 +10,7 @@ use postcad_compliance::{ComplianceGate, route_case_with_profile_compliance};
 
 use crate::{
     DecisionTrace, RoutingAuditReceipt, RoutingDecisionFingerprint, RoutingProof,
+    hash_registry_snapshots,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,22 +93,30 @@ pub fn route_case_with_compliance_audit(
         .cloned()
         .collect();
 
-    // Step 2: policy filter (captured for DecisionTrace only).
+    // Step 2: compute the registry snapshot commitment from the full snapshot
+    // slice before any filtering — this binds the receipt to the exact registry
+    // state presented at routing time.
+    let registry_snapshot_hash = hash_registry_snapshots(snapshots);
+
+    // Step 3: policy filter (captured for DecisionTrace only).
     let policy_filtered = filter_candidates(policy.clone(), &compliant_candidates);
 
     let policy_config = RoutingPolicyConfig::new(policy.clone());
     let policy_fingerprint = fingerprint_policy(&policy_config);
 
-    // Step 3: route against the compliance-filtered candidate set.
+    // Step 4: route against the compliance-filtered candidate set.
     let outcome = route_case_with_context(case, policy, &compliant_candidates);
 
-    // Step 4: derive audit artifacts from the compliance-filtered view.
+    // Step 5: derive audit artifacts from the compliance-filtered view,
+    // attaching the registry snapshot commitment to both the fingerprint and
+    // the audit receipt so it is covered by the proof hash and verifiable.
     let audit_receipt = RoutingAuditReceipt::from_outcome(
         &outcome,
         jurisdiction,
         &compliant_candidates,
         policy_version.clone(),
-    );
+    )
+    .with_registry_snapshot_hash(Some(registry_snapshot_hash.clone()));
 
     let decision_trace = DecisionTrace::from_outcome(
         &outcome,
@@ -121,7 +130,8 @@ pub fn route_case_with_compliance_audit(
         jurisdiction,
         &compliant_candidates,
         policy_version,
-    );
+    )
+    .with_registry_snapshot_hash(Some(registry_snapshot_hash));
 
     let proof = RoutingProof::from_fingerprint(&fingerprint);
 

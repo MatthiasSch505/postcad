@@ -1,6 +1,9 @@
 pub mod canonical;
 pub use canonical::to_canonical_json;
 
+pub mod registry_snapshot;
+pub use registry_snapshot::hash_registry_snapshots;
+
 pub mod chain;
 pub use chain::{AuditEvent, AuditEntry, AuditLog};
 

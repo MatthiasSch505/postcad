@@ -10,6 +10,9 @@ pub struct RoutingAuditReceipt {
     pub refusal_code: Option<String>,
     pub refusal_message: Option<String>,
     pub policy_version: Option<String>,
+    /// SHA-256 of the canonical registry snapshot used at routing time.
+    /// `None` when routing ran without a compliance snapshot.
+    pub registry_snapshot_hash: Option<String>,
 }
 
 impl RoutingAuditReceipt {
@@ -39,6 +42,7 @@ impl RoutingAuditReceipt {
                     refusal_code: None,
                     refusal_message: None,
                     policy_version,
+                    registry_snapshot_hash: None,
                 }
             }
 
@@ -63,6 +67,7 @@ impl RoutingAuditReceipt {
                     refusal_code: Some(code),
                     refusal_message: Some(message),
                     policy_version,
+                    registry_snapshot_hash: None,
                 }
             }
 
@@ -74,8 +79,18 @@ impl RoutingAuditReceipt {
                 refusal_code: Some("no_eligible_candidates".to_string()),
                 refusal_message: Some("No eligible candidate found".to_string()),
                 policy_version,
+                registry_snapshot_hash: None,
             },
         }
+    }
+
+    /// Sets the registry snapshot hash on this receipt, consuming `self`.
+    ///
+    /// Call after [`from_outcome`] when a compliance snapshot was used at
+    /// routing time.
+    pub fn with_registry_snapshot_hash(mut self, hash: Option<String>) -> Self {
+        self.registry_snapshot_hash = hash;
+        self
     }
 }
 

@@ -80,6 +80,12 @@ pub fn verify_receipt(receipt: &RoutingAuditReceipt, proof: &RoutingProof) -> Ve
         });
     }
 
+    if fp.registry_snapshot_hash != receipt.registry_snapshot_hash {
+        return VerificationResult::Invalid(VerificationFailure::FieldMismatch {
+            field: "registry_snapshot_hash",
+        });
+    }
+
     // Derive expected final_status from the receipt and compare.
     let expected_status = if receipt.selected_manufacturer_id.is_some() {
         "selected"
@@ -108,7 +114,8 @@ mod tests {
         Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingPolicy,
     };
 
-    use crate::service::route_case_with_audit;
+    use crate::service::{route_case_with_audit, route_case_with_compliance_audit};
+    use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
 
     fn valid_case() -> Case {
         Case::new(DentalCase {
@@ -128,6 +135,24 @@ mod tests {
             procedure: ProcedureType::Crown,
             file_type: FileType::Other(String::new()),
         })
+    }
+
+    fn eligible_snapshot(mfr_id: &str) -> ManufacturerComplianceSnapshot {
+        ManufacturerComplianceSnapshot::new(
+            mfr_id,
+            vec!["REF-001".to_string()],
+            vec!["verified".to_string()],
+            true,
+        )
+    }
+
+    fn ineligible_snapshot(mfr_id: &str) -> ManufacturerComplianceSnapshot {
+        ManufacturerComplianceSnapshot::new(
+            mfr_id,
+            vec!["REF-001".to_string()],
+            vec!["rejected".to_string()],
+            false,
+        )
     }
 
     fn domestic(rc_id: &str, mfr_id: &str) -> RoutingCandidate {
@@ -363,6 +388,98 @@ mod tests {
         receipt.refusal_code = None;
         receipt.refusal_message = None;
         assert!(!verify_receipt(&receipt, &result.proof).is_valid());
+    }
+
+    // ── registry snapshot hash ────────────────────────────────────────────────
+
+    #[test]
+    fn compliance_audit_receipt_and_proof_verify_with_unchanged_snapshot() {
+        let result = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        assert_eq!(
+            verify_receipt(&result.audit_receipt, &result.proof),
+            VerificationResult::Valid
+        );
+    }
+
+    #[test]
+    fn tampered_registry_snapshot_hash_in_receipt_returns_field_mismatch() {
+        let result = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        // Proof is valid (not tampered); only the receipt field is changed.
+        // This simulates an auditor altering the committed snapshot hash
+        // without invalidating the proof.
+        let mut receipt = result.audit_receipt.clone();
+        receipt.registry_snapshot_hash =
+            Some("0000000000000000000000000000000000000000000000000000000000000000".to_string());
+        assert_eq!(
+            verify_receipt(&receipt, &result.proof),
+            VerificationResult::Invalid(VerificationFailure::FieldMismatch {
+                field: "registry_snapshot_hash"
+            })
+        );
+    }
+
+    #[test]
+    fn different_snapshots_produce_different_registry_snapshot_hashes() {
+        let result_a = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[eligible_snapshot("mfr-01")],
+            None,
+        );
+        let result_b = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[ineligible_snapshot("mfr-01")],
+            None,
+        );
+        assert_ne!(
+            result_a.audit_receipt.registry_snapshot_hash,
+            result_b.audit_receipt.registry_snapshot_hash
+        );
+    }
+
+    #[test]
+    fn registry_snapshot_hash_is_stable_for_equivalent_snapshots() {
+        let snap_a = eligible_snapshot("mfr-01");
+        let snap_b = eligible_snapshot("mfr-01");
+        let result_a = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[snap_a],
+            None,
+        );
+        let result_b = route_case_with_compliance_audit(
+            &valid_case(),
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &[domestic("rc-1", "mfr-01")],
+            &[snap_b],
+            None,
+        );
+        assert_eq!(
+            result_a.audit_receipt.registry_snapshot_hash,
+            result_b.audit_receipt.registry_snapshot_hash
+        );
     }
 
     // ── is_valid helper ───────────────────────────────────────────────────────

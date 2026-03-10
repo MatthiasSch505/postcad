@@ -10,6 +10,10 @@ pub struct RoutingDecisionFingerprint {
     pub final_status: String,
     pub refusal_code: Option<String>,
     pub policy_version: Option<String>,
+    /// SHA-256 of the canonical registry snapshot used at routing time.
+    /// `None` when routing ran without a compliance snapshot (e.g. plain
+    /// `route_case_with_audit`). Covered by the proof hash.
+    pub registry_snapshot_hash: Option<String>,
 }
 
 impl RoutingDecisionFingerprint {
@@ -39,6 +43,7 @@ impl RoutingDecisionFingerprint {
                     final_status: "selected".to_string(),
                     refusal_code: None,
                     policy_version,
+                    registry_snapshot_hash: None,
                 }
             }
 
@@ -56,6 +61,7 @@ impl RoutingDecisionFingerprint {
                     final_status: "refused".to_string(),
                     refusal_code,
                     policy_version,
+                    registry_snapshot_hash: None,
                 }
             }
 
@@ -67,8 +73,18 @@ impl RoutingDecisionFingerprint {
                 final_status: "refused".to_string(),
                 refusal_code: Some("no_eligible_candidates".to_string()),
                 policy_version,
+                registry_snapshot_hash: None,
             },
         }
+    }
+
+    /// Sets the registry snapshot hash on this fingerprint, consuming `self`.
+    ///
+    /// Call after [`from_outcome`] when a compliance snapshot was used at
+    /// routing time. The hash is then covered by [`RoutingProof`]'s SHA-256.
+    pub fn with_registry_snapshot_hash(mut self, hash: Option<String>) -> Self {
+        self.registry_snapshot_hash = hash;
+        self
     }
 
     /// Returns the canonical JSON representation of this fingerprint.

@@ -36,6 +36,14 @@ pub struct RoutingReceipt {
     pub policy_fingerprint: String,
     /// SHA-256 of the canonical routing decision fingerprint.
     pub routing_proof_hash: String,
+    /// SHA-256 of the canonical registry snapshot committed at routing time.
+    ///
+    /// Computed from the full set of [`ManufacturerComplianceSnapshot`] items
+    /// presented to the compliance gate, sorted by `manufacturer_id` before
+    /// hashing. Any change to the registry data (eligibility flags, evidence
+    /// references, attestation statuses) produces a different value and causes
+    /// verification to fail via the [`routing_proof_hash`] check.
+    pub registry_snapshot_hash: String,
     /// SHA-256 of the canonical candidate pool committed at routing time.
     ///
     /// Computed from the full input candidate universe (before policy filtering

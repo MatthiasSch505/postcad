@@ -3,14 +3,15 @@
   "outcome": "refused",
   "case_fingerprint": "ab8bad6ca571335fd673c9e1feca0e0d525c7a48b02a32161b41ea831a4a2d53",
   "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
-  "routing_proof_hash": "3cbea85678a212a005e202233de59a21a7bf001c52b2aa4b3130d6bc40dd4858",
+  "routing_proof_hash": "16e44b35673a3efcc47c3a30748be6f65b750ddecfe8d9049b433db61e3dae81",
+  "registry_snapshot_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "candidate_pool_hash": "84762ab3efd339fb5dab562758e16da060090eb802174fb3d8a1517ecf455a97",
   "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "selection_input_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "selected_candidate_id": null,
   "refusal_code": "no_eligible_candidates",
   "audit_seq": 0,
-  "audit_entry_hash": "81a576050a9cf5932636900e567cab10ca7fcc6c87ac30de0ef2eaae58298401",
+  "audit_entry_hash": "aa203b8d096161d33a4fb23186e21b2286f9289cc52c0813dd30f13c579d16c2",
   "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
   "refusal": {
     "message": "No eligible candidate found",
@@ -19,5 +20,5 @@
     ],
     "failed_constraint": "compliance_gate"
   },
-  "receipt_hash": "0d5f31189719f2a5a29400bc7b9199564d917f7de0ec8580b7b3700a8e4d7659"
+  "receipt_hash": "37e001f62ab0bbb8c4e897e5e706a566b3217e78a25ee24410bf5427659c0d13"
 }

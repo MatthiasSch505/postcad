@@ -212,6 +212,7 @@ pub fn verify_receipt_from_json(
     check!(case_fingerprint);
     check!(policy_fingerprint);
     check!(routing_proof_hash);
+    check!(registry_snapshot_hash);
     check!(candidate_pool_hash);
     check!(eligible_candidate_ids_hash);
     check!(selection_input_candidate_ids_hash);
@@ -618,6 +619,11 @@ fn map_result_to_receipt(
     let case_id_str: String = result.audit_receipt.case_id.clone();
     let compliant_candidate_count: usize =
         result.audit_receipt.candidate_ids_considered.len();
+    let registry_snapshot_hash: String = result
+        .audit_receipt
+        .registry_snapshot_hash
+        .clone()
+        .unwrap_or_default();
     let eligible_candidate_ids_hash: String =
         hash_eligible_ids(&result.decision_trace.eligible_candidate_ids);
     let selection_input_candidate_ids_hash: String =
@@ -641,6 +647,7 @@ fn map_result_to_receipt(
                 case_fingerprint,
                 policy_fingerprint,
                 routing_proof_hash,
+                registry_snapshot_hash,
                 candidate_pool_hash,
                 eligible_candidate_ids_hash,
                 selection_input_candidate_ids_hash,
@@ -672,6 +679,7 @@ fn map_result_to_receipt(
                 case_fingerprint,
                 policy_fingerprint,
                 routing_proof_hash,
+                registry_snapshot_hash,
                 candidate_pool_hash,
                 eligible_candidate_ids_hash,
                 selection_input_candidate_ids_hash: selection_input_candidate_ids_hash.clone(),
@@ -710,6 +718,7 @@ fn map_result_to_receipt(
                 case_fingerprint,
                 policy_fingerprint,
                 routing_proof_hash,
+                registry_snapshot_hash,
                 candidate_pool_hash,
                 eligible_candidate_ids_hash,
                 selection_input_candidate_ids_hash,

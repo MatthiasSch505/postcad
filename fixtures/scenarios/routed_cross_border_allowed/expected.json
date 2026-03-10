@@ -1,12 +1,16 @@
 {
+  "schema_version": "1",
   "outcome": "routed",
   "case_fingerprint": "781ec6d59258c32f4c4364ff56c68825668e1528a1823b0362f36e9c46190518",
   "policy_fingerprint": "c6167ec7ca3e50b2d6d8ad135dbb3467f0a67b5a68a7ec91df14bec9b1b841b3",
   "routing_proof_hash": "ef62452650dab4d799b38c81e74fc0775f0cb725d72c2db1fda3f47844c27d42",
-  "candidate_snapshot_hash": "5432eaadf294f9cae25cdca9181833c4272844756d25ffb48efb875d196b1168",
+  "candidate_pool_hash": "5432eaadf294f9cae25cdca9181833c4272844756d25ffb48efb875d196b1168",
+  "eligible_candidate_ids_hash": "b3ac881d98dc14caf3d048f4a227698ba271bf3142e7ec4161ce2475c69a59a7",
+  "selection_input_candidate_ids_hash": "b3ac881d98dc14caf3d048f4a227698ba271bf3142e7ec4161ce2475c69a59a7",
   "selected_candidate_id": "rc-de-01",
   "refusal_code": null,
   "audit_seq": 0,
   "audit_entry_hash": "e84cf0fed7e06595f06f2b625dcc9bc67f37c8f797bd460a26e60bd67616c879",
-  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "receipt_hash": "d03034e13fe5ae5fd494e08ebbeb8dbcc132a1956586a5ca2bb6577bcba8b58e"
 }

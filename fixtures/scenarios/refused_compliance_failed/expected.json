@@ -1,9 +1,12 @@
 {
+  "schema_version": "1",
   "outcome": "refused",
   "case_fingerprint": "3da778f2b939103dae2f03a25dd2591f46ad49e9b4089d7607442390ec0e469f",
   "policy_fingerprint": "8067e8e0a645bc72e2f8e8a0f72247a7ff056740024f6fe156bfe76d1731f40c",
   "routing_proof_hash": "f3bf1d9d56eb33f0c370e9c88ba0043b671e8ccec498e3b5dc6b25372f597fe0",
-  "candidate_snapshot_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
+  "candidate_pool_hash": "d7ab1190a99765459decc8f1cd7fadf5d725a906458f62743bec6ad5451667c2",
+  "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "selection_input_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "selected_candidate_id": null,
   "refusal_code": "no_eligible_candidates",
   "audit_seq": 0,
@@ -15,5 +18,6 @@
       "rc-de-01"
     ],
     "failed_constraint": "compliance_gate"
-  }
+  },
+  "receipt_hash": "2513bd0cb90f0f67b0322bebb67d77d831d25a422a06804f75c68b30ec9430cd"
 }

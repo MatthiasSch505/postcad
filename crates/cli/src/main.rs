@@ -184,7 +184,7 @@ fn run_verify_receipt(args: &[String]) {
             if json_output {
                 println!(
                     "{}",
-                    serde_json::json!({"result": "VERIFICATION FAILED", "reason": reason.to_string()})
+                    serde_json::json!({"result": "VERIFICATION FAILED", "code": reason.code, "reason": reason.to_string()})
                 );
             } else {
                 println!("VERIFICATION FAILED: {}", reason);

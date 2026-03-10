@@ -23,6 +23,29 @@ impl VerificationFailure {
         Self { code, message: message.into() }
     }
 
+    // ── Schema version failures ───────────────────────────────────────────────
+
+    pub fn missing_receipt_schema_version() -> Self {
+        Self::new(
+            "missing_receipt_schema_version",
+            "receipt is missing the required schema_version field",
+        )
+    }
+
+    pub fn invalid_receipt_schema_version() -> Self {
+        Self::new(
+            "invalid_receipt_schema_version",
+            "schema_version must be a string",
+        )
+    }
+
+    pub fn unsupported_receipt_schema_version(found: &str) -> Self {
+        Self::new(
+            "unsupported_receipt_schema_version",
+            format!("unsupported receipt schema_version: {:?}", found),
+        )
+    }
+
     // ── Parse failures ────────────────────────────────────────────────────────
 
     pub fn receipt_parse_failed(detail: impl Into<String>) -> Self {
@@ -62,13 +85,45 @@ impl VerificationFailure {
         )
     }
 
-    // ── Candidate snapshot mismatch ──────────────────────────────────────────
+    // ── Candidate pool hash mismatch ─────────────────────────────────────────
 
-    pub fn candidate_snapshot_hash_mismatch(receipt: &str, computed: &str) -> Self {
+    pub fn candidate_pool_hash_mismatch(receipt: &str, computed: &str) -> Self {
         Self::new(
-            "candidate_snapshot_hash_mismatch",
+            "candidate_pool_hash_mismatch",
             format!(
-                "candidate_snapshot_hash mismatch: receipt has {}, computed {}",
+                "candidate_pool_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
+    pub fn eligible_candidate_ids_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "eligible_candidate_ids_hash_mismatch",
+            format!(
+                "eligible_candidate_ids_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
+    pub fn selection_input_candidate_ids_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "selection_input_candidate_ids_hash_mismatch",
+            format!(
+                "selection_input_candidate_ids_hash mismatch: receipt has {}, computed {}",
+                receipt, computed
+            ),
+        )
+    }
+
+    // ── Full receipt artifact hash mismatch ──────────────────────────────────
+
+    pub fn receipt_hash_mismatch(receipt: &str, computed: &str) -> Self {
+        Self::new(
+            "receipt_hash_mismatch",
+            format!(
+                "receipt_hash mismatch: receipt has {}, computed {}",
                 receipt, computed
             ),
         )

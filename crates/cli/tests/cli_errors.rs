@@ -341,6 +341,9 @@ fn route_case_routed_envelope_contract() {
     assert!(success, "route-case must exit 0 on a routed outcome");
     assert_eq!(json["outcome"], "routed");
 
+    // schema_version must be the stable string "1".
+    assert_eq!(json["schema_version"], "1", "schema_version must be \"1\"");
+
     // All hash fields must be 64-char lowercase hex strings.
     for field in &[
         "routing_proof_hash",
@@ -351,6 +354,7 @@ fn route_case_routed_envelope_contract() {
         "selection_input_candidate_ids_hash",
         "audit_entry_hash",
         "audit_previous_hash",
+        "receipt_hash",
     ] {
         let val = json[field].as_str().unwrap_or_else(|| {
             panic!("field '{}' must be a string, got: {:?}", field, json[field])
@@ -398,6 +402,9 @@ fn route_case_refused_envelope_contract() {
     assert!(success, "route-case must exit 0 even on a refused outcome");
     assert_eq!(json["outcome"], "refused");
 
+    // schema_version must be the stable string "1".
+    assert_eq!(json["schema_version"], "1", "schema_version must be \"1\"");
+
     // All hash fields must be 64-char lowercase hex strings.
     for field in &[
         "routing_proof_hash",
@@ -408,6 +415,7 @@ fn route_case_refused_envelope_contract() {
         "selection_input_candidate_ids_hash",
         "audit_entry_hash",
         "audit_previous_hash",
+        "receipt_hash",
     ] {
         let val = json[field].as_str().unwrap_or_else(|| {
             panic!("field '{}' must be a string, got: {:?}", field, json[field])
@@ -512,6 +520,8 @@ fn verify_receipt_failed_envelope_contract() {
     ]);
     assert!(!success, "verify-receipt must exit 1 on VERIFICATION FAILED");
     assert_eq!(json["result"], "VERIFICATION FAILED");
+    // code must be a stable machine-readable string identifying the failure.
+    assert!(json["code"].is_string(), "VERIFICATION FAILED envelope must include a code field");
     // reason must be a string that identifies the tampered field.
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(

@@ -606,8 +606,11 @@ dependencies = [
 name = "postcad-registry"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "postcad-core",
  "serde",
+ "serde_json",
+ "sha2",
  "thiserror",
 ]
 

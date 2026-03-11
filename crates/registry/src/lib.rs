@@ -1,3 +1,11 @@
+pub mod manufacturer;
+pub use manufacturer::{
+    canonical_hash as canonical_manufacturer_hash, eligible_records, filter_active,
+    filter_by_attestation, filter_by_capability, filter_by_jurisdiction, filter_by_material,
+    AttestationStatus, ManufacturerCapability, ManufacturerCountry, ManufacturerMaterial,
+    ManufacturerRecord,
+};
+
 pub mod evidence;
 pub use evidence::{manufacturer_has_evidence, EligibilityEvidence};
 

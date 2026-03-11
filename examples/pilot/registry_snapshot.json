@@ -1,0 +1,35 @@
+[
+  {
+    "manufacturer_id": "pilot-de-001",
+    "display_name": "Alpha Dental GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown", "bridge"],
+    "materials_supported": ["zirconia", "pmma"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 5
+  },
+  {
+    "manufacturer_id": "pilot-de-002",
+    "display_name": "Beta Zahntechnik GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown", "veneer"],
+    "materials_supported": ["zirconia", "emax"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 3
+  },
+  {
+    "manufacturer_id": "pilot-de-003",
+    "display_name": "Gamma Dental GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown", "implant"],
+    "materials_supported": ["zirconia", "titanium"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 7
+  }
+]

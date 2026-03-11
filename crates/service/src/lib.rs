@@ -1,42 +1,95 @@
 mod case_store;
+mod dispatch_store;
 mod handlers;
+mod policy_store;
 mod receipt_store;
+mod verification_store;
 
 use std::sync::Arc;
 
 use axum::{routing, Router};
 
 pub use case_store::CaseStore;
+pub use dispatch_store::DispatchStore;
+pub use policy_store::PolicyStore;
 pub use receipt_store::{ReceiptStore, ReceiptStoreError};
+pub use verification_store::VerificationStore;
 
-/// Shared application state for endpoints that require both stores.
+/// Shared application state for the stored-case routing endpoint.
+///
+/// Requires the case store, receipt store, and policy store so that routing
+/// can persist both the receipt and the derived policy bundle together.
 pub struct AppState {
     pub case_store: Arc<CaseStore>,
     pub receipt_store: Arc<ReceiptStore>,
+    pub policy_store: Arc<PolicyStore>,
 }
 
-/// Build the service router with default storage paths
-/// (`data/cases/` and `data/receipts/`).
+/// Shared application state for the dispatch endpoint.
+pub struct DispatchState {
+    pub receipt_store: Arc<ReceiptStore>,
+    pub dispatch_store: Arc<DispatchStore>,
+}
+
+/// Shared application state for the dispatch verification endpoint.
+pub struct DispatchVerifyState {
+    pub dispatch_store: Arc<DispatchStore>,
+    pub receipt_store: Arc<ReceiptStore>,
+    pub policy_store: Arc<PolicyStore>,
+    pub verification_store: Arc<VerificationStore>,
+}
+
+/// Build the service router with default storage paths.
 pub fn app() -> Router {
-    app_with_stores(
+    app_with_all_stores(
         Arc::new(CaseStore::new("data/cases")),
         Arc::new(ReceiptStore::new("data/receipts")),
+        Arc::new(DispatchStore::new("data/dispatch")),
+        Arc::new(PolicyStore::new("data/policies")),
+        Arc::new(VerificationStore::new("data/verification")),
     )
 }
 
-/// Build the service router with an explicit case store and a default receipt
-/// store (`data/receipts/`).
+/// Build the service router with an explicit case store and default stores for
+/// everything else.
 ///
 /// Preserved for backward compatibility with tests that only exercise the case
-/// intake endpoints and do not need receipt store control.
+/// intake endpoints.
 pub fn app_with_store(store: Arc<CaseStore>) -> Router {
-    app_with_stores(store, Arc::new(ReceiptStore::new("data/receipts")))
+    app_with_all_stores(
+        store,
+        Arc::new(ReceiptStore::new("data/receipts")),
+        Arc::new(DispatchStore::new("data/dispatch")),
+        Arc::new(PolicyStore::new("data/policies")),
+        Arc::new(VerificationStore::new("data/verification")),
+    )
 }
 
 /// Build the service router with explicit case and receipt stores.
 ///
-/// Use this in tests to inject temporary directories for both stores.
+/// All other stores default to their canonical `data/` paths.
+/// Use [`app_with_all_stores`] in tests that exercise dispatch or verification.
 pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptStore>) -> Router {
+    app_with_all_stores(
+        case_store,
+        receipt_store,
+        Arc::new(DispatchStore::new("data/dispatch")),
+        Arc::new(PolicyStore::new("data/policies")),
+        Arc::new(VerificationStore::new("data/verification")),
+    )
+}
+
+/// Build the service router with explicit control over all five storage layers.
+///
+/// Use this in tests that need to inject temporary directories for dispatch,
+/// policy, or verification storage.
+pub fn app_with_all_stores(
+    case_store: Arc<CaseStore>,
+    receipt_store: Arc<ReceiptStore>,
+    dispatch_store: Arc<DispatchStore>,
+    policy_store: Arc<PolicyStore>,
+    verification_store: Arc<VerificationStore>,
+) -> Router {
     // Case intake routes: State<Arc<CaseStore>>.
     let case_routes = Router::new()
         .route("/cases", routing::post(handlers::post_case))
@@ -49,7 +102,7 @@ pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptSto
         .route("/routes", routing::get(handlers::list_routes))
         .with_state(receipt_store.clone());
 
-    // Case routing endpoint: State<Arc<AppState>> (needs both stores).
+    // Case routing endpoint: State<Arc<AppState>> (needs case, receipt, and policy stores).
     let route_endpoint = Router::new()
         .route(
             "/cases/:case_id/route",
@@ -57,7 +110,32 @@ pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptSto
         )
         .with_state(Arc::new(AppState {
             case_store,
+            receipt_store: receipt_store.clone(),
+            policy_store: policy_store.clone(),
+        }));
+
+    // Dispatch endpoint: State<Arc<DispatchState>>.
+    let dispatch_endpoint = Router::new()
+        .route(
+            "/dispatch/:receipt_hash",
+            routing::post(handlers::dispatch_receipt),
+        )
+        .with_state(Arc::new(DispatchState {
+            receipt_store: receipt_store.clone(),
+            dispatch_store: dispatch_store.clone(),
+        }));
+
+    // Dispatch verification endpoint: State<Arc<DispatchVerifyState>>.
+    let dispatch_verify_endpoint = Router::new()
+        .route(
+            "/dispatch/:receipt_hash/verify",
+            routing::post(handlers::dispatch_verify),
+        )
+        .with_state(Arc::new(DispatchVerifyState {
+            dispatch_store,
             receipt_store,
+            policy_store,
+            verification_store,
         }));
 
     Router::new()
@@ -82,4 +160,8 @@ pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptSto
         .merge(history_endpoint)
         // Stored-case routing
         .merge(route_endpoint)
+        // Dispatch
+        .merge(dispatch_endpoint)
+        // Dispatch verification
+        .merge(dispatch_verify_endpoint)
 }

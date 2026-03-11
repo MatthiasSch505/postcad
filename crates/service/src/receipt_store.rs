@@ -84,6 +84,19 @@ impl ReceiptStore {
         self.path_for(receipt_hash).exists()
     }
 
+    /// Read and parse a stored receipt. Returns `Ok(None)` if the file does
+    /// not exist.
+    pub fn read(&self, receipt_hash: &str) -> Result<Option<Value>, ReceiptStoreError> {
+        let path = self.path_for(receipt_hash);
+        if !path.exists() {
+            return Ok(None);
+        }
+        let raw = fs::read_to_string(&path).map_err(ReceiptStoreError::Io)?;
+        let v: Value = serde_json::from_str(&raw)
+            .map_err(|e| ReceiptStoreError::ParseError(format!("{receipt_hash}: {e}")))?;
+        Ok(Some(v))
+    }
+
     /// Read all stored receipts and return them as [`RouteEntry`] items.
     ///
     /// Each entry's `timestamp` is derived from the file's last-modified time.

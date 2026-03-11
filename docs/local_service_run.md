@@ -162,6 +162,34 @@ Cases are stored under `data/cases/{case_id}.json` relative to the working direc
 
 ---
 
+## Dispatch
+
+```bash
+curl -s -X POST http://localhost:8080/dispatch/<receipt_hash>
+```
+
+Expected:
+
+```json
+{"dispatched":true,"receipt_hash":"<receipt_hash>"}
+```
+
+---
+
+## Dispatch verification
+
+```bash
+curl -s -X POST http://localhost:8080/dispatch/<receipt_hash>/verify
+```
+
+Expected:
+
+```json
+{"receipt_hash":"<receipt_hash>","result":"VERIFIED"}
+```
+
+---
+
 ## Stop
 
 ```bash

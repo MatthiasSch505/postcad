@@ -6,6 +6,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono::Utc;
 use postcad_cli::{
     build_manifest, route_case_from_policy_json, route_case_from_registry_json,
     verify_receipt_from_policy_json, CaseInput, PROTOCOL_VERSION,
@@ -14,7 +15,7 @@ use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
 use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
-use crate::AppState;
+use crate::{AppState, DispatchState, DispatchVerifyState};
 
 /// POST /route-case
 ///
@@ -429,6 +430,19 @@ pub async fn route_stored_case(
             .into_response();
     }
 
+    // 4b. Persist the derived policy so the dispatch verification gate can
+    //     replay the verification without requiring the caller to re-supply it.
+    if let Err(e) = state
+        .policy_store
+        .store(receipt_hash, &result.derived_policy_json)
+    {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response();
+    }
+
     // 5. Return outcome-appropriate response.
     if receipt.outcome == "refused" {
         let code = receipt
@@ -450,6 +464,223 @@ pub async fn route_stored_case(
             "receipt_hash": receipt_hash,
             "selected_candidate_id": receipt.selected_candidate_id,
         })),
+    )
+        .into_response()
+}
+
+// ── Dispatch endpoint ─────────────────────────────────────────────────────────
+
+/// POST /dispatch/:receipt_hash
+///
+/// Reads an existing stored receipt, creates a dispatch record, and writes it
+/// to `data/dispatch/{receipt_hash}.json`.
+///
+/// Success (200):       `{"receipt_hash": "...", "dispatched": true}`
+/// Not found (404):     `{"error": {"code": "receipt_not_found", "message": "..."}}`
+/// Conflict (409):      `{"error": {"code": "dispatch_already_exists", "message": "..."}}`
+/// Internal (500):      `{"error": {"code": "internal_error", "message": "..."}}`
+pub async fn dispatch_receipt(
+    State(state): State<Arc<DispatchState>>,
+    Path(receipt_hash): Path<String>,
+) -> impl IntoResponse {
+    // 1. Read the stored receipt.
+    let receipt = match state.receipt_store.read(&receipt_hash) {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": {"code": "receipt_not_found",
+                    "message": format!("receipt '{receipt_hash}' not found")}})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    // 2. Guard against duplicate dispatch.
+    if state.dispatch_store.exists(&receipt_hash) {
+        return (
+            StatusCode::CONFLICT,
+            Json(json!({"error": {"code": "dispatch_already_exists",
+                "message": format!("dispatch already exists for receipt '{receipt_hash}'")}})),
+        )
+            .into_response();
+    }
+
+    // 3. Extract required fields.
+    let case_id = match receipt["routing_input"]["case_id"].as_str() {
+        Some(v) => v.to_string(),
+        None => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error",
+                    "message": "receipt missing routing_input.case_id"}})),
+            )
+                .into_response();
+        }
+    };
+    let manufacturer = receipt["selected_candidate_id"]
+        .as_str()
+        .map(|s| s.to_string());
+
+    // 4. Build the dispatch record.
+    let timestamp = Utc::now().to_rfc3339();
+    let record = json!({
+        "receipt_hash": receipt_hash,
+        "case_id": case_id,
+        "manufacturer": manufacturer,
+        "status": "dispatched",
+        "timestamp": timestamp,
+    });
+    let record_json = serde_json::to_string_pretty(&record).unwrap();
+
+    // 5. Persist the dispatch record.
+    match state.dispatch_store.store(&receipt_hash, &record_json) {
+        Ok(()) => {}
+        Err(crate::dispatch_store::DispatchStoreError::AlreadyExists) => {
+            return (
+                StatusCode::CONFLICT,
+                Json(json!({"error": {"code": "dispatch_already_exists",
+                    "message": format!("dispatch already exists for receipt '{receipt_hash}'")}})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    }
+
+    // 6. Return deterministic response.
+    (
+        StatusCode::OK,
+        Json(json!({"receipt_hash": receipt_hash, "dispatched": true})),
+    )
+        .into_response()
+}
+
+// ── Dispatch verification endpoint ───────────────────────────────────────────
+
+/// POST /dispatch/:receipt_hash/verify
+///
+/// Verifies a dispatched routing artifact by:
+/// 1. Confirming a dispatch record exists.
+/// 2. Loading the stored receipt.
+/// 3. Loading the stored derived policy bundle (written at routing time).
+/// 4. Calling the existing verification path with the receipt, the case
+///    extracted from the receipt's `routing_input`, and the stored policy.
+/// 5. Persisting and returning the deterministic result.
+///
+/// Success (200):     `{"receipt_hash": "...", "result": "VERIFIED"}`
+///                    or `{"receipt_hash": "...", "result": "INVALID"}`
+/// Not found (404):   `{"error": {"code": "dispatch_not_found", ...}}`
+///                    `{"error": {"code": "receipt_not_found", ...}}`
+/// Input missing (422): `{"error": {"code": "verification_input_missing", ...}}`
+/// Internal (500):    `{"error": {"code": "internal_error", ...}}`
+pub async fn dispatch_verify(
+    State(state): State<Arc<DispatchVerifyState>>,
+    Path(receipt_hash): Path<String>,
+) -> impl IntoResponse {
+    // 1. Confirm a dispatch record exists.
+    if !state.dispatch_store.exists(&receipt_hash) {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": {"code": "dispatch_not_found",
+                "message": format!("no dispatch record for receipt '{receipt_hash}'")}})),
+        )
+            .into_response();
+    }
+
+    // 2. Load the stored receipt.
+    let receipt_value = match state.receipt_store.read(&receipt_hash) {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": {"code": "receipt_not_found",
+                    "message": format!("receipt '{receipt_hash}' not found")}})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    // 3. Load the stored derived policy bundle.
+    let policy_json = match state.policy_store.read(&receipt_hash) {
+        Ok(Some(p)) => p,
+        Ok(None) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": {"code": "verification_input_missing",
+                    "message": format!("no policy bundle stored for receipt '{receipt_hash}'")}})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    // 4. Extract the case from receipt.routing_input (same fields as CaseInput).
+    let case_input = &receipt_value["routing_input"];
+    if case_input.is_null() {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error",
+                "message": "receipt missing routing_input"}})),
+        )
+            .into_response();
+    }
+    let case_json = serde_json::to_string(case_input).unwrap();
+    let receipt_json = serde_json::to_string(&receipt_value).unwrap();
+
+    // 5. Reuse the existing verification path.
+    let result_str =
+        match postcad_cli::verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json)
+        {
+            Ok(()) => "VERIFIED",
+            Err(_) => "INVALID",
+        };
+
+    // 6. Persist the verification result.
+    let timestamp = Utc::now().to_rfc3339();
+    let result_record = json!({
+        "receipt_hash": receipt_hash,
+        "result": result_str,
+        "timestamp": timestamp,
+    });
+    let result_json = serde_json::to_string_pretty(&result_record).unwrap();
+    if let Err(e) = state.verification_store.store(&receipt_hash, &result_json) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response();
+    }
+
+    // 7. Return deterministic response.
+    (
+        StatusCode::OK,
+        Json(json!({"receipt_hash": receipt_hash, "result": result_str})),
     )
         .into_response()
 }

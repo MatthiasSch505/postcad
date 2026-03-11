@@ -61,20 +61,79 @@ docker run --rm -p 9090:9090 -e POSTCAD_ADDR=0.0.0.0:9090 postcad-node
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET`  | `/health` | Liveness check. Returns `{"status":"ok"}`. |
+| `GET`  | `/version` | Service and kernel version strings. |
+| `POST` | `/route` | Route a case from registry snapshot + config (pilot path). |
+| `POST` | `/verify` | Replay-verify a routing receipt (pilot path). |
 | `POST` | `/route-case` | Route a case from a policy bundle. |
 | `POST` | `/route-case-from-registry` | Route a case from a registry snapshot + config. |
 | `POST` | `/verify-receipt` | Replay-verify a routing receipt. |
-| `GET` | `/protocol-manifest` | Return the protocol manifest (versions, schema hashes). |
+| `GET`  | `/protocol-manifest` | Return the protocol manifest (versions, schema hashes). |
 
-### Route a case (registry-backed)
+### Health
+
+```bash
+curl -s http://localhost:8080/health
+```
+
+Response: `{"status":"ok"}`
+
+### Version
+
+```bash
+curl -s http://localhost:8080/version
+```
+
+Response:
+
+```json
+{"protocol_version":"postcad-v1","routing_kernel_version":"postcad-routing-v1","service":"postcad-service"}
+```
+
+### Route a case — pilot path
+
+```bash
+curl -s -X POST http://localhost:8080/route \
+  -H "Content-Type: application/json" \
+  -d '{
+    "case":             <case.json contents>,
+    "registry_snapshot": <registry_snapshot.json contents>,
+    "routing_config":   <config.json contents>
+  }'
+```
+
+Response:
+
+```json
+{
+  "receipt": { ... },
+  "derived_policy": { ... }
+}
+```
+
+### Verify a receipt — pilot path
+
+```bash
+curl -s -X POST http://localhost:8080/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receipt": <receipt.json contents>,
+    "case":    <case.json contents>,
+    "policy":  <derived_policy.json contents>
+  }'
+```
+
+Response on success: `{"result":"VERIFIED"}`
+
+### Route a case — registry-backed
 
 ```bash
 curl -s -X POST http://localhost:8080/route-case-from-registry \
   -H "Content-Type: application/json" \
   -d '{
-    "case": <case.json contents>,
+    "case":     <case.json contents>,
     "registry": <registry_snapshot.json contents>,
-    "config": <config.json contents>
+    "config":   <config.json contents>
   }'
 ```
 
@@ -94,7 +153,8 @@ curl -s -X POST http://localhost:8080/verify-receipt \
   -H "Content-Type: application/json" \
   -d '{
     "receipt": <receipt.json contents>,
-    "policy": <derived_policy.json contents>
+    "case":    <case.json contents>,
+    "policy":  <derived_policy.json contents>
   }'
 ```
 
@@ -107,7 +167,7 @@ Response on success:
 Response on failure (HTTP 422):
 
 ```json
-{ "code": "registry_snapshot_hash_mismatch", "message": "..." }
+{ "result": "FAILED", "error": { "code": "registry_snapshot_hash_mismatch", "message": "..." } }
 ```
 
 ### Protocol manifest

@@ -2,6 +2,8 @@
 
 End-to-end runnable example of registry-backed routing and receipt verification using PostCAD Protocol v1.
 
+To run the service locally with Docker, see [docs/local_service_run.md](../../docs/local_service_run.md).
+
 ---
 
 ## Files

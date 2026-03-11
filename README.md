@@ -171,3 +171,9 @@ postcad-routing     routing engine with pluggable selector strategies
 postcad-audit       hash-chained append-only audit log
 postcad-cli         route-case and verify-receipt CLI commands
 ```
+
+---
+
+## Local service deployment
+
+See [docs/local_service_run.md](docs/local_service_run.md) for the one-command Docker-based local run path.

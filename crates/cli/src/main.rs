@@ -2,8 +2,9 @@ use std::fs;
 use std::process;
 
 use postcad_cli::{
-    build_manifest, route_case_from_json, route_case_from_registry_json,
-    verify_receipt_from_inputs, verify_receipt_from_policy_json,
+    build_manifest, route_case_from_json, route_case_from_policy_json,
+    route_case_from_registry_json, verify_receipt_from_inputs, verify_receipt_from_policy_json,
+    PROTOCOL_VERSION,
 };
 
 fn main() {
@@ -16,6 +17,7 @@ fn main() {
         Some("route-case-from-registry") => run_route_case_from_registry(&args[2..]),
         Some("verify-receipt") => run_verify_receipt(&args[2..]),
         Some("protocol-manifest") => run_protocol_manifest(),
+        Some("demo-run") => run_demo_v1(&args[2..]),
         Some("--help") | Some("-h") | Some("help") => print_help(),
         Some(other) => emit_error_and_exit(
             json_output,
@@ -291,6 +293,65 @@ fn run_verify_receipt(args: &[String]) {
             }
             process::exit(1);
         }
+    }
+}
+
+// ── Frozen v1 demo fixtures (embedded at compile time) ───────────────────────
+
+/// Frozen case input for the v1 demo flow.
+const DEMO_CASE_JSON: &str = include_str!("../../../fixtures/case.json");
+/// Frozen RoutingPolicyBundle for the v1 demo flow.
+const DEMO_POLICY_JSON: &str = include_str!("../../../fixtures/policy.json");
+
+/// `demo-run` — executes the frozen PostCAD Protocol v1 flow in one command.
+///
+/// Steps:
+///   1. Route the frozen demo case through the compliance pipeline.
+///   2. Print the routing outcome and key receipt fields.
+///   3. Verify the receipt against the same frozen inputs.
+///   4. Print VERIFIED (or exit 1 on failure).
+///
+/// Uses only embedded compile-time fixtures; no file I/O, no flags required.
+/// `--json` emits a compact summary object instead of human-readable output.
+fn run_demo_v1(args: &[String]) {
+    let json_output = args.iter().any(|a| a.as_str() == "--json");
+
+    // Step 1: route.
+    let receipt = match route_case_from_policy_json(DEMO_CASE_JSON, DEMO_POLICY_JSON) {
+        Ok(r) => r,
+        Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
+    };
+
+    let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+    // Step 2 + 3: verify.
+    match verify_receipt_from_policy_json(&receipt_json, DEMO_CASE_JSON, DEMO_POLICY_JSON) {
+        Ok(()) => {
+            if json_output {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "result": "VERIFIED",
+                        "protocol_version": PROTOCOL_VERSION,
+                        "outcome": receipt.outcome,
+                        "selected_candidate_id": receipt.selected_candidate_id,
+                        "receipt_hash": receipt.receipt_hash,
+                    })
+                );
+            } else {
+                println!("postcad protocol v1 demo");
+                println!("------------------------");
+                println!("outcome:              {}", receipt.outcome);
+                println!(
+                    "selected_candidate:   {}",
+                    receipt.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
+                );
+                println!("receipt_hash:         {}", receipt.receipt_hash);
+                println!("protocol_version:     {}", PROTOCOL_VERSION);
+                println!("verify:               VERIFIED");
+            }
+        }
+        Err(f) => emit_error_and_exit(json_output, &f.code, &f.message),
     }
 }
 

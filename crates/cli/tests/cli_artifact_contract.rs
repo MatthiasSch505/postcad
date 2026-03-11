@@ -260,3 +260,38 @@ fn cli_protocol_manifest_exits_0_exact_frozen_manifest() {
         "protocol-manifest output must exactly match expected_manifest.json"
     );
 }
+
+/// `demo-run --json` must exit 0, emit `result == "VERIFIED"`, and produce
+/// empty stderr.  The demo uses only embedded frozen fixtures so its output is
+/// fully deterministic: same receipt_hash and selected_candidate_id on every run.
+#[test]
+fn cli_demo_run_exits_0_and_verified() {
+    let (code, actual, stderr) = run(&["demo-run", "--json"]);
+
+    assert_eq!(code, 0, "demo-run must exit 0");
+    assert!(
+        stderr.is_empty(),
+        "stderr must be empty in --json mode; got: {:?}",
+        stderr
+    );
+    assert_eq!(
+        actual["result"], "VERIFIED",
+        "demo-run must report result=VERIFIED"
+    );
+    assert_eq!(
+        actual["outcome"], "routed",
+        "demo-run frozen fixture must route successfully"
+    );
+    assert_eq!(
+        actual["protocol_version"], "postcad-v1",
+        "demo-run must report protocol_version=postcad-v1"
+    );
+    // receipt_hash must be a 64-character hex string (SHA-256).
+    let hash = actual["receipt_hash"].as_str().unwrap_or("");
+    assert_eq!(hash.len(), 64, "receipt_hash must be a 64-char hex digest");
+    // selected_candidate_id must match the frozen fixture's single candidate id.
+    assert_eq!(
+        actual["selected_candidate_id"], "rc-de-01",
+        "demo-run must select the frozen fixture's candidate"
+    );
+}

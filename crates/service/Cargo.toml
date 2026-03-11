@@ -1,0 +1,21 @@
+[package]
+name = "postcad-service"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "postcad-service"
+path = "src/main.rs"
+
+[lib]
+name = "postcad_service"
+path = "src/lib.rs"
+
+[dependencies]
+postcad-cli = { path = "../cli" }
+axum = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }

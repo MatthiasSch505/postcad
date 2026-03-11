@@ -1,0 +1,24 @@
+[
+  {
+    "manufacturer_id": "mfr-de-lapsed",
+    "display_name": "Lapsed Zahn GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["expired"],
+    "sla_days": 5
+  },
+  {
+    "manufacturer_id": "mfr-de-revoked",
+    "display_name": "Revoked Dental GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["revoked"],
+    "sla_days": 5
+  }
+]

@@ -30,6 +30,9 @@ pub use verifier::VerificationFailure;
 pub mod manifest;
 pub use manifest::{PROTOCOL_VERSION, ProtocolManifest, build_manifest};
 
+pub mod proof;
+pub use proof::{ProofVerificationFailure, RoutingProofObject, build_routing_proof, verify_routing_proof};
+
 pub mod registry_routing;
 pub use registry_routing::{
     route_case_from_registry_json, RegistryRoutingConfig, RegistryRoutingResult,
@@ -162,7 +165,7 @@ pub fn route_case_from_json(
         None, // no policy_version in the three-file path
     );
 
-    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input))
+    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input, None))
 }
 
 /// Runs the compliance-aware routing pipeline from a case JSON and a policy
@@ -225,7 +228,7 @@ pub fn route_case_from_policy_json(
         policy_input.policy_version.clone(),
     );
 
-    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input))
+    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input, policy_input.refusal_reason_hint.clone()))
 }
 
 /// Verifies a routing receipt against the original inputs that produced it.
@@ -634,7 +637,9 @@ pub fn verify_receipt_from_policy_json(
                 ("refused".to_string(), None, Some(code))
             }
             RoutingDecision::NoEligibleCandidate => {
-                ("refused".to_string(), None, Some("no_eligible_candidates".to_string()))
+                let code = policy_input.refusal_reason_hint.clone()
+                    .unwrap_or_else(|| "no_eligible_candidates".to_string());
+                ("refused".to_string(), None, Some(code))
             }
         };
     if replayed_outcome != receipt.outcome
@@ -898,7 +903,9 @@ pub fn verify_receipt_from_inputs(
                 ("refused".to_string(), None, Some(code))
             }
             RoutingDecision::NoEligibleCandidate => {
-                ("refused".to_string(), None, Some("no_eligible_candidates".to_string()))
+                let code = policy_input.refusal_reason_hint.clone()
+                    .unwrap_or_else(|| "no_eligible_candidates".to_string());
+                ("refused".to_string(), None, Some(code))
             }
         };
     if replayed_outcome != receipt.outcome
@@ -972,6 +979,7 @@ fn map_result_to_receipt(
     all_input_candidate_ids: Vec<String>,
     candidate_pool_hash: String,
     routing_input: RoutingInputEnvelope,
+    refusal_reason_hint: Option<String>,
 ) -> RoutingReceipt {
     // Extract primitive values from internal types before the match so they
     // are not accidentally referenced after `result` is partially moved.
@@ -1091,7 +1099,8 @@ fn map_result_to_receipt(
         }
 
         RoutingDecision::NoEligibleCandidate => {
-            let refusal_code = "no_eligible_candidates".to_string();
+            let refusal_code = refusal_reason_hint
+                .unwrap_or_else(|| "no_eligible_candidates".to_string());
             let failed_constraint = no_candidate_constraint(
                 all_input_candidate_ids.len(),
                 compliant_candidate_count,

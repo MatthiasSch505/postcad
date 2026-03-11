@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "routing_kernel_version": "postcad-routing-v1",
+  "outcome": "routed",
+  "case_fingerprint": "9a8780e17b845985d502bf3021dc67a3d22cd1600d98717119839185185014bb",
+  "policy_fingerprint": "c6167ec7ca3e50b2d6d8ad135dbb3467f0a67b5a68a7ec91df14bec9b1b841b3",
+  "policy_version": null,
+  "routing_proof_hash": "4895da7cf33bab7c7b6f47cbff7f00435bcef8420f5606ddbe812585b06e9bd0",
+  "registry_snapshot_hash": "4edc3a10eb3a1bbe59f28c0edb662ce05a9d55496d9adeef0271af8062910e98",
+  "candidate_pool_hash": "ba751522af673d4370246a2654b70c6734aee98ccb8531e7b26073e12da1ca3b",
+  "eligible_candidate_ids_hash": "0b73289058670fc97723c065c2d9290eecbfe30e675cfc86e087c988902406a9",
+  "selection_input_candidate_ids_hash": "0b73289058670fc97723c065c2d9290eecbfe30e675cfc86e087c988902406a9",
+  "candidate_order_hash": "0b73289058670fc97723c065c2d9290eecbfe30e675cfc86e087c988902406a9",
+  "routing_decision_hash": "c0a1589fcca6935bb44ab161e324caf4a015d88f1e7b2cda1949009dfb4d5b89",
+  "selected_candidate_id": "mfr-de-alpha",
+  "refusal_code": null,
+  "audit_seq": 0,
+  "audit_entry_hash": "3a774655b8016be546ae195e9db2b32e6b649bfce81ddd7f2de0bf0c4142f5c5",
+  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "routing_input": {
+    "case_id": "00000002-0000-0000-0000-000000000002",
+    "file_type": "stl",
+    "jurisdiction": "DE",
+    "manufacturer_country": "germany",
+    "material": "zirconia",
+    "patient_country": "germany",
+    "procedure": "crown",
+    "routing_policy": "allow_domestic_and_cross_border"
+  },
+  "routing_input_hash": "72531ae3fa533df489f8132c7365ab3b70c3a25580cea530f5743ad1284cb96c",
+  "receipt_hash": "f4e8c11a6b82fb13601e04711394a845b0b8c7a501e5d63871fbd7f4051d0363"
+}

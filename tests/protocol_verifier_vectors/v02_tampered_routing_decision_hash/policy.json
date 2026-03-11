@@ -1,0 +1,27 @@
+{
+  "candidates": [
+    {
+      "accepts_case": true,
+      "eligibility": "eligible",
+      "id": "mfr-de-v",
+      "location": "domestic",
+      "manufacturer_id": "mfr-de-v"
+    }
+  ],
+  "compliance_profile": null,
+  "jurisdiction": "DE",
+  "policy_version": null,
+  "routing_policy": "allow_domestic_and_cross_border",
+  "snapshots": [
+    {
+      "attestation_statuses": [
+        "verified"
+      ],
+      "evidence_references": [
+        "registry::mfr-de-v::0"
+      ],
+      "is_eligible": true,
+      "manufacturer_id": "mfr-de-v"
+    }
+  ]
+}

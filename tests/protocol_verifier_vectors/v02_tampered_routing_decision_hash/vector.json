@@ -1,0 +1,5 @@
+{
+  "expected_result": "err",
+  "expected_error_code": "routing_decision_hash_mismatch",
+  "generation_type": "tamper_routing_decision_hash"
+}

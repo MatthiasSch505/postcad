@@ -1,0 +1,13 @@
+[
+  {
+    "manufacturer_id": "mfr-us-001",
+    "display_name": "American Dental Supply Co.",
+    "country": "united_states",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["united_states"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 7
+  }
+]

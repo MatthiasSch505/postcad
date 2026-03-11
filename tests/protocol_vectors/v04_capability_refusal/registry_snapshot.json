@@ -1,0 +1,13 @@
+[
+  {
+    "manufacturer_id": "mfr-de-implant",
+    "display_name": "Implantat Technik GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["implant", "bridge"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 10
+  }
+]

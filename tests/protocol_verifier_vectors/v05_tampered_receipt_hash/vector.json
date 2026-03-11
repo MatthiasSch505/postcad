@@ -1,0 +1,5 @@
+{
+  "expected_result": "err",
+  "expected_error_code": "receipt_canonicalization_mismatch",
+  "generation_type": "tamper_receipt_hash"
+}

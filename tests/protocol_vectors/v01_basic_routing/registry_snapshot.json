@@ -1,0 +1,13 @@
+[
+  {
+    "manufacturer_id": "mfr-de-001",
+    "display_name": "Alpha Dental GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 5
+  }
+]

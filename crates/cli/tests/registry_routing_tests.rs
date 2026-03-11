@@ -79,14 +79,15 @@ fn registry_routed_receipt_is_verifiable() {
         .expect("receipt produced by registry path must verify successfully");
 }
 
-/// An empty registry (no manufacturers) must produce a refusal.
+/// An empty registry (no manufacturers) must produce a refusal with the
+/// registry-level reason code `no_eligible_manufacturer`.
 #[test]
 fn registry_empty_produces_refusal() {
     let result = route("[]");
     assert_eq!(result.receipt.outcome, "refused");
     assert_eq!(
         result.receipt.refusal_code.as_deref(),
-        Some("no_eligible_candidates")
+        Some("no_eligible_manufacturer")
     );
 }
 
@@ -277,4 +278,227 @@ fn registry_routes_eligible_skips_ineligible_in_mixed_pool() {
         Some("mfr-de-certified"),
         "only the certified manufacturer should be selected"
     );
+}
+
+// ── Deterministic refusal reason code tests ───────────────────────────────────
+
+/// An empty registry must yield `no_eligible_manufacturer` (not the generic
+/// `no_eligible_candidates` from the kernel) because the registry layer can
+/// inspect the empty set before any filtering.
+///
+/// Note: the current implementation falls through all stepwise checks when the
+/// registry is empty and returns the `no_eligible_manufacturer` sentinel.
+#[test]
+fn refusal_reason_empty_registry_is_no_eligible_manufacturer() {
+    let result = route("[]");
+    assert_eq!(result.receipt.outcome, "refused");
+    assert_eq!(
+        result.receipt.refusal_code.as_deref(),
+        Some("no_eligible_manufacturer"),
+        "empty registry must produce no_eligible_manufacturer"
+    );
+}
+
+/// A registry where all manufacturers are inactive must produce `no_active_manufacturer`.
+#[test]
+fn refusal_reason_all_inactive_is_no_active_manufacturer() {
+    let all_inactive = r#"[
+      {
+        "attestation_statuses": ["verified"],
+        "capabilities": ["crown"],
+        "country": "germany",
+        "display_name": "Inactive A",
+        "is_active": false,
+        "jurisdictions_served": ["germany"],
+        "manufacturer_id": "mfr-de-inactive-a",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      },
+      {
+        "attestation_statuses": ["verified"],
+        "capabilities": ["crown"],
+        "country": "germany",
+        "display_name": "Inactive B",
+        "is_active": false,
+        "jurisdictions_served": ["germany"],
+        "manufacturer_id": "mfr-de-inactive-b",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      }
+    ]"#;
+    let result = route(all_inactive);
+    assert_eq!(result.receipt.outcome, "refused");
+    assert_eq!(
+        result.receipt.refusal_code.as_deref(),
+        Some("no_active_manufacturer"),
+        "all-inactive registry must produce no_active_manufacturer"
+    );
+}
+
+/// When all active manufacturers fail the jurisdiction filter, the code must
+/// be `no_jurisdiction_match`.
+#[test]
+fn refusal_reason_no_jurisdiction_match() {
+    let us_only = r#"[
+      {
+        "attestation_statuses": ["verified"],
+        "capabilities": ["crown"],
+        "country": "united_states",
+        "display_name": "US Lab",
+        "is_active": true,
+        "jurisdictions_served": ["united_states"],
+        "manufacturer_id": "mfr-us-01",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      }
+    ]"#;
+    // CASE_JSON requests jurisdiction DE; this manufacturer only serves US.
+    let result = route(us_only);
+    assert_eq!(result.receipt.outcome, "refused");
+    assert_eq!(
+        result.receipt.refusal_code.as_deref(),
+        Some("no_jurisdiction_match"),
+        "no active manufacturer serving the jurisdiction must produce no_jurisdiction_match"
+    );
+}
+
+/// When manufacturers serve the jurisdiction but lack the required capability,
+/// the code must be `no_capability_match`.
+#[test]
+fn refusal_reason_no_capability_match() {
+    let implant_only = r#"[
+      {
+        "attestation_statuses": ["verified"],
+        "capabilities": ["implant"],
+        "country": "germany",
+        "display_name": "Implant Lab",
+        "is_active": true,
+        "jurisdictions_served": ["germany"],
+        "manufacturer_id": "mfr-de-implant",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      }
+    ]"#;
+    // CASE_JSON requests procedure=crown; this manufacturer only does implant.
+    let result = route(implant_only);
+    assert_eq!(result.receipt.outcome, "refused");
+    assert_eq!(
+        result.receipt.refusal_code.as_deref(),
+        Some("no_capability_match"),
+        "no manufacturer with the required capability must produce no_capability_match"
+    );
+}
+
+/// When manufacturers serve the jurisdiction and have the capability but lack
+/// the required material, the code must be `no_material_match`.
+#[test]
+fn refusal_reason_no_material_match() {
+    let pmma_only = r#"[
+      {
+        "attestation_statuses": ["verified"],
+        "capabilities": ["crown"],
+        "country": "germany",
+        "display_name": "PMMA Lab",
+        "is_active": true,
+        "jurisdictions_served": ["germany"],
+        "manufacturer_id": "mfr-de-pmma",
+        "materials_supported": ["pmma"],
+        "sla_days": 5
+      }
+    ]"#;
+    // CASE_JSON requests material=zirconia; this manufacturer only supports pmma.
+    let result = route(pmma_only);
+    assert_eq!(result.receipt.outcome, "refused");
+    assert_eq!(
+        result.receipt.refusal_code.as_deref(),
+        Some("no_material_match"),
+        "no manufacturer supporting the required material must produce no_material_match"
+    );
+}
+
+/// When manufacturers pass all structural filters but have expired attestations,
+/// the code must be `attestation_failed`.
+#[test]
+fn refusal_reason_attestation_failed() {
+    let expired = r#"[
+      {
+        "attestation_statuses": ["expired"],
+        "capabilities": ["crown"],
+        "country": "germany",
+        "display_name": "Lapsed GmbH",
+        "is_active": true,
+        "jurisdictions_served": ["germany"],
+        "manufacturer_id": "mfr-de-lapsed",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      },
+      {
+        "attestation_statuses": ["revoked"],
+        "capabilities": ["crown"],
+        "country": "germany",
+        "display_name": "Revoked GmbH",
+        "is_active": true,
+        "jurisdictions_served": ["germany"],
+        "manufacturer_id": "mfr-de-revoked",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      }
+    ]"#;
+    let result = route(expired);
+    assert_eq!(result.receipt.outcome, "refused");
+    assert_eq!(
+        result.receipt.refusal_code.as_deref(),
+        Some("attestation_failed"),
+        "all-expired attestations must produce attestation_failed"
+    );
+}
+
+/// The refusal reason code must be consistent across repeated calls with the
+/// same inputs (determinism invariant).
+#[test]
+fn refusal_reason_codes_are_deterministic() {
+    let us_only = r#"[
+      {
+        "attestation_statuses": ["verified"],
+        "capabilities": ["crown"],
+        "country": "united_states",
+        "display_name": "US Lab",
+        "is_active": true,
+        "jurisdictions_served": ["united_states"],
+        "manufacturer_id": "mfr-us-01",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      }
+    ]"#;
+    let r1 = route(us_only);
+    let r2 = route(us_only);
+    assert_eq!(r1.receipt.refusal_code, r2.receipt.refusal_code);
+    assert_eq!(r1.receipt.receipt_hash, r2.receipt.receipt_hash);
+}
+
+/// A receipt with a specific refusal reason code must verify successfully
+/// using the derived policy bundle — round-trip coherence.
+#[test]
+fn refusal_reason_receipt_is_verifiable() {
+    let us_only = r#"[
+      {
+        "attestation_statuses": ["verified"],
+        "capabilities": ["crown"],
+        "country": "united_states",
+        "display_name": "US Lab",
+        "is_active": true,
+        "jurisdictions_served": ["united_states"],
+        "manufacturer_id": "mfr-us-01",
+        "materials_supported": ["zirconia"],
+        "sla_days": 5
+      }
+    ]"#;
+    let result = route(us_only);
+    assert_eq!(
+        result.receipt.refusal_code.as_deref(),
+        Some("no_jurisdiction_match")
+    );
+    let receipt_json = serde_json::to_string(&result.receipt).unwrap();
+    verify_receipt_from_policy_json(&receipt_json, CASE_JSON, &result.derived_policy_json)
+        .expect("specific refusal code receipt must verify successfully");
 }

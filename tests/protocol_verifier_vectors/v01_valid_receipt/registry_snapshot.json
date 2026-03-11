@@ -1,0 +1,13 @@
+[
+  {
+    "manufacturer_id": "mfr-de-v",
+    "display_name": "Verifier Test GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 5
+  }
+]

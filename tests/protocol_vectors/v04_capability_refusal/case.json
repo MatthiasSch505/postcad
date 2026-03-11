@@ -1,0 +1,10 @@
+{
+  "case_id": "00000004-0000-0000-0000-000000000004",
+  "jurisdiction": "DE",
+  "routing_policy": "allow_domestic_and_cross_border",
+  "patient_country": "germany",
+  "manufacturer_country": "germany",
+  "material": "zirconia",
+  "procedure": "crown",
+  "file_type": "stl"
+}

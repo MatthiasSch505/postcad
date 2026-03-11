@@ -1,0 +1,5 @@
+{
+  "expected_result": "err",
+  "expected_error_code": "candidate_pool_hash_mismatch",
+  "generation_type": "drift_extra_candidate"
+}

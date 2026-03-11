@@ -159,6 +159,118 @@ async fn protocol_manifest_matches_frozen_fixture() {
     assert_eq!(body, expected, "manifest must match frozen fixture");
 }
 
+// ── Registry-backed routing tests ─────────────────────────────────────────────
+
+const REGISTRY_JSON: &str = r#"[
+  {
+    "attestation_statuses": ["verified"],
+    "capabilities": ["crown"],
+    "country": "germany",
+    "display_name": "Test GmbH",
+    "is_active": true,
+    "jurisdictions_served": ["germany"],
+    "manufacturer_id": "mfr-de-01",
+    "materials_supported": ["zirconia"],
+    "sla_days": 5
+  }
+]"#;
+
+const REGISTRY_CASE_JSON: &str = r#"{
+  "case_id": "a1b2c3d4-0000-0000-0000-000000000001",
+  "jurisdiction": "DE",
+  "routing_policy": "allow_domestic_and_cross_border",
+  "patient_country": "germany",
+  "manufacturer_country": "germany",
+  "material": "zirconia",
+  "procedure": "crown",
+  "file_type": "stl"
+}"#;
+
+const REGISTRY_CONFIG_JSON: &str =
+    r#"{"jurisdiction": "DE", "routing_policy": "allow_domestic_and_cross_border"}"#;
+
+/// POST /route-case-from-registry with a single eligible manufacturer must
+/// return HTTP 200, outcome=routed, and selected_candidate_id=mfr-de-01.
+#[tokio::test]
+async fn registry_route_case_selects_eligible_manufacturer() {
+    let body = json!({
+        "case": serde_json::from_str::<Value>(REGISTRY_CASE_JSON).unwrap(),
+        "registry": serde_json::from_str::<Value>(REGISTRY_JSON).unwrap(),
+        "config": serde_json::from_str::<Value>(REGISTRY_CONFIG_JSON).unwrap(),
+    });
+
+    let (status, resp) = post_json("/route-case-from-registry", body).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(resp["receipt"]["outcome"], "routed");
+    assert_eq!(resp["receipt"]["selected_candidate_id"], "mfr-de-01");
+}
+
+/// POST /route-case-from-registry is deterministic: two identical calls
+/// produce the same receipt_hash.
+#[tokio::test]
+async fn registry_route_case_is_deterministic() {
+    let body = json!({
+        "case": serde_json::from_str::<Value>(REGISTRY_CASE_JSON).unwrap(),
+        "registry": serde_json::from_str::<Value>(REGISTRY_JSON).unwrap(),
+        "config": serde_json::from_str::<Value>(REGISTRY_CONFIG_JSON).unwrap(),
+    });
+
+    let (_, r1) = post_json("/route-case-from-registry", body.clone()).await;
+    let (_, r2) = post_json("/route-case-from-registry", body).await;
+    assert_eq!(r1["receipt"]["receipt_hash"], r2["receipt"]["receipt_hash"]);
+}
+
+/// The derived_policy returned by /route-case-from-registry must allow the
+/// receipt to verify via POST /verify-receipt — proving round-trip coherence.
+#[tokio::test]
+async fn registry_route_case_receipt_round_trips_through_verify() {
+    let body = json!({
+        "case": serde_json::from_str::<Value>(REGISTRY_CASE_JSON).unwrap(),
+        "registry": serde_json::from_str::<Value>(REGISTRY_JSON).unwrap(),
+        "config": serde_json::from_str::<Value>(REGISTRY_CONFIG_JSON).unwrap(),
+    });
+
+    let (route_status, route_resp) = post_json("/route-case-from-registry", body).await;
+    assert_eq!(route_status, StatusCode::OK);
+
+    let verify_body = json!({
+        "receipt": route_resp["receipt"],
+        "case": serde_json::from_str::<Value>(REGISTRY_CASE_JSON).unwrap(),
+        "policy": route_resp["derived_policy"],
+    });
+    let (verify_status, verify_resp) = post_json("/verify-receipt", verify_body).await;
+    assert_eq!(verify_status, StatusCode::OK);
+    assert_eq!(verify_resp["result"], "VERIFIED");
+}
+
+/// An empty registry must return HTTP 200 with outcome=refused.
+#[tokio::test]
+async fn registry_route_case_empty_registry_is_refusal() {
+    let body = json!({
+        "case": serde_json::from_str::<Value>(REGISTRY_CASE_JSON).unwrap(),
+        "registry": serde_json::from_str::<Value>("[]").unwrap(),
+        "config": serde_json::from_str::<Value>(REGISTRY_CONFIG_JSON).unwrap(),
+    });
+
+    let (status, resp) = post_json("/route-case-from-registry", body).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(resp["receipt"]["outcome"], "refused");
+    assert_eq!(resp["receipt"]["refusal_code"], "no_eligible_manufacturer");
+}
+
+/// Missing required fields must return HTTP 422 with parse_error.
+#[tokio::test]
+async fn registry_route_case_missing_fields_returns_422() {
+    let body = json!({
+        "case": serde_json::from_str::<Value>(REGISTRY_CASE_JSON).unwrap(),
+        // registry and config omitted
+    });
+
+    let (status, resp) = post_json("/route-case-from-registry", body).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(resp["error"]["code"], "parse_error");
+}
+
 /// A malformed case field must return HTTP 422 with a parse_error code.
 #[tokio::test]
 async fn route_case_malformed_case_returns_422() {

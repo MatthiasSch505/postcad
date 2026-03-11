@@ -114,9 +114,7 @@ pub fn route_case_from_registry_json(
     let case_material = parse_mfr_material(&case_input.material);
 
     // 1. Filter by jurisdiction, active status, capability, and material.
-    //    The routing kernel expects only candidates that can handle this case;
-    //    capability/material are pre-filtered here (the kernel does not check
-    //    them independently via the compliance gate).
+    //    Applied stepwise so we can derive the most specific refusal reason.
     let jurisdiction_country = parse_jurisdiction_to_country(jurisdiction);
     let mut in_jurisdiction: Vec<&ManufacturerRecord> = records
         .iter()
@@ -144,11 +142,23 @@ pub fn route_case_from_registry_json(
     let candidates = derive_candidates(&in_jurisdiction, &case_input);
     let snapshots = derive_snapshots(&in_jurisdiction);
 
+    // 4. Compute the most specific refusal reason code for the case where
+    //    no eligible candidates remain. Applied only when the candidate pool
+    //    has no eligible entries; ignored for successful routing.
+    let refusal_reason_hint = compute_refusal_hint(
+        &records,
+        &jurisdiction_country,
+        &case_capability,
+        &case_material,
+        &candidates,
+    );
+
     let bundle = RoutingPolicyBundle {
         jurisdiction: Some(jurisdiction.to_string()),
         routing_policy,
         compliance_profile: None,
         policy_version: config.policy_version,
+        refusal_reason_hint,
         candidates,
         snapshots,
     };
@@ -157,6 +167,81 @@ pub fn route_case_from_registry_json(
     let receipt = route_case_from_policy_json(case_json, &derived_policy_json)?;
 
     Ok(RegistryRoutingResult { receipt, derived_policy_json })
+}
+
+// ── Refusal reason derivation ─────────────────────────────────────────────────
+
+/// Derives the most specific stable refusal reason code from stepwise filtering facts.
+///
+/// Returns `None` when routing will succeed (at least one eligible candidate exists).
+/// Returns `Some(code)` when no eligible candidates remain, where `code` is the
+/// first filter step that emptied the candidate pool:
+///
+/// 1. `no_active_manufacturer`  — all records are inactive
+/// 2. `no_jurisdiction_match`   — no active records serve the jurisdiction
+/// 3. `no_capability_match`     — no active+jurisdiction records have the capability
+/// 4. `no_material_match`       — no active+jurisdiction+capability records support the material
+/// 5. `attestation_failed`      — records passed all structural filters but all are ineligible
+/// 6. `no_eligible_manufacturer` — fallback (empty registry or unknown cause)
+fn compute_refusal_hint(
+    records: &[ManufacturerRecord],
+    jurisdiction_country: &Option<ManufacturerCountry>,
+    case_capability: &Option<ManufacturerCapability>,
+    case_material: &Option<ManufacturerMaterial>,
+    derived_candidates: &[crate::policy_bundle::CandidateEntry],
+) -> Option<String> {
+    // If at least one candidate is eligible, routing will succeed — no hint needed.
+    if derived_candidates.iter().any(|c| c.eligibility == "eligible") {
+        return None;
+    }
+
+    if records.is_empty() {
+        return Some("no_eligible_manufacturer".to_string());
+    }
+
+    // Step 1: active manufacturers.
+    let active: Vec<&ManufacturerRecord> = records.iter().filter(|r| r.is_active).collect();
+    if active.is_empty() {
+        return Some("no_active_manufacturer".to_string());
+    }
+
+    // Step 2: jurisdiction filter.
+    let in_juri: Vec<&&ManufacturerRecord> = active
+        .iter()
+        .filter(|r| {
+            jurisdiction_country
+                .as_ref()
+                .map_or(true, |target| r.jurisdictions_served.contains(target))
+        })
+        .collect();
+    if in_juri.is_empty() {
+        return Some("no_jurisdiction_match".to_string());
+    }
+
+    // Step 3: capability filter.
+    let with_cap: Vec<&&&ManufacturerRecord> = in_juri
+        .iter()
+        .filter(|r| {
+            case_capability.as_ref().map_or(true, |cap| r.capabilities.contains(cap))
+        })
+        .collect();
+    if with_cap.is_empty() {
+        return Some("no_capability_match".to_string());
+    }
+
+    // Step 4: material filter.
+    let with_mat: Vec<&&&&ManufacturerRecord> = with_cap
+        .iter()
+        .filter(|r| {
+            case_material.as_ref().map_or(true, |mat| r.materials_supported.contains(mat))
+        })
+        .collect();
+    if with_mat.is_empty() {
+        return Some("no_material_match".to_string());
+    }
+
+    // Candidates exist but all failed attestation / active checks.
+    Some("attestation_failed".to_string())
 }
 
 // ── Candidate + snapshot derivation ──────────────────────────────────────────

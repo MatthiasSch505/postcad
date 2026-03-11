@@ -1,0 +1,35 @@
+[
+  {
+    "manufacturer_id": "mfr-de-alpha",
+    "display_name": "Alpha Dental GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 5
+  },
+  {
+    "manufacturer_id": "mfr-de-beta",
+    "display_name": "Beta Zahntechnik GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 3
+  },
+  {
+    "manufacturer_id": "mfr-de-gamma",
+    "display_name": "Gamma Dental GmbH",
+    "country": "germany",
+    "is_active": true,
+    "capabilities": ["crown"],
+    "materials_supported": ["zirconia"],
+    "jurisdictions_served": ["germany"],
+    "attestation_statuses": ["verified"],
+    "sla_days": 7
+  }
+]

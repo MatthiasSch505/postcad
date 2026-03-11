@@ -33,6 +33,22 @@ pub struct RoutingPolicyBundle {
     /// fails if the version in the policy bundle differs from the version
     /// recorded in the receipt.
     pub policy_version: Option<String>,
+    /// Optional deterministic refusal reason code hint for the registry routing path.
+    ///
+    /// When the registry-backed routing path determines that no candidates are
+    /// eligible, it sets this field to the most specific stable refusal code
+    /// derived from the stepwise filtering facts (e.g. `"no_jurisdiction_match"`).
+    /// The routing kernel uses this hint as the `refusal_code` in the receipt
+    /// instead of the generic `"no_eligible_candidates"`.
+    ///
+    /// Absent for all non-registry routing paths; absent bundles behave exactly
+    /// as before (the kernel falls back to `"no_eligible_candidates"`).
+    ///
+    /// Stable codes: `"no_active_manufacturer"`, `"no_jurisdiction_match"`,
+    /// `"no_capability_match"`, `"no_material_match"`, `"attestation_failed"`,
+    /// `"no_eligible_manufacturer"`.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub refusal_reason_hint: Option<String>,
     /// Routing candidates to evaluate. Defaults to empty when absent; callers
     /// that supply a separate `candidates.json` should omit this field.
     #[serde(default)]

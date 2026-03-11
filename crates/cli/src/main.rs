@@ -1,7 +1,10 @@
 use std::fs;
 use std::process;
 
-use postcad_cli::{build_manifest, route_case_from_json, verify_receipt_from_inputs};
+use postcad_cli::{
+    build_manifest, route_case_from_json, route_case_from_registry_json,
+    verify_receipt_from_inputs, verify_receipt_from_policy_json,
+};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -10,6 +13,7 @@ fn main() {
 
     match args.get(1).map(String::as_str) {
         Some("route-case") => run_route_case(&args[2..]),
+        Some("route-case-from-registry") => run_route_case_from_registry(&args[2..]),
         Some("verify-receipt") => run_verify_receipt(&args[2..]),
         Some("protocol-manifest") => run_protocol_manifest(),
         Some("--help") | Some("-h") | Some("help") => print_help(),
@@ -107,6 +111,101 @@ fn run_route_case(args: &[String]) {
         println!("audit_entry_hash:     {}", receipt.audit_entry_hash);
         println!("audit_previous_hash:  {}", receipt.audit_previous_hash);
         if let Some(detail) = &receipt.refusal {
+            println!("refusal_message:      {}", detail.message);
+            println!("failed_constraint:    {}", detail.failed_constraint);
+        }
+    }
+}
+
+fn run_route_case_from_registry(args: &[String]) {
+    let json_output = args.iter().any(|a| a.as_str() == "--json");
+
+    let mut case_path: Option<&str> = None;
+    let mut registry_path: Option<&str> = None;
+    let mut config_path: Option<&str> = None;
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--case" => {
+                case_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--registry" => {
+                registry_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--config" => {
+                config_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--json" => {
+                i += 1;
+            }
+            other => emit_error_and_exit(
+                json_output,
+                "invalid_arguments",
+                &format!("unknown flag '{}'", other),
+            ),
+        }
+    }
+
+    let case_path = case_path.unwrap_or_else(|| {
+        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --case")
+    });
+    let registry_path = registry_path.unwrap_or_else(|| {
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --registry",
+        )
+    });
+    let config_path = config_path.unwrap_or_else(|| {
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --config",
+        )
+    });
+
+    let case_json = read_file_or_exit(json_output, case_path);
+    let registry_json = read_file_or_exit(json_output, registry_path);
+    let config_json = read_file_or_exit(json_output, config_path);
+
+    let result =
+        match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
+            Ok(r) => r,
+            Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
+        };
+
+    // Verify the receipt immediately as a self-check, then emit.
+    if let Err(f) = verify_receipt_from_policy_json(
+        &serde_json::to_string(&result.receipt).unwrap(),
+        &case_json,
+        &result.derived_policy_json,
+    ) {
+        emit_error_and_exit(json_output, &f.code, &f.message);
+    }
+
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&result.receipt).unwrap());
+    } else {
+        println!("outcome:              {}", result.receipt.outcome);
+        println!(
+            "selected_candidate:   {}",
+            result.receipt.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
+        );
+        println!(
+            "refusal_code:         {}",
+            result.receipt.refusal_code.as_deref().unwrap_or("\u{2014}")
+        );
+        println!("routing_proof_hash:   {}", result.receipt.routing_proof_hash);
+        println!("policy_fingerprint:   {}", result.receipt.policy_fingerprint);
+        println!("case_fingerprint:     {}", result.receipt.case_fingerprint);
+        println!("audit_seq:            {}", result.receipt.audit_seq);
+        println!("audit_entry_hash:     {}", result.receipt.audit_entry_hash);
+        println!("audit_previous_hash:  {}", result.receipt.audit_previous_hash);
+        if let Some(detail) = &result.receipt.refusal {
             println!("refusal_message:      {}", detail.message);
             println!("failed_constraint:    {}", detail.failed_constraint);
         }

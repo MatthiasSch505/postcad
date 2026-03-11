@@ -1,5 +1,8 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use postcad_cli::{build_manifest, route_case_from_policy_json, verify_receipt_from_policy_json};
+use postcad_cli::{
+    build_manifest, route_case_from_policy_json, route_case_from_registry_json,
+    verify_receipt_from_policy_json,
+};
 use serde_json::{Value, json};
 
 /// POST /route-case
@@ -67,6 +70,53 @@ pub async fn verify_receipt(Json(body): Json<Value>) -> impl IntoResponse {
         Err(f) => (
             StatusCode::UNPROCESSABLE_ENTITY,
             Json(json!({"result": "FAILED", "error": {"code": f.code, "message": f.message}})),
+        )
+            .into_response(),
+    }
+}
+
+/// POST /route-case-from-registry
+///
+/// Request: `{"case": {...}, "registry": [...], "config": {...}}`
+/// Success (200): `{"receipt": {...}, "derived_policy": {...}}`
+/// Error (422): `{"error": {"code": "...", "message": "..."}}`
+///
+/// Derives a RoutingPolicyBundle from typed ManufacturerRecord data and routes
+/// via the kernel. Returns both the receipt and the derived policy so callers
+/// can verify the receipt without re-deriving.
+pub async fn route_case_from_registry(Json(body): Json<Value>) -> impl IntoResponse {
+    let case = &body["case"];
+    let registry = &body["registry"];
+    let config = &body["config"];
+
+    if case.is_null() || registry.is_null() || config.is_null() {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "parse_error", "message": "request must contain 'case', 'registry', and 'config' fields"}})),
+        )
+            .into_response();
+    }
+
+    let case_json = serde_json::to_string(case).unwrap();
+    let registry_json = serde_json::to_string(registry).unwrap();
+    let config_json = serde_json::to_string(config).unwrap();
+
+    match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
+        Ok(result) => {
+            let derived_policy: Value =
+                serde_json::from_str(&result.derived_policy_json).unwrap_or(Value::Null);
+            (
+                StatusCode::OK,
+                Json(json!({
+                    "receipt": serde_json::to_value(&result.receipt).unwrap(),
+                    "derived_policy": derived_policy,
+                })),
+            )
+                .into_response()
+        }
+        Err(e) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": e.code(), "message": e.to_string()}})),
         )
             .into_response(),
     }

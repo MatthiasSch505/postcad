@@ -1,0 +1,5 @@
+{
+  "expected_result": "err",
+  "expected_error_code": "registry_snapshot_hash_mismatch",
+  "generation_type": "drift_snapshot"
+}

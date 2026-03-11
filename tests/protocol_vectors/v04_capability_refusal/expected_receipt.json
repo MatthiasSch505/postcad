@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "routing_kernel_version": "postcad-routing-v1",
+  "outcome": "refused",
+  "case_fingerprint": "a298f58dcf40ca2f4698d2aa96a0e40c25753f86bd5d7fcf15f2ec044dd50b95",
+  "policy_fingerprint": "c6167ec7ca3e50b2d6d8ad135dbb3467f0a67b5a68a7ec91df14bec9b1b841b3",
+  "policy_version": null,
+  "routing_proof_hash": "e285a81483765c8cf962ecb42a01012cae1406e79b2f92b6fd90ca19f6a98029",
+  "registry_snapshot_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "candidate_pool_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "eligible_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "selection_input_candidate_ids_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "candidate_order_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "routing_decision_hash": "f102387cb78917d99b36c3476b085444515b0286b8e90e8248d8a8e3cb6475c7",
+  "selected_candidate_id": null,
+  "refusal_code": "no_capability_match",
+  "audit_seq": 0,
+  "audit_entry_hash": "a12319e885d8a564ed3efd56fe978c3d9d7a257d6c2bcaaeb4470a28fe6c0e99",
+  "audit_previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "refusal": {
+    "message": "No eligible candidate found",
+    "evaluated_candidate_ids": [],
+    "failed_constraint": "no_input_candidates"
+  },
+  "routing_input": {
+    "case_id": "00000004-0000-0000-0000-000000000004",
+    "file_type": "stl",
+    "jurisdiction": "DE",
+    "manufacturer_country": "germany",
+    "material": "zirconia",
+    "patient_country": "germany",
+    "procedure": "crown",
+    "routing_policy": "allow_domestic_and_cross_border"
+  },
+  "routing_input_hash": "44e7ae103bf1a5c079e37cbbc92e14e648434d98fefaa31e55d26ed4fb9218df",
+  "receipt_hash": "09edc9711947b32380a0ad0a84fa71935bdc74ef0934f47d80b7bff64bca0036"
+}

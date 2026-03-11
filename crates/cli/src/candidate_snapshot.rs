@@ -422,4 +422,57 @@ mod tests {
         assert!(h.chars().all(|c| c.is_ascii_hexdigit()));
         assert_eq!(h, h.to_lowercase());
     }
+
+    // ── hash_candidate_order: sorting invariant ───────────────────────────────
+
+    /// Candidate order reproducibility invariant:
+    /// `hash_candidate_order` must be equivalent to sorting IDs ascending
+    /// then calling `hash_selector_input`. Any independent verifier can
+    /// reproduce `candidate_order_hash` using this well-known algorithm.
+    #[test]
+    fn hash_candidate_order_equals_hash_selector_input_of_sorted_ids() {
+        let ids = vec!["rc-c".to_string(), "rc-a".to_string(), "rc-b".to_string()];
+        let mut sorted = ids.clone();
+        sorted.sort();
+        assert_eq!(
+            hash_candidate_order(&ids),
+            hash_selector_input(&sorted),
+            "hash_candidate_order must equal hash_selector_input of sorted IDs"
+        );
+    }
+
+    /// The sorting invariant must hold for all permutations of the same ID set.
+    #[test]
+    fn hash_candidate_order_invariant_holds_for_all_permutations() {
+        let sorted = vec!["rc-1".to_string(), "rc-2".to_string(), "rc-3".to_string()];
+        let reversed = vec!["rc-3".to_string(), "rc-2".to_string(), "rc-1".to_string()];
+        let mixed = vec!["rc-2".to_string(), "rc-3".to_string(), "rc-1".to_string()];
+        let expected = hash_selector_input(&sorted);
+        assert_eq!(hash_candidate_order(&sorted), expected);
+        assert_eq!(hash_candidate_order(&reversed), expected);
+        assert_eq!(hash_candidate_order(&mixed), expected);
+    }
+
+    /// Adding a candidate to the eligible set must change `candidate_order_hash`.
+    #[test]
+    fn hash_candidate_order_changes_when_candidate_added() {
+        let one = vec!["rc-1".to_string()];
+        let two = vec!["rc-1".to_string(), "rc-2".to_string()];
+        assert_ne!(
+            hash_candidate_order(&one),
+            hash_candidate_order(&two),
+            "adding an eligible candidate must change candidate_order_hash"
+        );
+    }
+
+    /// A single-element eligible set produces a stable, valid hash.
+    #[test]
+    fn hash_candidate_order_single_id_is_stable() {
+        let ids = vec!["rc-solo".to_string()];
+        let h1 = hash_candidate_order(&ids);
+        let h2 = hash_candidate_order(&ids);
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 64);
+        assert!(h1.chars().all(|c| c.is_ascii_hexdigit()));
+    }
 }

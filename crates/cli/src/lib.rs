@@ -3742,4 +3742,209 @@ mod tests {
             "wrong failure code; got: {:?}", err.code
         );
     }
+
+    // ── Test 24: candidate_order_hash reproducibility invariant ──────────────
+
+    /// Verifies the candidate order reproducibility invariant end-to-end:
+    /// the `candidate_order_hash` committed at routing time must be reproducible
+    /// by sorting the eligible candidate IDs and hashing them, and must pass
+    /// through the full verification roundtrip.
+    #[test]
+    fn candidate_order_hash_reproduced_by_verification_roundtrip() {
+        let policy = routed_policy_json();
+        let receipt = route_case_from_policy_json(CASE_JSON, &policy).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+        // Full verification recomputes candidate_order_hash from the replay;
+        // if it does not match the committed value the check at step 4d fires.
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, &policy)
+            .expect("candidate_order_hash must be reproducible and pass verification");
+    }
+
+    /// The same reproduced invariant via the four-artifact path.
+    #[test]
+    fn candidate_order_hash_reproduced_by_inputs_verification_roundtrip() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+        verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+            .expect("candidate_order_hash must be reproducible via four-artifact path");
+    }
+
+    // ── Test 25: selection reproducibility invariant ──────────────────────────
+
+    /// The same case and the same eligible candidate pool must always yield the
+    /// same `selected_candidate_id` and the same `candidate_order_hash`, proving
+    /// that selection is deterministic from the canonically sorted eligible set.
+    #[test]
+    fn selected_candidate_is_reproducible_from_same_ordered_pool() {
+        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_eq!(
+            a.selected_candidate_id, b.selected_candidate_id,
+            "selection must be reproducible from the same inputs"
+        );
+        assert_eq!(
+            a.candidate_order_hash, b.candidate_order_hash,
+            "candidate_order_hash must be stable for the same eligible set"
+        );
+    }
+
+    /// Selection reproducibility tamper test (policy-json path):
+    /// An attacker replaces `selected_candidate_id`, recomputes
+    /// `routing_decision_hash` to be self-consistent with the forged value,
+    /// and recomputes `receipt_hash` so the artifact check passes.
+    /// The routing replay (step 4e) must detect the fraud via
+    /// `routing_decision_replay_mismatch` because the actual replay always
+    /// selects the deterministic candidate, not the forged one.
+    #[test]
+    fn verify_receipt_rejects_forged_selected_candidate_with_consistent_decision_hash() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+
+        // Forge a different selected_candidate_id.
+        val["selected_candidate_id"] = serde_json::json!("rc-forged");
+
+        // Recompute routing_decision_hash with the forged candidate so step 1e passes.
+        let forged_decision_hash = hash_routing_decision(
+            "routed",
+            None,
+            receipt.policy_version.as_deref(),
+            &receipt.routing_kernel_version,
+            Some("rc-forged"),
+        );
+        val["routing_decision_hash"] = serde_json::json!(forged_decision_hash);
+
+        // Recompute receipt_hash so step 1b passes.
+        let tampered_r: RoutingReceipt = serde_json::from_value(val.clone()).unwrap();
+        val["receipt_hash"] = serde_json::json!(hash_receipt_content(&tampered_r));
+
+        let tampered = serde_json::to_string(&val).unwrap();
+        let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, POLICY_JSON)
+            .expect_err("replay must detect forged selected_candidate_id");
+        assert_eq!(err.code, "routing_decision_replay_mismatch");
+    }
+
+    /// Selection reproducibility tamper test (four-artifact path).
+    #[test]
+    fn verify_receipt_from_inputs_rejects_forged_selected_candidate_with_consistent_decision_hash() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+
+        val["selected_candidate_id"] = serde_json::json!("rc-fraud");
+
+        let forged_decision_hash = hash_routing_decision(
+            "routed",
+            None,
+            receipt.policy_version.as_deref(),
+            &receipt.routing_kernel_version,
+            Some("rc-fraud"),
+        );
+        val["routing_decision_hash"] = serde_json::json!(forged_decision_hash);
+
+        let tampered_r: RoutingReceipt = serde_json::from_value(val.clone()).unwrap();
+        val["receipt_hash"] = serde_json::json!(hash_receipt_content(&tampered_r));
+
+        let tampered = serde_json::to_string(&val).unwrap();
+        let err = verify_receipt_from_inputs(&tampered, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+            .unwrap_err();
+        assert_eq!(err.code, "routing_decision_replay_mismatch");
+    }
+
+    // ── Test 26: routing_kernel_version commitment invariant ──────────────────
+
+    /// `routing_decision_hash` must commit to `routing_kernel_version`:
+    /// changing only the kernel version string must produce a different hash,
+    /// confirming the version is an input to the decision hash computation.
+    #[test]
+    fn routing_decision_hash_commits_to_routing_kernel_version() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+
+        let hash_v1 = hash_routing_decision(
+            &receipt.outcome,
+            receipt.refusal_code.as_deref(),
+            receipt.policy_version.as_deref(),
+            "postcad-routing-v1",
+            receipt.selected_candidate_id.as_deref(),
+        );
+        let hash_v0 = hash_routing_decision(
+            &receipt.outcome,
+            receipt.refusal_code.as_deref(),
+            receipt.policy_version.as_deref(),
+            "postcad-routing-v0",
+            receipt.selected_candidate_id.as_deref(),
+        );
+
+        assert_ne!(
+            hash_v1, hash_v0,
+            "routing_decision_hash must change when routing_kernel_version changes"
+        );
+        assert_eq!(
+            receipt.routing_decision_hash, hash_v1,
+            "receipt must commit to the current routing_kernel_version"
+        );
+    }
+
+    /// Routing kernel version commitment tamper test (policy-json path):
+    /// An attacker changes `routing_kernel_version`, recomputes
+    /// `routing_decision_hash` to be consistent with the forged version,
+    /// and recomputes `receipt_hash`.
+    /// Step 1d (`routing_kernel_version_mismatch`) must fire before step 1e,
+    /// because the forged version does not match the compile-time constant.
+    #[test]
+    fn verify_receipt_rejects_kernel_version_fraud_with_consistent_decision_hash() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+
+        val["routing_kernel_version"] = serde_json::json!("postcad-routing-v0");
+
+        // Recompute routing_decision_hash with the forged version so step 1e would pass.
+        let forged_decision_hash = hash_routing_decision(
+            receipt.outcome.as_str(),
+            receipt.refusal_code.as_deref(),
+            receipt.policy_version.as_deref(),
+            "postcad-routing-v0",
+            receipt.selected_candidate_id.as_deref(),
+        );
+        val["routing_decision_hash"] = serde_json::json!(forged_decision_hash);
+
+        // Recompute receipt_hash so step 1b passes.
+        let tampered_r: RoutingReceipt = serde_json::from_value(val.clone()).unwrap();
+        val["receipt_hash"] = serde_json::json!(hash_receipt_content(&tampered_r));
+
+        let tampered = serde_json::to_string(&val).unwrap();
+        let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, POLICY_JSON)
+            .expect_err("step 1d must reject wrong routing_kernel_version even if decision hash is consistent");
+        assert_eq!(err.code, "routing_kernel_version_mismatch");
+    }
+
+    /// Routing kernel version commitment tamper test (four-artifact path).
+    #[test]
+    fn verify_receipt_from_inputs_rejects_kernel_version_fraud_with_consistent_decision_hash() {
+        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
+            .unwrap();
+        let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
+
+        val["routing_kernel_version"] = serde_json::json!("postcad-routing-v99");
+
+        let forged_decision_hash = hash_routing_decision(
+            receipt.outcome.as_str(),
+            receipt.refusal_code.as_deref(),
+            receipt.policy_version.as_deref(),
+            "postcad-routing-v99",
+            receipt.selected_candidate_id.as_deref(),
+        );
+        val["routing_decision_hash"] = serde_json::json!(forged_decision_hash);
+
+        let tampered_r: RoutingReceipt = serde_json::from_value(val.clone()).unwrap();
+        val["receipt_hash"] = serde_json::json!(hash_receipt_content(&tampered_r));
+
+        let tampered = serde_json::to_string(&val).unwrap();
+        let err = verify_receipt_from_inputs(&tampered, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+            .unwrap_err();
+        assert_eq!(err.code, "routing_kernel_version_mismatch");
+    }
 }

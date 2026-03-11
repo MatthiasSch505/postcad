@@ -4,6 +4,9 @@ use uuid::Uuid;
 pub mod protocol;
 pub use protocol::POSTCAD_PROTOCOL_VERSION;
 
+pub mod kernel_version;
+pub use kernel_version::ROUTING_KERNEL_SEMVER;
+
 pub mod refusal_codes;
 pub use refusal_codes::{REFUSAL_CODES, is_known_refusal_code, refusal_code_set_hash};
 

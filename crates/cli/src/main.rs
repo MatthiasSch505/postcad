@@ -4,7 +4,7 @@ use std::process;
 use postcad_cli::{
     build_manifest, route_case_from_json,
     route_case_from_registry_json, verify_receipt_from_inputs, verify_receipt_from_policy_json,
-    PROTOCOL_VERSION,
+    POSTCAD_PROTOCOL_VERSION, PROTOCOL_VERSION, ROUTING_KERNEL_SEMVER,
 };
 
 fn main() {
@@ -17,6 +17,7 @@ fn main() {
         Some("route-case-from-registry") => run_route_case_from_registry(&args[2..]),
         Some("verify-receipt") => run_verify_receipt(&args[2..]),
         Some("protocol-manifest") => run_protocol_manifest(),
+        Some("protocol-info") => run_protocol_info(),
         Some("demo-run") | Some("demo") => run_demo_v1(&args[2..]),
         Some("--help") | Some("-h") | Some("help") => print_help(),
         Some(other) => emit_error_and_exit(
@@ -395,6 +396,24 @@ fn read_file_or_exit(json_output: bool, path: &str) -> String {
 
 fn run_protocol_manifest() {
     println!("{}", serde_json::to_string_pretty(&build_manifest()).unwrap());
+}
+
+/// `protocol-info` — compact semantic version summary of the protocol.
+///
+/// Outputs a JSON object with the semver identifiers and the three schema
+/// hashes that uniquely identify this protocol configuration.  Uses the same
+/// manifest data as `protocol-manifest` but presents only the semver surface.
+fn run_protocol_info() {
+    let m = build_manifest();
+    let info = serde_json::json!({
+        "manifest_fingerprint":    m.manifest_fingerprint,
+        "proof_schema_hash":       m.proof_schema_hash,
+        "protocol_version":        POSTCAD_PROTOCOL_VERSION,
+        "receipt_schema_hash":     m.receipt_schema_hash,
+        "refusal_code_set_hash":   m.refusal_code_set_hash,
+        "routing_kernel_version":  ROUTING_KERNEL_SEMVER,
+    });
+    println!("{}", serde_json::to_string_pretty(&info).unwrap());
 }
 
 fn print_help() {

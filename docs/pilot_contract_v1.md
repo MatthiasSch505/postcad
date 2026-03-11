@@ -289,6 +289,8 @@ The service exposes the same contract over HTTP. All endpoints accept and return
 | `/cases` | POST | case JSON object | `{"case_id": "...", "stored": true}` |
 | `/cases` | GET | — | `{"case_ids": [...]}` |
 | `/cases/{case_id}` | GET | — | stored case JSON object |
+| `/cases/{case_id}/route` | POST | `{"registry": [...], "config": {...}}` | `{"case_id": "...", "receipt_hash": "...", "selected_candidate_id": "..."}` |
+| `/routes` | GET | — | `{"routes": [...]}` |
 
 Error responses: HTTP 422, body `{"error": {"code": "...", "message": "..."}}` for routing errors; `{"result": "FAILED", "error": {"code": "...", "message": "..."}}` for verification failures.
 
@@ -305,6 +307,28 @@ curl -s http://localhost:3000/cases
 
 # GET /cases/{case_id} — retrieve a stored case
 curl -s http://localhost:3000/cases/a1b2c3d4-0000-0000-0000-000000000001
+```
+
+### Route history curl example
+
+```bash
+# GET /routes — list all routing decisions
+curl -s http://localhost:3000/routes
+```
+
+Example response:
+
+```json
+{
+  "routes": [
+    {
+      "case_id": "f1000001-0000-0000-0000-000000000001",
+      "receipt_hash": "a3f1c2d4e5b6...",
+      "selected_candidate_id": "pilot-de-001",
+      "timestamp": "2026-03-11T10:02:03Z"
+    }
+  ]
+}
 ```
 
 ### Stored-case routing curl example

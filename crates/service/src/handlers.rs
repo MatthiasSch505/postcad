@@ -13,6 +13,7 @@ use postcad_cli::{
 use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
+use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
 use crate::AppState;
 
 /// POST /route-case
@@ -451,4 +452,42 @@ pub async fn route_stored_case(
         })),
     )
         .into_response()
+}
+
+// ── Route history endpoint ────────────────────────────────────────────────────
+
+/// GET /routes
+///
+/// Returns all stored routing receipts as a route history list, sorted by
+/// timestamp descending (receipt_hash ascending as tiebreaker).
+///
+/// Success (200): `{"routes": [{case_id, receipt_hash, selected_candidate_id, timestamp}, ...]}`
+/// Internal (500): `{"error": {"code": "internal_error"|"receipt_parse_error", "message": "..."}}`
+pub async fn list_routes(State(store): State<Arc<ReceiptStore>>) -> impl IntoResponse {
+    match store.list_routes() {
+        Ok(entries) => {
+            let routes: Vec<Value> = entries
+                .into_iter()
+                .map(|e| {
+                    json!({
+                        "case_id": e.case_id,
+                        "receipt_hash": e.receipt_hash,
+                        "selected_candidate_id": e.selected_candidate_id,
+                        "timestamp": e.timestamp,
+                    })
+                })
+                .collect();
+            (StatusCode::OK, Json(json!({"routes": routes}))).into_response()
+        }
+        Err(ReceiptStoreError::ParseError(msg)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "receipt_parse_error", "message": msg}})),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
 }

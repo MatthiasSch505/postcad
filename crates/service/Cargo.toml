@@ -16,6 +16,7 @@ postcad-cli = { path = "../cli" }
 axum = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 tower = { version = "0.4", features = ["util"] }

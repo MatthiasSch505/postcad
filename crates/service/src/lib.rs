@@ -44,6 +44,11 @@ pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptSto
         .route("/cases/:case_id", routing::get(handlers::get_case))
         .with_state(case_store.clone());
 
+    // Route history endpoint: State<Arc<ReceiptStore>>.
+    let history_endpoint = Router::new()
+        .route("/routes", routing::get(handlers::list_routes))
+        .with_state(receipt_store.clone());
+
     // Case routing endpoint: State<Arc<AppState>> (needs both stores).
     let route_endpoint = Router::new()
         .route(
@@ -73,6 +78,8 @@ pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptSto
         .route("/verify", routing::post(handlers::pilot_verify))
         // Case intake
         .merge(case_routes)
+        // Route history
+        .merge(history_endpoint)
         // Stored-case routing
         .merge(route_endpoint)
 }

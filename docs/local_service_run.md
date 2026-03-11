@@ -1,5 +1,7 @@
 # PostCAD Service — Local Run
 
+> **Quick start:** run the complete 8-step demo in one command — see [`docs/demo_run.md`](demo_run.md).
+
 ---
 
 ## Prerequisites

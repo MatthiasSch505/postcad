@@ -307,6 +307,25 @@ curl -s http://localhost:3000/cases
 curl -s http://localhost:3000/cases/a1b2c3d4-0000-0000-0000-000000000001
 ```
 
+### Stored-case routing curl example
+
+```bash
+# POST /cases/{case_id}/route — route a stored case
+curl -s -X POST http://localhost:3000/cases/f1000001-0000-0000-0000-000000000001/route \
+  -H 'Content-Type: application/json' \
+  -d '{"registry": [...], "config": {"jurisdiction": "DE", "routing_policy": "allow_domestic_and_cross_border"}}'
+```
+
+Example response:
+
+```json
+{
+  "case_id": "f1000001-0000-0000-0000-000000000001",
+  "receipt_hash": "a3f1...",
+  "selected_candidate_id": "pilot-de-001"
+}
+```
+
 ---
 
 ## Out of scope for pilot v1

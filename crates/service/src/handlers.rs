@@ -13,6 +13,7 @@ use postcad_cli::{
 use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
+use crate::AppState;
 
 /// POST /route-case
 ///
@@ -346,4 +347,108 @@ pub async fn get_case(
         )
             .into_response(),
     }
+}
+
+// ── Stored-case routing endpoint ──────────────────────────────────────────────
+
+/// POST /cases/:case_id/route
+///
+/// Request body: `{"registry": [...], "config": {...}}`
+///
+/// Reads the stored case, runs the routing kernel, persists the receipt to
+/// `data/receipts/{receipt_hash}.json`, and returns:
+///
+/// Success (200):   `{"case_id": "...", "receipt_hash": "...", "selected_candidate_id": "..."}`
+/// Refused (422):   `{"error": {"code": "routing_refused", "message": "..."}}`
+/// Not found (404): `{"error": {"code": "case_not_found", "message": "..."}}`
+/// Internal (500):  `{"error": {"code": "internal_error", "message": "..."}}`
+pub async fn route_stored_case(
+    State(state): State<Arc<AppState>>,
+    Path(case_id): Path<String>,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    // 1. Load the stored case.
+    let case_value = match state.case_store.get(&case_id) {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": {"code": "case_not_found",
+                    "message": format!("case '{case_id}' not found")}})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    // 2. Extract registry and config from the request body.
+    let registry = &body["registry"];
+    let config = &body["config"];
+    if registry.is_null() || config.is_null() {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "parse_error",
+                "message": "request must contain 'registry' and 'config' fields"}})),
+        )
+            .into_response();
+    }
+
+    let case_json = serde_json::to_string(&case_value).unwrap();
+    let registry_json = serde_json::to_string(registry).unwrap();
+    let config_json = serde_json::to_string(config).unwrap();
+
+    // 3. Run the routing kernel (same path as /route-case-from-registry).
+    let result = match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": {"code": e.code(), "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    let receipt = &result.receipt;
+    let receipt_hash = &receipt.receipt_hash;
+
+    // 4. Persist the receipt (routed or refused — both are valid audit artifacts).
+    let receipt_json = serde_json::to_string_pretty(receipt).unwrap();
+    if let Err(e) = state.receipt_store.store(receipt_hash, &receipt_json) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response();
+    }
+
+    // 5. Return outcome-appropriate response.
+    if receipt.outcome == "refused" {
+        let code = receipt
+            .refusal_code
+            .as_deref()
+            .unwrap_or("no_eligible_candidates");
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "routing_refused",
+                "message": format!("routing refused: {code}")}})),
+        )
+            .into_response();
+    }
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "case_id": case_id,
+            "receipt_hash": receipt_hash,
+            "selected_candidate_id": receipt.selected_candidate_id,
+        })),
+    )
+        .into_response()
 }

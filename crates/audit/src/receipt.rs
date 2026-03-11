@@ -114,8 +114,8 @@ mod tests {
     use super::*;
     use postcad_core::{
         Case, Country, DecisionContext, DentalCase, FileType, ManufacturerEligibility,
-        ManufacturingLocation, Material, ProcedureType, RefusalReason,
-        RoutingCandidate, RoutingCandidateId, RoutingDecision, RoutingOutcome,
+        ManufacturingLocation, Material, ProcedureType, RefusalReason, RoutingCandidate,
+        RoutingCandidateId, RoutingDecision, RoutingOutcome,
     };
 
     fn make_case() -> Case {
@@ -138,7 +138,11 @@ mod tests {
         )
     }
 
-    fn make_outcome(case: &Case, decision: RoutingDecision, candidate_count: usize) -> RoutingOutcome {
+    fn make_outcome(
+        case: &Case,
+        decision: RoutingDecision,
+        candidate_count: usize,
+    ) -> RoutingOutcome {
         RoutingOutcome {
             decision,
             context: DecisionContext::new(case.id.clone(), candidate_count, candidate_count),
@@ -180,18 +184,10 @@ mod tests {
             case.id.clone(),
             RefusalReason::ValidationFailed,
         );
-        let outcome = make_outcome(
-            &case,
-            RoutingDecision::Refused(refusal),
-            candidates.len(),
-        );
+        let outcome = make_outcome(&case, RoutingDecision::Refused(refusal), candidates.len());
 
-        let receipt = RoutingAuditReceipt::from_outcome(
-            &outcome,
-            "US",
-            &candidates,
-            Some("v1".to_string()),
-        );
+        let receipt =
+            RoutingAuditReceipt::from_outcome(&outcome, "US", &candidates, Some("v1".to_string()));
 
         assert_eq!(receipt.case_id, case.id.to_string());
         assert_eq!(receipt.jurisdiction, "US");
@@ -271,7 +267,11 @@ mod tests {
     fn receipt_refused_canonical_json_uses_stable_refusal_code() {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
-        let outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, candidates.len());
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::NoEligibleCandidate,
+            candidates.len(),
+        );
         let receipt = RoutingAuditReceipt::from_outcome(&outcome, "DE", &candidates, None);
         let json = crate::canonical::to_canonical_json(&receipt);
 

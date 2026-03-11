@@ -1,4 +1,7 @@
-use postcad_cli::{build_manifest, route_case_from_json, route_case_from_policy_json, verify_receipt_from_policy_json};
+use postcad_cli::{
+    build_manifest, route_case_from_json, route_case_from_policy_json,
+    verify_receipt_from_policy_json,
+};
 use serde_json::Value;
 
 fn fixtures_dir() -> std::path::PathBuf {
@@ -88,10 +91,9 @@ fn verify_scenario(name: &str) {
     let case_json = read_scenario_file(name, "case.json");
     let policy_json = read_scenario_file(name, "policy.json");
 
-    verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json)
-        .unwrap_or_else(|reason| {
-            panic!("verify-receipt for scenario '{}' failed: {}", name, reason)
-        });
+    verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json).unwrap_or_else(
+        |reason| panic!("verify-receipt for scenario '{}' failed: {}", name, reason),
+    );
 }
 
 #[test]
@@ -154,11 +156,9 @@ fn scenario_routed_cross_border_allowed() {
 /// (via JSON value equality) against fixtures/expected_routed.json.
 #[test]
 fn golden_demo_route_case_policy_form_matches_frozen_receipt() {
-    let actual = route_case_from_policy_json(
-        &read_fixture("case.json"),
-        &read_fixture("policy.json"),
-    )
-    .expect("routing should succeed");
+    let actual =
+        route_case_from_policy_json(&read_fixture("case.json"), &read_fixture("policy.json"))
+            .expect("routing should succeed");
 
     let actual_value: Value = serde_json::to_value(&actual).unwrap();
     let expected_value: Value = as_json_value(&read_fixture("expected_routed.json"));
@@ -225,7 +225,8 @@ fn golden_demo_drift_detection_snapshot_change_fails_verify() {
 
     assert_eq!(
         err.code, "registry_snapshot_hash_mismatch",
-        "expected registry_snapshot_hash_mismatch, got: {:?}", err
+        "expected registry_snapshot_hash_mismatch, got: {:?}",
+        err
     );
 }
 
@@ -239,8 +240,8 @@ fn golden_demo_drift_detection_snapshot_change_fails_verify() {
 /// visible in version control.
 #[test]
 fn golden_protocol_manifest_matches_frozen_fixture() {
-    let actual: Value = serde_json::to_value(build_manifest())
-        .expect("build_manifest must serialise to JSON");
+    let actual: Value =
+        serde_json::to_value(build_manifest()).expect("build_manifest must serialise to JSON");
     let expected: Value = as_json_value(&read_fixture("expected_manifest.json"));
     assert_eq!(
         actual, expected,

@@ -45,13 +45,12 @@ pub fn build_compliance_snapshot(
     let attestation_statuses: Vec<String> = evidence_references
         .iter()
         .filter_map(|r| {
-            evidence_attestation_status(manufacturer_id, r, attestations)
-                .map(|s| s.to_string())
+            evidence_attestation_status(manufacturer_id, r, attestations).map(|s| s.to_string())
         })
         .collect();
 
-    let is_eligible = !evidence_references.is_empty()
-        && attestation_statuses.iter().any(|s| s == "verified");
+    let is_eligible =
+        !evidence_references.is_empty() && attestation_statuses.iter().any(|s| s == "verified");
 
     ManufacturerComplianceSnapshot {
         manufacturer_id: manufacturer_id.to_string(),
@@ -74,9 +73,7 @@ pub fn build_compliance_snapshot_for_profile(
     // required type, preserving deterministic slice order.
     let evidence_references: Vec<String> = evidence
         .iter()
-        .filter(|e| {
-            e.manufacturer_id == manufacturer_id && profile.requires(&e.evidence_type)
-        })
+        .filter(|e| e.manufacturer_id == manufacturer_id && profile.requires(&e.evidence_type))
         .map(|e| e.evidence_reference.clone())
         .collect();
 
@@ -84,8 +81,7 @@ pub fn build_compliance_snapshot_for_profile(
     let attestation_statuses: Vec<String> = evidence_references
         .iter()
         .filter_map(|r| {
-            evidence_attestation_status(manufacturer_id, r, attestations)
-                .map(|s| s.to_string())
+            evidence_attestation_status(manufacturer_id, r, attestations).map(|s| s.to_string())
         })
         .collect();
 
@@ -137,8 +133,7 @@ mod tests {
         let evidence = vec![iso_evidence("mfr-01", "ISO-9001-2024")];
         let attestations = vec![attested("mfr-01", "ISO-9001-2024", "verified")];
 
-        let snapshot =
-            build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
+        let snapshot = build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
 
         assert!(snapshot.is_eligible);
         assert_eq!(snapshot.evidence_references, vec!["ISO-9001-2024"]);
@@ -161,8 +156,7 @@ mod tests {
         let evidence = vec![iso_evidence("mfr-01", "ISO-9001-2024")];
         let attestations = vec![attested("mfr-01", "ISO-9001-2024", "rejected")];
 
-        let snapshot =
-            build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
+        let snapshot = build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
 
         assert!(!snapshot.is_eligible);
         assert_eq!(snapshot.attestation_statuses, vec!["rejected"]);
@@ -173,8 +167,7 @@ mod tests {
         let evidence = vec![iso_evidence("mfr-02", "ISO-9001-2024")];
         let attestations = vec![attested("mfr-02", "ISO-9001-2024", "verified")];
 
-        let snapshot =
-            build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
+        let snapshot = build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
 
         assert!(!snapshot.is_eligible);
         assert!(snapshot.evidence_references.is_empty());
@@ -190,8 +183,7 @@ mod tests {
         )];
         let attestations = vec![attested("mfr-01", "MILL-001", "verified")];
 
-        let snapshot =
-            build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
+        let snapshot = build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
 
         assert!(!snapshot.is_eligible);
         assert!(snapshot.evidence_references.is_empty());
@@ -206,8 +198,7 @@ mod tests {
         ];
         let attestations = vec![attested("mfr-01", "ISO-A", "verified")];
 
-        let snapshot =
-            build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
+        let snapshot = build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
 
         assert_eq!(
             snapshot.evidence_references,
@@ -226,8 +217,7 @@ mod tests {
             attested("mfr-01", "ISO-B", "verified"),
         ];
 
-        let snapshot =
-            build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
+        let snapshot = build_compliance_snapshot("mfr-01", &evidence, &attestations, "iso_cert");
 
         assert_eq!(snapshot.attestation_statuses, vec!["expired", "verified"]);
         // eligible because ISO-B is verified
@@ -259,10 +249,7 @@ mod tests {
             snapshot.evidence_references,
             vec!["ISO-9001-2024", "FDA-510K-2024"]
         );
-        assert_eq!(
-            snapshot.attestation_statuses,
-            vec!["verified", "verified"]
-        );
+        assert_eq!(snapshot.attestation_statuses, vec!["verified", "verified"]);
     }
 
     #[test]

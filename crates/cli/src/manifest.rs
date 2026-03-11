@@ -101,7 +101,9 @@ pub fn build_manifest() -> ProtocolManifest {
 
 /// SHA-256 of the committed receipt field list, fields joined with `\n`.
 pub fn compute_receipt_schema_hash() -> String {
-    encode(Sha256::digest(COMMITTED_RECEIPT_FIELDS.join("\n").as_bytes()))
+    encode(Sha256::digest(
+        COMMITTED_RECEIPT_FIELDS.join("\n").as_bytes(),
+    ))
 }
 
 /// Canonical ordered proof object field names, sorted alphabetically.

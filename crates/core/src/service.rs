@@ -110,7 +110,9 @@ mod tests {
         let id = crate::CaseId::new();
         let refusal = no_candidate_refusal(id.clone());
         assert_eq!(refusal.case_id, id);
-        assert!(refusal.reasons.contains(&RefusalReason::NoEligibleCandidate));
+        assert!(refusal
+            .reasons
+            .contains(&RefusalReason::NoEligibleCandidate));
         assert_eq!(refusal.reasons.len(), 1);
     }
 
@@ -199,11 +201,7 @@ mod tests {
     fn policy_filtering_is_respected() {
         // only cross-border candidates available; domestic-only policy should exclude them
         let candidates = vec![cross_border_candidate("rc-cb")];
-        let result = route_case(
-            &valid_case(),
-            RoutingPolicy::AllowDomesticOnly,
-            &candidates,
-        );
+        let result = route_case(&valid_case(), RoutingPolicy::AllowDomesticOnly, &candidates);
         assert_eq!(result, RoutingDecision::NoEligibleCandidate);
 
         // same candidates pass with AllowDomesticAndCrossBorder

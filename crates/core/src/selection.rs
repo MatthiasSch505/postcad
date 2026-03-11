@@ -1,9 +1,6 @@
 use crate::{CaseId, RoutingCandidate, RoutingDecision};
 
-pub fn select_candidate(
-    _case_id: CaseId,
-    candidates: &[RoutingCandidate],
-) -> RoutingDecision {
+pub fn select_candidate(_case_id: CaseId, candidates: &[RoutingCandidate]) -> RoutingDecision {
     match candidates.first() {
         None => RoutingDecision::NoEligibleCandidate,
         Some(c) => RoutingDecision::Selected(c.id.clone()),
@@ -13,7 +10,10 @@ pub fn select_candidate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CaseId, ManufacturerEligibility, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+    use crate::{
+        CaseId, ManufacturerEligibility, ManufacturingLocation, RoutingCandidate,
+        RoutingCandidateId,
+    };
 
     fn candidate(id: &str) -> RoutingCandidate {
         RoutingCandidate::new(

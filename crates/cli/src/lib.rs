@@ -16,26 +16,37 @@
 //! itself has no dependency on internal crates.
 
 pub mod receipt;
-pub use receipt::{RECEIPT_SCHEMA_VERSION, ReceiptVerificationResult, RefusalDetail, RoutingInputEnvelope, RoutingReceipt};
+pub use receipt::{
+    ReceiptVerificationResult, RefusalDetail, RoutingInputEnvelope, RoutingReceipt,
+    RECEIPT_SCHEMA_VERSION,
+};
 
 pub mod policy_bundle;
 pub use policy_bundle::{CandidateEntry, RoutingPolicyBundle, SnapshotEntry};
 
 mod candidate_snapshot;
-use candidate_snapshot::{hash_candidate_order, hash_candidate_pool_from_compliance, hash_eligible_ids, hash_selector_input};
+use candidate_snapshot::{
+    hash_candidate_order, hash_candidate_pool_from_compliance, hash_eligible_ids,
+    hash_selector_input,
+};
 
 pub mod verifier;
 pub use verifier::VerificationFailure;
 
 pub mod manifest;
 pub use manifest::{
-    PROTOCOL_VERSION, ProtocolManifest, build_manifest,
-    compute_proof_schema_hash, compute_receipt_schema_hash,
+    build_manifest, compute_proof_schema_hash, compute_receipt_schema_hash, ProtocolManifest,
+    PROTOCOL_VERSION,
 };
-pub use postcad_core::{POSTCAD_PROTOCOL_VERSION, REFUSAL_CODES, ROUTING_KERNEL_SEMVER, is_known_refusal_code, refusal_code_set_hash};
+pub use postcad_core::{
+    is_known_refusal_code, refusal_code_set_hash, POSTCAD_PROTOCOL_VERSION, REFUSAL_CODES,
+    ROUTING_KERNEL_SEMVER,
+};
 
 pub mod proof;
-pub use proof::{ProofVerificationFailure, RoutingProofObject, build_routing_proof, verify_routing_proof};
+pub use proof::{
+    build_routing_proof, verify_routing_proof, ProofVerificationFailure, RoutingProofObject,
+};
 
 pub mod registry_routing;
 pub use registry_routing::{
@@ -47,16 +58,19 @@ pub use registry_export::{export_registry, ExportError};
 
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
-use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, hash_registry_snapshots, route_case_with_compliance_audit};
+use postcad_audit::{
+    hash_registry_snapshots, route_case_with_compliance_audit, AuditEvent, AuditLog,
+    RoutingServiceResult,
+};
 use postcad_compliance::ComplianceGate;
-use postcad_routing::ROUTING_KERNEL_VERSION;
 use postcad_core::{
-    Case, CaseId, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
-    Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision, RoutingPolicy,
-    RoutingPolicyConfig, fingerprint_case, fingerprint_policy,
+    fingerprint_case, fingerprint_policy, Case, CaseId, Country, DentalCase, FileType,
+    ManufacturerEligibility, ManufacturingLocation, Material, ProcedureType, RoutingCandidate,
+    RoutingCandidateId, RoutingDecision, RoutingPolicy, RoutingPolicyConfig,
 };
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
 use postcad_registry::validate_snapshots;
+use postcad_routing::ROUTING_KERNEL_VERSION;
 
 // ── External imports (shared by DTOs, errors, and tests) ─────────────────────
 
@@ -130,14 +144,15 @@ pub fn route_case_from_json(
     let policy = parse_routing_policy(case_input.routing_policy.as_deref())?;
     let jurisdiction = case_input.jurisdiction.as_deref().unwrap_or("global");
 
-    validate_snapshots(&snapshots)
-        .map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
+    validate_snapshots(&snapshots).map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
 
     // Bind the candidate pool hash using eligibility derived from the registry
     // snapshots, not the caller-declared field. This makes candidate_pool_hash
     // reproducible from routing input + registry snapshots + routing policy.
-    let candidate_mfr_ids: Vec<String> =
-        candidates_input.iter().map(|c| c.manufacturer_id.clone()).collect();
+    let candidate_mfr_ids: Vec<String> = candidates_input
+        .iter()
+        .map(|c| c.manufacturer_id.clone())
+        .collect();
     let compliant_ids_for_hash =
         ComplianceGate::filter_compliant_manufacturers(&candidate_mfr_ids, &snapshots);
     let candidate_pool_hash =
@@ -145,8 +160,7 @@ pub fn route_case_from_json(
 
     // Capture input candidate IDs before compliance filtering so that refusal
     // detail can report the full evaluated set.
-    let all_input_candidate_ids: Vec<String> =
-        candidates.iter().map(|c| c.id.0.clone()).collect();
+    let all_input_candidate_ids: Vec<String> = candidates.iter().map(|c| c.id.0.clone()).collect();
 
     let case_fingerprint = fingerprint_case(&case);
 
@@ -158,7 +172,9 @@ pub fn route_case_from_json(
         material: case_input.material.clone(),
         patient_country: case_input.patient_country.clone(),
         procedure: case_input.procedure.clone(),
-        routing_policy: case_input.routing_policy.as_deref()
+        routing_policy: case_input
+            .routing_policy
+            .as_deref()
             .unwrap_or("allow_domestic_and_cross_border")
             .to_string(),
     };
@@ -172,7 +188,14 @@ pub fn route_case_from_json(
         None, // no policy_version in the three-file path
     );
 
-    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input, None))
+    Ok(map_result_to_receipt(
+        result,
+        case_fingerprint,
+        all_input_candidate_ids,
+        candidate_pool_hash,
+        routing_input,
+        None,
+    ))
 }
 
 /// Runs the compliance-aware routing pipeline from a case JSON and a policy
@@ -198,18 +221,19 @@ pub fn route_case_from_policy_json(
     let policy = parse_routing_policy(policy_input.routing_policy.as_deref())?;
     let jurisdiction = policy_input.jurisdiction.as_deref().unwrap_or("global");
 
-    validate_snapshots(&snapshots)
-        .map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
+    validate_snapshots(&snapshots).map_err(|e| CliError::SnapshotValidation(e.to_string()))?;
 
-    let candidate_mfr_ids: Vec<String> =
-        policy_input.candidates.iter().map(|c| c.manufacturer_id.clone()).collect();
+    let candidate_mfr_ids: Vec<String> = policy_input
+        .candidates
+        .iter()
+        .map(|c| c.manufacturer_id.clone())
+        .collect();
     let compliant_ids_for_hash =
         ComplianceGate::filter_compliant_manufacturers(&candidate_mfr_ids, &snapshots);
     let candidate_pool_hash =
         hash_candidate_pool_from_compliance(&policy_input.candidates, &compliant_ids_for_hash);
 
-    let all_input_candidate_ids: Vec<String> =
-        candidates.iter().map(|c| c.id.0.clone()).collect();
+    let all_input_candidate_ids: Vec<String> = candidates.iter().map(|c| c.id.0.clone()).collect();
 
     let case_fingerprint = fingerprint_case(&case);
 
@@ -221,7 +245,9 @@ pub fn route_case_from_policy_json(
         material: case_input.material.clone(),
         patient_country: case_input.patient_country.clone(),
         procedure: case_input.procedure.clone(),
-        routing_policy: policy_input.routing_policy.as_deref()
+        routing_policy: policy_input
+            .routing_policy
+            .as_deref()
             .unwrap_or("allow_domestic_and_cross_border")
             .to_string(),
     };
@@ -235,7 +261,14 @@ pub fn route_case_from_policy_json(
         policy_input.policy_version.clone(),
     );
 
-    Ok(map_result_to_receipt(result, case_fingerprint, all_input_candidate_ids, candidate_pool_hash, routing_input, policy_input.refusal_reason_hint.clone()))
+    Ok(map_result_to_receipt(
+        result,
+        case_fingerprint,
+        all_input_candidate_ids,
+        candidate_pool_hash,
+        routing_input,
+        policy_input.refusal_reason_hint.clone(),
+    ))
 }
 
 /// Verifies a routing receipt against the original inputs that produced it.
@@ -288,7 +321,10 @@ pub fn verify_receipt_from_json(
     check!(receipt_hash);
 
     if mismatched.is_empty() {
-        Ok(ReceiptVerificationResult { result: "valid".to_string(), mismatched_fields: None })
+        Ok(ReceiptVerificationResult {
+            result: "valid".to_string(),
+            mismatched_fields: None,
+        })
     } else {
         Ok(ReceiptVerificationResult {
             result: "mismatch".to_string(),
@@ -400,8 +436,8 @@ fn hash_routing_decision(
         routing_kernel_version,
         selected_candidate_id,
     };
-    let obj =
-        serde_json::to_value(&snapshot).expect("RoutingDecisionSnapshot serialization must not fail");
+    let obj = serde_json::to_value(&snapshot)
+        .expect("RoutingDecisionSnapshot serialization must not fail");
     let canonical =
         serde_json::to_string(&obj).expect("canonical decision serialization must not fail");
     let digest = Sha256::digest(canonical.as_bytes());
@@ -566,12 +602,12 @@ pub fn verify_receipt_from_policy_json(
     // pool hash recorded in the receipt, including cases where the registry
     // eligibility was modified after the receipt was issued.
     {
-        let mfr_ids: Vec<String> = policy_input.candidates
+        let mfr_ids: Vec<String> = policy_input
+            .candidates
             .iter()
             .map(|c| c.manufacturer_id.clone())
             .collect();
-        let compliant_ids =
-            ComplianceGate::filter_compliant_manufacturers(&mfr_ids, &snapshots);
+        let compliant_ids = ComplianceGate::filter_compliant_manufacturers(&mfr_ids, &snapshots);
         let reproduced_hash =
             hash_candidate_pool_from_compliance(&policy_input.candidates, &compliant_ids);
         if reproduced_hash != receipt.candidate_pool_hash {
@@ -599,8 +635,7 @@ pub fn verify_receipt_from_policy_json(
     }
 
     // Step 4b: verify eligible_candidate_ids_hash.
-    let computed_eligible_hash =
-        hash_eligible_ids(&result.decision_trace.eligible_candidate_ids);
+    let computed_eligible_hash = hash_eligible_ids(&result.decision_trace.eligible_candidate_ids);
     if computed_eligible_hash != receipt.eligible_candidate_ids_hash {
         return Err(VerificationFailure::eligible_candidate_ids_hash_mismatch(
             &receipt.eligible_candidate_ids_hash,
@@ -609,13 +644,14 @@ pub fn verify_receipt_from_policy_json(
     }
 
     // Step 4c: verify selection_input_candidate_ids_hash.
-    let computed_selector_hash =
-        hash_selector_input(&result.decision_trace.eligible_candidate_ids);
+    let computed_selector_hash = hash_selector_input(&result.decision_trace.eligible_candidate_ids);
     if computed_selector_hash != receipt.selection_input_candidate_ids_hash {
-        return Err(VerificationFailure::selection_input_candidate_ids_hash_mismatch(
-            &receipt.selection_input_candidate_ids_hash,
-            &computed_selector_hash,
-        ));
+        return Err(
+            VerificationFailure::selection_input_candidate_ids_hash_mismatch(
+                &receipt.selection_input_candidate_ids_hash,
+                &computed_selector_hash,
+            ),
+        );
     }
 
     // Step 4d: verify candidate_order_hash.
@@ -636,15 +672,15 @@ pub fn verify_receipt_from_policy_json(
     // consistently with routing_decision_hash but not with routing_proof_hash.
     let (replayed_outcome, replayed_candidate_id, replayed_refusal_code) =
         match &result.outcome.decision {
-            RoutingDecision::Selected(id) => {
-                ("routed".to_string(), Some(id.0.clone()), None)
-            }
+            RoutingDecision::Selected(id) => ("routed".to_string(), Some(id.0.clone()), None),
             RoutingDecision::Refused(r) => {
                 let (code, _) = extract_refusal_fields(r);
                 ("refused".to_string(), None, Some(code))
             }
             RoutingDecision::NoEligibleCandidate => {
-                let code = policy_input.refusal_reason_hint.clone()
+                let code = policy_input
+                    .refusal_reason_hint
+                    .clone()
                     .unwrap_or_else(|| "no_eligible_candidates".to_string());
                 ("refused".to_string(), None, Some(code))
             }
@@ -653,16 +689,18 @@ pub fn verify_receipt_from_policy_json(
         || replayed_candidate_id != receipt.selected_candidate_id
         || replayed_refusal_code != receipt.refusal_code
     {
-        return Err(VerificationFailure::routing_decision_replay_mismatch(&format!(
-            "receipt has outcome={:?} selected_candidate_id={:?} refusal_code={:?}; \
+        return Err(VerificationFailure::routing_decision_replay_mismatch(
+            &format!(
+                "receipt has outcome={:?} selected_candidate_id={:?} refusal_code={:?}; \
              replay produced outcome={:?} selected_candidate_id={:?} refusal_code={:?}",
-            receipt.outcome,
-            receipt.selected_candidate_id,
-            receipt.refusal_code,
-            replayed_outcome,
-            replayed_candidate_id,
-            replayed_refusal_code,
-        )));
+                receipt.outcome,
+                receipt.selected_candidate_id,
+                receipt.refusal_code,
+                replayed_outcome,
+                replayed_candidate_id,
+                replayed_refusal_code,
+            ),
+        ));
     }
 
     // Step 7: verify audit chain linkage by reconstructing the AuditEvent.
@@ -674,7 +712,10 @@ pub fn verify_receipt_from_policy_json(
             selected_candidate_id: selected_id.0.clone(),
         },
         RoutingDecision::Refused(_) | RoutingDecision::NoEligibleCandidate => {
-            let refusal_code = receipt.refusal_code.clone().unwrap_or_else(|| "unknown".to_string());
+            let refusal_code = receipt
+                .refusal_code
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string());
             AuditEvent::CaseRefused {
                 case_id: case_id_str,
                 proof_hash: result.proof.hash_hex.clone(),
@@ -839,10 +880,11 @@ pub fn verify_receipt_from_inputs(
 
     // Step 4d: verify candidate pool reproducibility.
     {
-        let mfr_ids: Vec<String> =
-            candidates_input.iter().map(|c| c.manufacturer_id.clone()).collect();
-        let compliant_ids =
-            ComplianceGate::filter_compliant_manufacturers(&mfr_ids, &snapshots);
+        let mfr_ids: Vec<String> = candidates_input
+            .iter()
+            .map(|c| c.manufacturer_id.clone())
+            .collect();
+        let compliant_ids = ComplianceGate::filter_compliant_manufacturers(&mfr_ids, &snapshots);
         let reproduced_hash =
             hash_candidate_pool_from_compliance(&candidates_input, &compliant_ids);
         if reproduced_hash != receipt.candidate_pool_hash {
@@ -870,8 +912,7 @@ pub fn verify_receipt_from_inputs(
     }
 
     // Step 5b: verify eligible_candidate_ids_hash.
-    let computed_eligible_hash =
-        hash_eligible_ids(&result.decision_trace.eligible_candidate_ids);
+    let computed_eligible_hash = hash_eligible_ids(&result.decision_trace.eligible_candidate_ids);
     if computed_eligible_hash != receipt.eligible_candidate_ids_hash {
         return Err(VerificationFailure::eligible_candidate_ids_hash_mismatch(
             &receipt.eligible_candidate_ids_hash,
@@ -880,13 +921,14 @@ pub fn verify_receipt_from_inputs(
     }
 
     // Step 5c: verify selection_input_candidate_ids_hash.
-    let computed_selector_hash =
-        hash_selector_input(&result.decision_trace.eligible_candidate_ids);
+    let computed_selector_hash = hash_selector_input(&result.decision_trace.eligible_candidate_ids);
     if computed_selector_hash != receipt.selection_input_candidate_ids_hash {
-        return Err(VerificationFailure::selection_input_candidate_ids_hash_mismatch(
-            &receipt.selection_input_candidate_ids_hash,
-            &computed_selector_hash,
-        ));
+        return Err(
+            VerificationFailure::selection_input_candidate_ids_hash_mismatch(
+                &receipt.selection_input_candidate_ids_hash,
+                &computed_selector_hash,
+            ),
+        );
     }
 
     // Step 5d: verify candidate_order_hash.
@@ -902,15 +944,15 @@ pub fn verify_receipt_from_inputs(
     // Step 5e: verify replayed decision fields match receipt decision fields.
     let (replayed_outcome, replayed_candidate_id, replayed_refusal_code) =
         match &result.outcome.decision {
-            RoutingDecision::Selected(id) => {
-                ("routed".to_string(), Some(id.0.clone()), None)
-            }
+            RoutingDecision::Selected(id) => ("routed".to_string(), Some(id.0.clone()), None),
             RoutingDecision::Refused(r) => {
                 let (code, _) = extract_refusal_fields(r);
                 ("refused".to_string(), None, Some(code))
             }
             RoutingDecision::NoEligibleCandidate => {
-                let code = policy_input.refusal_reason_hint.clone()
+                let code = policy_input
+                    .refusal_reason_hint
+                    .clone()
                     .unwrap_or_else(|| "no_eligible_candidates".to_string());
                 ("refused".to_string(), None, Some(code))
             }
@@ -919,16 +961,18 @@ pub fn verify_receipt_from_inputs(
         || replayed_candidate_id != receipt.selected_candidate_id
         || replayed_refusal_code != receipt.refusal_code
     {
-        return Err(VerificationFailure::routing_decision_replay_mismatch(&format!(
-            "receipt has outcome={:?} selected_candidate_id={:?} refusal_code={:?}; \
+        return Err(VerificationFailure::routing_decision_replay_mismatch(
+            &format!(
+                "receipt has outcome={:?} selected_candidate_id={:?} refusal_code={:?}; \
              replay produced outcome={:?} selected_candidate_id={:?} refusal_code={:?}",
-            receipt.outcome,
-            receipt.selected_candidate_id,
-            receipt.refusal_code,
-            replayed_outcome,
-            replayed_candidate_id,
-            replayed_refusal_code,
-        )));
+                receipt.outcome,
+                receipt.selected_candidate_id,
+                receipt.refusal_code,
+                replayed_outcome,
+                replayed_candidate_id,
+                replayed_refusal_code,
+            ),
+        ));
     }
 
     // Step 7: verify audit chain linkage.
@@ -940,7 +984,10 @@ pub fn verify_receipt_from_inputs(
             selected_candidate_id: selected_id.0.clone(),
         },
         RoutingDecision::Refused(_) | RoutingDecision::NoEligibleCandidate => {
-            let refusal_code = receipt.refusal_code.clone().unwrap_or_else(|| "unknown".to_string());
+            let refusal_code = receipt
+                .refusal_code
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string());
             AuditEvent::CaseRefused {
                 case_id: case_id_str,
                 proof_hash: result.proof.hash_hex.clone(),
@@ -994,8 +1041,7 @@ fn map_result_to_receipt(
     let policy_fingerprint: String = result.policy_fingerprint.clone();
     let policy_version: Option<String> = result.audit_receipt.policy_version.clone();
     let case_id_str: String = result.audit_receipt.case_id.clone();
-    let compliant_candidate_count: usize =
-        result.audit_receipt.candidate_ids_considered.len();
+    let compliant_candidate_count: usize = result.audit_receipt.candidate_ids_considered.len();
     let registry_snapshot_hash: String = result
         .audit_receipt
         .registry_snapshot_hash
@@ -1106,12 +1152,10 @@ fn map_result_to_receipt(
         }
 
         RoutingDecision::NoEligibleCandidate => {
-            let refusal_code = refusal_reason_hint
-                .unwrap_or_else(|| "no_eligible_candidates".to_string());
-            let failed_constraint = no_candidate_constraint(
-                all_input_candidate_ids.len(),
-                compliant_candidate_count,
-            );
+            let refusal_code =
+                refusal_reason_hint.unwrap_or_else(|| "no_eligible_candidates".to_string());
+            let failed_constraint =
+                no_candidate_constraint(all_input_candidate_ids.len(), compliant_candidate_count);
 
             let routing_decision_hash = hash_routing_decision(
                 "refused",
@@ -1176,16 +1220,12 @@ fn append_audit_entry(event: AuditEvent) -> (u64, String, String) {
 ///
 /// Falls back to stable sentinel strings when no reason is recorded so the
 /// receipt always carries non-empty fields.
-fn extract_refusal_fields(
-    refusal: &postcad_core::CaseRefusal,
-) -> (String, String) {
+fn extract_refusal_fields(refusal: &postcad_core::CaseRefusal) -> (String, String) {
     refusal
         .reasons
         .first()
         .map(|r| (r.code().to_string(), r.message().to_string()))
-        .unwrap_or_else(|| {
-            ("unknown".to_string(), "Unknown refusal reason".to_string())
-        })
+        .unwrap_or_else(|| ("unknown".to_string(), "Unknown refusal reason".to_string()))
 }
 
 /// Maps a stable refusal code string to the `failed_constraint` label used in
@@ -1349,7 +1389,10 @@ fn parse_eligibility(s: &str) -> Result<ManufacturerEligibility, CliError> {
         "eligible" => Ok(ManufacturerEligibility::Eligible),
         "ineligible" => Ok(ManufacturerEligibility::Ineligible),
         "unknown" => Ok(ManufacturerEligibility::Unknown),
-        _ => Err(CliError::InvalidField(format!("unknown eligibility: {}", s))),
+        _ => Err(CliError::InvalidField(format!(
+            "unknown eligibility: {}",
+            s
+        ))),
     }
 }
 
@@ -1357,7 +1400,10 @@ fn parse_routing_policy(s: Option<&str>) -> Result<RoutingPolicy, CliError> {
     match s.unwrap_or("allow_domestic_and_cross_border") {
         "allow_domestic_only" => Ok(RoutingPolicy::AllowDomesticOnly),
         "allow_domestic_and_cross_border" => Ok(RoutingPolicy::AllowDomesticAndCrossBorder),
-        other => Err(CliError::InvalidField(format!("unknown routing_policy: {}", other))),
+        other => Err(CliError::InvalidField(format!(
+            "unknown routing_policy: {}",
+            other
+        ))),
     }
 }
 
@@ -1424,25 +1470,28 @@ mod tests {
 
     #[test]
     fn routed_case_proof_hash_is_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.routing_proof_hash.len(), 64);
-        assert!(receipt.routing_proof_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .routing_proof_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
     fn routed_case_policy_fingerprint_is_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.policy_fingerprint.len(), 64);
     }
 
     #[test]
     fn routed_case_case_fingerprint_is_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.case_fingerprint.len(), 64);
     }
@@ -1467,7 +1516,10 @@ mod tests {
 
         assert_eq!(receipt.outcome, "refused");
         assert!(receipt.selected_candidate_id.is_none());
-        assert_eq!(receipt.refusal_code.as_deref(), Some("no_eligible_candidates"));
+        assert_eq!(
+            receipt.refusal_code.as_deref(),
+            Some("no_eligible_candidates")
+        );
     }
 
     #[test]
@@ -1482,8 +1534,8 @@ mod tests {
 
     #[test]
     fn refused_case_proof_hash_is_present() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.routing_proof_hash.len(), 64);
     }
@@ -1502,7 +1554,11 @@ mod tests {
 
     #[test]
     fn invalid_case_json_returns_parse_error() {
-        let result = route_case_from_json(r#"{"not": "valid json"#, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
+        let result = route_case_from_json(
+            r#"{"not": "valid json"#,
+            CANDIDATES_JSON,
+            ELIGIBLE_SNAPSHOTS_JSON,
+        );
         assert!(matches!(result, Err(CliError::ParseError(_))));
     }
 
@@ -1680,8 +1736,8 @@ mod tests {
             "procedure": "crown",
             "file_type": "stl"
         }"#;
-        let receipt = route_case_from_json(case_json, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(case_json, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.outcome, "routed");
         assert_eq!(receipt.selected_candidate_id, Some("rc-1".to_string()));
@@ -1696,8 +1752,8 @@ mod tests {
             "procedure": "crown",
             "file_type": "stl"
         }"#;
-        let receipt = route_case_from_json(case_no_id, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(case_no_id, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.outcome, "routed");
         assert_eq!(receipt.case_fingerprint.len(), 64);
@@ -1777,8 +1833,7 @@ mod tests {
 
     #[test]
     fn valid_snapshot_does_not_return_validation_error() {
-        let result =
-            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
+        let result = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
         assert!(result.is_ok());
     }
 
@@ -1804,7 +1859,10 @@ mod tests {
         let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
-        assert_eq!(receipt.refusal_code.as_deref(), Some("no_eligible_candidates"));
+        assert_eq!(
+            receipt.refusal_code.as_deref(),
+            Some("no_eligible_candidates")
+        );
         let detail = receipt.refusal.expect("refusal detail must be present");
         assert!(!detail.evaluated_candidate_ids.is_empty());
         assert!(!detail.failed_constraint.is_empty());
@@ -1812,10 +1870,10 @@ mod tests {
 
     #[test]
     fn refused_detail_evaluated_candidate_ids_are_deterministic() {
-        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
-        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let a =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_eq!(
             a.refusal.unwrap().evaluated_candidate_ids,
             b.refusal.unwrap().evaluated_candidate_ids,
@@ -1884,28 +1942,34 @@ mod tests {
 
     #[test]
     fn routed_receipt_audit_entry_hash_is_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.audit_entry_hash.len(), 64);
-        assert!(receipt.audit_entry_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .audit_entry_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
     fn refused_receipt_audit_entry_hash_is_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.audit_entry_hash.len(), 64);
-        assert!(receipt.audit_entry_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .audit_entry_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
     fn receipt_audit_seq_is_zero() {
-        let routed = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
-        let refused = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let routed =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let refused =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(routed.audit_seq, 0);
         assert_eq!(refused.audit_seq, 0);
@@ -1913,8 +1977,8 @@ mod tests {
 
     #[test]
     fn receipt_audit_previous_hash_is_genesis() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(
             receipt.audit_previous_hash,
@@ -1934,8 +1998,10 @@ mod tests {
 
     #[test]
     fn refused_receipt_audit_entry_hash_is_deterministic_for_fixed_case_id() {
-        let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        let b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let a =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(a.audit_entry_hash, b.audit_entry_hash);
     }
@@ -1992,8 +2058,8 @@ mod tests {
 
     #[test]
     fn verify_receipt_from_policy_json_valid_for_routed_case() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
         verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
@@ -2027,10 +2093,14 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000000".to_string();
         let receipt_json = tamper_field_recompute_hash(receipt);
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "case_fingerprint_mismatch");
-        assert!(err.message.contains("case_fingerprint mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("case_fingerprint mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
@@ -2041,10 +2111,14 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000000".to_string();
         let receipt_json = tamper_field_recompute_hash(receipt);
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "policy_fingerprint_mismatch");
-        assert!(err.message.contains("policy_fingerprint mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("policy_fingerprint mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
@@ -2055,10 +2129,14 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000000".to_string();
         let receipt_json = tamper_field_recompute_hash(receipt);
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "routing_proof_hash_mismatch");
-        assert!(err.message.contains("routing_proof_hash mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("routing_proof_hash mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
@@ -2069,10 +2147,14 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000000".to_string();
         let receipt_json = tamper_field_recompute_hash(receipt);
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "audit_entry_hash_mismatch");
-        assert!(err.message.contains("audit_entry_hash mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("audit_entry_hash mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
@@ -2083,38 +2165,41 @@ mod tests {
             "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string();
         let receipt_json = tamper_field_recompute_hash(receipt);
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "audit_previous_hash_mismatch");
-        assert!(err.message.contains("audit_previous_hash mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("audit_previous_hash mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
     fn verify_receipt_from_policy_json_fails_on_invalid_receipt_json() {
-        let err = verify_receipt_from_policy_json("{not json", CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err = verify_receipt_from_policy_json("{not json", CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "receipt_parse_failed");
     }
 
     #[test]
     fn verify_receipt_from_policy_json_fails_on_invalid_case_json() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, "{not json", POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, "{not json", POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "case_parse_failed");
     }
 
     #[test]
     fn verify_receipt_from_policy_json_fails_on_invalid_policy_json() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, "{not json")
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, "{not json").unwrap_err();
         assert_eq!(err.code, "policy_bundle_parse_failed");
     }
 
@@ -2155,8 +2240,7 @@ mod tests {
 
     #[test]
     fn verify_receipt_valid_for_refused_case() {
-        let receipt_json =
-            receipt_json_for(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON);
+        let receipt_json = receipt_json_for(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON);
         let result = verify_receipt_from_json(
             &receipt_json,
             CASE_JSON,
@@ -2171,8 +2255,8 @@ mod tests {
 
     #[test]
     fn verify_receipt_mismatch_when_outcome_tampered() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         // Tamper outcome field in the serialized JSON.
         let tampered = serde_json::to_string(&receipt)
             .unwrap()
@@ -2230,8 +2314,12 @@ mod tests {
 
     #[test]
     fn verify_receipt_parse_error_on_invalid_receipt_json() {
-        let result =
-            verify_receipt_from_json(r#"not json"#, CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON);
+        let result = verify_receipt_from_json(
+            r#"not json"#,
+            CASE_JSON,
+            CANDIDATES_JSON,
+            ELIGIBLE_SNAPSHOTS_JSON,
+        );
         assert!(matches!(result, Err(CliError::ParseError(_))));
     }
 
@@ -2243,7 +2331,10 @@ mod tests {
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         assert_eq!(receipt.candidate_pool_hash.len(), 64);
-        assert!(receipt.candidate_pool_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .candidate_pool_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -2298,8 +2389,13 @@ mod tests {
             }]
         }"#;
 
-        verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_no_candidates, CANDIDATES_JSON)
-            .expect("should be VERIFIED");
+        verify_receipt_from_inputs(
+            &receipt_json,
+            CASE_JSON,
+            policy_no_candidates,
+            CANDIDATES_JSON,
+        )
+        .expect("should be VERIFIED");
     }
 
     #[test]
@@ -2319,12 +2415,18 @@ mod tests {
             }]
         }"#;
 
-        verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_no_candidates, CANDIDATES_JSON)
-            .expect("should be VERIFIED");
+        verify_receipt_from_inputs(
+            &receipt_json,
+            CASE_JSON,
+            policy_no_candidates,
+            CANDIDATES_JSON,
+        )
+        .expect("should be VERIFIED");
     }
 
     #[test]
-    fn verify_receipt_from_inputs_fails_with_candidate_pool_hash_mismatch_when_candidates_tampered() {
+    fn verify_receipt_from_inputs_fails_with_candidate_pool_hash_mismatch_when_candidates_tampered()
+    {
         let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
@@ -2361,7 +2463,8 @@ mod tests {
     }
 
     #[test]
-    fn verify_receipt_from_policy_json_fails_with_candidate_pool_hash_mismatch_when_policy_candidates_differ() {
+    fn verify_receipt_from_policy_json_fails_with_candidate_pool_hash_mismatch_when_policy_candidates_differ(
+    ) {
         let receipt =
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
@@ -2401,13 +2504,8 @@ mod tests {
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
-        let err = verify_receipt_from_inputs(
-            &receipt_json,
-            CASE_JSON,
-            POLICY_JSON,
-            r#"not json"#,
-        )
-        .unwrap_err();
+        let err = verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, r#"not json"#)
+            .unwrap_err();
 
         assert_eq!(err.code, "policy_bundle_parse_failed");
     }
@@ -2538,9 +2636,8 @@ mod tests {
             ]
         }"#;
 
-        let err =
-            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, policy_one_candidate)
-                .unwrap_err();
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, policy_one_candidate)
+            .unwrap_err();
 
         assert_eq!(err.code, "candidate_pool_hash_mismatch");
         assert!(
@@ -2587,8 +2684,13 @@ mod tests {
             }]
         }"#;
 
-        verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_no_candidates, CANDIDATES_JSON)
-            .expect("verify should pass: snapshot eligibility matches committed pool hash");
+        verify_receipt_from_inputs(
+            &receipt_json,
+            CASE_JSON,
+            policy_no_candidates,
+            CANDIDATES_JSON,
+        )
+        .expect("verify should pass: snapshot eligibility matches committed pool hash");
     }
 
     #[test]
@@ -2619,7 +2721,11 @@ mod tests {
             verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_INELIGIBLE_JSON)
                 .unwrap_err();
         assert_eq!(err.code, "candidate_pool_hash_mismatch");
-        assert!(err.message.contains("candidate_pool_hash mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("candidate_pool_hash mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
@@ -2653,7 +2759,11 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(err.code, "candidate_pool_hash_mismatch");
-        assert!(err.message.contains("candidate_pool_hash mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("candidate_pool_hash mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     // ── order independence ────────────────────────────────────────────────────
@@ -2675,8 +2785,11 @@ mod tests {
         ]"#;
 
         let receipt = route_case_from_json(CASE_JSON, two_candidates, snapshots).unwrap();
-        assert_eq!(receipt.selected_candidate_id.as_deref(), Some("rc-1"),
-            "routing must select rc-1 (only eligible candidate)");
+        assert_eq!(
+            receipt.selected_candidate_id.as_deref(),
+            Some("rc-1"),
+            "routing must select rc-1 (only eligible candidate)"
+        );
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
         // Policy: same two snapshots, NO candidates field (supplied separately).
@@ -2701,7 +2814,9 @@ mod tests {
             policy_no_candidates,
             candidates_reversed,
         )
-        .expect("verification must succeed: same pool, different order, same hash after canonical sort");
+        .expect(
+            "verification must succeed: same pool, different order, same hash after canonical sort",
+        );
     }
 
     // ── Test 13: eligible_candidate_ids_hash verification enforcement ──────────
@@ -2729,8 +2844,9 @@ mod tests {
         let policy = routed_policy_json();
         let receipt = route_case_from_policy_json(CASE_JSON, &policy).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
-        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, &policy)
-            .expect("verification must pass for routed case with correct eligible_candidate_ids_hash");
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, &policy).expect(
+            "verification must pass for routed case with correct eligible_candidate_ids_hash",
+        );
     }
 
     #[test]
@@ -2784,8 +2900,7 @@ mod tests {
         let receipt_ba = route_case_from_json(CASE_JSON, two_candidates_rev, snapshots).unwrap();
 
         assert_eq!(
-            receipt_ab.eligible_candidate_ids_hash,
-            receipt_ba.eligible_candidate_ids_hash,
+            receipt_ab.eligible_candidate_ids_hash, receipt_ba.eligible_candidate_ids_hash,
             "eligible_candidate_ids_hash must be order-independent"
         );
     }
@@ -2842,8 +2957,9 @@ mod tests {
         val["receipt_hash"] = serde_json::json!(hash_receipt_content(&tampered_r));
         let tampered = serde_json::to_string(&val).unwrap();
 
-        let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, &policy)
-            .expect_err("verification must fail when selection_input_candidate_ids_hash is tampered");
+        let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, &policy).expect_err(
+            "verification must fail when selection_input_candidate_ids_hash is tampered",
+        );
         assert_eq!(err.code, "selection_input_candidate_ids_hash_mismatch");
     }
 
@@ -2877,12 +2993,12 @@ mod tests {
             {"manufacturer_id":"mfr-02","evidence_references":["REF-B"],"attestation_statuses":["rejected"],"is_eligible":false}
         ]"#;
 
-        let receipt = route_case_from_json(CASE_JSON, two_candidates, snapshots_one_eligible).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, two_candidates, snapshots_one_eligible).unwrap();
         assert_eq!(receipt.selected_candidate_id.as_deref(), Some("rc-1"));
         // candidate_pool_hash covers both candidates; selection_input covers only rc-1.
         assert_ne!(
-            receipt.candidate_pool_hash,
-            receipt.selection_input_candidate_ids_hash,
+            receipt.candidate_pool_hash, receipt.selection_input_candidate_ids_hash,
             "pool hash and selector hash must differ when only a subset is eligible"
         );
 
@@ -2896,8 +3012,15 @@ mod tests {
             ]
         }"#;
         let receipt_json = serde_json::to_string(&receipt).unwrap();
-        verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_no_candidates, two_candidates)
-            .expect("verification must pass for receipt with single eligible out of multi-candidate pool");
+        verify_receipt_from_inputs(
+            &receipt_json,
+            CASE_JSON,
+            policy_no_candidates,
+            two_candidates,
+        )
+        .expect(
+            "verification must pass for receipt with single eligible out of multi-candidate pool",
+        );
     }
 
     // ── Test 15: receipt schema versioning ────────────────────────────────────
@@ -2927,8 +3050,8 @@ mod tests {
         raw.as_object_mut().unwrap().remove("schema_version");
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "missing_receipt_schema_version");
     }
 
@@ -2940,8 +3063,8 @@ mod tests {
         raw["schema_version"] = serde_json::Value::Null;
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "missing_receipt_schema_version");
     }
 
@@ -2954,8 +3077,8 @@ mod tests {
         raw["schema_version"] = serde_json::json!(1);
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "invalid_receipt_schema_version");
     }
 
@@ -2967,10 +3090,13 @@ mod tests {
         raw["schema_version"] = serde_json::json!("2");
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "unsupported_receipt_schema_version");
-        assert!(err.message.contains("\"2\""), "message must include the found version");
+        assert!(
+            err.message.contains("\"2\""),
+            "message must include the found version"
+        );
     }
 
     #[test]
@@ -2982,8 +3108,9 @@ mod tests {
         raw.as_object_mut().unwrap().remove("schema_version");
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+                .unwrap_err();
         assert_eq!(err.code, "missing_receipt_schema_version");
     }
 
@@ -3031,8 +3158,8 @@ mod tests {
             serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "receipt_canonicalization_mismatch");
         assert!(err.message.contains("canonicalization mismatch"));
     }
@@ -3044,11 +3171,11 @@ mod tests {
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut raw: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         raw["outcome"] = serde_json::json!("refused"); // lie about the outcome
-        // Leave receipt_hash as-is (it now covers the tampered content).
+                                                       // Leave receipt_hash as-is (it now covers the tampered content).
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "receipt_canonicalization_mismatch");
     }
 
@@ -3142,8 +3269,9 @@ mod tests {
         raw["receipt_hash"] = serde_json::json!(hash_receipt_content(&tampered_r));
         let receipt_json = serde_json::to_string(&raw).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_WITH_VERSION_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_WITH_VERSION_JSON)
+                .unwrap_err();
         assert_eq!(err.code, "policy_version_mismatch");
     }
 
@@ -3154,8 +3282,8 @@ mod tests {
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
         let policy_v2 = POLICY_WITH_VERSION_JSON.replace("\"v1\"", "\"v2\"");
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, &policy_v2)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, &policy_v2).unwrap_err();
         assert_eq!(err.code, "policy_version_mismatch");
     }
 
@@ -3165,8 +3293,8 @@ mod tests {
         let receipt = route_case_from_policy_json(CASE_JSON, POLICY_WITH_VERSION_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
 
-        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "policy_version_mismatch");
     }
 
@@ -3208,9 +3336,13 @@ mod tests {
             }]
         }"#;
 
-        let err =
-            verify_receipt_from_inputs(&receipt_json, CASE_JSON, policy_wrong_version, CANDIDATES_JSON)
-                .unwrap_err();
+        let err = verify_receipt_from_inputs(
+            &receipt_json,
+            CASE_JSON,
+            policy_wrong_version,
+            CANDIDATES_JSON,
+        )
+        .unwrap_err();
         assert_eq!(err.code, "policy_version_mismatch");
     }
 
@@ -3218,7 +3350,8 @@ mod tests {
 
     #[test]
     fn routing_kernel_version_is_present_in_receipt() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_eq!(receipt.routing_kernel_version, "postcad-routing-v1");
     }
 
@@ -3231,14 +3364,16 @@ mod tests {
 
     #[test]
     fn verify_receipt_accepts_correct_routing_kernel_version() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
         verify_receipt_from_policy_json(&receipt_json, CASE_JSON, POLICY_JSON).unwrap();
     }
 
     #[test]
     fn verify_receipt_rejects_unknown_routing_kernel_version() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         v["routing_kernel_version"] = serde_json::json!("postcad-routing-v0");
         // Recompute receipt_hash so artifact check passes; version check fires instead.
@@ -3251,13 +3386,15 @@ mod tests {
         };
         v["receipt_hash"] = serde_json::json!(without_hash);
         let tampered_json = serde_json::to_string(&v).unwrap();
-        let err = verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON).unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "routing_kernel_version_mismatch");
     }
 
     #[test]
     fn verify_receipt_from_inputs_rejects_unknown_routing_kernel_version() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         v["routing_kernel_version"] = serde_json::json!("postcad-routing-v99");
         let without_hash = {
@@ -3269,7 +3406,9 @@ mod tests {
         };
         v["receipt_hash"] = serde_json::json!(without_hash);
         let tampered_json = serde_json::to_string(&v).unwrap();
-        let err = verify_receipt_from_inputs(&tampered_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON).unwrap_err();
+        let err =
+            verify_receipt_from_inputs(&tampered_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+                .unwrap_err();
         assert_eq!(err.code, "routing_kernel_version_mismatch");
     }
 
@@ -3277,8 +3416,12 @@ mod tests {
 
     #[test]
     fn routing_input_is_present_in_receipt() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        assert_eq!(receipt.routing_input.case_id, "00000000-0000-0000-0000-000000000001");
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        assert_eq!(
+            receipt.routing_input.case_id,
+            "00000000-0000-0000-0000-000000000001"
+        );
         assert_eq!(receipt.routing_input.jurisdiction, "DE");
         assert_eq!(receipt.routing_input.material, "zirconia");
         assert_eq!(receipt.routing_input.procedure, "crown");
@@ -3289,9 +3432,13 @@ mod tests {
 
     #[test]
     fn routing_input_hash_is_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_eq!(receipt.routing_input_hash.len(), 64);
-        assert!(receipt.routing_input_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .routing_input_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -3313,7 +3460,8 @@ mod tests {
             "file_type": "stl"
         }"#;
         let a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        let b = route_case_from_json(case_bridge, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let b =
+            route_case_from_json(case_bridge, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_ne!(a.routing_input_hash, b.routing_input_hash);
     }
 
@@ -3336,11 +3484,11 @@ mod tests {
     #[test]
     fn routing_input_hash_is_committed_in_receipt_hash() {
         // A receipt with a mutated routing_input_hash must not verify.
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
-        v["routing_input_hash"] = serde_json::json!(
-            "0000000000000000000000000000000000000000000000000000000000000000"
-        );
+        v["routing_input_hash"] =
+            serde_json::json!("0000000000000000000000000000000000000000000000000000000000000000");
         // Recompute receipt_hash to pass artifact check, but routing_input_hash mismatch fires.
         let without_hash = {
             let mut obj = v.clone();
@@ -3351,8 +3499,8 @@ mod tests {
         };
         v["receipt_hash"] = serde_json::json!(without_hash);
         let tampered_json = serde_json::to_string(&v).unwrap();
-        let err = verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "routing_input_hash_mismatch");
     }
 
@@ -3360,7 +3508,8 @@ mod tests {
     fn verify_receipt_rejects_tampered_routing_input_procedure() {
         // Mutate routing_input.procedure (analogous to "device_type") without
         // updating routing_input_hash, but do update receipt_hash.
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         v["routing_input"]["procedure"] = serde_json::json!("bridge");
         // Recompute receipt_hash to pass artifact check.
@@ -3373,14 +3522,15 @@ mod tests {
         };
         v["receipt_hash"] = serde_json::json!(without_hash);
         let tampered_json = serde_json::to_string(&v).unwrap();
-        let err = verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_policy_json(&tampered_json, CASE_JSON, POLICY_JSON).unwrap_err();
         assert_eq!(err.code, "routing_input_hash_mismatch");
     }
 
     #[test]
     fn verify_receipt_from_inputs_rejects_tampered_routing_input() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         v["routing_input"]["jurisdiction"] = serde_json::json!("JP");
         let without_hash = {
@@ -3392,8 +3542,9 @@ mod tests {
         };
         v["receipt_hash"] = serde_json::json!(without_hash);
         let tampered_json = serde_json::to_string(&v).unwrap();
-        let err = verify_receipt_from_inputs(&tampered_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
-            .unwrap_err();
+        let err =
+            verify_receipt_from_inputs(&tampered_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
+                .unwrap_err();
         assert_eq!(err.code, "routing_input_hash_mismatch");
     }
 
@@ -3401,9 +3552,13 @@ mod tests {
 
     #[test]
     fn candidate_order_hash_is_present_in_receipt_as_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_eq!(receipt.candidate_order_hash.len(), 64);
-        assert!(receipt.candidate_order_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .candidate_order_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -3420,8 +3575,7 @@ mod tests {
         let policy_refused = refused_policy_json();
         let receipt_refused = route_case_from_policy_json(CASE_JSON, &policy_refused).unwrap();
         assert_ne!(
-            receipt_eligible.candidate_order_hash,
-            receipt_refused.candidate_order_hash,
+            receipt_eligible.candidate_order_hash, receipt_refused.candidate_order_hash,
             "candidate_order_hash must differ when the eligible set changes"
         );
     }
@@ -3447,8 +3601,7 @@ mod tests {
         let receipt_ba = route_case_from_json(CASE_JSON, two_candidates_rev, snapshots).unwrap();
 
         assert_eq!(
-            receipt_ab.candidate_order_hash,
-            receipt_ba.candidate_order_hash,
+            receipt_ab.candidate_order_hash, receipt_ba.candidate_order_hash,
             "candidate_order_hash must be identical regardless of input candidate order"
         );
     }
@@ -3476,12 +3629,17 @@ mod tests {
         let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, &policy)
             .expect_err("verification must fail when candidate_order_hash is tampered");
         assert_eq!(err.code, "candidate_order_hash_mismatch");
-        assert!(err.message.contains("candidate_order_hash mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("candidate_order_hash mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
     fn verify_receipt_from_inputs_fails_when_candidate_order_hash_tampered() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         v["candidate_order_hash"] =
             serde_json::json!("0000000000000000000000000000000000000000000000000000000000000001");
@@ -3498,16 +3656,24 @@ mod tests {
 
     #[test]
     fn routing_decision_hash_is_present_in_routed_receipt_as_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_eq!(receipt.routing_decision_hash.len(), 64);
-        assert!(receipt.routing_decision_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .routing_decision_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
     fn routing_decision_hash_is_present_in_refused_receipt_as_64_hex_chars() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_eq!(receipt.routing_decision_hash.len(), 64);
-        assert!(receipt.routing_decision_hash.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(receipt
+            .routing_decision_hash
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -3519,11 +3685,12 @@ mod tests {
 
     #[test]
     fn routing_decision_hash_differs_for_routed_vs_refused() {
-        let routed = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
-        let refused = route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let routed =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let refused =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, INELIGIBLE_SNAPSHOTS_JSON).unwrap();
         assert_ne!(
-            routed.routing_decision_hash,
-            refused.routing_decision_hash,
+            routed.routing_decision_hash, refused.routing_decision_hash,
             "routing_decision_hash must differ for different outcomes"
         );
     }
@@ -3551,14 +3718,19 @@ mod tests {
         let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, &policy)
             .expect_err("verification must fail when routing_decision_hash is tampered");
         assert_eq!(err.code, "routing_decision_hash_mismatch");
-        assert!(err.message.contains("routing_decision_hash mismatch"), "got: {}", err.message);
+        assert!(
+            err.message.contains("routing_decision_hash mismatch"),
+            "got: {}",
+            err.message
+        );
     }
 
     #[test]
     fn verify_receipt_fails_when_selected_candidate_id_changed_without_updating_decision_hash() {
         // An attacker changes selected_candidate_id and recomputes receipt_hash,
         // but leaves routing_decision_hash stale. Step 1e must catch this.
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         val["selected_candidate_id"] = serde_json::json!("rc-attacker");
         // Recompute receipt_hash to pass artifact check; routing_decision_hash is stale.
@@ -3573,7 +3745,8 @@ mod tests {
 
     #[test]
     fn verify_receipt_from_inputs_fails_when_routing_decision_hash_tampered() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut v: serde_json::Value = serde_json::to_value(&receipt).unwrap();
         v["routing_decision_hash"] =
             serde_json::json!("0000000000000000000000000000000000000000000000000000000000000001");
@@ -3600,13 +3773,16 @@ mod tests {
             route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         // Two serialization forms of the same receipt.
-        let pretty_json = serde_json::to_string_pretty(&receipt)
-            .expect("pretty serialization must not fail");
-        let compact_json = serde_json::to_string(&receipt)
-            .expect("compact serialization must not fail");
+        let pretty_json =
+            serde_json::to_string_pretty(&receipt).expect("pretty serialization must not fail");
+        let compact_json =
+            serde_json::to_string(&receipt).expect("compact serialization must not fail");
 
         // Sanity: the two forms must differ (pretty adds whitespace).
-        assert_ne!(pretty_json, compact_json, "pretty and compact JSON must differ");
+        assert_ne!(
+            pretty_json, compact_json,
+            "pretty and compact JSON must differ"
+        );
 
         // Parse each form back into a RoutingReceipt.
         let from_pretty: RoutingReceipt =
@@ -3658,16 +3834,33 @@ mod tests {
 
         // Must be compact — no ASCII whitespace outside of string values.
         // Checking for newlines and leading spaces (the signature of pretty-print).
-        assert!(!canonical.contains('\n'), "canonical form must not contain newlines");
-        assert!(!canonical.contains("  "), "canonical form must not contain double spaces");
+        assert!(
+            !canonical.contains('\n'),
+            "canonical form must not contain newlines"
+        );
+        assert!(
+            !canonical.contains("  "),
+            "canonical form must not contain double spaces"
+        );
 
         // Keys must be in alphabetical order: verify a few anchor positions.
-        let audit_pos = canonical.find("\"audit_entry_hash\"").expect("audit_entry_hash present");
-        let candidate_pos =
-            canonical.find("\"candidate_order_hash\"").expect("candidate_order_hash present");
-        let routing_pos = canonical.find("\"routing_input\"").expect("routing_input present");
-        assert!(audit_pos < candidate_pos, "audit_entry_hash must precede candidate_order_hash");
-        assert!(candidate_pos < routing_pos, "candidate_order_hash must precede routing_input");
+        let audit_pos = canonical
+            .find("\"audit_entry_hash\"")
+            .expect("audit_entry_hash present");
+        let candidate_pos = canonical
+            .find("\"candidate_order_hash\"")
+            .expect("candidate_order_hash present");
+        let routing_pos = canonical
+            .find("\"routing_input\"")
+            .expect("routing_input present");
+        assert!(
+            audit_pos < candidate_pos,
+            "audit_entry_hash must precede candidate_order_hash"
+        );
+        assert!(
+            candidate_pos < routing_pos,
+            "candidate_order_hash must precede routing_input"
+        );
     }
 
     // ── Test 23: registry_snapshot_hash verification ──────────────────────────
@@ -3715,11 +3908,13 @@ mod tests {
             .expect_err("verification must fail on snapshot tamper");
         assert_eq!(
             err.code, "registry_snapshot_hash_mismatch",
-            "wrong failure code; got: {:?}", err.code
+            "wrong failure code; got: {:?}",
+            err.code
         );
         assert!(
             err.message.contains("registry_snapshot_hash"),
-            "message must identify the field; got: {:?}", err.message
+            "message must identify the field; got: {:?}",
+            err.message
         );
     }
 
@@ -3763,7 +3958,8 @@ mod tests {
                 .expect_err("verification must fail on snapshot tamper");
         assert_eq!(
             err.code, "registry_snapshot_hash_mismatch",
-            "wrong failure code; got: {:?}", err.code
+            "wrong failure code; got: {:?}",
+            err.code
         );
     }
 
@@ -3787,8 +3983,8 @@ mod tests {
     /// The same reproduced invariant via the four-artifact path.
     #[test]
     fn candidate_order_hash_reproduced_by_inputs_verification_roundtrip() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let receipt_json = serde_json::to_string(&receipt).unwrap();
         verify_receipt_from_inputs(&receipt_json, CASE_JSON, POLICY_JSON, CANDIDATES_JSON)
             .expect("candidate_order_hash must be reproducible via four-artifact path");
@@ -3822,8 +4018,8 @@ mod tests {
     /// selects the deterministic candidate, not the forged one.
     #[test]
     fn verify_receipt_rejects_forged_selected_candidate_with_consistent_decision_hash() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
 
         // Forge a different selected_candidate_id.
@@ -3851,9 +4047,10 @@ mod tests {
 
     /// Selection reproducibility tamper test (four-artifact path).
     #[test]
-    fn verify_receipt_from_inputs_rejects_forged_selected_candidate_with_consistent_decision_hash() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+    fn verify_receipt_from_inputs_rejects_forged_selected_candidate_with_consistent_decision_hash()
+    {
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
 
         val["selected_candidate_id"] = serde_json::json!("rc-fraud");
@@ -3883,8 +4080,8 @@ mod tests {
     /// confirming the version is an input to the decision hash computation.
     #[test]
     fn routing_decision_hash_commits_to_routing_kernel_version() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
 
         let hash_v1 = hash_routing_decision(
             &receipt.outcome,
@@ -3919,8 +4116,8 @@ mod tests {
     /// because the forged version does not match the compile-time constant.
     #[test]
     fn verify_receipt_rejects_kernel_version_fraud_with_consistent_decision_hash() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
 
         val["routing_kernel_version"] = serde_json::json!("postcad-routing-v0");
@@ -3940,16 +4137,17 @@ mod tests {
         val["receipt_hash"] = serde_json::json!(hash_receipt_content(&tampered_r));
 
         let tampered = serde_json::to_string(&val).unwrap();
-        let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, POLICY_JSON)
-            .expect_err("step 1d must reject wrong routing_kernel_version even if decision hash is consistent");
+        let err = verify_receipt_from_policy_json(&tampered, CASE_JSON, POLICY_JSON).expect_err(
+            "step 1d must reject wrong routing_kernel_version even if decision hash is consistent",
+        );
         assert_eq!(err.code, "routing_kernel_version_mismatch");
     }
 
     /// Routing kernel version commitment tamper test (four-artifact path).
     #[test]
     fn verify_receipt_from_inputs_rejects_kernel_version_fraud_with_consistent_decision_hash() {
-        let receipt = route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON)
-            .unwrap();
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
         let mut val: serde_json::Value = serde_json::to_value(&receipt).unwrap();
 
         val["routing_kernel_version"] = serde_json::json!("postcad-routing-v99");
@@ -3998,11 +4196,10 @@ mod tests {
         ]"#;
 
         let compact_r = route_case_from_json(CASE_JSON, CANDIDATES_JSON, compact).unwrap();
-        let pretty_r  = route_case_from_json(CASE_JSON, CANDIDATES_JSON, pretty).unwrap();
+        let pretty_r = route_case_from_json(CASE_JSON, CANDIDATES_JSON, pretty).unwrap();
 
         assert_eq!(
-            compact_r.registry_snapshot_hash,
-            pretty_r.registry_snapshot_hash,
+            compact_r.registry_snapshot_hash, pretty_r.registry_snapshot_hash,
             "registry_snapshot_hash must not change due to whitespace differences"
         );
     }
@@ -4020,8 +4217,7 @@ mod tests {
         let reversed_r = route_case_from_json(CASE_JSON, CANDIDATES_JSON, reversed).unwrap();
 
         assert_eq!(
-            standard_r.registry_snapshot_hash,
-            reversed_r.registry_snapshot_hash,
+            standard_r.registry_snapshot_hash, reversed_r.registry_snapshot_hash,
             "registry_snapshot_hash must not change due to JSON key ordering"
         );
     }
@@ -4047,11 +4243,11 @@ mod tests {
         let r_b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, encoding_b).unwrap();
 
         assert_eq!(r_a.registry_snapshot_hash, r_b.registry_snapshot_hash);
-        assert_eq!(r_a.candidate_pool_hash,     r_b.candidate_pool_hash);
-        assert_eq!(r_a.candidate_order_hash,    r_b.candidate_order_hash);
-        assert_eq!(r_a.routing_decision_hash,   r_b.routing_decision_hash);
-        assert_eq!(r_a.selected_candidate_id,   r_b.selected_candidate_id);
-        assert_eq!(r_a.receipt_hash,            r_b.receipt_hash);
+        assert_eq!(r_a.candidate_pool_hash, r_b.candidate_pool_hash);
+        assert_eq!(r_a.candidate_order_hash, r_b.candidate_order_hash);
+        assert_eq!(r_a.routing_decision_hash, r_b.routing_decision_hash);
+        assert_eq!(r_a.selected_candidate_id, r_b.selected_candidate_id);
+        assert_eq!(r_a.receipt_hash, r_b.receipt_hash);
     }
 
     /// A receipt generated with one snapshot encoding must verify successfully
@@ -4099,7 +4295,10 @@ mod tests {
         }"#;
 
         verify_receipt_from_inputs(
-            &receipt_json, CASE_JSON, policy_alt_encoding, CANDIDATES_JSON,
+            &receipt_json,
+            CASE_JSON,
+            policy_alt_encoding,
+            CANDIDATES_JSON,
         )
         .expect("receipt must verify when policy.json uses an alternative snapshot encoding");
     }
@@ -4127,10 +4326,9 @@ mod tests {
 
         // Confirm the two policies produce different registry_snapshot_hash values.
         let r_eligible = route_case_from_policy_json(CASE_JSON, policy_eligible).unwrap();
-        let r_rejected  = route_case_from_policy_json(CASE_JSON, policy_rejected).unwrap();
+        let r_rejected = route_case_from_policy_json(CASE_JSON, policy_rejected).unwrap();
         assert_ne!(
-            r_eligible.registry_snapshot_hash,
-            r_rejected.registry_snapshot_hash,
+            r_eligible.registry_snapshot_hash, r_rejected.registry_snapshot_hash,
             "a semantic change must produce a different registry_snapshot_hash"
         );
 

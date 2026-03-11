@@ -28,10 +28,10 @@
 //!   domestic eligible candidate with `is_eligible: true`.  `ComplianceGate`
 //!   gates solely on `is_eligible`, so jurisdiction is irrelevant here.
 
-use proptest::prelude::*;
-use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use postcad_cli::{route_case_from_policy_json, verify_receipt_from_policy_json};
+use proptest::prelude::*;
+use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 

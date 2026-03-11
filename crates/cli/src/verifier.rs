@@ -20,7 +20,10 @@ pub struct VerificationFailure {
 
 impl VerificationFailure {
     fn new(code: &'static str, message: impl Into<String>) -> Self {
-        Self { code, message: message.into() }
+        Self {
+            code,
+            message: message.into(),
+        }
     }
 
     // ── Schema version failures ───────────────────────────────────────────────
@@ -82,11 +85,17 @@ impl VerificationFailure {
     // ── Parse failures ────────────────────────────────────────────────────────
 
     pub fn receipt_parse_failed(detail: impl Into<String>) -> Self {
-        Self::new("receipt_parse_failed", format!("receipt parse error: {}", detail.into()))
+        Self::new(
+            "receipt_parse_failed",
+            format!("receipt parse error: {}", detail.into()),
+        )
     }
 
     pub fn case_parse_failed(detail: impl Into<String>) -> Self {
-        Self::new("case_parse_failed", format!("case parse error: {}", detail.into()))
+        Self::new(
+            "case_parse_failed",
+            format!("case parse error: {}", detail.into()),
+        )
     }
 
     pub fn policy_bundle_parse_failed(detail: impl Into<String>) -> Self {

@@ -1,6 +1,6 @@
 use postcad_core::{
-    Case, CaseRefusal, DecisionContext, RefusalReason, RoutingCandidate, RoutingDecision,
-    RoutingOutcome, RoutingPolicy, RoutingPolicyConfig, route_case_with_context,
+    route_case_with_context, Case, CaseRefusal, DecisionContext, RefusalReason, RoutingCandidate,
+    RoutingDecision, RoutingOutcome, RoutingPolicy, RoutingPolicyConfig,
 };
 use postcad_registry::attestation::EvidenceAttestation;
 use postcad_registry::evidence::EligibilityEvidence;
@@ -29,7 +29,8 @@ pub fn route_case_with_compliance(
         .map(|c| c.manufacturer_id.0.clone())
         .collect();
 
-    let compliant_ids = ComplianceGate::filter_compliant_manufacturers(&manufacturer_ids, snapshots);
+    let compliant_ids =
+        ComplianceGate::filter_compliant_manufacturers(&manufacturer_ids, snapshots);
 
     let compliant_candidates: Vec<RoutingCandidate> = candidates
         .iter()
@@ -40,8 +41,7 @@ pub fn route_case_with_compliance(
     // If candidates were provided but compliance removed all of them, emit an
     // explicit refusal rather than falling through to NoEligibleCandidate.
     if !candidates.is_empty() && compliant_candidates.is_empty() {
-        let refusal =
-            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let refusal = CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
         let context = DecisionContext::new(case.id.clone(), candidates.len(), 0);
         return RoutingOutcome {
             decision: RoutingDecision::Refused(refusal),
@@ -88,7 +88,12 @@ pub fn route_case_with_profile_compliance(
         Some(profile) => candidates
             .iter()
             .filter(|c| {
-                manufacturer_satisfies_profile(&c.manufacturer_id.0, evidence, attestations, profile)
+                manufacturer_satisfies_profile(
+                    &c.manufacturer_id.0,
+                    evidence,
+                    attestations,
+                    profile,
+                )
             })
             .cloned()
             .collect(),
@@ -98,8 +103,7 @@ pub fn route_case_with_profile_compliance(
 
     // If candidates were present but all filtered out, emit explicit refusal.
     if !candidates.is_empty() && compliant_candidates.is_empty() {
-        let refusal =
-            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let refusal = CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
         let context = DecisionContext::new(case.id.clone(), candidates.len(), 0);
         return RoutingOutcome {
             decision: RoutingDecision::Refused(refusal),
@@ -310,14 +314,7 @@ mod tests {
         let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
         let policy = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly);
 
-        let outcome = route_case_with_profile_compliance(
-            &case,
-            policy,
-            &candidates,
-            &[],
-            &[],
-            &[],
-        );
+        let outcome = route_case_with_profile_compliance(&case, policy, &candidates, &[], &[], &[]);
 
         // No compliance filtering — candidate selected normally.
         assert!(matches!(outcome.decision, RoutingDecision::Selected(_)));
@@ -354,14 +351,8 @@ mod tests {
         let policy = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
             .with_compliance_profile("iso_only_v1");
 
-        let outcome = route_case_with_profile_compliance(
-            &case,
-            policy,
-            &candidates,
-            &[],
-            &[],
-            &profiles,
-        );
+        let outcome =
+            route_case_with_profile_compliance(&case, policy, &candidates, &[], &[], &profiles);
 
         assert!(matches!(
             outcome.decision,

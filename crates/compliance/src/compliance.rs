@@ -30,11 +30,21 @@ mod tests {
     use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
 
     fn eligible(id: &str) -> ManufacturerComplianceSnapshot {
-        ManufacturerComplianceSnapshot::new(id, vec!["REF-001".to_string()], vec!["verified".to_string()], true)
+        ManufacturerComplianceSnapshot::new(
+            id,
+            vec!["REF-001".to_string()],
+            vec!["verified".to_string()],
+            true,
+        )
     }
 
     fn ineligible(id: &str) -> ManufacturerComplianceSnapshot {
-        ManufacturerComplianceSnapshot::new(id, vec!["REF-001".to_string()], vec!["rejected".to_string()], false)
+        ManufacturerComplianceSnapshot::new(
+            id,
+            vec!["REF-001".to_string()],
+            vec!["rejected".to_string()],
+            false,
+        )
     }
 
     fn ids(list: &[&str]) -> Vec<String> {
@@ -57,8 +67,7 @@ mod tests {
 
     #[test]
     fn manufacturer_without_snapshot_is_filtered_out() {
-        let result =
-            ComplianceGate::filter_compliant_manufacturers(&ids(&["mfr-99"]), &[]);
+        let result = ComplianceGate::filter_compliant_manufacturers(&ids(&["mfr-99"]), &[]);
         assert!(result.is_empty());
     }
 

@@ -34,7 +34,8 @@ const SINGLE_ELIGIBLE_REGISTRY: &str = r#"[
   }
 ]"#;
 
-const DE_CONFIG: &str = r#"{"jurisdiction": "DE", "routing_policy": "allow_domestic_and_cross_border"}"#;
+const DE_CONFIG: &str =
+    r#"{"jurisdiction": "DE", "routing_policy": "allow_domestic_and_cross_border"}"#;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,10 @@ fn registry_inactive_manufacturer_excluded() {
       }
     ]"#;
     let result = route(inactive);
-    assert_eq!(result.receipt.outcome, "refused", "inactive manufacturer must not be routed");
+    assert_eq!(
+        result.receipt.outcome, "refused",
+        "inactive manufacturer must not be routed"
+    );
 }
 
 /// A manufacturer that does not serve the requested jurisdiction must not
@@ -155,7 +159,10 @@ fn registry_expired_attestation_excluded() {
       }
     ]"#;
     let result = route(expired);
-    assert_eq!(result.receipt.outcome, "refused", "expired attestation must exclude manufacturer");
+    assert_eq!(
+        result.receipt.outcome, "refused",
+        "expired attestation must exclude manufacturer"
+    );
 }
 
 /// A manufacturer that lacks the required capability (Crown) must be
@@ -181,7 +188,10 @@ fn registry_missing_capability_excluded() {
     let outcome = &result.receipt.outcome;
     // Either refused OR routed to a different manufacturer — with a single
     // incapable candidate the only valid outcome is refusal.
-    assert_eq!(outcome, "refused", "manufacturer lacking Crown capability must not be selected");
+    assert_eq!(
+        outcome, "refused",
+        "manufacturer lacking Crown capability must not be selected"
+    );
 }
 
 /// A manufacturer that lacks the required material must not be selected.
@@ -201,7 +211,10 @@ fn registry_unsupported_material_excluded() {
       }
     ]"#;
     let result = route(wrong_material);
-    assert_eq!(result.receipt.outcome, "refused", "manufacturer not supporting Zirconia must not be selected");
+    assert_eq!(
+        result.receipt.outcome, "refused",
+        "manufacturer not supporting Zirconia must not be selected"
+    );
 }
 
 /// When two eligible manufacturers are present, only one is selected and the
@@ -240,7 +253,10 @@ fn registry_multi_candidate_selection_is_deterministic() {
         "multi-candidate routing must be deterministic"
     );
     // Both calls must select the same manufacturer.
-    assert_eq!(r1.receipt.selected_candidate_id, r2.receipt.selected_candidate_id);
+    assert_eq!(
+        r1.receipt.selected_candidate_id,
+        r2.receipt.selected_candidate_id
+    );
 }
 
 /// A registry with one eligible and one ineligible (no attestations) manufacturer

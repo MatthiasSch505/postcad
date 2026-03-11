@@ -10,7 +10,9 @@
 //!
 //! Exit 0 on VERIFIED, exit 1 on any failure.
 
-use postcad_cli::{route_case_from_registry_json, verify_receipt_from_policy_json, PROTOCOL_VERSION};
+use postcad_cli::{
+    route_case_from_registry_json, verify_receipt_from_policy_json, PROTOCOL_VERSION,
+};
 
 const CASE: &str = include_str!("../../../../tests/protocol_vectors/v01_basic_routing/case.json");
 const REGISTRY: &str =

@@ -166,7 +166,10 @@ pub fn route_case_from_registry_json(
     let derived_policy_json = serde_json::to_string(&bundle)?;
     let receipt = route_case_from_policy_json(case_json, &derived_policy_json)?;
 
-    Ok(RegistryRoutingResult { receipt, derived_policy_json })
+    Ok(RegistryRoutingResult {
+        receipt,
+        derived_policy_json,
+    })
 }
 
 // ── Refusal reason derivation ─────────────────────────────────────────────────
@@ -191,7 +194,10 @@ fn compute_refusal_hint(
     derived_candidates: &[crate::policy_bundle::CandidateEntry],
 ) -> Option<String> {
     // If at least one candidate is eligible, routing will succeed — no hint needed.
-    if derived_candidates.iter().any(|c| c.eligibility == "eligible") {
+    if derived_candidates
+        .iter()
+        .any(|c| c.eligibility == "eligible")
+    {
         return None;
     }
 
@@ -222,7 +228,9 @@ fn compute_refusal_hint(
     let with_cap: Vec<&&&ManufacturerRecord> = in_juri
         .iter()
         .filter(|r| {
-            case_capability.as_ref().map_or(true, |cap| r.capabilities.contains(cap))
+            case_capability
+                .as_ref()
+                .map_or(true, |cap| r.capabilities.contains(cap))
         })
         .collect();
     if with_cap.is_empty() {
@@ -233,7 +241,9 @@ fn compute_refusal_hint(
     let with_mat: Vec<&&&&ManufacturerRecord> = with_cap
         .iter()
         .filter(|r| {
-            case_material.as_ref().map_or(true, |mat| r.materials_supported.contains(mat))
+            case_material
+                .as_ref()
+                .map_or(true, |mat| r.materials_supported.contains(mat))
         })
         .collect();
     if with_mat.is_empty() {
@@ -246,10 +256,7 @@ fn compute_refusal_hint(
 
 // ── Candidate + snapshot derivation ──────────────────────────────────────────
 
-fn derive_candidates(
-    records: &[&ManufacturerRecord],
-    case: &CaseInput,
-) -> Vec<CandidateEntry> {
+fn derive_candidates(records: &[&ManufacturerRecord], case: &CaseInput) -> Vec<CandidateEntry> {
     // Records reaching this point are already filtered by jurisdiction,
     // capability, and material — so accepts_case is always true here.
     let case_mfr_country = parse_mfr_country_str(&case.manufacturer_country);
@@ -257,16 +264,21 @@ fn derive_candidates(
     records
         .iter()
         .map(|r| {
-            let location = case_mfr_country
-                .as_ref()
-                .map_or("cross_border", |target| {
-                    if &r.country == target { "domestic" } else { "cross_border" }
-                });
+            let location = case_mfr_country.as_ref().map_or("cross_border", |target| {
+                if &r.country == target {
+                    "domestic"
+                } else {
+                    "cross_border"
+                }
+            });
 
             let is_eligible_attestation = !r.attestation_statuses.is_empty()
                 && r.attestation_statuses.iter().all(|s| s.is_compliant());
-            let eligibility =
-                if r.is_active && is_eligible_attestation { "eligible" } else { "ineligible" };
+            let eligibility = if r.is_active && is_eligible_attestation {
+                "eligible"
+            } else {
+                "ineligible"
+            };
 
             CandidateEntry {
                 id: r.manufacturer_id.clone(),
@@ -283,8 +295,11 @@ fn derive_snapshots(records: &[&ManufacturerRecord]) -> Vec<SnapshotEntry> {
     records
         .iter()
         .map(|r| {
-            let statuses: Vec<String> =
-                r.attestation_statuses.iter().map(attestation_to_str).collect();
+            let statuses: Vec<String> = r
+                .attestation_statuses
+                .iter()
+                .map(attestation_to_str)
+                .collect();
 
             // Synthetic evidence references — one per attestation entry so the
             // snapshot validator's structural invariants are satisfied

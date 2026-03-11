@@ -1,8 +1,8 @@
 use sha2::{Digest, Sha256};
 
 use crate::fingerprint::RoutingDecisionFingerprint;
-use crate::receipt::RoutingAuditReceipt;
 use crate::proof::RoutingProof;
+use crate::receipt::RoutingAuditReceipt;
 
 /// Outcome of verifying a routing audit receipt against its proof.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -474,7 +474,11 @@ mod tests {
             &[eligible_snapshot("mfr-01")],
             None,
         );
-        let hash = result.audit_receipt.input_case_hash.as_ref().expect("input_case_hash must be Some");
+        let hash = result
+            .audit_receipt
+            .input_case_hash
+            .as_ref()
+            .expect("input_case_hash must be Some");
         assert_eq!(hash.len(), 64);
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
         assert_eq!(
@@ -506,7 +510,7 @@ mod tests {
 
     #[test]
     fn different_case_content_produces_different_input_case_hash() {
-        use postcad_core::{Material, DentalCase};
+        use postcad_core::{DentalCase, Material};
         let case_a = valid_case();
         let case_b = Case::new(DentalCase {
             material: Material::Titanium,
@@ -561,7 +565,7 @@ mod tests {
 
     #[test]
     fn input_case_hash_changes_proof_hash() {
-        use postcad_core::{Material, DentalCase};
+        use postcad_core::{DentalCase, Material};
         let case_a = valid_case();
         let case_b = Case::new(DentalCase {
             material: Material::Titanium,

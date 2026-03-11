@@ -8,9 +8,8 @@
 //!   cargo run --bin postcad-cli -- protocol-manifest --json
 
 use postcad_cli::{
-    build_manifest, compute_proof_schema_hash, compute_receipt_schema_hash,
-    is_known_refusal_code, refusal_code_set_hash, verifier::VerificationFailure,
-    POSTCAD_PROTOCOL_VERSION, REFUSAL_CODES,
+    build_manifest, compute_proof_schema_hash, compute_receipt_schema_hash, is_known_refusal_code,
+    refusal_code_set_hash, verifier::VerificationFailure, POSTCAD_PROTOCOL_VERSION, REFUSAL_CODES,
 };
 
 // ── Frozen golden hash values (v1.0) ─────────────────────────────────────────

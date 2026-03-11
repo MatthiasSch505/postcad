@@ -20,22 +20,16 @@ pub enum SnapshotValidationError {
         attestation_count: usize,
     },
 
-    #[error(
-        "duplicate evidence reference '{reference}' in snapshot for '{manufacturer_id}'"
-    )]
+    #[error("duplicate evidence reference '{reference}' in snapshot for '{manufacturer_id}'")]
     DuplicateEvidenceReference {
         manufacturer_id: String,
         reference: String,
     },
 
-    #[error(
-        "snapshot for '{manufacturer_id}' is marked eligible but has no evidence references"
-    )]
+    #[error("snapshot for '{manufacturer_id}' is marked eligible but has no evidence references")]
     EligibleWithNoEvidence { manufacturer_id: String },
 
-    #[error(
-        "snapshot for '{manufacturer_id}' is marked eligible but has no verified attestation"
-    )]
+    #[error("snapshot for '{manufacturer_id}' is marked eligible but has no verified attestation")]
     EligibleWithNoVerifiedAttestation { manufacturer_id: String },
 }
 
@@ -117,8 +111,14 @@ mod tests {
     ) -> ManufacturerComplianceSnapshot {
         ManufacturerComplianceSnapshot::new(
             manufacturer_id,
-            evidence_references.into_iter().map(str::to_string).collect(),
-            attestation_statuses.into_iter().map(str::to_string).collect(),
+            evidence_references
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
+            attestation_statuses
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
             is_eligible,
         )
     }

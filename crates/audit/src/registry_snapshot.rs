@@ -45,8 +45,8 @@ pub fn hash_registry_snapshots(snapshots: &[ManufacturerComplianceSnapshot]) -> 
         })
         .collect();
     entries.sort_by(|a, b| a.manufacturer_id.cmp(&b.manufacturer_id));
-    let json = serde_json::to_string(&entries)
-        .expect("RegistrySnapshotEntry serialization must not fail");
+    let json =
+        serde_json::to_string(&entries).expect("RegistrySnapshotEntry serialization must not fail");
     let digest = Sha256::digest(json.as_bytes());
     format!("{:x}", digest)
 }
@@ -180,10 +180,7 @@ mod tests {
     fn added_snapshot_produces_different_hash() {
         let one = vec![eligible("mfr-01")];
         let two = vec![eligible("mfr-01"), eligible("mfr-02")];
-        assert_ne!(
-            hash_registry_snapshots(&one),
-            hash_registry_snapshots(&two)
-        );
+        assert_ne!(hash_registry_snapshots(&one), hash_registry_snapshots(&two));
     }
 
     // ── hash format ───────────────────────────────────────────────────────────

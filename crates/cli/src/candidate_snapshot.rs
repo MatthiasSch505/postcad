@@ -148,8 +148,8 @@ pub(crate) fn hash_selector_input(ids: &[String]) -> String {
 pub(crate) fn hash_candidate_order(ids: &[String]) -> String {
     let mut sorted = ids.to_vec();
     sorted.sort();
-    let json =
-        serde_json::to_string(&sorted).expect("candidate order ID list serialization must not fail");
+    let json = serde_json::to_string(&sorted)
+        .expect("candidate order ID list serialization must not fail");
     let digest = Sha256::digest(json.as_bytes());
     format!("{:x}", digest)
 }
@@ -201,8 +201,7 @@ pub(crate) fn hash_candidate_pool_from_compliance(
 /// The resulting hash is **order-independent**: presenting the same candidates
 /// in any order produces the same hash.
 pub(crate) fn hash_candidate_pool(entries: &[CandidateEntry]) -> String {
-    let mut snapshots: Vec<CandidateSnapshot> =
-        entries.iter().map(derive_snapshot).collect();
+    let mut snapshots: Vec<CandidateSnapshot> = entries.iter().map(derive_snapshot).collect();
     snapshots.sort_by(|a, b| a.id.cmp(&b.id));
     let json =
         serde_json::to_string(&snapshots).expect("CandidateSnapshot serialization must not fail");
@@ -216,8 +215,13 @@ pub(crate) fn hash_candidate_pool(entries: &[CandidateEntry]) -> String {
 mod tests {
     use super::*;
 
-    fn entry(id: &str, manufacturer_id: &str, location: &str, accepts: bool, elig: &str)
-    -> CandidateEntry {
+    fn entry(
+        id: &str,
+        manufacturer_id: &str,
+        location: &str,
+        accepts: bool,
+        elig: &str,
+    ) -> CandidateEntry {
         CandidateEntry {
             id: id.to_string(),
             manufacturer_id: manufacturer_id.to_string(),
@@ -254,7 +258,10 @@ mod tests {
         let h_ab = hash_candidate_pool(&[e1.clone(), e2.clone()]);
         let h_ba = hash_candidate_pool(&[e2.clone(), e1.clone()]);
 
-        assert_eq!(h_ab, h_ba, "hash must be order-independent after canonical sort");
+        assert_eq!(
+            h_ab, h_ba,
+            "hash must be order-independent after canonical sort"
+        );
     }
 
     #[test]
@@ -277,35 +284,50 @@ mod tests {
     fn changed_id_produces_different_hash() {
         let original = vec![entry("rc-1", "mfr-01", "domestic", true, "eligible")];
         let mutated = vec![entry("rc-99", "mfr-01", "domestic", true, "eligible")];
-        assert_ne!(hash_candidate_pool(&original), hash_candidate_pool(&mutated));
+        assert_ne!(
+            hash_candidate_pool(&original),
+            hash_candidate_pool(&mutated)
+        );
     }
 
     #[test]
     fn changed_manufacturer_id_produces_different_hash() {
         let original = vec![entry("rc-1", "mfr-01", "domestic", true, "eligible")];
         let mutated = vec![entry("rc-1", "mfr-99", "domestic", true, "eligible")];
-        assert_ne!(hash_candidate_pool(&original), hash_candidate_pool(&mutated));
+        assert_ne!(
+            hash_candidate_pool(&original),
+            hash_candidate_pool(&mutated)
+        );
     }
 
     #[test]
     fn changed_location_produces_different_hash() {
         let original = vec![entry("rc-1", "mfr-01", "domestic", true, "eligible")];
         let mutated = vec![entry("rc-1", "mfr-01", "cross_border", true, "eligible")];
-        assert_ne!(hash_candidate_pool(&original), hash_candidate_pool(&mutated));
+        assert_ne!(
+            hash_candidate_pool(&original),
+            hash_candidate_pool(&mutated)
+        );
     }
 
     #[test]
     fn changed_accepts_case_produces_different_hash() {
         let original = vec![entry("rc-1", "mfr-01", "domestic", true, "eligible")];
         let mutated = vec![entry("rc-1", "mfr-01", "domestic", false, "eligible")];
-        assert_ne!(hash_candidate_pool(&original), hash_candidate_pool(&mutated));
+        assert_ne!(
+            hash_candidate_pool(&original),
+            hash_candidate_pool(&mutated)
+        );
     }
 
     #[test]
     fn changed_eligibility_produces_different_hash() {
         let original = vec![entry("rc-1", "mfr-01", "domestic", true, "eligible")];
         let mutated = vec![entry("rc-1", "mfr-01", "domestic", true, "ineligible")];
-        assert_ne!(hash_candidate_pool(&original), hash_candidate_pool(&mutated));
+        assert_ne!(
+            hash_candidate_pool(&original),
+            hash_candidate_pool(&mutated)
+        );
     }
 
     // ── pool size changes ─────────────────────────────────────────────────────

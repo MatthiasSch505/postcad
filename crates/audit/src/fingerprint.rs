@@ -53,10 +53,7 @@ impl RoutingDecisionFingerprint {
             }
 
             RoutingDecision::Refused(refusal) => {
-                let refusal_code = refusal
-                    .reasons
-                    .first()
-                    .map(|r| r.code().to_string());
+                let refusal_code = refusal.reasons.first().map(|r| r.code().to_string());
 
                 Self {
                     case_id,
@@ -174,11 +171,7 @@ mod tests {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
         let refusal = CaseRefusal::with_reason(case.id.clone(), RefusalReason::ValidationFailed);
-        let outcome = make_outcome(
-            &case,
-            RoutingDecision::Refused(refusal),
-            candidates.len(),
-        );
+        let outcome = make_outcome(&case, RoutingDecision::Refused(refusal), candidates.len());
 
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "US", &candidates, None);
 
@@ -191,13 +184,8 @@ mod tests {
     fn compliance_exclusion_refusal_builds_refused_fingerprint() {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-01")];
-        let refusal =
-            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
-        let outcome = make_outcome(
-            &case,
-            RoutingDecision::Refused(refusal),
-            candidates.len(),
-        );
+        let refusal = CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let outcome = make_outcome(&case, RoutingDecision::Refused(refusal), candidates.len());
 
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
 
@@ -210,13 +198,8 @@ mod tests {
     fn compliance_exclusion_refusal_code_appears_in_canonical_string() {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-01")];
-        let refusal =
-            CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
-        let outcome = make_outcome(
-            &case,
-            RoutingDecision::Refused(refusal),
-            candidates.len(),
-        );
+        let refusal = CaseRefusal::with_reason(case.id.clone(), RefusalReason::ComplianceExclusion);
+        let outcome = make_outcome(&case, RoutingDecision::Refused(refusal), candidates.len());
 
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
         let s = fp.canonical_string();
@@ -280,7 +263,11 @@ mod tests {
             make_candidate("rc-b", "mfr-2"),
             make_candidate("rc-c", "mfr-3"),
         ];
-        let outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, candidates.len());
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::NoEligibleCandidate,
+            candidates.len(),
+        );
 
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "JP", &candidates, None);
         let s = fp.canonical_string();
@@ -296,7 +283,11 @@ mod tests {
     fn missing_optional_fields_serialize_as_null() {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-01")];
-        let outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, candidates.len());
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::NoEligibleCandidate,
+            candidates.len(),
+        );
 
         let fp = RoutingDecisionFingerprint::from_outcome(&outcome, "DE", &candidates, None);
         let s = fp.canonical_string();

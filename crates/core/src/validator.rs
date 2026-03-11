@@ -88,7 +88,10 @@ mod tests {
         let mut case = valid_case();
         case.dental_case.file_type = FileType::Other(String::new());
         let errs = validate_case(&case).unwrap_err();
-        assert_eq!(errs, vec![ValidationError::UnsupportedFileType(String::new())]);
+        assert_eq!(
+            errs,
+            vec![ValidationError::UnsupportedFileType(String::new())]
+        );
     }
 
     #[test]
@@ -96,7 +99,9 @@ mod tests {
         let mut case = valid_case();
         case.dental_case.file_type = FileType::Other("   ".to_string());
         let errs = validate_case(&case).unwrap_err();
-        assert!(errs.iter().any(|e| matches!(e, ValidationError::UnsupportedFileType(_))));
+        assert!(errs
+            .iter()
+            .any(|e| matches!(e, ValidationError::UnsupportedFileType(_))));
     }
 
     #[test]
@@ -120,7 +125,10 @@ mod tests {
         let mut case = valid_case();
         case.dental_case.patient_country = Country::Other(String::new());
         let errs = validate_case(&case).unwrap_err();
-        assert_eq!(errs, vec![ValidationError::EmptyOtherField("patient_country")]);
+        assert_eq!(
+            errs,
+            vec![ValidationError::EmptyOtherField("patient_country")]
+        );
     }
 
     #[test]
@@ -131,9 +139,15 @@ mod tests {
         case.dental_case.procedure = ProcedureType::Other(String::new());
         let errs = validate_case(&case).unwrap_err();
         assert_eq!(errs.len(), 3);
-        assert!(errs.iter().any(|e| matches!(e, ValidationError::UnsupportedFileType(_))));
-        assert!(errs.iter().any(|e| e == &ValidationError::EmptyOtherField("material")));
-        assert!(errs.iter().any(|e| e == &ValidationError::EmptyOtherField("procedure")));
+        assert!(errs
+            .iter()
+            .any(|e| matches!(e, ValidationError::UnsupportedFileType(_))));
+        assert!(errs
+            .iter()
+            .any(|e| e == &ValidationError::EmptyOtherField("material")));
+        assert!(errs
+            .iter()
+            .any(|e| e == &ValidationError::EmptyOtherField("procedure")));
     }
 
     #[test]

@@ -5,7 +5,7 @@
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tower::util::ServiceExt;
 
 // ── Canonical fixture corpus ──────────────────────────────────────────────────
@@ -27,7 +27,9 @@ async fn post_json(uri: &str, body: Value) -> (StatusCode, Value) {
         .unwrap();
     let resp = app.oneshot(req).await.unwrap();
     let status = resp.status();
-    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: Value = serde_json::from_slice(&bytes).unwrap();
     (status, json)
 }
@@ -41,7 +43,9 @@ async fn get_json(uri: &str) -> (StatusCode, Value) {
         .unwrap();
     let resp = app.oneshot(req).await.unwrap();
     let status = resp.status();
-    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let json: Value = serde_json::from_slice(&bytes).unwrap();
     (status, json)
 }

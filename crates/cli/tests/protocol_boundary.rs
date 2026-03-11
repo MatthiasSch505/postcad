@@ -22,8 +22,7 @@ const POLICY_JSON: &str = include_str!("../../../fixtures/policy.json");
 /// Every routing receipt must carry routing_kernel_version.
 #[test]
 fn receipt_contains_kernel_version() {
-    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON)
-        .expect("fixture must route");
+    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).expect("fixture must route");
 
     assert!(
         !receipt.routing_kernel_version.is_empty(),
@@ -38,8 +37,7 @@ fn receipt_contains_kernel_version() {
 /// The proof object derived from a receipt must carry protocol_version.
 #[test]
 fn receipt_contains_protocol_version() {
-    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON)
-        .expect("fixture must route");
+    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).expect("fixture must route");
     let proof = build_routing_proof(&receipt);
 
     assert_eq!(
@@ -96,18 +94,27 @@ fn protocol_manifest_complete() {
     }
 
     // Verify the hash fields are 64-char hex digests.
-    for hash_field in &["receipt_schema_hash", "proof_schema_hash", "refusal_code_set_hash", "manifest_fingerprint"] {
+    for hash_field in &[
+        "receipt_schema_hash",
+        "proof_schema_hash",
+        "refusal_code_set_hash",
+        "manifest_fingerprint",
+    ] {
         let h = v[hash_field].as_str().unwrap_or("");
         assert_eq!(
-            h.len(), 64,
+            h.len(),
+            64,
             "manifest field {:?} must be a 64-char hex digest, got {:?}",
-            hash_field, h
+            hash_field,
+            h
         );
     }
 
     // stable_error_codes must be a non-empty array.
     assert!(
-        v["stable_error_codes"].as_array().map_or(false, |a| !a.is_empty()),
+        v["stable_error_codes"]
+            .as_array()
+            .map_or(false, |a| !a.is_empty()),
         "stable_error_codes must be a non-empty array"
     );
 }
@@ -118,8 +125,7 @@ fn protocol_manifest_complete() {
 /// fail (the kernel version field is required for replay verification).
 #[test]
 fn verification_rejects_missing_kernel_version() {
-    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON)
-        .expect("fixture must route");
+    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).expect("fixture must route");
     let receipt_json = serde_json::to_string(&receipt).unwrap();
 
     let mut v: Value = serde_json::from_str(&receipt_json).unwrap();
@@ -138,8 +144,7 @@ fn verification_rejects_missing_kernel_version() {
 /// version error code (schema_version is the protocol anchor in the receipt).
 #[test]
 fn verification_rejects_missing_protocol_version() {
-    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON)
-        .expect("fixture must route");
+    let receipt = route_case_from_policy_json(CASE_JSON, POLICY_JSON).expect("fixture must route");
     let receipt_json = serde_json::to_string(&receipt).unwrap();
 
     let mut v: Value = serde_json::from_str(&receipt_json).unwrap();

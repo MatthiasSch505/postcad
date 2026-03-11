@@ -3,8 +3,7 @@ use sha2::{Digest, Sha256};
 
 use crate::canonical::to_canonical_json;
 
-const GENESIS_HASH: &str =
-    "0000000000000000000000000000000000000000000000000000000000000000";
+const GENESIS_HASH: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 /// Events that can be recorded in the audit log.
 ///

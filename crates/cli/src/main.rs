@@ -2,9 +2,9 @@ use std::fs;
 use std::process;
 
 use postcad_cli::{
-    build_manifest, export_registry, route_case_from_json,
-    route_case_from_registry_json, verify_receipt_from_inputs, verify_receipt_from_policy_json,
-    POSTCAD_PROTOCOL_VERSION, PROTOCOL_VERSION, ROUTING_KERNEL_SEMVER,
+    build_manifest, export_registry, route_case_from_json, route_case_from_registry_json,
+    verify_receipt_from_inputs, verify_receipt_from_policy_json, POSTCAD_PROTOCOL_VERSION,
+    PROTOCOL_VERSION, ROUTING_KERNEL_SEMVER,
 };
 
 fn main() {
@@ -70,7 +70,11 @@ fn run_route_case(args: &[String]) {
     }
 
     let case_path = case_path.unwrap_or_else(|| {
-        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --case")
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --case",
+        )
     });
     let candidates_path = candidates_path.unwrap_or_else(|| {
         emit_error_and_exit(
@@ -102,7 +106,10 @@ fn run_route_case(args: &[String]) {
         println!("outcome:              {}", receipt.outcome);
         println!(
             "selected_candidate:   {}",
-            receipt.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
+            receipt
+                .selected_candidate_id
+                .as_deref()
+                .unwrap_or("\u{2014}")
         );
         println!(
             "refusal_code:         {}",
@@ -155,7 +162,11 @@ fn run_route_case_from_registry(args: &[String]) {
     }
 
     let case_path = case_path.unwrap_or_else(|| {
-        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --case")
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --case",
+        )
     });
     let registry_path = registry_path.unwrap_or_else(|| {
         emit_error_and_exit(
@@ -176,11 +187,10 @@ fn run_route_case_from_registry(args: &[String]) {
     let registry_json = read_file_or_exit(json_output, registry_path);
     let config_json = read_file_or_exit(json_output, config_path);
 
-    let result =
-        match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
-            Ok(r) => r,
-            Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
-        };
+    let result = match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
+        Ok(r) => r,
+        Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
+    };
 
     // Verify the receipt immediately as a self-check, then emit.
     if let Err(f) = verify_receipt_from_policy_json(
@@ -197,18 +207,31 @@ fn run_route_case_from_registry(args: &[String]) {
         println!("outcome:              {}", result.receipt.outcome);
         println!(
             "selected_candidate:   {}",
-            result.receipt.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
+            result
+                .receipt
+                .selected_candidate_id
+                .as_deref()
+                .unwrap_or("\u{2014}")
         );
         println!(
             "refusal_code:         {}",
             result.receipt.refusal_code.as_deref().unwrap_or("\u{2014}")
         );
-        println!("routing_proof_hash:   {}", result.receipt.routing_proof_hash);
-        println!("policy_fingerprint:   {}", result.receipt.policy_fingerprint);
+        println!(
+            "routing_proof_hash:   {}",
+            result.receipt.routing_proof_hash
+        );
+        println!(
+            "policy_fingerprint:   {}",
+            result.receipt.policy_fingerprint
+        );
         println!("case_fingerprint:     {}", result.receipt.case_fingerprint);
         println!("audit_seq:            {}", result.receipt.audit_seq);
         println!("audit_entry_hash:     {}", result.receipt.audit_entry_hash);
-        println!("audit_previous_hash:  {}", result.receipt.audit_previous_hash);
+        println!(
+            "audit_previous_hash:  {}",
+            result.receipt.audit_previous_hash
+        );
         if let Some(detail) = &result.receipt.refusal {
             println!("refusal_message:      {}", detail.message);
             println!("failed_constraint:    {}", detail.failed_constraint);
@@ -255,13 +278,25 @@ fn run_verify_receipt(args: &[String]) {
     }
 
     let receipt_path = receipt_path.unwrap_or_else(|| {
-        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --receipt")
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --receipt",
+        )
     });
     let case_path = case_path.unwrap_or_else(|| {
-        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --case")
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --case",
+        )
     });
     let policy_path = policy_path.unwrap_or_else(|| {
-        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --policy")
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --policy",
+        )
     });
     let candidates_path = candidates_path.unwrap_or_else(|| {
         emit_error_and_exit(
@@ -356,7 +391,10 @@ fn run_demo_v1(args: &[String]) {
                 println!("outcome:              {}", receipt.outcome);
                 println!(
                     "selected_candidate:   {}",
-                    receipt.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
+                    receipt
+                        .selected_candidate_id
+                        .as_deref()
+                        .unwrap_or("\u{2014}")
                 );
                 println!("receipt_hash:         {}", receipt.receipt_hash);
                 println!("protocol_version:     {}", PROTOCOL_VERSION);
@@ -396,10 +434,18 @@ fn run_registry_export(args: &[String]) {
     }
 
     let input_path = input_path.unwrap_or_else(|| {
-        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --input")
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --input",
+        )
     });
     let output_path = output_path.unwrap_or_else(|| {
-        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --output")
+        emit_error_and_exit(
+            json_output,
+            "invalid_arguments",
+            "missing required argument --output",
+        )
     });
 
     let source_json = read_file_or_exit(json_output, input_path);
@@ -458,7 +504,10 @@ fn read_file_or_exit(json_output: bool, path: &str) -> String {
 }
 
 fn run_protocol_manifest() {
-    println!("{}", serde_json::to_string_pretty(&build_manifest()).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&build_manifest()).unwrap()
+    );
 }
 
 /// `protocol-info` — compact semantic version summary of the protocol.
@@ -507,10 +556,14 @@ fn print_help() {
     println!("CASE JSON FIELDS:");
     println!("    case_id              (optional) UUID string; generated if absent");
     println!("    jurisdiction         (optional) string; default \"global\"");
-    println!("    routing_policy       (optional) allow_domestic_only | allow_domestic_and_cross_border");
+    println!(
+        "    routing_policy       (optional) allow_domestic_only | allow_domestic_and_cross_border"
+    );
     println!("    patient_country      united_states | germany | france | japan | united_kingdom | other:<name>");
     println!("    manufacturer_country same variants as patient_country");
-    println!("    material             zirconia | pmma | emax | cobalt_chrome | titanium | other:<name>");
+    println!(
+        "    material             zirconia | pmma | emax | cobalt_chrome | titanium | other:<name>"
+    );
     println!("    procedure            crown | bridge | veneer | implant | denture | other:<name>");
     println!("    file_type            stl | obj | ply | three_mf | other:<name>");
 }

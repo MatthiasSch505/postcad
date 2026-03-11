@@ -81,7 +81,11 @@ mod tests {
     fn refused_fingerprint() -> RoutingDecisionFingerprint {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-de-01")];
-        let outcome = make_outcome(&case, RoutingDecision::NoEligibleCandidate, candidates.len());
+        let outcome = make_outcome(
+            &case,
+            RoutingDecision::NoEligibleCandidate,
+            candidates.len(),
+        );
         RoutingDecisionFingerprint::from_outcome(&outcome, "US", &candidates, None)
     }
 
@@ -116,7 +120,8 @@ mod tests {
     #[test]
     fn verify_returns_false_if_hash_hex_is_modified() {
         let mut proof = RoutingProof::from_fingerprint(&selected_fingerprint());
-        proof.hash_hex = "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+        proof.hash_hex =
+            "0000000000000000000000000000000000000000000000000000000000000000".to_string();
         assert!(!proof.verify());
     }
 

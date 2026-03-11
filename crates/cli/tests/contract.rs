@@ -13,14 +13,13 @@
 //! locking in the stable JSON schema.
 
 use postcad_cli::{
-    RoutingPolicyBundle, RoutingReceipt,
-    route_case_from_policy_json, verify_receipt_from_policy_json,
+    route_case_from_policy_json, verify_receipt_from_policy_json, RoutingPolicyBundle,
+    RoutingReceipt,
 };
 use serde_json::Value;
 
 fn scenarios_dir() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures/scenarios")
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/scenarios")
 }
 
 fn read_scenario_file(scenario: &str, file: &str) -> String {
@@ -42,12 +41,20 @@ fn assert_contract(scenario: &str) {
     let expected_json = read_scenario_file(scenario, "expected.json");
 
     // Policy bundle parses as the stable public type.
-    let _bundle: RoutingPolicyBundle = serde_json::from_str(&policy_json)
-        .unwrap_or_else(|e| panic!("[{}] policy.json failed to parse as RoutingPolicyBundle: {}", scenario, e));
+    let _bundle: RoutingPolicyBundle = serde_json::from_str(&policy_json).unwrap_or_else(|e| {
+        panic!(
+            "[{}] policy.json failed to parse as RoutingPolicyBundle: {}",
+            scenario, e
+        )
+    });
 
     // Receipt parses as the stable public type.
-    let _receipt: RoutingReceipt = serde_json::from_str(&expected_json)
-        .unwrap_or_else(|e| panic!("[{}] expected.json failed to parse as RoutingReceipt: {}", scenario, e));
+    let _receipt: RoutingReceipt = serde_json::from_str(&expected_json).unwrap_or_else(|e| {
+        panic!(
+            "[{}] expected.json failed to parse as RoutingReceipt: {}",
+            scenario, e
+        )
+    });
 
     // Routing reproduces expected.json exactly.
     let actual = route_case_from_policy_json(&case_json, &policy_json)

@@ -16,7 +16,9 @@ impl From<JurisdictionPolicy> for RoutingPolicy {
     fn from(jp: JurisdictionPolicy) -> Self {
         match jp {
             JurisdictionPolicy::DomesticOnly => RoutingPolicy::AllowDomesticOnly,
-            JurisdictionPolicy::DomesticAndCrossBorder => RoutingPolicy::AllowDomesticAndCrossBorder,
+            JurisdictionPolicy::DomesticAndCrossBorder => {
+                RoutingPolicy::AllowDomesticAndCrossBorder
+            }
         }
     }
 }
@@ -72,7 +74,9 @@ pub fn filter_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ManufacturerEligibility, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+    use crate::{
+        ManufacturerEligibility, ManufacturingLocation, RoutingCandidate, RoutingCandidateId,
+    };
 
     #[test]
     fn domestic_only_jurisdiction_maps_to_allow_domestic_only() {
@@ -180,7 +184,10 @@ mod tests {
     fn policy_config_routing_policy_is_preserved() {
         let config = RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticAndCrossBorder)
             .with_compliance_profile("us_fda_v2");
-        assert_eq!(config.routing_policy, RoutingPolicy::AllowDomesticAndCrossBorder);
+        assert_eq!(
+            config.routing_policy,
+            RoutingPolicy::AllowDomesticAndCrossBorder
+        );
         assert_eq!(config.compliance_profile_name(), Some("us_fda_v2"));
     }
 }

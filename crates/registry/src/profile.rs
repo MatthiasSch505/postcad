@@ -8,10 +8,7 @@ pub struct RequiredEvidenceProfile {
 }
 
 impl RequiredEvidenceProfile {
-    pub fn new(
-        profile_name: impl Into<String>,
-        required_evidence_types: Vec<String>,
-    ) -> Self {
+    pub fn new(profile_name: impl Into<String>, required_evidence_types: Vec<String>) -> Self {
         Self {
             profile_name: profile_name.into(),
             required_evidence_types,
@@ -37,9 +34,7 @@ pub fn manufacturer_satisfies_profile(
         // Collect all evidence references for this manufacturer + type.
         let references: Vec<&str> = evidence
             .iter()
-            .filter(|e| {
-                e.manufacturer_id == manufacturer_id && &e.evidence_type == required_type
-            })
+            .filter(|e| e.manufacturer_id == manufacturer_id && &e.evidence_type == required_type)
             .map(|e| e.evidence_reference.as_str())
             .collect();
 

@@ -125,7 +125,9 @@ mod tests {
         r.add_reason(RefusalReason::UnsupportedJurisdiction);
         assert_eq!(r.reasons.len(), 3);
         assert!(r.reasons.contains(&RefusalReason::UnsupportedFileType));
-        assert!(r.reasons.contains(&RefusalReason::MissingManufacturingMetadata));
+        assert!(r
+            .reasons
+            .contains(&RefusalReason::MissingManufacturingMetadata));
         assert!(r.reasons.contains(&RefusalReason::UnsupportedJurisdiction));
     }
 
@@ -185,12 +187,30 @@ mod tests {
     #[test]
     fn all_variants_have_stable_codes() {
         assert_eq!(RefusalReason::ValidationFailed.code(), "invalid_input");
-        assert_eq!(RefusalReason::UnsupportedFileType.code(), "unsupported_case");
-        assert_eq!(RefusalReason::MissingManufacturingMetadata.code(), "invalid_input");
-        assert_eq!(RefusalReason::UnsupportedJurisdiction.code(), "unsupported_case");
-        assert_eq!(RefusalReason::ManufacturerNotEligible.code(), "compliance_failed");
-        assert_eq!(RefusalReason::NoEligibleCandidate.code(), "no_eligible_candidates");
-        assert_eq!(RefusalReason::ComplianceExclusion.code(), "compliance_failed");
+        assert_eq!(
+            RefusalReason::UnsupportedFileType.code(),
+            "unsupported_case"
+        );
+        assert_eq!(
+            RefusalReason::MissingManufacturingMetadata.code(),
+            "invalid_input"
+        );
+        assert_eq!(
+            RefusalReason::UnsupportedJurisdiction.code(),
+            "unsupported_case"
+        );
+        assert_eq!(
+            RefusalReason::ManufacturerNotEligible.code(),
+            "compliance_failed"
+        );
+        assert_eq!(
+            RefusalReason::NoEligibleCandidate.code(),
+            "no_eligible_candidates"
+        );
+        assert_eq!(
+            RefusalReason::ComplianceExclusion.code(),
+            "compliance_failed"
+        );
         assert_eq!(RefusalReason::Unknown.code(), "unknown");
     }
 

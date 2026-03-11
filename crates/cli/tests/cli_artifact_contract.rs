@@ -61,8 +61,7 @@ fn run(args: &[&str]) -> (i32, Value, String) {
 /// Writes content to a temp file and returns the path. Each call uses a unique
 /// tag so parallel tests do not collide.
 fn write_tmp(tag: &str, content: &str) -> PathBuf {
-    let path = std::env::temp_dir()
-        .join(format!("postcad_artifact_contract_{}.json", tag));
+    let path = std::env::temp_dir().join(format!("postcad_artifact_contract_{}.json", tag));
     std::fs::write(&path, content).expect("failed to write tmp file");
     path
 }
@@ -79,9 +78,12 @@ fn cli_route_case_demo_success_exits_0_exact_frozen_receipt() {
     let (code, actual, stderr) = run(&[
         "route-case",
         "--json",
-        "--case",       fixture("case.json").to_str().unwrap(),
-        "--candidates", fixture("candidates.json").to_str().unwrap(),
-        "--snapshot",   fixture("snapshot.json").to_str().unwrap(),
+        "--case",
+        fixture("case.json").to_str().unwrap(),
+        "--candidates",
+        fixture("candidates.json").to_str().unwrap(),
+        "--snapshot",
+        fixture("snapshot.json").to_str().unwrap(),
     ]);
 
     assert_eq!(code, 0, "route-case success must exit 0");
@@ -111,10 +113,14 @@ fn cli_verify_receipt_demo_success_exits_0_verified_envelope() {
     let (code, json, stderr) = run(&[
         "verify-receipt",
         "--json",
-        "--receipt",    fixture("expected_routed.json").to_str().unwrap(),
-        "--case",       fixture("case.json").to_str().unwrap(),
-        "--policy",     fixture("policy.json").to_str().unwrap(),
-        "--candidates", fixture("candidates.json").to_str().unwrap(),
+        "--receipt",
+        fixture("expected_routed.json").to_str().unwrap(),
+        "--case",
+        fixture("case.json").to_str().unwrap(),
+        "--policy",
+        fixture("policy.json").to_str().unwrap(),
+        "--candidates",
+        fixture("candidates.json").to_str().unwrap(),
     ]);
 
     assert_eq!(code, 0, "verify-receipt success must exit 0");
@@ -154,12 +160,18 @@ fn cli_route_case_demo_refusal_exits_0_exact_frozen_receipt() {
     let (code, actual, stderr) = run(&[
         "route-case",
         "--json",
-        "--case",       fixture("case.json").to_str().unwrap(),
-        "--candidates", fixture("candidates.json").to_str().unwrap(),
-        "--snapshot",   fixture("snapshot_refusal.json").to_str().unwrap(),
+        "--case",
+        fixture("case.json").to_str().unwrap(),
+        "--candidates",
+        fixture("candidates.json").to_str().unwrap(),
+        "--snapshot",
+        fixture("snapshot_refusal.json").to_str().unwrap(),
     ]);
 
-    assert_eq!(code, 0, "route-case refusal must exit 0 (refusal is a valid domain outcome)");
+    assert_eq!(
+        code, 0,
+        "route-case refusal must exit 0 (refusal is a valid domain outcome)"
+    );
     assert!(
         stderr.is_empty(),
         "stderr must be empty in --json mode; got: {:?}",
@@ -211,10 +223,14 @@ fn cli_verify_receipt_demo_drift_exits_1_registry_snapshot_hash_mismatch() {
     let (code, json, stderr) = run(&[
         "verify-receipt",
         "--json",
-        "--receipt",    fixture("expected_routed.json").to_str().unwrap(),
-        "--case",       fixture("case.json").to_str().unwrap(),
-        "--policy",     drifted_policy_path.to_str().unwrap(),
-        "--candidates", fixture("candidates.json").to_str().unwrap(),
+        "--receipt",
+        fixture("expected_routed.json").to_str().unwrap(),
+        "--case",
+        fixture("case.json").to_str().unwrap(),
+        "--policy",
+        drifted_policy_path.to_str().unwrap(),
+        "--candidates",
+        fixture("candidates.json").to_str().unwrap(),
     ]);
 
     assert_eq!(code, 1, "verify-receipt must exit 1 on VERIFICATION FAILED");
@@ -247,11 +263,7 @@ fn cli_protocol_manifest_exits_0_exact_frozen_manifest() {
     let (code, actual, stderr) = run(&["protocol-manifest", "--json"]);
 
     assert_eq!(code, 0, "protocol-manifest must exit 0");
-    assert!(
-        stderr.is_empty(),
-        "stderr must be empty; got: {:?}",
-        stderr
-    );
+    assert!(stderr.is_empty(), "stderr must be empty; got: {:?}", stderr);
 
     let expected: Value = serde_json::from_str(&read_fixture("expected_manifest.json"))
         .expect("expected_manifest.json must be valid JSON");

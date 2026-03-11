@@ -36,8 +36,7 @@ use postcad_cli::{route_case_from_registry_json, verify_receipt_from_policy_json
 // ── Directory helpers ─────────────────────────────────────────────────────────
 
 fn verifier_vectors_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/protocol_verifier_vectors")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/protocol_verifier_vectors")
 }
 
 fn read_vv_file(vector: &str, file: &str) -> String {
@@ -87,21 +86,26 @@ fn recompute_receipt_hash(receipt_val: &Value) -> String {
 /// Called lazily on first run; subsequent runs load the frozen files from disk.
 fn generate_if_missing(vector: &str, meta: &VectorMeta) {
     let receipt_path = vv_path(vector, "receipt.json");
-    let policy_path  = vv_path(vector, "policy.json");
+    let policy_path = vv_path(vector, "policy.json");
     if receipt_path.exists() && policy_path.exists() {
         return; // already seeded
     }
 
-    let case_json     = read_vv_file(vector, "case.json");
+    let case_json = read_vv_file(vector, "case.json");
     let registry_json = read_vv_file(vector, "registry_snapshot.json");
-    let config_json   = read_vv_file(vector, "registry_routing_config.json");
+    let config_json = read_vv_file(vector, "registry_routing_config.json");
 
     let result = route_case_from_registry_json(&case_json, &registry_json, &config_json)
-        .unwrap_or_else(|e| panic!("vector '{}' routing failed during generation: {}", vector, e));
+        .unwrap_or_else(|e| {
+            panic!(
+                "vector '{}' routing failed during generation: {}",
+                vector, e
+            )
+        });
 
     // Start with the valid receipt and the derived policy bundle.
-    let mut receipt_val: Value = serde_json::to_value(&result.receipt)
-        .expect("receipt must serialise to Value");
+    let mut receipt_val: Value =
+        serde_json::to_value(&result.receipt).expect("receipt must serialise to Value");
     let mut policy_val: Value = serde_json::from_str(&result.derived_policy_json)
         .expect("derived_policy_json must parse to Value");
 
@@ -158,10 +162,10 @@ fn generate_if_missing(vector: &str, meta: &VectorMeta) {
         other => panic!("unknown generation_type {:?} in vector '{}'", other, vector),
     }
 
-    let receipt_pretty = serde_json::to_string_pretty(&receipt_val)
-        .expect("receipt must serialise to pretty JSON");
-    let policy_pretty = serde_json::to_string_pretty(&policy_val)
-        .expect("policy must serialise to pretty JSON");
+    let receipt_pretty =
+        serde_json::to_string_pretty(&receipt_val).expect("receipt must serialise to pretty JSON");
+    let policy_pretty =
+        serde_json::to_string_pretty(&policy_val).expect("policy must serialise to pretty JSON");
 
     std::fs::write(&receipt_path, receipt_pretty)
         .unwrap_or_else(|e| panic!("cannot write {}: {}", receipt_path.display(), e));
@@ -187,8 +191,8 @@ fn run_verifier_vector(vector: &str) {
     generate_if_missing(vector, &meta);
 
     let receipt_json = read_vv_file(vector, "receipt.json");
-    let case_json    = read_vv_file(vector, "case.json");
-    let policy_json  = read_vv_file(vector, "policy.json");
+    let case_json = read_vv_file(vector, "case.json");
+    let policy_json = read_vv_file(vector, "policy.json");
 
     let result = verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json);
 
@@ -205,15 +209,18 @@ fn run_verifier_vector(vector: &str) {
             let failure = result.unwrap_err_or_else(|| {
                 panic!(
                     "verifier vector '{}': expected Err({:?}) but verification succeeded",
-                    vector,
-                    meta.expected_error_code,
+                    vector, meta.expected_error_code,
                 )
             });
             if let Some(expected_code) = &meta.expected_error_code {
                 assert_eq!(
-                    failure.code, expected_code.as_str(),
+                    failure.code,
+                    expected_code.as_str(),
                     "verifier vector '{}': wrong error code (expected {:?}, got {:?}): {}",
-                    vector, expected_code, failure.code, failure.message,
+                    vector,
+                    expected_code,
+                    failure.code,
+                    failure.message,
                 );
             }
         }
@@ -298,8 +305,8 @@ fn all_verifier_vectors_are_stable() {
         generate_if_missing(vector, &meta);
 
         let receipt_json = read_vv_file(vector, "receipt.json");
-        let case_json    = read_vv_file(vector, "case.json");
-        let policy_json  = read_vv_file(vector, "policy.json");
+        let case_json = read_vv_file(vector, "case.json");
+        let policy_json = read_vv_file(vector, "policy.json");
 
         let r1 = verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json);
         let r2 = verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json);

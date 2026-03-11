@@ -1,4 +1,4 @@
-﻿use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 pub mod protocol;
@@ -8,7 +8,7 @@ pub mod kernel_version;
 pub use kernel_version::ROUTING_KERNEL_SEMVER;
 
 pub mod refusal_codes;
-pub use refusal_codes::{REFUSAL_CODES, is_known_refusal_code, refusal_code_set_hash};
+pub use refusal_codes::{is_known_refusal_code, refusal_code_set_hash, REFUSAL_CODES};
 
 pub mod validator;
 pub use validator::{validate_case, ValidationError};
@@ -17,7 +17,10 @@ pub mod refusal;
 pub use refusal::{CaseRefusal, RefusalExplanation, RefusalReason};
 
 pub mod routing;
-pub use routing::{ManufacturerEligibility, ManufacturerId, ManufacturingLocation, RoutingCandidate, RoutingCandidateId};
+pub use routing::{
+    ManufacturerEligibility, ManufacturerId, ManufacturingLocation, RoutingCandidate,
+    RoutingCandidateId,
+};
 
 pub mod decision;
 pub use decision::{DecisionContext, RoutingDecision};

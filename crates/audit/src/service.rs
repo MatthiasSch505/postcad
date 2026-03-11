@@ -1,16 +1,16 @@
+use postcad_compliance::{route_case_with_profile_compliance, ComplianceGate};
 use postcad_core::{
-    Case, RoutingCandidate, RoutingPolicy, RoutingPolicyConfig,
-    filter_candidates, fingerprint_case, fingerprint_policy, route_case_with_context,
+    filter_candidates, fingerprint_case, fingerprint_policy, route_case_with_context, Case,
+    RoutingCandidate, RoutingPolicy, RoutingPolicyConfig,
 };
 use postcad_registry::attestation::EvidenceAttestation;
 use postcad_registry::evidence::EligibilityEvidence;
 use postcad_registry::profile::{manufacturer_satisfies_profile, RequiredEvidenceProfile};
 use postcad_registry::snapshot::ManufacturerComplianceSnapshot;
-use postcad_compliance::{ComplianceGate, route_case_with_profile_compliance};
 
 use crate::{
-    DecisionTrace, RoutingAuditReceipt, RoutingDecisionFingerprint, RoutingProof,
-    hash_registry_snapshots,
+    hash_registry_snapshots, DecisionTrace, RoutingAuditReceipt, RoutingDecisionFingerprint,
+    RoutingProof,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,12 +51,15 @@ pub fn route_case_with_audit(
     )
     .with_input_case_hash(Some(input_case_hash.clone()));
 
-    let decision_trace =
-        DecisionTrace::from_outcome(&outcome, jurisdiction, candidates, &filtered);
+    let decision_trace = DecisionTrace::from_outcome(&outcome, jurisdiction, candidates, &filtered);
 
-    let fingerprint =
-        RoutingDecisionFingerprint::from_outcome(&outcome, jurisdiction, candidates, policy_version)
-        .with_input_case_hash(Some(input_case_hash));
+    let fingerprint = RoutingDecisionFingerprint::from_outcome(
+        &outcome,
+        jurisdiction,
+        candidates,
+        policy_version,
+    )
+    .with_input_case_hash(Some(input_case_hash));
 
     let proof = RoutingProof::from_fingerprint(&fingerprint);
 
@@ -246,9 +249,9 @@ pub fn route_case_with_profile_compliance_audit(
 mod tests {
     use super::*;
     use postcad_core::{
-        Case, Country, DentalCase, FileType, ManufacturerEligibility, ManufacturingLocation,
-        Material, ProcedureType, RoutingCandidate, RoutingCandidateId, RoutingDecision,
-        RoutingPolicy, RoutingPolicyConfig, fingerprint_policy,
+        fingerprint_policy, Case, Country, DentalCase, FileType, ManufacturerEligibility,
+        ManufacturingLocation, Material, ProcedureType, RoutingCandidate, RoutingCandidateId,
+        RoutingDecision, RoutingPolicy, RoutingPolicyConfig,
     };
     use postcad_registry::attestation::EvidenceAttestation;
     use postcad_registry::evidence::EligibilityEvidence;
@@ -484,7 +487,10 @@ mod tests {
             None,
         );
 
-        assert_eq!(result.outcome.decision, RoutingDecision::NoEligibleCandidate);
+        assert_eq!(
+            result.outcome.decision,
+            RoutingDecision::NoEligibleCandidate
+        );
         assert!(result.proof.verify());
     }
 
@@ -502,7 +508,10 @@ mod tests {
             None,
         );
 
-        assert_eq!(result.outcome.decision, RoutingDecision::NoEligibleCandidate);
+        assert_eq!(
+            result.outcome.decision,
+            RoutingDecision::NoEligibleCandidate
+        );
         assert!(result.proof.verify());
     }
 
@@ -773,9 +782,8 @@ mod tests {
         let policy = RoutingPolicy::AllowDomesticOnly;
         let expected = fingerprint_policy(&RoutingPolicyConfig::new(policy.clone()));
 
-        let result = route_case_with_compliance_audit(
-            &case, "DE", policy, &candidates, &snapshots, None,
-        );
+        let result =
+            route_case_with_compliance_audit(&case, "DE", policy, &candidates, &snapshots, None);
 
         assert_eq!(result.policy_fingerprint, expected);
     }
@@ -792,7 +800,14 @@ mod tests {
         let expected = fingerprint_policy(&policy);
 
         let result = route_case_with_profile_compliance_audit(
-            &case, "DE", policy, &candidates, &evidence, &attestations, &profiles, None,
+            &case,
+            "DE",
+            policy,
+            &candidates,
+            &evidence,
+            &attestations,
+            &profiles,
+            None,
         );
 
         assert_eq!(result.policy_fingerprint, expected);
@@ -804,13 +819,24 @@ mod tests {
         let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
 
         let result_domestic = route_case_with_audit(
-            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
         );
         let result_cross = route_case_with_audit(
-            &case, "DE", RoutingPolicy::AllowDomesticAndCrossBorder, &candidates, None,
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticAndCrossBorder,
+            &candidates,
+            None,
         );
 
-        assert_ne!(result_domestic.policy_fingerprint, result_cross.policy_fingerprint);
+        assert_ne!(
+            result_domestic.policy_fingerprint,
+            result_cross.policy_fingerprint
+        );
     }
 
     #[test]
@@ -819,10 +845,18 @@ mod tests {
         let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
 
         let result_a = route_case_with_audit(
-            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
         );
         let result_b = route_case_with_audit(
-            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
         );
 
         assert_eq!(result_a.policy_fingerprint, result_b.policy_fingerprint);
@@ -834,11 +868,18 @@ mod tests {
         let candidates = vec![domestic_candidate("rc-1", "mfr-01")];
 
         let result = route_case_with_audit(
-            &case, "DE", RoutingPolicy::AllowDomesticOnly, &candidates, None,
+            &case,
+            "DE",
+            RoutingPolicy::AllowDomesticOnly,
+            &candidates,
+            None,
         );
 
         assert_eq!(result.policy_fingerprint.len(), 64);
-        assert!(result.policy_fingerprint.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(result
+            .policy_fingerprint
+            .chars()
+            .all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -871,6 +912,9 @@ mod tests {
             None,
         );
 
-        assert_ne!(with_profile.policy_fingerprint, without_profile.policy_fingerprint);
+        assert_ne!(
+            with_profile.policy_fingerprint,
+            without_profile.policy_fingerprint
+        );
     }
 }

@@ -5,8 +5,8 @@
 //! `verify_routing_proof`.
 
 use postcad_cli::{
-    build_routing_proof, route_case_from_policy_json, verify_routing_proof,
-    verify_receipt_from_policy_json,
+    build_routing_proof, route_case_from_policy_json, verify_receipt_from_policy_json,
+    verify_routing_proof,
 };
 
 // ── Canonical fixtures ────────────────────────────────────────────────────────
@@ -103,15 +103,15 @@ fn proof_fields_match_receipt_fields() {
     let proof = build_routing_proof(&receipt);
 
     assert_eq!(proof.routing_kernel_version, receipt.routing_kernel_version);
-    assert_eq!(proof.routing_input_hash,     receipt.routing_input_hash);
+    assert_eq!(proof.routing_input_hash, receipt.routing_input_hash);
     assert_eq!(proof.registry_snapshot_hash, receipt.registry_snapshot_hash);
-    assert_eq!(proof.candidate_pool_hash,    receipt.candidate_pool_hash);
-    assert_eq!(proof.candidate_order_hash,   receipt.candidate_order_hash);
-    assert_eq!(proof.routing_decision_hash,  receipt.routing_decision_hash);
-    assert_eq!(proof.selected_candidate_id,  receipt.selected_candidate_id);
-    assert_eq!(proof.receipt_hash,           receipt.receipt_hash);
-    assert_eq!(proof.audit_entry_hash,       receipt.audit_entry_hash);
-    assert_eq!(proof.audit_previous_hash,    receipt.audit_previous_hash);
+    assert_eq!(proof.candidate_pool_hash, receipt.candidate_pool_hash);
+    assert_eq!(proof.candidate_order_hash, receipt.candidate_order_hash);
+    assert_eq!(proof.routing_decision_hash, receipt.routing_decision_hash);
+    assert_eq!(proof.selected_candidate_id, receipt.selected_candidate_id);
+    assert_eq!(proof.receipt_hash, receipt.receipt_hash);
+    assert_eq!(proof.audit_entry_hash, receipt.audit_entry_hash);
+    assert_eq!(proof.audit_previous_hash, receipt.audit_previous_hash);
 }
 
 /// For a refused receipt, `selected_candidate_id` in the proof must be `None`.
@@ -241,5 +241,8 @@ fn proof_from_different_receipt_fails_verification() {
     // proof_b was built from receipt_b; verifying it against receipt_a must fail
     // because the hash commitments differ.
     let result = verify_routing_proof(&proof_b, &receipt_a);
-    assert!(result.is_err(), "proof from a different receipt must not verify");
+    assert!(
+        result.is_err(),
+        "proof from a different receipt must not verify"
+    );
 }

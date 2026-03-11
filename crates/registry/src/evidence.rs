@@ -37,19 +37,35 @@ mod tests {
 
     #[test]
     fn manufacturer_with_matching_evidence_returns_true() {
-        let evidence = vec![EligibilityEvidence::new("mfr-01", "iso_cert", "ISO-9001-2024")];
+        let evidence = vec![EligibilityEvidence::new(
+            "mfr-01",
+            "iso_cert",
+            "ISO-9001-2024",
+        )];
         assert!(manufacturer_has_evidence("mfr-01", &evidence, "iso_cert"));
     }
 
     #[test]
     fn manufacturer_without_matching_type_returns_false() {
-        let evidence = vec![EligibilityEvidence::new("mfr-01", "iso_cert", "ISO-9001-2024")];
-        assert!(!manufacturer_has_evidence("mfr-01", &evidence, "regulatory_license"));
+        let evidence = vec![EligibilityEvidence::new(
+            "mfr-01",
+            "iso_cert",
+            "ISO-9001-2024",
+        )];
+        assert!(!manufacturer_has_evidence(
+            "mfr-01",
+            &evidence,
+            "regulatory_license"
+        ));
     }
 
     #[test]
     fn evidence_for_different_manufacturer_is_ignored() {
-        let evidence = vec![EligibilityEvidence::new("mfr-02", "iso_cert", "ISO-9001-2024")];
+        let evidence = vec![EligibilityEvidence::new(
+            "mfr-02",
+            "iso_cert",
+            "ISO-9001-2024",
+        )];
         assert!(!manufacturer_has_evidence("mfr-01", &evidence, "iso_cert"));
     }
 
@@ -61,9 +77,21 @@ mod tests {
             EligibilityEvidence::new("mfr-02", "regulatory_license", "LIC-DE-2024"),
         ];
         assert!(manufacturer_has_evidence("mfr-01", &evidence, "iso_cert"));
-        assert!(manufacturer_has_evidence("mfr-01", &evidence, "milling_validation"));
-        assert!(!manufacturer_has_evidence("mfr-01", &evidence, "regulatory_license"));
-        assert!(manufacturer_has_evidence("mfr-02", &evidence, "regulatory_license"));
+        assert!(manufacturer_has_evidence(
+            "mfr-01",
+            &evidence,
+            "milling_validation"
+        ));
+        assert!(!manufacturer_has_evidence(
+            "mfr-01",
+            &evidence,
+            "regulatory_license"
+        ));
+        assert!(manufacturer_has_evidence(
+            "mfr-02",
+            &evidence,
+            "regulatory_license"
+        ));
         assert!(!manufacturer_has_evidence("mfr-02", &evidence, "iso_cert"));
     }
 

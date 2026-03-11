@@ -35,10 +35,14 @@ fn scenario(name: &str) -> PathBuf {
 fn route_scenario(s: &std::path::Path) -> (bool, Value) {
     let out = Command::new(bin())
         .args([
-            "route-case", "--json",
-            "--case",       s.join("case.json").to_str().unwrap(),
-            "--candidates", s.join("candidates.json").to_str().unwrap(),
-            "--snapshot",   s.join("snapshot.json").to_str().unwrap(),
+            "route-case",
+            "--json",
+            "--case",
+            s.join("case.json").to_str().unwrap(),
+            "--candidates",
+            s.join("candidates.json").to_str().unwrap(),
+            "--snapshot",
+            s.join("snapshot.json").to_str().unwrap(),
         ])
         .output()
         .expect("failed to spawn postcad-cli");
@@ -60,8 +64,7 @@ fn verify(args: &[&str]) -> (bool, Value) {
 }
 
 fn write_tmp(tag: &str, content: &str) -> PathBuf {
-    let path = std::env::temp_dir()
-        .join(format!("postcad_closure_sweep_{}.json", tag));
+    let path = std::env::temp_dir().join(format!("postcad_closure_sweep_{}.json", tag));
     std::fs::write(&path, content).expect("failed to write tmp file");
     path
 }
@@ -90,20 +93,34 @@ fn verify_receipt_exits_1_with_case_parse_failed_on_malformed_case_json() {
     let (route_ok, receipt_val) = route_scenario(&s);
     assert!(route_ok);
 
-    let receipt_path = write_tmp("case_parse_receipt", &serde_json::to_string(&receipt_val).unwrap());
-    let bad_case     = write_tmp("case_parse_bad_case", "THIS IS NOT JSON {{{");
+    let receipt_path = write_tmp(
+        "case_parse_receipt",
+        &serde_json::to_string(&receipt_val).unwrap(),
+    );
+    let bad_case = write_tmp("case_parse_bad_case", "THIS IS NOT JSON {{{");
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    receipt_path.to_str().unwrap(),
-        "--case",       bad_case.to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        receipt_path.to_str().unwrap(),
+        "--case",
+        bad_case.to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when case.json is malformed");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when case.json is malformed"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "case_parse_failed",
-        "malformed case.json must produce case_parse_failed; got: {:?}", json["code"]);
+    assert_eq!(
+        json["code"], "case_parse_failed",
+        "malformed case.json must produce case_parse_failed; got: {:?}",
+        json["code"]
+    );
 }
 
 // ── 2a. policy_bundle_parse_failed — malformed policy.json ───────────────────
@@ -116,20 +133,34 @@ fn verify_receipt_exits_1_with_policy_bundle_parse_failed_on_malformed_policy_js
     let (route_ok, receipt_val) = route_scenario(&s);
     assert!(route_ok);
 
-    let receipt_path = write_tmp("policy_parse_receipt", &serde_json::to_string(&receipt_val).unwrap());
-    let bad_policy   = write_tmp("policy_parse_bad_policy", "NOT JSON AT ALL }{");
+    let receipt_path = write_tmp(
+        "policy_parse_receipt",
+        &serde_json::to_string(&receipt_val).unwrap(),
+    );
+    let bad_policy = write_tmp("policy_parse_bad_policy", "NOT JSON AT ALL }{");
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    receipt_path.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     bad_policy.to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        receipt_path.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        bad_policy.to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when policy.json is malformed");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when policy.json is malformed"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "policy_bundle_parse_failed",
-        "malformed policy.json must produce policy_bundle_parse_failed; got: {:?}", json["code"]);
+    assert_eq!(
+        json["code"], "policy_bundle_parse_failed",
+        "malformed policy.json must produce policy_bundle_parse_failed; got: {:?}",
+        json["code"]
+    );
 }
 
 // ── 2b. policy_bundle_parse_failed — malformed candidates.json ───────────────
@@ -146,20 +177,34 @@ fn verify_receipt_exits_1_with_policy_bundle_parse_failed_on_malformed_candidate
     let (route_ok, receipt_val) = route_scenario(&s);
     assert!(route_ok);
 
-    let receipt_path    = write_tmp("cands_parse_receipt", &serde_json::to_string(&receipt_val).unwrap());
-    let bad_candidates  = write_tmp("cands_parse_bad_cands", "{{not valid json}}");
+    let receipt_path = write_tmp(
+        "cands_parse_receipt",
+        &serde_json::to_string(&receipt_val).unwrap(),
+    );
+    let bad_candidates = write_tmp("cands_parse_bad_cands", "{{not valid json}}");
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    receipt_path.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", bad_candidates.to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        receipt_path.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        bad_candidates.to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when candidates.json is malformed");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when candidates.json is malformed"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "policy_bundle_parse_failed",
-        "malformed candidates.json must produce policy_bundle_parse_failed; got: {:?}", json["code"]);
+    assert_eq!(
+        json["code"], "policy_bundle_parse_failed",
+        "malformed candidates.json must produce policy_bundle_parse_failed; got: {:?}",
+        json["code"]
+    );
 }
 
 // ── 3. Refusal path tamper: refusal_code change ───────────────────────────────
@@ -177,8 +222,10 @@ fn verify_receipt_rejects_tampered_refusal_code_on_refused_receipt() {
     let s = scenario("refused_no_eligible_candidates");
     let (route_ok, mut receipt_val) = route_scenario(&s);
     assert!(route_ok, "route-case must exit 0 for a refused outcome");
-    assert_eq!(receipt_val["outcome"], "refused",
-        "scenario must produce a refused outcome");
+    assert_eq!(
+        receipt_val["outcome"], "refused",
+        "scenario must produce a refused outcome"
+    );
 
     // Change refusal_code; leave routing_decision_hash stale.
     receipt_val["refusal_code"] = serde_json::json!("injected_refusal_code");
@@ -187,16 +234,27 @@ fn verify_receipt_rejects_tampered_refusal_code_on_refused_receipt() {
     let tmp = write_tmp("tampered_refusal_code_refused", &tampered);
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    tmp.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when refusal_code is tampered on refused receipt");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when refusal_code is tampered on refused receipt"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "routing_decision_hash_mismatch",
-        "tampered refusal_code must produce routing_decision_hash_mismatch; got: {:?}", json["code"]);
+    assert_eq!(
+        json["code"], "routing_decision_hash_mismatch",
+        "tampered refusal_code must produce routing_decision_hash_mismatch; got: {:?}",
+        json["code"]
+    );
 }
 
 // ── 4. Refusal path tamper: inject selected_candidate_id into refused receipt ─
@@ -215,10 +273,14 @@ fn verify_receipt_replay_detects_candidate_injected_into_refused_receipt() {
     let s = scenario("refused_no_eligible_candidates");
     let (route_ok, mut receipt_val) = route_scenario(&s);
     assert!(route_ok, "route-case must exit 0 for a refused outcome");
-    assert_eq!(receipt_val["outcome"], "refused",
-        "scenario must produce a refused outcome");
-    assert!(receipt_val["selected_candidate_id"].is_null(),
-        "refused receipt must have null selected_candidate_id");
+    assert_eq!(
+        receipt_val["outcome"], "refused",
+        "scenario must produce a refused outcome"
+    );
+    assert!(
+        receipt_val["selected_candidate_id"].is_null(),
+        "refused receipt must have null selected_candidate_id"
+    );
 
     let injected_id = "rc-injected-candidate";
 
@@ -234,8 +296,10 @@ fn verify_receipt_replay_detects_candidate_injected_into_refused_receipt() {
         "routing_kernel_version": receipt_val["routing_kernel_version"],
         "selected_candidate_id":  receipt_val["selected_candidate_id"],
     });
-    let new_decision_hash = format!("{:x}",
-        Sha256::digest(serde_json::to_string(&decision_obj).unwrap().as_bytes()));
+    let new_decision_hash = format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_string(&decision_obj).unwrap().as_bytes())
+    );
     receipt_val["routing_decision_hash"] = serde_json::json!(new_decision_hash);
 
     // Recompute receipt_hash so the artifact-integrity check (step 1b) passes.
@@ -244,14 +308,21 @@ fn verify_receipt_replay_detects_candidate_injected_into_refused_receipt() {
     let tmp = write_tmp("injected_candidate_refused", &tampered);
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    tmp.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success,
-        "verify-receipt must exit 1 when selected_candidate_id is injected into refused receipt");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when selected_candidate_id is injected into refused receipt"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(json["code"], "routing_decision_replay_mismatch",
         "injected candidate in refused receipt must produce routing_decision_replay_mismatch; got: {:?}",
@@ -271,10 +342,14 @@ fn verify_receipt_rejects_injected_refusal_code_on_routed_receipt() {
     let s = scenario("routed_domestic_allowed");
     let (route_ok, mut receipt_val) = route_scenario(&s);
     assert!(route_ok, "route-case must succeed");
-    assert_eq!(receipt_val["outcome"], "routed",
-        "scenario must produce a routed outcome");
-    assert!(receipt_val["refusal_code"].is_null(),
-        "routed receipt must have null refusal_code");
+    assert_eq!(
+        receipt_val["outcome"], "routed",
+        "scenario must produce a routed outcome"
+    );
+    assert!(
+        receipt_val["refusal_code"].is_null(),
+        "routed receipt must have null refusal_code"
+    );
 
     // Inject a non-null refusal_code; leave routing_decision_hash stale.
     receipt_val["refusal_code"] = serde_json::json!("injected_refusal");
@@ -283,13 +358,21 @@ fn verify_receipt_rejects_injected_refusal_code_on_routed_receipt() {
     let tmp = write_tmp("injected_refusal_code_routed", &tampered);
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    tmp.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when refusal_code is injected into routed receipt");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when refusal_code is injected into routed receipt"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(json["code"], "routing_decision_hash_mismatch",
         "injected refusal_code on routed receipt must produce routing_decision_hash_mismatch; got: {:?}",
@@ -314,16 +397,27 @@ fn verify_receipt_rejects_missing_routing_input_object_with_parse_failed() {
     let tmp = write_tmp("missing_routing_input_object", &broken);
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    tmp.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when routing_input object is absent");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when routing_input object is absent"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "receipt_parse_failed",
-        "missing routing_input object must produce receipt_parse_failed; got: {:?}", json["code"]);
+    assert_eq!(
+        json["code"], "receipt_parse_failed",
+        "missing routing_input object must produce receipt_parse_failed; got: {:?}",
+        json["code"]
+    );
 }
 
 // ── 7. audit_previous_hash removal → receipt_parse_failed ────────────────────
@@ -339,21 +433,35 @@ fn verify_receipt_rejects_missing_audit_previous_hash_field_with_parse_failed() 
     let (route_ok, mut receipt_val) = route_scenario(&s);
     assert!(route_ok);
 
-    receipt_val.as_object_mut().unwrap().remove("audit_previous_hash");
+    receipt_val
+        .as_object_mut()
+        .unwrap()
+        .remove("audit_previous_hash");
     let broken = serde_json::to_string(&receipt_val).unwrap();
     let tmp = write_tmp("missing_audit_previous_hash", &broken);
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    tmp.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when audit_previous_hash field is absent");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when audit_previous_hash field is absent"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "receipt_parse_failed",
-        "missing audit_previous_hash must produce receipt_parse_failed; got: {:?}", json["code"]);
+    assert_eq!(
+        json["code"], "receipt_parse_failed",
+        "missing audit_previous_hash must produce receipt_parse_failed; got: {:?}",
+        json["code"]
+    );
 }
 
 // ── 8. Extra field inside routing_input sub-object → VERIFIED ────────────────
@@ -393,14 +501,25 @@ fn verify_receipt_tolerates_extra_field_in_routing_input_sub_object() {
     let tmp = write_tmp("extra_field_routing_input", &with_extra);
 
     let (success, json) = verify(&[
-        "verify-receipt", "--json",
-        "--receipt",    tmp.to_str().unwrap(),
-        "--case",       s.join("case.json").to_str().unwrap(),
-        "--policy",     s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(success,
-        "verify-receipt must exit 0 when routing_input has extra unknown field; got: {:?}", json);
-    assert_eq!(json["result"], "VERIFIED",
-        "extra field in routing_input must produce VERIFIED; got: {:?}", json);
+    assert!(
+        success,
+        "verify-receipt must exit 0 when routing_input has extra unknown field; got: {:?}",
+        json
+    );
+    assert_eq!(
+        json["result"], "VERIFIED",
+        "extra field in routing_input must produce VERIFIED; got: {:?}",
+        json
+    );
 }

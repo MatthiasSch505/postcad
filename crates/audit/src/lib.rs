@@ -5,7 +5,7 @@ pub mod registry_snapshot;
 pub use registry_snapshot::hash_registry_snapshots;
 
 pub mod chain;
-pub use chain::{AuditEvent, AuditEntry, AuditLog};
+pub use chain::{AuditEntry, AuditEvent, AuditLog};
 
 pub mod verify;
 pub use verify::{verify_receipt, VerificationFailure, VerificationResult};

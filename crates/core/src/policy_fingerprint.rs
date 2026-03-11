@@ -18,10 +18,7 @@ pub fn fingerprint_policy(policy: &RoutingPolicyConfig) -> String {
 /// Fields are written in alphabetical order, one per line, using the format
 /// `key=value`. Optional fields use an empty value when absent.
 fn canonical_policy_string(policy: &RoutingPolicyConfig) -> String {
-    let compliance_profile = policy
-        .compliance_profile_name
-        .as_deref()
-        .unwrap_or("");
+    let compliance_profile = policy.compliance_profile_name.as_deref().unwrap_or("");
 
     let routing_policy = match policy.routing_policy {
         RoutingPolicy::AllowDomesticOnly => "allow_domestic_only",
@@ -45,8 +42,7 @@ mod tests {
     }
 
     fn domestic_only_with_profile(name: &str) -> RoutingPolicyConfig {
-        RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly)
-            .with_compliance_profile(name)
+        RoutingPolicyConfig::new(RoutingPolicy::AllowDomesticOnly).with_compliance_profile(name)
     }
 
     fn cross_border() -> RoutingPolicyConfig {
@@ -134,6 +130,9 @@ mod tests {
     fn adding_compliance_profile_changes_fingerprint() {
         let without = domestic_only();
         let with_profile = domestic_only_with_profile("iso_only_v1");
-        assert_ne!(fingerprint_policy(&without), fingerprint_policy(&with_profile));
+        assert_ne!(
+            fingerprint_policy(&without),
+            fingerprint_policy(&with_profile)
+        );
     }
 }

@@ -166,12 +166,18 @@ pub fn eligible_records<'a>(
     material: &ManufacturerMaterial,
 ) -> Vec<&'a ManufacturerRecord> {
     let active = filter_active(records);
-    let by_jurisdiction: Vec<&ManufacturerRecord> =
-        active.into_iter().filter(|r| r.jurisdictions_served.contains(jurisdiction)).collect();
-    let by_capability: Vec<&ManufacturerRecord> =
-        by_jurisdiction.into_iter().filter(|r| r.capabilities.contains(capability)).collect();
-    let by_material: Vec<&ManufacturerRecord> =
-        by_capability.into_iter().filter(|r| r.materials_supported.contains(material)).collect();
+    let by_jurisdiction: Vec<&ManufacturerRecord> = active
+        .into_iter()
+        .filter(|r| r.jurisdictions_served.contains(jurisdiction))
+        .collect();
+    let by_capability: Vec<&ManufacturerRecord> = by_jurisdiction
+        .into_iter()
+        .filter(|r| r.capabilities.contains(capability))
+        .collect();
+    let by_material: Vec<&ManufacturerRecord> = by_capability
+        .into_iter()
+        .filter(|r| r.materials_supported.contains(material))
+        .collect();
     by_material
         .into_iter()
         .filter(|r| {
@@ -205,13 +211,14 @@ pub fn canonical_hash(record: &ManufacturerRecord) -> String {
 fn sort_json_arrays(value: serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Array(arr) => {
-            let mut items: Vec<serde_json::Value> =
-                arr.into_iter().map(sort_json_arrays).collect();
+            let mut items: Vec<serde_json::Value> = arr.into_iter().map(sort_json_arrays).collect();
             items.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
             serde_json::Value::Array(items)
         }
         serde_json::Value::Object(map) => serde_json::Value::Object(
-            map.into_iter().map(|(k, v)| (k, sort_json_arrays(v))).collect(),
+            map.into_iter()
+                .map(|(k, v)| (k, sort_json_arrays(v)))
+                .collect(),
         ),
         other => other,
     }
@@ -268,7 +275,10 @@ mod tests {
     fn filter_by_jurisdiction_excludes_unsupported_jurisdiction() {
         let records = [active_de_crown_zirconia()]; // only serves Germany
         let result = filter_by_jurisdiction(&records, &ManufacturerCountry::France);
-        assert!(result.is_empty(), "manufacturer not serving France must be excluded");
+        assert!(
+            result.is_empty(),
+            "manufacturer not serving France must be excluded"
+        );
     }
 
     // ── filter_by_capability ──────────────────────────────────────────────────
@@ -284,7 +294,10 @@ mod tests {
     fn filter_by_capability_excludes_missing_capability() {
         let records = [active_de_crown_zirconia()]; // only Crown
         let result = filter_by_capability(&records, &ManufacturerCapability::Implant);
-        assert!(result.is_empty(), "manufacturer lacking Implant capability must be excluded");
+        assert!(
+            result.is_empty(),
+            "manufacturer lacking Implant capability must be excluded"
+        );
     }
 
     // ── filter_by_material ────────────────────────────────────────────────────
@@ -300,7 +313,10 @@ mod tests {
     fn filter_by_material_excludes_unsupported_material() {
         let records = [active_de_crown_zirconia()]; // only Zirconia
         let result = filter_by_material(&records, &ManufacturerMaterial::Titanium);
-        assert!(result.is_empty(), "manufacturer not supporting Titanium must be excluded");
+        assert!(
+            result.is_empty(),
+            "manufacturer not supporting Titanium must be excluded"
+        );
     }
 
     // ── filter_by_attestation ─────────────────────────────────────────────────
@@ -318,7 +334,10 @@ mod tests {
         record.attestation_statuses = vec![AttestationStatus::Expired];
         let records = [record];
         let result = filter_by_attestation(&records);
-        assert!(result.is_empty(), "manufacturer with Expired attestation must be excluded");
+        assert!(
+            result.is_empty(),
+            "manufacturer with Expired attestation must be excluded"
+        );
     }
 
     #[test]
@@ -327,7 +346,10 @@ mod tests {
         record.attestation_statuses = vec![AttestationStatus::Pending];
         let records = [record];
         let result = filter_by_attestation(&records);
-        assert!(result.is_empty(), "manufacturer with Pending attestation must be excluded");
+        assert!(
+            result.is_empty(),
+            "manufacturer with Pending attestation must be excluded"
+        );
     }
 
     #[test]
@@ -336,17 +358,22 @@ mod tests {
         record.attestation_statuses = vec![AttestationStatus::Revoked];
         let records = [record];
         let result = filter_by_attestation(&records);
-        assert!(result.is_empty(), "manufacturer with Revoked attestation must be excluded");
+        assert!(
+            result.is_empty(),
+            "manufacturer with Revoked attestation must be excluded"
+        );
     }
 
     #[test]
     fn filter_by_attestation_excludes_mixed_verified_and_non_verified() {
         let mut record = active_de_crown_zirconia();
-        record.attestation_statuses =
-            vec![AttestationStatus::Verified, AttestationStatus::Expired];
+        record.attestation_statuses = vec![AttestationStatus::Verified, AttestationStatus::Expired];
         let records = [record];
         let result = filter_by_attestation(&records);
-        assert!(result.is_empty(), "any non-Verified attestation must disqualify the manufacturer");
+        assert!(
+            result.is_empty(),
+            "any non-Verified attestation must disqualify the manufacturer"
+        );
     }
 
     #[test]
@@ -355,7 +382,10 @@ mod tests {
         record.attestation_statuses = vec![];
         let records = [record];
         let result = filter_by_attestation(&records);
-        assert!(result.is_empty(), "manufacturer with no attestations cannot prove compliance");
+        assert!(
+            result.is_empty(),
+            "manufacturer with no attestations cannot prove compliance"
+        );
     }
 
     // ── eligible_records composite filter ─────────────────────────────────────
@@ -476,16 +506,12 @@ mod tests {
     #[test]
     fn canonical_hash_independent_of_vec_element_insertion_order() {
         let mut a = active_de_crown_zirconia();
-        a.jurisdictions_served =
-            vec![ManufacturerCountry::Germany, ManufacturerCountry::France];
-        a.materials_supported =
-            vec![ManufacturerMaterial::Zirconia, ManufacturerMaterial::Pmma];
+        a.jurisdictions_served = vec![ManufacturerCountry::Germany, ManufacturerCountry::France];
+        a.materials_supported = vec![ManufacturerMaterial::Zirconia, ManufacturerMaterial::Pmma];
 
         let mut b = active_de_crown_zirconia();
-        b.jurisdictions_served =
-            vec![ManufacturerCountry::France, ManufacturerCountry::Germany];
-        b.materials_supported =
-            vec![ManufacturerMaterial::Pmma, ManufacturerMaterial::Zirconia];
+        b.jurisdictions_served = vec![ManufacturerCountry::France, ManufacturerCountry::Germany];
+        b.materials_supported = vec![ManufacturerMaterial::Pmma, ManufacturerMaterial::Zirconia];
 
         assert_eq!(
             canonical_hash(&a),

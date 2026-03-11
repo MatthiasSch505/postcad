@@ -98,14 +98,16 @@ impl std::fmt::Display for ExportError {
 /// 5. Sort by `manufacturer_id` (lexicographic ascending — deterministic).
 /// 6. Map to [`ManufacturerRecord`] and serialize as pretty-printed JSON.
 pub fn export_registry(source_json: &str) -> Result<String, ExportError> {
-    let records: Vec<RegistrySourceRecord> = serde_json::from_str(source_json)
-        .map_err(|e| ExportError::ParseFailed(e.to_string()))?;
+    let records: Vec<RegistrySourceRecord> =
+        serde_json::from_str(source_json).map_err(|e| ExportError::ParseFailed(e.to_string()))?;
 
     // Uniqueness check across all records (active and inactive).
     let mut seen = HashSet::new();
     for r in &records {
         if !seen.insert(r.manufacturer_id.clone()) {
-            return Err(ExportError::DuplicateManufacturerId(r.manufacturer_id.clone()));
+            return Err(ExportError::DuplicateManufacturerId(
+                r.manufacturer_id.clone(),
+            ));
         }
     }
 
@@ -127,8 +129,10 @@ pub fn export_registry(source_json: &str) -> Result<String, ExportError> {
     let snapshot: Vec<ManufacturerRecord> = active
         .iter()
         .map(|r| {
-            let display_name =
-                r.display_name.clone().unwrap_or_else(|| r.manufacturer_id.clone());
+            let display_name = r
+                .display_name
+                .clone()
+                .unwrap_or_else(|| r.manufacturer_id.clone());
             let jurisdictions_served = r
                 .jurisdictions_served
                 .clone()
@@ -148,6 +152,5 @@ pub fn export_registry(source_json: &str) -> Result<String, ExportError> {
         })
         .collect();
 
-    serde_json::to_string_pretty(&snapshot)
-        .map_err(|e| ExportError::ParseFailed(e.to_string()))
+    serde_json::to_string_pretty(&snapshot).map_err(|e| ExportError::ParseFailed(e.to_string()))
 }

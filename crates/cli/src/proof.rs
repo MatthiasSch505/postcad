@@ -82,7 +82,10 @@ pub struct ProofVerificationFailure {
 
 impl ProofVerificationFailure {
     fn new(code: &'static str, message: impl Into<String>) -> Self {
-        Self { code, message: message.into() }
+        Self {
+            code,
+            message: message.into(),
+        }
     }
 
     pub fn protocol_version_mismatch(proof: &str, expected: &str) -> Self {

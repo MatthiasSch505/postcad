@@ -15,14 +15,13 @@
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tower::util::ServiceExt;
 
 // ── Frozen protocol-vector inputs (v01 — basic routing) ───────────────────────
 
 /// Single eligible domestic manufacturer. Expected outcome: routed, mfr-de-001.
-const V01_CASE: &str =
-    include_str!("../../../tests/protocol_vectors/v01_basic_routing/case.json");
+const V01_CASE: &str = include_str!("../../../tests/protocol_vectors/v01_basic_routing/case.json");
 const V01_REGISTRY: &str =
     include_str!("../../../tests/protocol_vectors/v01_basic_routing/registry_snapshot.json");
 const V01_CONFIG: &str =
@@ -78,14 +77,23 @@ async fn pilot_registry_routed_flow() {
     let (status, resp) = post_json("/route-case-from-registry", body).await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(resp["receipt"]["outcome"], "routed",
-        "expected routed outcome; got: {}", resp["receipt"]["outcome"]);
-    assert_eq!(resp["receipt"]["selected_candidate_id"], "mfr-de-001",
-        "expected mfr-de-001 to be selected");
-    assert!(resp["receipt"]["receipt_hash"].is_string(),
-        "receipt_hash must be present");
-    assert!(resp["derived_policy"].is_object(),
-        "derived_policy must be returned alongside the receipt");
+    assert_eq!(
+        resp["receipt"]["outcome"], "routed",
+        "expected routed outcome; got: {}",
+        resp["receipt"]["outcome"]
+    );
+    assert_eq!(
+        resp["receipt"]["selected_candidate_id"], "mfr-de-001",
+        "expected mfr-de-001 to be selected"
+    );
+    assert!(
+        resp["receipt"]["receipt_hash"].is_string(),
+        "receipt_hash must be present"
+    );
+    assert!(
+        resp["derived_policy"].is_object(),
+        "derived_policy must be returned alongside the receipt"
+    );
 }
 
 /// Successful verify flow (round-trip coherence):
@@ -111,8 +119,12 @@ async fn pilot_registry_verify_round_trip() {
     let (verify_status, verify_resp) = post_json("/verify-receipt", verify_body).await;
 
     assert_eq!(verify_status, StatusCode::OK);
-    assert_eq!(verify_resp["result"], "VERIFIED",
-        "round-trip verify must succeed; error: {:?}", verify_resp.get("error"));
+    assert_eq!(
+        verify_resp["result"],
+        "VERIFIED",
+        "round-trip verify must succeed; error: {:?}",
+        verify_resp.get("error")
+    );
 }
 
 /// Refusal flow:
@@ -126,12 +138,18 @@ async fn pilot_registry_refusal_flow() {
     let (status, resp) = post_json("/route-case-from-registry", body).await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(resp["receipt"]["outcome"], "refused",
-        "expected refused outcome");
-    assert_eq!(resp["receipt"]["refusal_code"], "no_jurisdiction_match",
-        "expected no_jurisdiction_match refusal code");
-    assert!(resp["receipt"]["selected_candidate_id"].is_null(),
-        "selected_candidate_id must be null for refused outcome");
+    assert_eq!(
+        resp["receipt"]["outcome"], "refused",
+        "expected refused outcome"
+    );
+    assert_eq!(
+        resp["receipt"]["refusal_code"], "no_jurisdiction_match",
+        "expected no_jurisdiction_match refusal code"
+    );
+    assert!(
+        resp["receipt"]["selected_candidate_id"].is_null(),
+        "selected_candidate_id must be null for refused outcome"
+    );
 }
 
 /// Drift failure flow:
@@ -154,8 +172,7 @@ async fn pilot_registry_drift_detection_fails_verify() {
     // The receipt's registry_snapshot_hash now no longer matches.
     if let Some(snapshots) = drifted_policy["snapshots"].as_array_mut() {
         if let Some(first) = snapshots.first_mut() {
-            first["evidence_references"] =
-                json!(["DRIFTED-EVIDENCE-REF"]);
+            first["evidence_references"] = json!(["DRIFTED-EVIDENCE-REF"]);
         }
     }
 
@@ -169,6 +186,8 @@ async fn pilot_registry_drift_detection_fails_verify() {
 
     assert_eq!(verify_status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(verify_resp["result"], "FAILED");
-    assert_eq!(verify_resp["error"]["code"], "registry_snapshot_hash_mismatch",
-        "drift must be detected as registry_snapshot_hash_mismatch");
+    assert_eq!(
+        verify_resp["error"]["code"], "registry_snapshot_hash_mismatch",
+        "drift must be detected as registry_snapshot_hash_mismatch"
+    );
 }

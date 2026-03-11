@@ -27,9 +27,9 @@ fn find_attestation<'a>(
     evidence_reference: &str,
     attestations: &'a [EvidenceAttestation],
 ) -> Option<&'a EvidenceAttestation> {
-    attestations
-        .iter()
-        .find(|a| a.manufacturer_id == manufacturer_id && a.evidence_reference == evidence_reference)
+    attestations.iter().find(|a| {
+        a.manufacturer_id == manufacturer_id && a.evidence_reference == evidence_reference
+    })
 }
 
 /// Returns true only if a matching attestation exists with status `"verified"`.
@@ -49,8 +49,7 @@ pub fn evidence_attestation_status<'a>(
     evidence_reference: &str,
     attestations: &'a [EvidenceAttestation],
 ) -> Option<&'a str> {
-    find_attestation(manufacturer_id, evidence_reference, attestations)
-        .map(|a| a.status.as_str())
+    find_attestation(manufacturer_id, evidence_reference, attestations).map(|a| a.status.as_str())
 }
 
 #[cfg(test)]
@@ -68,25 +67,41 @@ mod tests {
     #[test]
     fn verified_attestation_returns_true() {
         let attestations = vec![verified("mfr-01", "ISO-9001-2024")];
-        assert!(evidence_is_attested("mfr-01", "ISO-9001-2024", &attestations));
+        assert!(evidence_is_attested(
+            "mfr-01",
+            "ISO-9001-2024",
+            &attestations
+        ));
     }
 
     #[test]
     fn rejected_attestation_returns_false() {
         let attestations = vec![rejected("mfr-01", "ISO-9001-2024")];
-        assert!(!evidence_is_attested("mfr-01", "ISO-9001-2024", &attestations));
+        assert!(!evidence_is_attested(
+            "mfr-01",
+            "ISO-9001-2024",
+            &attestations
+        ));
     }
 
     #[test]
     fn wrong_manufacturer_is_ignored() {
         let attestations = vec![verified("mfr-02", "ISO-9001-2024")];
-        assert!(!evidence_is_attested("mfr-01", "ISO-9001-2024", &attestations));
+        assert!(!evidence_is_attested(
+            "mfr-01",
+            "ISO-9001-2024",
+            &attestations
+        ));
     }
 
     #[test]
     fn wrong_evidence_reference_is_ignored() {
         let attestations = vec![verified("mfr-01", "ISO-13485-2024")];
-        assert!(!evidence_is_attested("mfr-01", "ISO-9001-2024", &attestations));
+        assert!(!evidence_is_attested(
+            "mfr-01",
+            "ISO-9001-2024",
+            &attestations
+        ));
     }
 
     #[test]
@@ -114,7 +129,11 @@ mod tests {
             verified("mfr-01", "ISO-9001-2024"),
         ];
         // first match is "rejected" — verified entry is ignored
-        assert!(!evidence_is_attested("mfr-01", "ISO-9001-2024", &attestations));
+        assert!(!evidence_is_attested(
+            "mfr-01",
+            "ISO-9001-2024",
+            &attestations
+        ));
         assert_eq!(
             evidence_attestation_status("mfr-01", "ISO-9001-2024", &attestations),
             Some("rejected")

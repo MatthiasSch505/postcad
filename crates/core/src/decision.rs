@@ -25,7 +25,11 @@ pub struct DecisionContext {
 }
 
 impl DecisionContext {
-    pub fn new(case_id: CaseId, original_candidate_count: usize, filtered_candidate_count: usize) -> Self {
+    pub fn new(
+        case_id: CaseId,
+        original_candidate_count: usize,
+        filtered_candidate_count: usize,
+    ) -> Self {
         Self {
             case_id,
             original_candidate_count,
@@ -97,7 +101,9 @@ mod tests {
         let d = RoutingDecision::Refused(refusal);
         if let RoutingDecision::Refused(inner) = d {
             assert_eq!(inner.case_id, case_id);
-            assert!(inner.reasons.contains(&RefusalReason::UnsupportedJurisdiction));
+            assert!(inner
+                .reasons
+                .contains(&RefusalReason::UnsupportedJurisdiction));
         } else {
             panic!("expected Refused");
         }

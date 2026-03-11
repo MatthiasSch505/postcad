@@ -66,14 +66,20 @@ fn registry_export_deterministic() {
     let input = single_active_record("mfr-de-001");
     let out1 = export_registry(&input).expect("export must succeed");
     let out2 = export_registry(&input).expect("export must succeed on second call");
-    assert_eq!(out1, out2, "export output must be identical across repeated calls");
+    assert_eq!(
+        out1, out2,
+        "export output must be identical across repeated calls"
+    );
 }
 
 #[test]
 fn registry_export_deterministic_multi_candidate() {
     let out1 = export_registry(two_records_unsorted()).expect("first export must succeed");
     let out2 = export_registry(two_records_unsorted()).expect("second export must succeed");
-    assert_eq!(out1, out2, "export output must be identical for multiple records");
+    assert_eq!(
+        out1, out2,
+        "export output must be identical for multiple records"
+    );
 }
 
 // ── registry_export_filters_inactive ─────────────────────────────────────────
@@ -104,7 +110,10 @@ fn registry_export_all_inactive_produces_empty_snapshot() {
     let output = export_registry(input).expect("export must succeed even with no active records");
     let parsed: Vec<serde_json::Value> =
         serde_json::from_str(&output).expect("output must be valid JSON");
-    assert!(parsed.is_empty(), "all-inactive input must produce an empty snapshot");
+    assert!(
+        parsed.is_empty(),
+        "all-inactive input must produce an empty snapshot"
+    );
 }
 
 // ── registry_export_sorted ────────────────────────────────────────────────────
@@ -230,7 +239,10 @@ fn registry_export_default_jurisdictions_served_is_country() {
     let output = export_registry(&single_active_record("mfr-de-001")).expect("export must succeed");
     let parsed: Vec<serde_json::Value> =
         serde_json::from_str(&output).expect("output must be valid JSON");
-    assert_eq!(parsed[0]["jurisdictions_served"][0].as_str().unwrap(), "germany");
+    assert_eq!(
+        parsed[0]["jurisdictions_served"][0].as_str().unwrap(),
+        "germany"
+    );
 }
 
 // ── optional field override ───────────────────────────────────────────────────
@@ -250,6 +262,9 @@ fn registry_export_respects_explicit_display_name() {
     let output = export_registry(input).expect("export must succeed");
     let parsed: Vec<serde_json::Value> =
         serde_json::from_str(&output).expect("output must be valid JSON");
-    assert_eq!(parsed[0]["display_name"].as_str().unwrap(), "Alpha Dental GmbH");
+    assert_eq!(
+        parsed[0]["display_name"].as_str().unwrap(),
+        "Alpha Dental GmbH"
+    );
     assert_eq!(parsed[0]["sla_days"].as_u64().unwrap(), 5);
 }

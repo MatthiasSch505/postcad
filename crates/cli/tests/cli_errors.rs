@@ -45,12 +45,7 @@ fn missing_case_arg_returns_invalid_arguments_envelope() {
 #[test]
 fn missing_candidates_arg_returns_invalid_arguments_envelope() {
     let case = scenario("routed_domestic_allowed").join("case.json");
-    let (success, json) = run(&[
-        "route-case",
-        "--json",
-        "--case",
-        case.to_str().unwrap(),
-    ]);
+    let (success, json) = run(&["route-case", "--json", "--case", case.to_str().unwrap()]);
     assert!(!success);
     assert_eq!(json["outcome"], "error");
     assert_eq!(json["code"], "invalid_arguments");
@@ -191,7 +186,10 @@ fn verify_receipt_exits_0_when_verification_succeeds() {
         "--candidates",
         s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(success, "verify-receipt must exit 0 when verification succeeds");
+    assert!(
+        success,
+        "verify-receipt must exit 0 when verification succeeds"
+    );
     assert_eq!(json["result"], "VERIFIED");
 }
 
@@ -238,9 +236,15 @@ fn verify_receipt_exits_1_when_receipt_is_tampered() {
         "--candidates",
         s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when receipt is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when receipt is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert!(json["reason"].is_string(), "response must include a reason string");
+    assert!(
+        json["reason"].is_string(),
+        "response must include a reason string"
+    );
 }
 
 /// Omitting --candidates must exit 1 with the stable invalid_arguments envelope.
@@ -261,7 +265,10 @@ fn verify_receipt_missing_candidates_exits_1_with_invalid_arguments() {
         s.join("policy.json").to_str().unwrap(),
         // --candidates intentionally omitted
     ]);
-    assert!(!success, "verify-receipt must exit 1 when --candidates is missing");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when --candidates is missing"
+    );
     assert_eq!(json["outcome"], "error");
     assert_eq!(json["code"], "invalid_arguments");
     assert!(json["message"].as_str().unwrap().contains("--candidates"));
@@ -375,7 +382,10 @@ fn route_case_routed_envelope_contract() {
     assert!(!json["selected_candidate_id"].as_str().unwrap().is_empty());
 
     // refusal_code must be null on a routed outcome.
-    assert!(json["refusal_code"].is_null(), "refusal_code must be null on a routed outcome");
+    assert!(
+        json["refusal_code"].is_null(),
+        "refusal_code must be null on a routed outcome"
+    );
 
     // refusal object must be absent (null) on a routed outcome.
     assert!(
@@ -438,7 +448,10 @@ fn route_case_refused_envelope_contract() {
     assert_eq!(json["refusal_code"], "no_eligible_candidates");
 
     // refusal object must be present with required sub-fields.
-    assert!(json["refusal"].is_object(), "refusal must be an object on a refused outcome");
+    assert!(
+        json["refusal"].is_object(),
+        "refusal must be an object on a refused outcome"
+    );
     assert!(
         json["refusal"]["message"].is_string(),
         "refusal.message must be a string"
@@ -475,21 +488,34 @@ fn route_case_refused_compliance_failed_basic_shape() {
     assert_eq!(json["outcome"], "refused");
     assert_eq!(json["schema_version"], "1");
     // receipt_hash must be a 64-char hex string (artifact integrity commitment).
-    assert!(is_64_char_hex(json["receipt_hash"].as_str().unwrap_or("")),
-        "receipt_hash must be a 64-char hex string");
+    assert!(
+        is_64_char_hex(json["receipt_hash"].as_str().unwrap_or("")),
+        "receipt_hash must be a 64-char hex string"
+    );
     // selected_candidate_id must be null on any refused outcome.
-    assert!(json["selected_candidate_id"].is_null(),
-        "selected_candidate_id must be null on a refused outcome");
+    assert!(
+        json["selected_candidate_id"].is_null(),
+        "selected_candidate_id must be null on a refused outcome"
+    );
     // refusal_code must be a non-null string.
-    assert!(json["refusal_code"].is_string(),
-        "refusal_code must be a string on a refused outcome");
+    assert!(
+        json["refusal_code"].is_string(),
+        "refusal_code must be a string on a refused outcome"
+    );
     // refusal block must be present with its three required sub-fields.
     assert!(json["refusal"].is_object(), "refusal must be an object");
-    assert!(json["refusal"]["message"].is_string(), "refusal.message must be a string");
-    assert!(json["refusal"]["evaluated_candidate_ids"].is_array(),
-        "refusal.evaluated_candidate_ids must be an array");
-    assert!(json["refusal"]["failed_constraint"].is_string(),
-        "refusal.failed_constraint must be a string");
+    assert!(
+        json["refusal"]["message"].is_string(),
+        "refusal.message must be a string"
+    );
+    assert!(
+        json["refusal"]["evaluated_candidate_ids"].is_array(),
+        "refusal.evaluated_candidate_ids must be an array"
+    );
+    assert!(
+        json["refusal"]["failed_constraint"].is_string(),
+        "refusal.failed_constraint must be a string"
+    );
 }
 
 /// The routed_cross_border_allowed scenario (different case and policy from
@@ -505,16 +531,28 @@ fn route_case_routed_cross_border_basic_shape() {
     assert_eq!(json["outcome"], "routed");
     assert_eq!(json["schema_version"], "1");
     // receipt_hash must be a 64-char hex string (artifact integrity commitment).
-    assert!(is_64_char_hex(json["receipt_hash"].as_str().unwrap_or("")),
-        "receipt_hash must be a 64-char hex string");
+    assert!(
+        is_64_char_hex(json["receipt_hash"].as_str().unwrap_or("")),
+        "receipt_hash must be a 64-char hex string"
+    );
     // selected_candidate_id must be a non-empty string on any routed outcome.
-    let selected = json["selected_candidate_id"].as_str()
+    let selected = json["selected_candidate_id"]
+        .as_str()
         .expect("selected_candidate_id must be a string on a routed outcome");
-    assert!(!selected.is_empty(), "selected_candidate_id must not be empty");
+    assert!(
+        !selected.is_empty(),
+        "selected_candidate_id must not be empty"
+    );
     // refusal_code must be null on a routed outcome.
-    assert!(json["refusal_code"].is_null(), "refusal_code must be null on a routed outcome");
+    assert!(
+        json["refusal_code"].is_null(),
+        "refusal_code must be null on a routed outcome"
+    );
     // refusal block must be absent on a routed outcome.
-    assert!(json["refusal"].is_null(), "refusal must be null on a routed outcome");
+    assert!(
+        json["refusal"].is_null(),
+        "refusal must be null on a routed outcome"
+    );
 }
 
 /// The verify-receipt VERIFIED envelope must be exactly {result: "VERIFIED"}.
@@ -522,7 +560,10 @@ fn route_case_routed_cross_border_basic_shape() {
 fn verify_receipt_verified_envelope_contract() {
     let s = scenario("routed_domestic_allowed");
     let (route_ok, receipt_json_val) = route_scenario(&s);
-    assert!(route_ok, "route-case must succeed for envelope contract test");
+    assert!(
+        route_ok,
+        "route-case must succeed for envelope contract test"
+    );
 
     let receipt_content = serde_json::to_string(&receipt_json_val).unwrap();
     let tmp = write_tmp("verified_contract", &receipt_content);
@@ -543,12 +584,18 @@ fn verify_receipt_verified_envelope_contract() {
     assert_eq!(json["result"], "VERIFIED");
     // The VERIFIED envelope must contain exactly one key: "result".
     // This locks the complete shape and catches any silent additions.
-    let keys: Vec<&str> = json.as_object()
+    let keys: Vec<&str> = json
+        .as_object()
         .expect("VERIFIED response must be a JSON object")
         .keys()
         .map(|k| k.as_str())
         .collect();
-    assert_eq!(keys, vec!["result"], "VERIFIED envelope must have exactly one key, got: {:?}", keys);
+    assert_eq!(
+        keys,
+        vec!["result"],
+        "VERIFIED envelope must have exactly one key, got: {:?}",
+        keys
+    );
 }
 
 /// The verify-receipt VERIFICATION FAILED envelope must include result and reason,
@@ -557,7 +604,10 @@ fn verify_receipt_verified_envelope_contract() {
 fn verify_receipt_failed_envelope_contract() {
     let s = scenario("routed_domestic_allowed");
     let (route_ok, mut receipt_val) = route_scenario(&s);
-    assert!(route_ok, "route-case must succeed for envelope contract test");
+    assert!(
+        route_ok,
+        "route-case must succeed for envelope contract test"
+    );
 
     // Tamper routing_proof_hash and recompute receipt_hash so the artifact
     // check passes and the field-specific check fires.
@@ -579,10 +629,16 @@ fn verify_receipt_failed_envelope_contract() {
         "--candidates",
         s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 on VERIFICATION FAILED");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 on VERIFICATION FAILED"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     // code must be a stable machine-readable string identifying the failure.
-    assert!(json["code"].is_string(), "VERIFICATION FAILED envelope must include a code field");
+    assert!(
+        json["code"].is_string(),
+        "VERIFICATION FAILED envelope must include a code field"
+    );
     // reason must be a string that identifies the tampered field.
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(
@@ -608,8 +664,8 @@ fn routed_selected_candidate_id_is_from_candidate_pool() {
         .as_str()
         .expect("selected_candidate_id must be a string on a routed outcome");
 
-    let candidates_raw =
-        std::fs::read_to_string(s.join("candidates.json")).expect("candidates.json must be readable");
+    let candidates_raw = std::fs::read_to_string(s.join("candidates.json"))
+        .expect("candidates.json must be readable");
     let candidates: Value =
         serde_json::from_str(&candidates_raw).expect("candidates.json must be valid JSON");
 
@@ -648,9 +704,16 @@ fn refused_evaluated_candidate_ids_are_nonempty_strings() {
     );
     for (i, entry) in evaluated.iter().enumerate() {
         let id = entry.as_str().unwrap_or_else(|| {
-            panic!("refusal.evaluated_candidate_ids[{}] must be a string, got: {:?}", i, entry)
+            panic!(
+                "refusal.evaluated_candidate_ids[{}] must be a string, got: {:?}",
+                i, entry
+            )
         });
-        assert!(!id.is_empty(), "refusal.evaluated_candidate_ids[{}] must not be empty", i);
+        assert!(
+            !id.is_empty(),
+            "refusal.evaluated_candidate_ids[{}] must not be empty",
+            i
+        );
     }
 }
 
@@ -704,7 +767,10 @@ fn routed_and_refused_outcome_fields_are_mutually_exclusive() {
 fn verify_receipt_for_refused_outcome_exits_0_with_verified() {
     let s = scenario("refused_no_eligible_candidates");
     let (route_ok, receipt_val) = route_scenario(&s);
-    assert!(route_ok, "route-case must succeed (exit 0) even for a refused outcome");
+    assert!(
+        route_ok,
+        "route-case must succeed (exit 0) even for a refused outcome"
+    );
 
     let receipt_content = serde_json::to_string(&receipt_val).unwrap();
     let tmp = write_tmp("refused_verify", &receipt_content);
@@ -721,9 +787,15 @@ fn verify_receipt_for_refused_outcome_exits_0_with_verified() {
         "--candidates",
         s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(success, "verify-receipt must exit 0 for a valid refused receipt");
+    assert!(
+        success,
+        "verify-receipt must exit 0 for a valid refused receipt"
+    );
     assert_eq!(json["result"], "VERIFIED");
-    assert!(json["reason"].is_null(), "VERIFIED envelope must not include a reason field");
+    assert!(
+        json["reason"].is_null(),
+        "VERIFIED envelope must not include a reason field"
+    );
 }
 
 /// Tampering candidate_pool_hash specifically must produce VERIFICATION FAILED
@@ -753,7 +825,10 @@ fn candidate_pool_hash_tampering_produces_verification_failed() {
         "--candidates",
         s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when candidate_pool_hash is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when candidate_pool_hash is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(
@@ -782,15 +857,26 @@ fn verify_receipt_rejects_missing_schema_version_with_stable_code() {
     let (route_ok, mut receipt_val) = route_scenario(&s);
     assert!(route_ok);
 
-    receipt_val.as_object_mut().unwrap().remove("schema_version");
-    let tmp = write_tmp("missing_schema_version", &serde_json::to_string(&receipt_val).unwrap());
+    receipt_val
+        .as_object_mut()
+        .unwrap()
+        .remove("schema_version");
+    let tmp = write_tmp(
+        "missing_schema_version",
+        &serde_json::to_string(&receipt_val).unwrap(),
+    );
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
     assert!(!success);
     assert_eq!(json["result"], "VERIFICATION FAILED");
@@ -806,14 +892,22 @@ fn verify_receipt_rejects_unsupported_schema_version_with_stable_code() {
     assert!(route_ok);
 
     receipt_val["schema_version"] = serde_json::json!("2");
-    let tmp = write_tmp("unsupported_schema_version", &serde_json::to_string(&receipt_val).unwrap());
+    let tmp = write_tmp(
+        "unsupported_schema_version",
+        &serde_json::to_string(&receipt_val).unwrap(),
+    );
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
     assert!(!success);
     assert_eq!(json["result"], "VERIFICATION FAILED");
@@ -830,14 +924,22 @@ fn verify_receipt_rejects_invalid_schema_version_type_with_stable_code() {
     assert!(route_ok);
 
     receipt_val["schema_version"] = serde_json::json!(1); // number, not string
-    let tmp = write_tmp("invalid_schema_version", &serde_json::to_string(&receipt_val).unwrap());
+    let tmp = write_tmp(
+        "invalid_schema_version",
+        &serde_json::to_string(&receipt_val).unwrap(),
+    );
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
     assert!(!success);
     assert_eq!(json["result"], "VERIFICATION FAILED");
@@ -937,16 +1039,23 @@ fn tampering_field_without_updating_receipt_hash_yields_receipt_canonicalization
     let tmp = write_tmp("receipt_hash_first", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
     assert!(!success);
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "receipt_canonicalization_mismatch",
-        "artifact-integrity check must fire before field-specific checks");
+    assert_eq!(
+        json["code"], "receipt_canonicalization_mismatch",
+        "artifact-integrity check must fire before field-specific checks"
+    );
 }
 
 /// VERIFIED result must not include a `code` field.
@@ -973,7 +1082,10 @@ fn verify_receipt_verified_json_has_no_code_field() {
     ]);
     assert!(success);
     assert_eq!(json["result"], "VERIFIED");
-    assert!(json["code"].is_null(), "VERIFIED envelope must not include a code field");
+    assert!(
+        json["code"].is_null(),
+        "VERIFIED envelope must not include a code field"
+    );
 }
 
 /// Directly zeroing the receipt_hash field (all other fields valid) must
@@ -997,13 +1109,21 @@ fn verify_receipt_rejects_zeroed_receipt_hash_field_with_stable_code() {
     let tmp = write_tmp("zeroed_receipt_hash", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when receipt_hash is zeroed");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when receipt_hash is zeroed"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(json["code"], "receipt_canonicalization_mismatch");
     assert!(json["reason"].is_string(), "reason must be present");
@@ -1029,13 +1149,21 @@ fn verify_receipt_tolerates_extra_top_level_field() {
     let tmp = write_tmp("extra_field", &receipt_content);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(success, "verify-receipt must exit 0 when receipt has an extra unknown field");
+    assert!(
+        success,
+        "verify-receipt must exit 0 when receipt has an extra unknown field"
+    );
     assert_eq!(json["result"], "VERIFIED");
 }
 
@@ -1076,13 +1204,21 @@ fn verify_receipt_tolerates_different_key_order() {
 
     let tmp = write_tmp("key_order", &scrambled);
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(success, "verify-receipt must exit 0 when key order differs from alphabetical");
+    assert!(
+        success,
+        "verify-receipt must exit 0 when key order differs from alphabetical"
+    );
     assert_eq!(json["result"], "VERIFIED");
 }
 
@@ -1106,13 +1242,21 @@ fn verify_receipt_tolerates_pretty_printed_input() {
     let tmp = write_tmp("pretty_receipt", &pretty);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(success, "verify-receipt must exit 0 for a pretty-printed receipt");
+    assert!(
+        success,
+        "verify-receipt must exit 0 for a pretty-printed receipt"
+    );
     assert_eq!(json["result"], "VERIFIED");
 }
 
@@ -1130,9 +1274,11 @@ fn route_case_receipt_hash_is_deterministic_across_subprocess_invocations() {
     let (ok_b, json_b) = route_scenario(&s);
     assert!(ok_a && ok_b, "both route-case invocations must succeed");
 
-    let hash_a = json_a["receipt_hash"].as_str()
+    let hash_a = json_a["receipt_hash"]
+        .as_str()
         .expect("receipt_hash must be a string in first invocation");
-    let hash_b = json_b["receipt_hash"].as_str()
+    let hash_b = json_b["receipt_hash"]
+        .as_str()
         .expect("receipt_hash must be a string in second invocation");
 
     assert_eq!(
@@ -1161,16 +1307,26 @@ fn verify_receipt_rejects_tampered_audit_entry_hash_with_stable_code() {
     let tmp = write_tmp("tampered_audit_entry_hash", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when audit_entry_hash is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when audit_entry_hash is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "audit_entry_hash_mismatch",
-        "code must identify the audit binding failure");
+    assert_eq!(
+        json["code"], "audit_entry_hash_mismatch",
+        "code must identify the audit binding failure"
+    );
     assert!(json["reason"].is_string(), "reason must be present");
 }
 
@@ -1193,16 +1349,26 @@ fn verify_receipt_rejects_tampered_audit_previous_hash_with_stable_code() {
     let tmp = write_tmp("tampered_audit_previous_hash", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when audit_previous_hash is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when audit_previous_hash is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "audit_previous_hash_mismatch",
-        "code must identify the audit chain-linkage failure");
+    assert_eq!(
+        json["code"], "audit_previous_hash_mismatch",
+        "code must identify the audit chain-linkage failure"
+    );
     assert!(json["reason"].is_string(), "reason must be present");
 }
 
@@ -1218,21 +1384,34 @@ fn verify_receipt_rejects_missing_audit_entry_hash_field_with_stable_code() {
     let (route_ok, mut receipt_val) = route_scenario(&s);
     assert!(route_ok);
 
-    receipt_val.as_object_mut().unwrap().remove("audit_entry_hash");
+    receipt_val
+        .as_object_mut()
+        .unwrap()
+        .remove("audit_entry_hash");
     let broken = serde_json::to_string(&receipt_val).unwrap();
     let tmp = write_tmp("missing_audit_entry_hash", &broken);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 for a structurally broken receipt");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 for a structurally broken receipt"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "receipt_parse_failed",
-        "missing required audit linkage field must produce receipt_parse_failed");
+    assert_eq!(
+        json["code"], "receipt_parse_failed",
+        "missing required audit linkage field must produce receipt_parse_failed"
+    );
 }
 
 /// Tampering eligible_candidate_ids_hash (which commits to the sorted set of
@@ -1257,16 +1436,26 @@ fn verify_receipt_rejects_tampered_eligible_candidate_ids_hash_with_stable_code(
     let tmp = write_tmp("tampered_eligible_ids_hash", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when eligible_candidate_ids_hash is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when eligible_candidate_ids_hash is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "eligible_candidate_ids_hash_mismatch",
-        "code must identify the eligible candidate set commitment failure");
+    assert_eq!(
+        json["code"], "eligible_candidate_ids_hash_mismatch",
+        "code must identify the eligible candidate set commitment failure"
+    );
     assert!(json["reason"].is_string(), "reason must be present");
 }
 
@@ -1290,16 +1479,26 @@ fn verify_receipt_rejects_tampered_selection_input_candidate_ids_hash_with_stabl
     let tmp = write_tmp("tampered_selection_input_ids_hash", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when selection_input_candidate_ids_hash is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when selection_input_candidate_ids_hash is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
-    assert_eq!(json["code"], "selection_input_candidate_ids_hash_mismatch",
-        "code must identify the selector input ordering commitment failure");
+    assert_eq!(
+        json["code"], "selection_input_candidate_ids_hash_mismatch",
+        "code must identify the selector input ordering commitment failure"
+    );
     assert!(json["reason"].is_string(), "reason must be present");
 }
 
@@ -1329,22 +1528,32 @@ fn verify_receipt_rejects_tampered_routing_input() {
     let tmp = write_tmp("tampered_routing_input", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when routing_input is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when routing_input is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(
         json["code"], "routing_input_hash_mismatch",
-        "failure code must be routing_input_hash_mismatch, got: {:?}", json["code"]
+        "failure code must be routing_input_hash_mismatch, got: {:?}",
+        json["code"]
     );
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(
         reason.contains("routing_input_hash"),
-        "reason must identify 'routing_input_hash', got: {:?}", reason
+        "reason must identify 'routing_input_hash', got: {:?}",
+        reason
     );
 }
 
@@ -1370,22 +1579,32 @@ fn verify_receipt_rejects_candidate_order_change() {
     let tmp = write_tmp("tampered_candidate_order_hash", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when candidate_order_hash is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when candidate_order_hash is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(
         json["code"], "candidate_order_hash_mismatch",
-        "failure code must be candidate_order_hash_mismatch, got: {:?}", json["code"]
+        "failure code must be candidate_order_hash_mismatch, got: {:?}",
+        json["code"]
     );
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(
         reason.contains("candidate_order_hash"),
-        "reason must identify 'candidate_order_hash', got: {:?}", reason
+        "reason must identify 'candidate_order_hash', got: {:?}",
+        reason
     );
 }
 
@@ -1414,22 +1633,32 @@ fn verify_receipt_rejects_decision_change() {
     let tmp = write_tmp("tampered_decision_candidate", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when selected_candidate_id is tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when selected_candidate_id is tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(
         json["code"], "routing_decision_hash_mismatch",
-        "failure code must be routing_decision_hash_mismatch, got: {:?}", json["code"]
+        "failure code must be routing_decision_hash_mismatch, got: {:?}",
+        json["code"]
     );
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(
         reason.contains("routing_decision_hash"),
-        "reason must identify 'routing_decision_hash', got: {:?}", reason
+        "reason must identify 'routing_decision_hash', got: {:?}",
+        reason
     );
 }
 
@@ -1473,7 +1702,10 @@ fn verify_receipt_replay_detects_decision_change() {
     let decision_type = receipt_val["outcome"].as_str().unwrap().to_string();
     let policy_version = receipt_val["policy_version"].clone();
     let reason = receipt_val["refusal_code"].clone();
-    let routing_kernel_version = receipt_val["routing_kernel_version"].as_str().unwrap().to_string();
+    let routing_kernel_version = receipt_val["routing_kernel_version"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let decision_obj = serde_json::json!({
         "decision_type": decision_type,
         "policy_version": policy_version,
@@ -1491,22 +1723,32 @@ fn verify_receipt_replay_detects_decision_change() {
     let tmp = write_tmp("tampered_replay_decision", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 when selected_candidate_id is replay-tampered");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 when selected_candidate_id is replay-tampered"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(
         json["code"], "routing_decision_replay_mismatch",
-        "failure code must be routing_decision_replay_mismatch, got: {:?}", json["code"]
+        "failure code must be routing_decision_replay_mismatch, got: {:?}",
+        json["code"]
     );
     let reason_str = json["reason"].as_str().expect("reason must be a string");
     assert!(
         reason_str.contains("replay"),
-        "reason must mention 'replay', got: {:?}", reason_str
+        "reason must mention 'replay', got: {:?}",
+        reason_str
     );
 }
 
@@ -1531,22 +1773,32 @@ fn verify_receipt_rejects_kernel_version_mismatch() {
     let tmp = write_tmp("tampered_kernel_version", &tampered);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 on routing_kernel_version mismatch");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 on routing_kernel_version mismatch"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(
         json["code"], "routing_kernel_version_mismatch",
-        "failure code must be routing_kernel_version_mismatch, got: {:?}", json["code"]
+        "failure code must be routing_kernel_version_mismatch, got: {:?}",
+        json["code"]
     );
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(
         reason.contains("routing_kernel_version"),
-        "reason must identify 'routing_kernel_version', got: {:?}", reason
+        "reason must identify 'routing_kernel_version', got: {:?}",
+        reason
     );
 }
 
@@ -1565,13 +1817,22 @@ fn verify_receipt_registry_snapshot_unchanged_passes() {
     let receipt_tmp = write_tmp("registry_snapshot_valid_receipt", &receipt_content);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", receipt_tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", s.join("policy.json").to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        receipt_tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        s.join("policy.json").to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(success, "verify-receipt must succeed with unchanged inputs; got: {:?}", json);
+    assert!(
+        success,
+        "verify-receipt must succeed with unchanged inputs; got: {:?}",
+        json
+    );
     assert_eq!(json["result"], "VERIFIED");
 }
 
@@ -1605,8 +1866,8 @@ fn verify_receipt_registry_snapshot_mismatch_is_detected() {
     // Load policy.json and mutate the snapshot attestation status so the
     // registry_snapshot_hash changes while candidates and routing_policy remain
     // identical (policy_fingerprint and candidate_pool_hash are unaffected).
-    let policy_str = std::fs::read_to_string(s.join("policy.json"))
-        .expect("policy.json must be readable");
+    let policy_str =
+        std::fs::read_to_string(s.join("policy.json")).expect("policy.json must be readable");
     let mut policy_val: serde_json::Value =
         serde_json::from_str(&policy_str).expect("policy.json must parse");
     policy_val["snapshots"][0]["attestation_statuses"] = serde_json::json!(["rejected"]);
@@ -1615,21 +1876,31 @@ fn verify_receipt_registry_snapshot_mismatch_is_detected() {
     let policy_tmp = write_tmp("tampered_registry_policy", &tampered_policy);
 
     let (success, json) = run(&[
-        "verify-receipt", "--json",
-        "--receipt", receipt_tmp.to_str().unwrap(),
-        "--case", s.join("case.json").to_str().unwrap(),
-        "--policy", policy_tmp.to_str().unwrap(),
-        "--candidates", s.join("candidates.json").to_str().unwrap(),
+        "verify-receipt",
+        "--json",
+        "--receipt",
+        receipt_tmp.to_str().unwrap(),
+        "--case",
+        s.join("case.json").to_str().unwrap(),
+        "--policy",
+        policy_tmp.to_str().unwrap(),
+        "--candidates",
+        s.join("candidates.json").to_str().unwrap(),
     ]);
-    assert!(!success, "verify-receipt must exit 1 on registry snapshot mismatch");
+    assert!(
+        !success,
+        "verify-receipt must exit 1 on registry snapshot mismatch"
+    );
     assert_eq!(json["result"], "VERIFICATION FAILED");
     assert_eq!(
         json["code"], "registry_snapshot_hash_mismatch",
-        "failure code must be registry_snapshot_hash_mismatch, got: {:?}", json["code"]
+        "failure code must be registry_snapshot_hash_mismatch, got: {:?}",
+        json["code"]
     );
     let reason = json["reason"].as_str().expect("reason must be a string");
     assert!(
         reason.contains("registry_snapshot_hash"),
-        "reason must identify 'registry_snapshot_hash', got: {:?}", reason
+        "reason must identify 'registry_snapshot_hash', got: {:?}",
+        reason
     );
 }

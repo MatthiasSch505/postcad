@@ -110,6 +110,9 @@ mod tests {
 
     #[test]
     fn different_values_produce_different_json() {
-        assert_ne!(to_canonical_json(&sample()), to_canonical_json(&sample_none()));
+        assert_ne!(
+            to_canonical_json(&sample()),
+            to_canonical_json(&sample_none())
+        );
     }
 }

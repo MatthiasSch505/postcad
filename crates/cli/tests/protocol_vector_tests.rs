@@ -29,8 +29,7 @@ use serde_json::Value;
 fn vectors_dir() -> PathBuf {
     // CARGO_MANIFEST_DIR is crates/cli; vectors live two levels up at
     // <workspace_root>/tests/protocol_vectors/
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/protocol_vectors")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/protocol_vectors")
 }
 
 fn read_vector_file(vector: &str, file: &str) -> String {
@@ -52,15 +51,15 @@ fn expected_receipt_path(vector: &str) -> PathBuf {
 /// 3. Otherwise compare the actual receipt to the frozen one field-for-field.
 /// 4. Run `verify_receipt_from_policy_json` on the expected receipt.
 fn run_vector(vector: &str) {
-    let case_json     = read_vector_file(vector, "case.json");
+    let case_json = read_vector_file(vector, "case.json");
     let registry_json = read_vector_file(vector, "registry_snapshot.json");
-    let config_json   = read_vector_file(vector, "policy.json");
+    let config_json = read_vector_file(vector, "policy.json");
 
     let result = route_case_from_registry_json(&case_json, &registry_json, &config_json)
         .unwrap_or_else(|e| panic!("vector '{}' routing failed: {}", vector, e));
 
-    let actual_value: Value = serde_json::to_value(&result.receipt)
-        .expect("receipt must serialise to JSON");
+    let actual_value: Value =
+        serde_json::to_value(&result.receipt).expect("receipt must serialise to JSON");
 
     let expected_path = expected_receipt_path(vector);
 
@@ -78,8 +77,12 @@ fn run_vector(vector: &str) {
         // Subsequent runs: compare against the frozen artifact.
         let frozen_json = std::fs::read_to_string(&expected_path)
             .unwrap_or_else(|e| panic!("cannot read {}: {}", expected_path.display(), e));
-        let expected_value: Value = serde_json::from_str(&frozen_json)
-            .unwrap_or_else(|e| panic!("vector '{}' expected_receipt.json is not valid JSON: {}", vector, e));
+        let expected_value: Value = serde_json::from_str(&frozen_json).unwrap_or_else(|e| {
+            panic!(
+                "vector '{}' expected_receipt.json is not valid JSON: {}",
+                vector, e
+            )
+        });
 
         assert_eq!(
             actual_value, expected_value,
@@ -113,9 +116,9 @@ fn vector_v01_basic_routing() {
     run_vector("v01_basic_routing");
 
     // Structural assertions on top of the frozen-receipt check.
-    let case_json     = read_vector_file("v01_basic_routing", "case.json");
+    let case_json = read_vector_file("v01_basic_routing", "case.json");
     let registry_json = read_vector_file("v01_basic_routing", "registry_snapshot.json");
-    let config_json   = read_vector_file("v01_basic_routing", "policy.json");
+    let config_json = read_vector_file("v01_basic_routing", "policy.json");
 
     let result = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();
     assert_eq!(result.receipt.outcome, "routed");
@@ -134,9 +137,9 @@ fn vector_v01_basic_routing() {
 fn vector_v02_multi_candidate() {
     run_vector("v02_multi_candidate");
 
-    let case_json     = read_vector_file("v02_multi_candidate", "case.json");
+    let case_json = read_vector_file("v02_multi_candidate", "case.json");
     let registry_json = read_vector_file("v02_multi_candidate", "registry_snapshot.json");
-    let config_json   = read_vector_file("v02_multi_candidate", "policy.json");
+    let config_json = read_vector_file("v02_multi_candidate", "policy.json");
 
     let r1 = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();
     let r2 = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();
@@ -160,9 +163,9 @@ fn vector_v02_multi_candidate() {
 fn vector_v03_jurisdiction_refusal() {
     run_vector("v03_jurisdiction_refusal");
 
-    let case_json     = read_vector_file("v03_jurisdiction_refusal", "case.json");
+    let case_json = read_vector_file("v03_jurisdiction_refusal", "case.json");
     let registry_json = read_vector_file("v03_jurisdiction_refusal", "registry_snapshot.json");
-    let config_json   = read_vector_file("v03_jurisdiction_refusal", "policy.json");
+    let config_json = read_vector_file("v03_jurisdiction_refusal", "policy.json");
 
     let result = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();
     assert_eq!(result.receipt.outcome, "refused");
@@ -182,9 +185,9 @@ fn vector_v03_jurisdiction_refusal() {
 fn vector_v04_capability_refusal() {
     run_vector("v04_capability_refusal");
 
-    let case_json     = read_vector_file("v04_capability_refusal", "case.json");
+    let case_json = read_vector_file("v04_capability_refusal", "case.json");
     let registry_json = read_vector_file("v04_capability_refusal", "registry_snapshot.json");
-    let config_json   = read_vector_file("v04_capability_refusal", "policy.json");
+    let config_json = read_vector_file("v04_capability_refusal", "policy.json");
 
     let result = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();
     assert_eq!(result.receipt.outcome, "refused");
@@ -203,9 +206,9 @@ fn vector_v04_capability_refusal() {
 fn vector_v05_attestation_refusal() {
     run_vector("v05_attestation_refusal");
 
-    let case_json     = read_vector_file("v05_attestation_refusal", "case.json");
+    let case_json = read_vector_file("v05_attestation_refusal", "case.json");
     let registry_json = read_vector_file("v05_attestation_refusal", "registry_snapshot.json");
-    let config_json   = read_vector_file("v05_attestation_refusal", "policy.json");
+    let config_json = read_vector_file("v05_attestation_refusal", "policy.json");
 
     let result = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();
     assert_eq!(result.receipt.outcome, "refused");
@@ -231,9 +234,9 @@ fn all_vectors_are_deterministic() {
     ];
 
     for vector in vectors {
-        let case_json     = read_vector_file(vector, "case.json");
+        let case_json = read_vector_file(vector, "case.json");
         let registry_json = read_vector_file(vector, "registry_snapshot.json");
-        let config_json   = read_vector_file(vector, "policy.json");
+        let config_json = read_vector_file(vector, "policy.json");
 
         let r1 = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();
         let r2 = route_case_from_registry_json(&case_json, &registry_json, &config_json).unwrap();

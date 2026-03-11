@@ -30,8 +30,10 @@ impl DecisionTrace {
         let evaluated_candidate_ids: Vec<String> =
             candidates.iter().map(|c| c.id.to_string()).collect();
 
-        let eligible_candidate_ids: Vec<String> =
-            filtered_candidates.iter().map(|c| c.id.to_string()).collect();
+        let eligible_candidate_ids: Vec<String> = filtered_candidates
+            .iter()
+            .map(|c| c.id.to_string())
+            .collect();
 
         let eligible_set: std::collections::HashSet<&str> =
             eligible_candidate_ids.iter().map(String::as_str).collect();
@@ -96,7 +98,12 @@ mod tests {
         )
     }
 
-    fn make_outcome(case: &Case, decision: RoutingDecision, original: usize, filtered: usize) -> RoutingOutcome {
+    fn make_outcome(
+        case: &Case,
+        decision: RoutingDecision,
+        original: usize,
+        filtered: usize,
+    ) -> RoutingOutcome {
         RoutingOutcome {
             decision,
             context: DecisionContext::new(case.id.clone(), original, filtered),
@@ -130,8 +137,10 @@ mod tests {
     fn refusal_outcome_produces_refused_status() {
         let case = make_case();
         let candidates = vec![make_candidate("rc-1", "mfr-01")];
-        let refusal =
-            postcad_core::CaseRefusal::with_reason(case.id.clone(), postcad_core::RefusalReason::ValidationFailed);
+        let refusal = postcad_core::CaseRefusal::with_reason(
+            case.id.clone(),
+            postcad_core::RefusalReason::ValidationFailed,
+        );
         let outcome = make_outcome(
             &case,
             RoutingDecision::Refused(refusal),

@@ -82,6 +82,7 @@ No Docker required. The script uses a temporary data directory for all runtime s
 
 ## See also
 
+- `release/README.md` — pilot release bundle: reset, start, smoke test
 - `docs/local_service_run.md` — full curl reference for every endpoint
 - `docs/pilot_maturity_check.md` — current readiness assessment
 - `examples/pilot/README.md` — pilot fixture bundle

@@ -89,7 +89,7 @@ async fn operator_ui_index_serves_html() {
 }
 
 /// The index page body must contain the five section identifiers expected by
-/// the operator workflow (A–E section anchors in the HTML).
+/// the operator workflow (section IDs are stable across UI revisions).
 #[tokio::test]
 async fn operator_ui_contains_section_anchors() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -131,6 +131,66 @@ async fn operator_ui_references_all_endpoints() {
             "HTML must reference endpoint path '{path}'"
         );
     }
+}
+
+/// The polished UI must use operator-friendly button labels (not raw endpoint
+/// paths) so the workflow is clear without curl knowledge.
+#[tokio::test]
+async fn operator_ui_has_operator_friendly_labels() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, bytes) = get_raw(make_app(&tmp), "/").await;
+    let html = std::str::from_utf8(&bytes).unwrap();
+    for label in [
+        "Store Case",
+        "Route This Case",
+        "View JSON",
+        "Dispatch",
+        "Verify Integrity",
+        "Refresh",
+    ] {
+        assert!(
+            html.contains(label),
+            "HTML must contain operator label '{label}'"
+        );
+    }
+}
+
+/// The polished UI must expose stable viewer element IDs used by all result
+/// display paths (fixes the pre-class bug and verifies the stable #case-detail
+/// element is not recreated inside dynamic table HTML).
+#[tokio::test]
+async fn operator_ui_has_stable_viewer_elements() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, bytes) = get_raw(make_app(&tmp), "/").await;
+    let html = std::str::from_utf8(&bytes).unwrap();
+    for id in [
+        "case-detail",
+        "receipt-detail",
+        "intake-result",
+        "route-modal-result",
+        "status-detail",
+    ] {
+        assert!(
+            html.contains(id),
+            "HTML must contain stable element id='{id}'"
+        );
+    }
+}
+
+/// The UI must include a global Refresh All button for fast full-page reload.
+#[tokio::test]
+async fn operator_ui_has_refresh_all_button() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, bytes) = get_raw(make_app(&tmp), "/").await;
+    let html = std::str::from_utf8(&bytes).unwrap();
+    assert!(
+        html.contains("refreshAll"),
+        "HTML must contain refreshAll function"
+    );
+    assert!(
+        html.contains("Refresh all"),
+        "HTML must contain 'Refresh all' button text"
+    );
 }
 
 // ── GET /receipts tests ───────────────────────────────────────────────────────

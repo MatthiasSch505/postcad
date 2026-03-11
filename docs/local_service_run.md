@@ -170,8 +170,12 @@ Open the local operator UI in a browser after starting the service:
 http://localhost:8080/
 ```
 
-The single-page UI supports the full pilot workflow: case intake, routing,
-receipt management, dispatch, verification, and route history. No curl required.
+The single-page operator UI supports the complete local pilot workflow without
+curl: store cases, route them, view receipts, dispatch, verify integrity, and
+inspect route history. All sections refresh automatically after each action.
+The page includes a global **↻ Refresh all** button and per-section refresh
+controls. JSON responses are displayed in the exact shape returned by the
+backend — no fields are invented or transformed.
 
 ---
 

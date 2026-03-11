@@ -1,7 +1,8 @@
+
 /target/
 **/*.rs.bk
+**/*.proptest-regressions
 AI_WORK_CONTEXT.md
 NEXT_TASK.md
 PROJECT_CONTEXT.md
 CLAUDE.md
-.claude/

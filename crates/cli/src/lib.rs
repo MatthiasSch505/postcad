@@ -27,6 +27,9 @@ use candidate_snapshot::{hash_candidate_order, hash_candidate_pool_from_complian
 pub mod verifier;
 pub use verifier::VerificationFailure;
 
+pub mod manifest;
+pub use manifest::{PROTOCOL_VERSION, ProtocolManifest, build_manifest};
+
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
 use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, hash_registry_snapshots, route_case_with_compliance_audit};

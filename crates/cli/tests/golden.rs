@@ -1,4 +1,4 @@
-use postcad_cli::{route_case_from_json, verify_receipt_from_policy_json};
+use postcad_cli::{build_manifest, route_case_from_json, route_case_from_policy_json, verify_receipt_from_policy_json};
 use serde_json::Value;
 
 fn fixtures_dir() -> std::path::PathBuf {
@@ -139,4 +139,111 @@ fn scenario_refused_invalid_snapshot() {
 #[test]
 fn scenario_routed_cross_border_allowed() {
     assert_scenario("routed_cross_border_allowed");
+}
+
+// ── End-to-end golden demo artifact tests ─────────────────────────────────────
+//
+// These three tests lock the canonical demo fixture set
+// (fixtures/case.json + fixtures/policy.json + fixtures/expected_routed.json)
+// as a frozen end-to-end contract.
+
+/// Golden route-case test: policy-form path produces the exact frozen receipt.
+///
+/// Uses route_case_from_policy_json (the 2-artifact public API), exercising the
+/// same code path as the `contract_*` scenario tests. Assert is byte-for-byte
+/// (via JSON value equality) against fixtures/expected_routed.json.
+#[test]
+fn golden_demo_route_case_policy_form_matches_frozen_receipt() {
+    let actual = route_case_from_policy_json(
+        &read_fixture("case.json"),
+        &read_fixture("policy.json"),
+    )
+    .expect("routing should succeed");
+
+    let actual_value: Value = serde_json::to_value(&actual).unwrap();
+    let expected_value: Value = as_json_value(&read_fixture("expected_routed.json"));
+
+    assert_eq!(
+        actual_value, expected_value,
+        "policy-form route-case output does not match frozen expected_routed.json"
+    );
+}
+
+/// Golden verify-receipt test: verify-receipt accepts the frozen receipt.
+///
+/// Proves that verify_receipt_from_policy_json succeeds on the exact artifact
+/// stored in expected_routed.json when given the canonical demo inputs.
+#[test]
+fn golden_demo_verify_receipt_accepts_frozen_receipt() {
+    verify_receipt_from_policy_json(
+        &read_fixture("expected_routed.json"),
+        &read_fixture("case.json"),
+        &read_fixture("policy.json"),
+    )
+    .expect("verify-receipt should accept the frozen demo receipt");
+}
+
+/// Drift-detection test: a real semantic change in the registry snapshot causes
+/// deterministic verification failure with `registry_snapshot_hash_mismatch`.
+///
+/// The snapshot for mfr-de-01 is changed from eligible+verified to
+/// ineligible+rejected. The frozen receipt's registry_snapshot_hash was
+/// committed against the original data, so verification must reject the
+/// tampered policy.
+#[test]
+fn golden_demo_drift_detection_snapshot_change_fails_verify() {
+    // Registry snapshot with a different semantic value: manufacturer is now
+    // ineligible with a rejected attestation instead of verified+eligible.
+    let drifted_policy = r#"{
+        "jurisdiction": "DE",
+        "routing_policy": "allow_domestic_and_cross_border",
+        "candidates": [
+            {
+                "id": "rc-de-01",
+                "manufacturer_id": "mfr-de-01",
+                "location": "domestic",
+                "accepts_case": true,
+                "eligibility": "eligible"
+            }
+        ],
+        "snapshots": [
+            {
+                "manufacturer_id": "mfr-de-01",
+                "evidence_references": ["ISO-9001-2024"],
+                "attestation_statuses": ["rejected"],
+                "is_eligible": false
+            }
+        ]
+    }"#;
+
+    let err = verify_receipt_from_policy_json(
+        &read_fixture("expected_routed.json"),
+        &read_fixture("case.json"),
+        drifted_policy,
+    )
+    .expect_err("verify-receipt must fail when registry snapshot has drifted");
+
+    assert_eq!(
+        err.code, "registry_snapshot_hash_mismatch",
+        "expected registry_snapshot_hash_mismatch, got: {:?}", err
+    );
+}
+
+// ── Protocol manifest golden test ─────────────────────────────────────────────
+
+/// `build_manifest()` must produce a value that is byte-for-byte (via JSON
+/// value equality) identical to `fixtures/expected_manifest.json`.
+///
+/// Any change to the manifest — a new field, a renamed error code, a version
+/// bump — requires regenerating the fixture and is therefore immediately
+/// visible in version control.
+#[test]
+fn golden_protocol_manifest_matches_frozen_fixture() {
+    let actual: Value = serde_json::to_value(build_manifest())
+        .expect("build_manifest must serialise to JSON");
+    let expected: Value = as_json_value(&read_fixture("expected_manifest.json"));
+    assert_eq!(
+        actual, expected,
+        "protocol manifest does not match fixtures/expected_manifest.json"
+    );
 }

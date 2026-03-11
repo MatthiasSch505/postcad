@@ -1,7 +1,7 @@
 use std::fs;
 use std::process;
 
-use postcad_cli::{route_case_from_json, verify_receipt_from_inputs};
+use postcad_cli::{build_manifest, route_case_from_json, verify_receipt_from_inputs};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -11,6 +11,7 @@ fn main() {
     match args.get(1).map(String::as_str) {
         Some("route-case") => run_route_case(&args[2..]),
         Some("verify-receipt") => run_verify_receipt(&args[2..]),
+        Some("protocol-manifest") => run_protocol_manifest(),
         Some("--help") | Some("-h") | Some("help") => print_help(),
         Some(other) => emit_error_and_exit(
             json_output,
@@ -220,6 +221,10 @@ fn read_file_or_exit(json_output: bool, path: &str) -> String {
             &format!("cannot read '{}': {}", path, e),
         )
     })
+}
+
+fn run_protocol_manifest() {
+    println!("{}", serde_json::to_string_pretty(&build_manifest()).unwrap());
 }
 
 fn print_help() {

@@ -286,8 +286,26 @@ The service exposes the same contract over HTTP. All endpoints accept and return
 | `/route-case` | POST | `{"case": {...}, "policy": {...}}` | `{"receipt": {...}}` |
 | `/verify-receipt` | POST | `{"receipt": {...}, "case": {...}, "policy": {...}}` | `{"result": "VERIFIED"}` |
 | `/protocol-manifest` | GET | — | `ProtocolManifest` object |
+| `/cases` | POST | case JSON object | `{"case_id": "...", "stored": true}` |
+| `/cases` | GET | — | `{"case_ids": [...]}` |
+| `/cases/{case_id}` | GET | — | stored case JSON object |
 
 Error responses: HTTP 422, body `{"error": {"code": "...", "message": "..."}}` for routing errors; `{"result": "FAILED", "error": {"code": "...", "message": "..."}}` for verification failures.
+
+### Case intake curl examples
+
+```bash
+# POST /cases — store a case
+curl -s -X POST http://localhost:3000/cases \
+  -H 'Content-Type: application/json' \
+  -d @examples/pilot/case.json
+
+# GET /cases — list stored case IDs
+curl -s http://localhost:3000/cases
+
+# GET /cases/{case_id} — retrieve a stored case
+curl -s http://localhost:3000/cases/a1b2c3d4-0000-0000-0000-000000000001
+```
 
 ---
 

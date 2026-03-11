@@ -84,6 +84,26 @@ impl ReceiptStore {
         self.path_for(receipt_hash).exists()
     }
 
+    /// Return the sorted list of all stored receipt hashes (file stems).
+    ///
+    /// Returns an empty list if the directory does not yet exist.
+    pub fn list_hashes(&self) -> Result<Vec<String>, ReceiptStoreError> {
+        if !self.dir.exists() {
+            return Ok(vec![]);
+        }
+        let mut hashes: Vec<String> = Vec::new();
+        for dir_entry in fs::read_dir(&self.dir).map_err(ReceiptStoreError::Io)? {
+            let dir_entry = dir_entry.map_err(ReceiptStoreError::Io)?;
+            let name = dir_entry.file_name();
+            let s = name.to_string_lossy();
+            if s.ends_with(".json") {
+                hashes.push(s.trim_end_matches(".json").to_string());
+            }
+        }
+        hashes.sort();
+        Ok(hashes)
+    }
+
     /// Read and parse a stored receipt. Returns `Ok(None)` if the file does
     /// not exist.
     pub fn read(&self, receipt_hash: &str) -> Result<Option<Value>, ReceiptStoreError> {

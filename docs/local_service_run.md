@@ -162,6 +162,19 @@ Cases are stored under `data/cases/{case_id}.json` relative to the working direc
 
 ---
 
+## Operator UI
+
+Open the local operator UI in a browser after starting the service:
+
+```
+http://localhost:8080/
+```
+
+The single-page UI supports the full pilot workflow: case intake, routing,
+receipt management, dispatch, verification, and route history. No curl required.
+
+---
+
 ## Dispatch
 
 ```bash

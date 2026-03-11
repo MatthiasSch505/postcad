@@ -3,6 +3,7 @@ mod dispatch_store;
 mod handlers;
 mod policy_store;
 mod receipt_store;
+pub mod ui;
 mod verification_store;
 
 use std::sync::Arc;
@@ -97,8 +98,13 @@ pub fn app_with_all_stores(
         .route("/cases/:case_id", routing::get(handlers::get_case))
         .with_state(case_store.clone());
 
-    // Route history endpoint: State<Arc<ReceiptStore>>.
-    let history_endpoint = Router::new()
+    // Receipt REST + route history endpoints: State<Arc<ReceiptStore>>.
+    let receipt_endpoints = Router::new()
+        .route("/receipts", routing::get(handlers::list_receipts))
+        .route(
+            "/receipts/:receipt_hash",
+            routing::get(handlers::get_receipt),
+        )
         .route("/routes", routing::get(handlers::list_routes))
         .with_state(receipt_store.clone());
 
@@ -139,6 +145,7 @@ pub fn app_with_all_stores(
         }));
 
     Router::new()
+        .route("/", routing::get(handlers::operator_ui))
         .route("/route-case", routing::post(handlers::route_case))
         .route(
             "/route-case-from-registry",
@@ -156,8 +163,8 @@ pub fn app_with_all_stores(
         .route("/verify", routing::post(handlers::pilot_verify))
         // Case intake
         .merge(case_routes)
-        // Route history
-        .merge(history_endpoint)
+        // Receipts + route history
+        .merge(receipt_endpoints)
         // Stored-case routing
         .merge(route_endpoint)
         // Dispatch

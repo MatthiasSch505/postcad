@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     response::IntoResponse,
     Json,
 };
@@ -15,6 +15,7 @@ use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
 use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
+use crate::ui::OPERATOR_UI_HTML;
 use crate::{AppState, DispatchState, DispatchVerifyState};
 
 /// POST /route-case
@@ -721,4 +722,59 @@ pub async fn list_routes(State(store): State<Arc<ReceiptStore>>) -> impl IntoRes
         )
             .into_response(),
     }
+}
+
+// ── Receipts REST endpoints ───────────────────────────────────────────────────
+
+/// GET /receipts
+///
+/// Returns the sorted list of all stored receipt hashes.
+/// Success (200): `{"receipts": ["...", ...]}`
+pub async fn list_receipts(State(store): State<Arc<ReceiptStore>>) -> impl IntoResponse {
+    match store.list_hashes() {
+        Ok(hashes) => (StatusCode::OK, Json(json!({"receipts": hashes}))).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
+}
+
+/// GET /receipts/:receipt_hash
+///
+/// Returns the stored receipt JSON.
+/// Success (200): the receipt JSON object
+/// Not found (404): `{"error": {"code": "receipt_not_found", "message": "..."}}`
+pub async fn get_receipt(
+    State(store): State<Arc<ReceiptStore>>,
+    Path(receipt_hash): Path<String>,
+) -> impl IntoResponse {
+    match store.read(&receipt_hash) {
+        Ok(Some(v)) => (StatusCode::OK, Json(v)).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": {"code": "receipt_not_found",
+                "message": format!("receipt '{receipt_hash}' not found")}})),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
+}
+
+// ── Operator UI ───────────────────────────────────────────────────────────────
+
+/// GET /
+///
+/// Serves the embedded single-page operator UI.
+pub async fn operator_ui() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        OPERATOR_UI_HTML,
+    )
 }

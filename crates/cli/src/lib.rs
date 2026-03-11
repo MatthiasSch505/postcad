@@ -3947,4 +3947,173 @@ mod tests {
             .unwrap_err();
         assert_eq!(err.code, "routing_kernel_version_mismatch");
     }
+
+    // ── Test 27: registry snapshot reproducibility invariant ──────────────────
+    //
+    // The registry snapshot hash must be derived from the deserialized model,
+    // not from raw JSON bytes. Two JSON documents that are semantically
+    // identical (same field values, same array order) but differ only in
+    // whitespace or JSON key order must produce the exact same hash for every
+    // receipt field that commits to registry state.
+
+    /// Same logical snapshot encoded with extra whitespace and pretty-printing
+    /// must produce the same `registry_snapshot_hash`.
+    #[test]
+    fn registry_snapshot_hash_is_same_for_equivalent_whitespace_encoding() {
+        // Compact — same as ELIGIBLE_SNAPSHOTS_JSON.
+        let compact = ELIGIBLE_SNAPSHOTS_JSON;
+
+        // Pretty-printed with extra spaces and newlines — semantically identical.
+        let pretty = r#"[
+            {
+                "manufacturer_id": "mfr-01",
+                "evidence_references": [ "REF-001" ],
+                "attestation_statuses": [ "verified" ],
+                "is_eligible": true
+            }
+        ]"#;
+
+        let compact_r = route_case_from_json(CASE_JSON, CANDIDATES_JSON, compact).unwrap();
+        let pretty_r  = route_case_from_json(CASE_JSON, CANDIDATES_JSON, pretty).unwrap();
+
+        assert_eq!(
+            compact_r.registry_snapshot_hash,
+            pretty_r.registry_snapshot_hash,
+            "registry_snapshot_hash must not change due to whitespace differences"
+        );
+    }
+
+    /// Same logical snapshot encoded with a different JSON key order must
+    /// produce the same `registry_snapshot_hash`.
+    #[test]
+    fn registry_snapshot_hash_is_same_for_different_json_key_order() {
+        let standard = ELIGIBLE_SNAPSHOTS_JSON;
+
+        // Same field values, but snapshot object keys in reverse order.
+        let reversed = r#"[{"is_eligible":true,"attestation_statuses":["verified"],"evidence_references":["REF-001"],"manufacturer_id":"mfr-01"}]"#;
+
+        let standard_r = route_case_from_json(CASE_JSON, CANDIDATES_JSON, standard).unwrap();
+        let reversed_r = route_case_from_json(CASE_JSON, CANDIDATES_JSON, reversed).unwrap();
+
+        assert_eq!(
+            standard_r.registry_snapshot_hash,
+            reversed_r.registry_snapshot_hash,
+            "registry_snapshot_hash must not change due to JSON key ordering"
+        );
+    }
+
+    /// route-case against two equivalent registry encodings (different key order
+    /// and whitespace) must produce identical values for every receipt field
+    /// that commits to registry state.
+    #[test]
+    fn route_case_produces_identical_receipt_for_equivalent_snapshot_encodings() {
+        let encoding_a = ELIGIBLE_SNAPSHOTS_JSON;
+
+        // Same values; keys in non-standard order, extra whitespace.
+        let encoding_b = r#"[
+            {
+                "is_eligible":  true,
+                "manufacturer_id":  "mfr-01",
+                "attestation_statuses":  [  "verified"  ],
+                "evidence_references":  [  "REF-001"  ]
+            }
+        ]"#;
+
+        let r_a = route_case_from_json(CASE_JSON, CANDIDATES_JSON, encoding_a).unwrap();
+        let r_b = route_case_from_json(CASE_JSON, CANDIDATES_JSON, encoding_b).unwrap();
+
+        assert_eq!(r_a.registry_snapshot_hash, r_b.registry_snapshot_hash);
+        assert_eq!(r_a.candidate_pool_hash,     r_b.candidate_pool_hash);
+        assert_eq!(r_a.candidate_order_hash,    r_b.candidate_order_hash);
+        assert_eq!(r_a.routing_decision_hash,   r_b.routing_decision_hash);
+        assert_eq!(r_a.selected_candidate_id,   r_b.selected_candidate_id);
+        assert_eq!(r_a.receipt_hash,            r_b.receipt_hash);
+    }
+
+    /// A receipt generated with one snapshot encoding must verify successfully
+    /// when the policy bundle is presented with a different (but semantically
+    /// equivalent) encoding — proving that verification does not depend on
+    /// the raw JSON representation of the snapshot.
+    #[test]
+    fn verify_receipt_cross_validates_between_equivalent_snapshot_encodings() {
+        // Policy A: snapshot keys in standard order.
+        let policy_a = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "candidates": [{"id":"rc-1","manufacturer_id":"mfr-01","location":"domestic","accepts_case":true,"eligibility":"eligible"}],
+            "snapshots": [{"manufacturer_id":"mfr-01","evidence_references":["REF-001"],"attestation_statuses":["verified"],"is_eligible":true}]
+        }"#;
+
+        // Policy B: snapshot keys in a different order, extra whitespace.
+        let policy_b = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "candidates": [{"id":"rc-1","manufacturer_id":"mfr-01","location":"domestic","accepts_case":true,"eligibility":"eligible"}],
+            "snapshots": [{ "is_eligible" : true , "evidence_references" : [ "REF-001" ] , "manufacturer_id" : "mfr-01" , "attestation_statuses" : [ "verified" ] }]
+        }"#;
+
+        let receipt = route_case_from_policy_json(CASE_JSON, policy_a).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        // Receipt from policy_a must verify when policy_b is supplied.
+        verify_receipt_from_policy_json(&receipt_json, CASE_JSON, policy_b)
+            .expect("receipt must verify against a semantically equivalent snapshot encoding");
+    }
+
+    /// Same cross-encoding verification via the four-artifact path.
+    #[test]
+    fn verify_receipt_from_inputs_cross_validates_between_equivalent_snapshot_encodings() {
+        let receipt =
+            route_case_from_json(CASE_JSON, CANDIDATES_JSON, ELIGIBLE_SNAPSHOTS_JSON).unwrap();
+        let receipt_json = serde_json::to_string(&receipt).unwrap();
+
+        // policy.json with snapshot keys in a different order but same values.
+        let policy_alt_encoding = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "snapshots": [{"is_eligible":true,"evidence_references":["REF-001"],"manufacturer_id":"mfr-01","attestation_statuses":["verified"]}]
+        }"#;
+
+        verify_receipt_from_inputs(
+            &receipt_json, CASE_JSON, policy_alt_encoding, CANDIDATES_JSON,
+        )
+        .expect("receipt must verify when policy.json uses an alternative snapshot encoding");
+    }
+
+    /// A real semantic change (different attestation status, flipped eligibility)
+    /// must still produce a different `registry_snapshot_hash` and cause
+    /// verification to fail, confirming that encoding-independence does not
+    /// suppress genuine content differences.
+    #[test]
+    fn semantic_snapshot_change_changes_registry_snapshot_hash_and_fails_verify() {
+        let policy_eligible = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "candidates": [{"id":"rc-1","manufacturer_id":"mfr-01","location":"domestic","accepts_case":true,"eligibility":"eligible"}],
+            "snapshots": [{"manufacturer_id":"mfr-01","evidence_references":["REF-001"],"attestation_statuses":["verified"],"is_eligible":true}]
+        }"#;
+
+        // Same structure, but attestation status and eligibility flag both changed.
+        let policy_rejected = r#"{
+            "jurisdiction": "DE",
+            "routing_policy": "allow_domestic_and_cross_border",
+            "candidates": [{"id":"rc-1","manufacturer_id":"mfr-01","location":"domestic","accepts_case":true,"eligibility":"eligible"}],
+            "snapshots": [{"manufacturer_id":"mfr-01","evidence_references":["REF-001"],"attestation_statuses":["rejected"],"is_eligible":false}]
+        }"#;
+
+        // Confirm the two policies produce different registry_snapshot_hash values.
+        let r_eligible = route_case_from_policy_json(CASE_JSON, policy_eligible).unwrap();
+        let r_rejected  = route_case_from_policy_json(CASE_JSON, policy_rejected).unwrap();
+        assert_ne!(
+            r_eligible.registry_snapshot_hash,
+            r_rejected.registry_snapshot_hash,
+            "a semantic change must produce a different registry_snapshot_hash"
+        );
+
+        // Verify that the eligible receipt fails when presented with the rejected policy.
+        let receipt_json = serde_json::to_string(&r_eligible).unwrap();
+        let err = verify_receipt_from_policy_json(&receipt_json, CASE_JSON, policy_rejected)
+            .expect_err("semantic snapshot change must cause verify to fail");
+        assert_eq!(err.code, "registry_snapshot_hash_mismatch");
+    }
 }

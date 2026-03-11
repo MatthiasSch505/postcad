@@ -82,6 +82,16 @@ The `release/` tree is the local pilot package: scripts to run the service, chec
 | `release/handoff/HANDOFF_CHECKLIST.md` | Practical transfer checklist | read |
 | `release/handoff/print_handoff_index.sh` | Read-only index: HEAD, script presence, evidence presence | **run** |
 
+### Freeze bundle (`release/freeze/`)
+
+| Path | Purpose | Action |
+|---|---|---|
+| `release/FREEZE_MANIFEST.md` | Single-page freeze manifest with full surface listing | read |
+| `release/freeze/README.md` | Entry point for the freeze bundle | read |
+| `release/freeze/PILOT_SURFACES.md` | Grouped inventory of every pilot surface with classifications | read |
+| `release/freeze/FROZEN_BOUNDARIES.md` | Explicit statement of what is frozen | read |
+| `release/freeze/print_freeze_manifest.sh` | Read-only: prints classified surface listing and protocol values | **run** |
+
 ### Self-check bundle (`release/selfcheck/`)
 
 | Path | Purpose | Action |
@@ -148,6 +158,7 @@ cat release/handoff/FIRST_HOUR_GUIDE.md
 | `release/smoke_test.sh` | Smoke test (service must be running) | repo root |
 | `release/generate_evidence_bundle.sh` | Capture evidence (service must be running) | repo root |
 | `demo/run_demo.sh` | Self-contained 8-step demo | repo root |
+| `release/freeze/print_freeze_manifest.sh` | Classified surface listing with protocol values | repo root or `release/freeze/` |
 | `release/selfcheck/run_release_selfcheck.sh` | Structural self-check of the whole release package | repo root or `release/selfcheck/` |
 | `release/print_release_index.sh` | This index as a read-only script | repo root |
 | `release/walkthrough/print_walkthrough.sh` | Walkthrough orientation | repo root or `release/walkthrough/` |

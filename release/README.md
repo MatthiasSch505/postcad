@@ -141,6 +141,8 @@ All removed by `reset_pilot_data.sh`.
 ## Additional references
 
 - `release/INDEX.md` — top-level index of every release surface with recommended paths
+- `release/FREEZE_MANIFEST.md` — single-page freeze manifest with full surface listing and frozen boundaries
+- `release/freeze/` — freeze bundle: grouped surface inventory, frozen boundaries, classification helper
 - `release/selfcheck/` — read-only structural self-check of the whole release package
 - `release/walkthrough/` — single-surface pilot walkthrough (sequence, commands, expected outputs, inspection points)
 - `release/handoff/` — new operator/reviewer entry point (first-hour guide, handoff checklist, known-good state)

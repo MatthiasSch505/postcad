@@ -17,7 +17,7 @@ fn main() {
         Some("route-case-from-registry") => run_route_case_from_registry(&args[2..]),
         Some("verify-receipt") => run_verify_receipt(&args[2..]),
         Some("protocol-manifest") => run_protocol_manifest(),
-        Some("demo-run") => run_demo_v1(&args[2..]),
+        Some("demo-run") | Some("demo") => run_demo_v1(&args[2..]),
         Some("--help") | Some("-h") | Some("help") => print_help(),
         Some(other) => emit_error_and_exit(
             json_output,

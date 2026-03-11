@@ -140,6 +140,7 @@ All removed by `reset_pilot_data.sh`.
 
 ## Additional references
 
+- `release/handoff/` — new operator/reviewer entry point (first-hour guide, handoff checklist, known-good state)
 - `release/acceptance/` — pilot acceptance checklist, review worksheet, and acceptance pre-check
 - `release/review/` — external review packet (system overview, operator flow, artifact guide, boundaries)
 - `docs/local_service_run.md` — full curl reference for every endpoint

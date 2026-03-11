@@ -1,9 +1,18 @@
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use std::sync::Arc;
+
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
 use postcad_cli::{
     build_manifest, route_case_from_policy_json, route_case_from_registry_json,
-    verify_receipt_from_policy_json, PROTOCOL_VERSION,
+    verify_receipt_from_policy_json, CaseInput, PROTOCOL_VERSION,
 };
 use serde_json::{json, Value};
+
+use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
 
 /// POST /route-case
 ///
@@ -228,6 +237,112 @@ pub async fn pilot_verify(Json(body): Json<Value>) -> impl IntoResponse {
         Err(f) => (
             StatusCode::UNPROCESSABLE_ENTITY,
             Json(json!({"result": "FAILED", "error": {"code": f.code, "message": f.message}})),
+        )
+            .into_response(),
+    }
+}
+
+// ── Case intake endpoints ─────────────────────────────────────────────────────
+
+/// POST /cases
+///
+/// Request body: case JSON matching the existing routing case shape.
+/// `case_id` must be present.
+///
+/// Success (201): `{"case_id": "...", "stored": true}`
+/// Identical re-post (200): `{"case_id": "...", "stored": true}`
+/// Conflict (409): `{"error": {"code": "case_id_conflict", "message": "..."}}`
+/// Invalid input (422): `{"error": {"code": "parse_error", "message": "..."}}`
+pub async fn post_case(
+    State(store): State<Arc<CaseStore>>,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    // Validate using the existing CaseInput parser.
+    let input: CaseInput = match serde_json::from_value(body.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": {"code": "parse_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    let case_id = match input.case_id {
+        Some(id) => id,
+        None => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": {"code": "parse_error", "message": "case_id is required"}})),
+            )
+                .into_response();
+        }
+    };
+
+    let canonical = serde_json::to_string_pretty(&body).unwrap();
+
+    match store.store(&case_id, &canonical) {
+        Ok(StoreOutcome::Created) => (
+            StatusCode::CREATED,
+            Json(json!({"case_id": case_id, "stored": true})),
+        )
+            .into_response(),
+        Ok(StoreOutcome::Identical) => (
+            StatusCode::OK,
+            Json(json!({"case_id": case_id, "stored": true})),
+        )
+            .into_response(),
+        Err(CaseStoreError::Conflict) => (
+            StatusCode::CONFLICT,
+            Json(json!({"error": {"code": "case_id_conflict",
+                "message": format!("case_id '{case_id}' already stored with different content")}})),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "storage_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
+}
+
+/// GET /cases
+///
+/// Returns the sorted list of stored case IDs.
+/// Success (200): `{"case_ids": ["...", ...]}`
+pub async fn list_cases(State(store): State<Arc<CaseStore>>) -> impl IntoResponse {
+    match store.list() {
+        Ok(ids) => (StatusCode::OK, Json(json!({"case_ids": ids}))).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "storage_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
+}
+
+/// GET /cases/:case_id
+///
+/// Returns the stored case JSON.
+/// Success (200): the original case JSON object
+/// Not found (404): `{"error": {"code": "case_not_found", "message": "..."}}`
+pub async fn get_case(
+    State(store): State<Arc<CaseStore>>,
+    Path(case_id): Path<String>,
+) -> impl IntoResponse {
+    match store.get(&case_id) {
+        Ok(Some(value)) => (StatusCode::OK, Json(value)).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(
+                json!({"error": {"code": "case_not_found", "message": format!("case '{case_id}' not found")}}),
+            ),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "storage_error", "message": e.to_string()}})),
         )
             .into_response(),
     }

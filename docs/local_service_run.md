@@ -122,6 +122,46 @@ Expected:
 
 ---
 
+## Case intake
+
+Store a case:
+
+```bash
+curl -s -X POST http://localhost:8080/cases \
+  -H 'Content-Type: application/json' \
+  -d "$(cat examples/pilot/case.json)"
+```
+
+Expected (first store):
+
+```json
+{"case_id":"f1000001-0000-0000-0000-000000000001","stored":true}
+```
+
+List stored cases:
+
+```bash
+curl -s http://localhost:8080/cases
+```
+
+Expected:
+
+```json
+{"case_ids":["f1000001-0000-0000-0000-000000000001"]}
+```
+
+Retrieve a case by ID:
+
+```bash
+curl -s http://localhost:8080/cases/f1000001-0000-0000-0000-000000000001
+```
+
+Expected: the original case JSON object.
+
+Cases are stored under `data/cases/{case_id}.json` relative to the working directory (or `/data/cases/` inside the container).
+
+---
+
 ## Stop
 
 ```bash

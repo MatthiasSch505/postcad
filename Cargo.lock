@@ -566,6 +566,7 @@ name = "postcad-cli"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "hex",
  "postcad-audit",
  "postcad-compliance",
  "postcad-core",

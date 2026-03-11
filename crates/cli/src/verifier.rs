@@ -46,6 +46,27 @@ impl VerificationFailure {
         )
     }
 
+    // ── Protocol version mismatch ─────────────────────────────────────────────
+
+    pub fn protocol_version_mismatch(found: &str, expected: &str) -> Self {
+        Self::new(
+            "protocol_version_mismatch",
+            format!(
+                "protocol_version mismatch: found {:?}, expected {:?}",
+                found, expected
+            ),
+        )
+    }
+
+    // ── Unknown refusal code ──────────────────────────────────────────────────
+
+    pub fn unknown_refusal_code(code: &str) -> Self {
+        Self::new(
+            "unknown_refusal_code",
+            format!("unknown refusal code: {:?}", code),
+        )
+    }
+
     // ── Routing kernel version mismatch ──────────────────────────────────────
 
     pub fn routing_kernel_version_mismatch(receipt: &str, expected: &str) -> Self {

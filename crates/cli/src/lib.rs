@@ -28,7 +28,11 @@ pub mod verifier;
 pub use verifier::VerificationFailure;
 
 pub mod manifest;
-pub use manifest::{PROTOCOL_VERSION, ProtocolManifest, build_manifest};
+pub use manifest::{
+    PROTOCOL_VERSION, ProtocolManifest, build_manifest,
+    compute_proof_schema_hash, compute_receipt_schema_hash,
+};
+pub use postcad_core::{POSTCAD_PROTOCOL_VERSION, REFUSAL_CODES, is_known_refusal_code, refusal_code_set_hash};
 
 pub mod proof;
 pub use proof::{ProofVerificationFailure, RoutingProofObject, build_routing_proof, verify_routing_proof};

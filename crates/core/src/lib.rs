@@ -1,6 +1,12 @@
 ﻿use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+pub mod protocol;
+pub use protocol::POSTCAD_PROTOCOL_VERSION;
+
+pub mod refusal_codes;
+pub use refusal_codes::{REFUSAL_CODES, is_known_refusal_code, refusal_code_set_hash};
+
 pub mod validator;
 pub use validator::{validate_case, ValidationError};
 

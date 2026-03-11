@@ -42,6 +42,9 @@ pub use registry_routing::{
     route_case_from_registry_json, RegistryRoutingConfig, RegistryRoutingResult,
 };
 
+pub mod registry_export;
+pub use registry_export::{export_registry, ExportError};
+
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
 use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, hash_registry_snapshots, route_case_with_compliance_audit};

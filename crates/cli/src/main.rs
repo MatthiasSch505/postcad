@@ -2,7 +2,7 @@ use std::fs;
 use std::process;
 
 use postcad_cli::{
-    build_manifest, route_case_from_json,
+    build_manifest, export_registry, route_case_from_json,
     route_case_from_registry_json, verify_receipt_from_inputs, verify_receipt_from_policy_json,
     POSTCAD_PROTOCOL_VERSION, PROTOCOL_VERSION, ROUTING_KERNEL_SEMVER,
 };
@@ -15,6 +15,7 @@ fn main() {
     match args.get(1).map(String::as_str) {
         Some("route-case") => run_route_case(&args[2..]),
         Some("route-case-from-registry") => run_route_case_from_registry(&args[2..]),
+        Some("registry-export") => run_registry_export(&args[2..]),
         Some("verify-receipt") => run_verify_receipt(&args[2..]),
         Some("protocol-manifest") => run_protocol_manifest(),
         Some("protocol-info") => run_protocol_info(),
@@ -363,6 +364,68 @@ fn run_demo_v1(args: &[String]) {
             }
         }
         Err(f) => emit_error_and_exit(json_output, &f.code, &f.message),
+    }
+}
+
+fn run_registry_export(args: &[String]) {
+    let json_output = args.iter().any(|a| a.as_str() == "--json");
+
+    let mut input_path: Option<&str> = None;
+    let mut output_path: Option<&str> = None;
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--input" => {
+                input_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--output" => {
+                output_path = args.get(i + 1).map(String::as_str);
+                i += 2;
+            }
+            "--json" => {
+                i += 1;
+            }
+            other => emit_error_and_exit(
+                json_output,
+                "invalid_arguments",
+                &format!("unknown flag '{}'", other),
+            ),
+        }
+    }
+
+    let input_path = input_path.unwrap_or_else(|| {
+        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --input")
+    });
+    let output_path = output_path.unwrap_or_else(|| {
+        emit_error_and_exit(json_output, "invalid_arguments", "missing required argument --output")
+    });
+
+    let source_json = read_file_or_exit(json_output, input_path);
+    let snapshot_json = match export_registry(&source_json) {
+        Ok(j) => j,
+        Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
+    };
+
+    std::fs::write(output_path, &snapshot_json).unwrap_or_else(|e| {
+        emit_error_and_exit(
+            json_output,
+            "io_error",
+            &format!("cannot write '{}': {}", output_path, e),
+        )
+    });
+
+    if json_output {
+        println!(
+            "{}",
+            serde_json::json!({
+                "result": "ok",
+                "output": output_path,
+            })
+        );
+    } else {
+        println!("registry snapshot written to: {}", output_path);
     }
 }
 

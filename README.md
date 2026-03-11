@@ -177,3 +177,4 @@ postcad-cli         route-case and verify-receipt CLI commands
 ## Local service deployment
 
 See [docs/local_service_run.md](docs/local_service_run.md) for the one-command Docker-based local run path.
+See [docs/development_bundle.md](docs/development_bundle.md) for the canonical development workflow and red lines.

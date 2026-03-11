@@ -1,0 +1,37 @@
+{
+  "phase": "pilot_readiness",
+  "protocol_version": "postcad-v1",
+  "routing_kernel_version": "postcad-routing-v1",
+  "pilot_flow": {
+    "route": "POST /route  {case, registry_snapshot, routing_config} → {receipt, derived_policy}",
+    "verify": "POST /verify {receipt, case, policy} → {result: VERIFIED}"
+  },
+  "locked_fixture_bundle": "examples/pilot/",
+  "locked_fixtures": {
+    "case": "examples/pilot/case.json",
+    "registry_snapshot": "examples/pilot/registry_snapshot.json",
+    "config": "examples/pilot/config.json",
+    "derived_policy": "examples/pilot/derived_policy.json",
+    "expected_routed": "examples/pilot/expected_routed.json",
+    "expected_verify": "examples/pilot/expected_verify.json"
+  },
+  "service_endpoints": [
+    "GET  /health",
+    "GET  /version",
+    "POST /route",
+    "POST /verify",
+    "POST /route-case",
+    "POST /route-case-from-registry",
+    "POST /verify-receipt",
+    "GET  /protocol-manifest"
+  ],
+  "local_deployment_doc": "docs/local_service_run.md",
+  "development_bundle_doc": "docs/development_bundle.md",
+  "definition_of_done": {
+    "routing": "deterministic, self-verified, value-for-value match against expected_routed.json",
+    "verification": "replay-verified, value-for-value match against expected_verify.json",
+    "service": "all pilot_http_tests and pilot_bundle_smoke_test pass",
+    "deployment": "docker compose up → /health returns {status:ok}"
+  },
+  "next_phase": "operator_handoff"
+}

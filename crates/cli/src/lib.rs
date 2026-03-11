@@ -30,6 +30,11 @@ pub use verifier::VerificationFailure;
 pub mod manifest;
 pub use manifest::{PROTOCOL_VERSION, ProtocolManifest, build_manifest};
 
+pub mod registry_routing;
+pub use registry_routing::{
+    route_case_from_registry_json, RegistryRoutingConfig, RegistryRoutingResult,
+};
+
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
 use postcad_audit::{AuditEvent, AuditLog, RoutingServiceResult, hash_registry_snapshots, route_case_with_compliance_audit};

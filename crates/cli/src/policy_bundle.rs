@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 /// are `Option<String>` and documented with their default value.
 /// `candidates` is optional: it may be absent when candidates are provided via
 /// a separate `--candidates` argument (the preferred path for `verify-receipt`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RoutingPolicyBundle {
     /// Jurisdiction code (e.g. `"DE"`, `"US"`). Defaults to `"global"`.
     pub jurisdiction: Option<String>,
@@ -57,7 +57,7 @@ pub struct CandidateEntry {
 }
 
 /// One compliance snapshot entry within a [`RoutingPolicyBundle`].
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SnapshotEntry {
     /// Manufacturer this snapshot covers.
     pub manufacturer_id: String,

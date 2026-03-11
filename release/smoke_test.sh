@@ -116,8 +116,9 @@ resp=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/cases" \
   -H "Content-Type: application/json" -d "$PILOT_CASE")
 body=$(echo "$resp" | head -n -1)
 status=$(echo "$resp" | tail -n 1)
-# 200 on first store, also accept 200 if idempotent (case already exists → still 200)
-assert_status "case intake" "200" "$status"
+# 201 on first store (Created), 200 on re-run (Identical)
+[[ "$status" == "200" || "$status" == "201" ]] \
+  || fail "Phase case intake: expected HTTP 200 or 201, got HTTP $status"
 echo "$body" | python3 -m json.tool
 assert_field "case intake" "case_id" "$body"
 CASE_ID=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['case_id'])" "$body")
@@ -125,12 +126,16 @@ pass "case stored (case_id=$CASE_ID)"
 
 # ── STEP 3 — route stored case ────────────────────────────────────────────────
 
+# Endpoint: POST /cases/:id/route
+# Request:  {"registry": [...], "config": {...}}
+# Response: {"case_id": "...", "receipt_hash": "...", "selected_candidate_id": "..."}
+
 hr "3. Route stored case (POST /cases/$CASE_ID/route)"
 ROUTE_PAYLOAD=$(python3 -c "
 import json
 registry = json.load(open('$REGISTRY'))
 config   = json.load(open('$CONFIG'))
-print(json.dumps({'registry_snapshot': registry, 'routing_config': config}))
+print(json.dumps({'registry': registry, 'config': config}))
 ")
 resp=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/cases/$CASE_ID/route" \
   -H "Content-Type: application/json" -d "$ROUTE_PAYLOAD")
@@ -140,22 +145,22 @@ assert_status "route stored case" "200" "$status"
 python3 -c "
 import json,sys
 d = json.loads(sys.argv[1])
-r = d.get('receipt', d)
-print(json.dumps({'outcome': r.get('outcome'), 'selected_candidate_id': r.get('selected_candidate_id'), 'receipt_hash': r.get('receipt_hash')}, indent=2))
+print(json.dumps({'receipt_hash': d.get('receipt_hash'), 'selected_candidate_id': d.get('selected_candidate_id')}, indent=2))
 " "$body"
-assert_field "route stored case" "receipt.receipt_hash" "$body"
+assert_field "route stored case" "receipt_hash" "$body"
 RECEIPT_HASH=$(python3 -c "
 import json,sys
 d = json.loads(sys.argv[1])
-print(d['receipt']['receipt_hash'])
+print(d['receipt_hash'])
 " "$body")
-OUTCOME=$(python3 -c "
+SELECTED=$(python3 -c "
 import json,sys
 d = json.loads(sys.argv[1])
-print(d['receipt']['outcome'])
+v = d.get('selected_candidate_id')
+print(v if v else '')
 " "$body")
-[[ "$OUTCOME" == "routed" ]] || fail "route stored case: expected outcome=routed, got $OUTCOME"
-pass "case routed (receipt_hash=${RECEIPT_HASH:0:16}…)"
+[[ -n "$SELECTED" ]] || fail "route stored case: expected non-empty selected_candidate_id (was routing refused?)"
+pass "case routed (selected=$SELECTED receipt_hash=${RECEIPT_HASH:0:16}…)"
 
 # ── STEP 4 — retrieve receipt ─────────────────────────────────────────────────
 

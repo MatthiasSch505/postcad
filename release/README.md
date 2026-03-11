@@ -75,6 +75,15 @@ Exits 0 on success. Prints `[FAIL]` and exits nonzero on the first assertion fai
 Starts its own service, runs an 8-step flow, then stops the service. No separate terminal needed.
 See `docs/demo_run.md` for details.
 
+### Step 5 — Generate evidence bundle (while service is still running)
+
+```bash
+./release/generate_evidence_bundle.sh
+```
+
+Captures the 7-step pilot flow as an inspectable folder at `release/evidence/current/`.
+See `release/evidence/README.md` for the full folder structure and what to inspect.
+
 ---
 
 ## What success looks like

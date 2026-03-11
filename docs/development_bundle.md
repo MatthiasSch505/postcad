@@ -6,6 +6,8 @@
 
 This document describes the current deterministic pilot stack and the canonical development workflow for PostCAD Protocol v1. It is the authoritative reference for a new engineer or operator joining the project.
 
+Pilot readiness assessment: [`docs/pilot_maturity_check.md`](pilot_maturity_check.md) — machine-readable gap list: [`docs/pilot_gap_list.json`](pilot_gap_list.json).
+
 ---
 
 ## Locked Surfaces

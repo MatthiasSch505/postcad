@@ -1,0 +1,65 @@
+{
+  "phase": "pilot_maturity_check",
+  "assessed": "2026-03-11",
+  "protocol_version": "postcad-v1",
+  "routing_kernel_version": "postcad-routing-v1",
+  "verdict": "externally demoable",
+  "completed_surfaces": [
+    "routing_kernel",
+    "receipt_refusal_artifact_schema_v1",
+    "verification_path",
+    "registry_export",
+    "http_service",
+    "case_intake",
+    "stored_case_routing",
+    "receipt_retrieval",
+    "route_history",
+    "dispatch",
+    "dispatch_verification_gate",
+    "operator_ui",
+    "protocol_manifest",
+    "acceptance_runner",
+    "protocol_conformance_vectors",
+    "docker_deployment",
+    "operator_handoff_docs"
+  ],
+  "remaining_gaps": {
+    "usability": [
+      "operator_ui_route_form_requires_manual_registry_json_paste",
+      "receipt_viewer_shows_raw_json_only",
+      "dispatch_has_no_confirmation_step"
+    ],
+    "operational_packaging": [
+      "no_dockerfile_healthcheck_directive",
+      "data_directories_not_documented",
+      "acceptance_runner_covers_only_original_route_verify_endpoints",
+      "no_prebuilt_binary_or_image_published"
+    ],
+    "fixture_demo_quality": [
+      "handoff_status_json_acceptance_status_is_pending",
+      "pilot_acceptance_json_missing_dispatch_endpoints",
+      "no_4step_flow_curl_example",
+      "pilot_fixture_manufacturer_is_synthetic"
+    ],
+    "external_handoff_clarity": [
+      "operator_handoff_doc_covers_only_original_flow",
+      "no_single_role_based_entry_point_readme_section"
+    ],
+    "non_invasive_observability": [
+      "no_request_response_logging",
+      "verification_results_not_exposed_via_get_endpoint",
+      "no_count_or_storage_status_endpoint"
+    ]
+  },
+  "explicit_non_gaps": [
+    "auth",
+    "cloud_infra",
+    "database",
+    "billing",
+    "analytics_platform",
+    "routing_heuristics_expansion",
+    "protocol_redesign",
+    "ml_based_selection"
+  ],
+  "next_phase": "close usability and handoff gaps, promote to pilot-ready with supervision"
+}

@@ -82,6 +82,14 @@ The `release/` tree is the local pilot package: scripts to run the service, chec
 | `release/handoff/HANDOFF_CHECKLIST.md` | Practical transfer checklist | read |
 | `release/handoff/print_handoff_index.sh` | Read-only index: HEAD, script presence, evidence presence | **run** |
 
+### Self-check bundle (`release/selfcheck/`)
+
+| Path | Purpose | Action |
+|---|---|---|
+| `release/selfcheck/README.md` | What the self-check covers and how to run it | read |
+| `release/selfcheck/SELFCHECK_SCOPE.md` | Complete scope definition: checked vs not checked | read |
+| `release/selfcheck/run_release_selfcheck.sh` | Read-only structural check of the entire release package | **run** |
+
 ---
 
 ## Minimal path
@@ -140,6 +148,7 @@ cat release/handoff/FIRST_HOUR_GUIDE.md
 | `release/smoke_test.sh` | Smoke test (service must be running) | repo root |
 | `release/generate_evidence_bundle.sh` | Capture evidence (service must be running) | repo root |
 | `demo/run_demo.sh` | Self-contained 8-step demo | repo root |
+| `release/selfcheck/run_release_selfcheck.sh` | Structural self-check of the whole release package | repo root or `release/selfcheck/` |
 | `release/print_release_index.sh` | This index as a read-only script | repo root |
 | `release/walkthrough/print_walkthrough.sh` | Walkthrough orientation | repo root or `release/walkthrough/` |
 | `release/acceptance/print_acceptance_summary.sh` | Acceptance pre-check | repo root or `release/acceptance/` |

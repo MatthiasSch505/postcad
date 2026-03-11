@@ -82,6 +82,16 @@ The `release/` tree is the local pilot package: scripts to run the service, chec
 | `release/handoff/HANDOFF_CHECKLIST.md` | Practical transfer checklist | read |
 | `release/handoff/print_handoff_index.sh` | Read-only index: HEAD, script presence, evidence presence | **run** |
 
+### External delivery packet (`release/external/`)
+
+| Path | Purpose | Action |
+|---|---|---|
+| `release/external/README.md` | Entry point for external reviewers | read |
+| `release/external/EXTERNAL_DELIVERY_OVERVIEW.md` | What the reviewer is receiving and what to inspect | read |
+| `release/external/EXTERNAL_REVIEW_PATH.md` | 7-step external inspection path | read |
+| `release/external/EXTERNAL_BOUNDARIES.md` | Explicit scope boundary for external delivery | read |
+| `release/external/print_external_packet.sh` | Read-only: pilot label, review surfaces, review order, scope reminders | **run** |
+
 ### Version bundle (`release/version/`)
 
 | Path | Purpose | Action |
@@ -185,6 +195,7 @@ cat release/handoff/FIRST_HOUR_GUIDE.md
 | `release/smoke_test.sh` | Smoke test (service must be running) | repo root |
 | `release/generate_evidence_bundle.sh` | Capture evidence (service must be running) | repo root |
 | `demo/run_demo.sh` | Self-contained 8-step demo | repo root |
+| `release/external/print_external_packet.sh` | External review surfaces, order, scope reminders | repo root or `release/external/` |
 | `release/version/print_pilot_version.sh` | HEAD, pilot label, verification steps, optional tag command | repo root or `release/version/` |
 | `release/readiness/print_readiness_snapshot.sh` | Surfaces, review path, frozen values, out-of-scope | repo root or `release/readiness/` |
 | `release/review-trace/print_review_trace.sh` | Review order, stop conditions, trace resource checks | repo root or `release/review-trace/` |

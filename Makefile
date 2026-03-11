@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt pilot demo protocol-info clean docker-build docker-run docker-compose-up dev
+.PHONY: build test lint fmt pilot demo protocol-info clean docker-build docker-run docker-compose-up dev acceptance
 
 build:
 	cargo build
@@ -39,6 +39,10 @@ docker-run:
 ## Start the protocol node via docker compose.
 docker-compose-up:
 	docker compose up
+
+## Run the full pilot acceptance flow (build → start service → validate fixtures → stop).
+acceptance:
+	scripts/pilot_acceptance.sh
 
 ## Local dev: build + run all tests.
 dev:

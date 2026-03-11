@@ -6,6 +6,8 @@
 
 This document is for a pilot operator or reviewer who needs to run the current PostCAD stack, validate the canonical output, and confirm that the acceptance criteria are met. It does not require source code knowledge. All required files are committed to the repository.
 
+To run the full acceptance flow automatically: `make acceptance` — see [docs/pilot_acceptance_run.md](pilot_acceptance_run.md).
+
 ---
 
 ## Required Artifacts

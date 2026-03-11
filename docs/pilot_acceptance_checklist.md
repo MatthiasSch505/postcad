@@ -1,6 +1,6 @@
 # Pilot Acceptance Checklist
 
-Run path: `docs/operator_handoff.md`
+Run path: `docs/operator_handoff.md` — one-command runner: `make acceptance` ([docs/pilot_acceptance_run.md](pilot_acceptance_run.md))
 
 ---
 

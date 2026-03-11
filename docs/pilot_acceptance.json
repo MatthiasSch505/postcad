@@ -1,0 +1,24 @@
+{
+  "phase": "pilot_acceptance",
+  "canonical_fixture_paths": {
+    "case": "examples/pilot/case.json",
+    "registry_snapshot": "examples/pilot/registry_snapshot.json",
+    "config": "examples/pilot/config.json",
+    "derived_policy": "examples/pilot/derived_policy.json",
+    "expected_routed": "examples/pilot/expected_routed.json",
+    "expected_verify": "examples/pilot/expected_verify.json"
+  },
+  "canonical_endpoints": {
+    "health": "GET  /health",
+    "version": "GET  /version",
+    "route": "POST /route",
+    "verify": "POST /verify"
+  },
+  "success_artifacts": {
+    "receipt_hash": "0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb",
+    "outcome": "routed",
+    "selected_candidate_id": "pilot-de-001"
+  },
+  "expected_verify_result": {"result": "VERIFIED"},
+  "acceptance_status": "pending"
+}

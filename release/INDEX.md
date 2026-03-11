@@ -82,6 +82,15 @@ The `release/` tree is the local pilot package: scripts to run the service, chec
 | `release/handoff/HANDOFF_CHECKLIST.md` | Practical transfer checklist | read |
 | `release/handoff/print_handoff_index.sh` | Read-only index: HEAD, script presence, evidence presence | **run** |
 
+### Version bundle (`release/version/`)
+
+| Path | Purpose | Action |
+|---|---|---|
+| `release/RELEASE_NOTES_PILOT.md` | Concise release notes for the frozen pilot package | read |
+| `release/version/README.md` | Entry point for pilot version information | read |
+| `release/version/PILOT_VERSION.md` | Pilot label `pilot-local-v1`, verification instructions, optional tag command | read |
+| `release/version/print_pilot_version.sh` | Read-only: HEAD, pilot label, release files, verification steps, tag command as text | **run** |
+
 ### Readiness bundle (`release/readiness/`)
 
 | Path | Purpose | Action |
@@ -176,6 +185,7 @@ cat release/handoff/FIRST_HOUR_GUIDE.md
 | `release/smoke_test.sh` | Smoke test (service must be running) | repo root |
 | `release/generate_evidence_bundle.sh` | Capture evidence (service must be running) | repo root |
 | `demo/run_demo.sh` | Self-contained 8-step demo | repo root |
+| `release/version/print_pilot_version.sh` | HEAD, pilot label, verification steps, optional tag command | repo root or `release/version/` |
 | `release/readiness/print_readiness_snapshot.sh` | Surfaces, review path, frozen values, out-of-scope | repo root or `release/readiness/` |
 | `release/review-trace/print_review_trace.sh` | Review order, stop conditions, trace resource checks | repo root or `release/review-trace/` |
 | `release/freeze/print_freeze_manifest.sh` | Classified surface listing with protocol values | repo root or `release/freeze/` |

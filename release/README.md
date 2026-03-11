@@ -140,6 +140,8 @@ All removed by `reset_pilot_data.sh`.
 
 ## Additional references
 
+- `release/INDEX.md` — top-level index of every release surface with recommended paths
+- `release/walkthrough/` — single-surface pilot walkthrough (sequence, commands, expected outputs, inspection points)
 - `release/handoff/` — new operator/reviewer entry point (first-hour guide, handoff checklist, known-good state)
 - `release/acceptance/` — pilot acceptance checklist, review worksheet, and acceptance pre-check
 - `release/review/` — external review packet (system overview, operator flow, artifact guide, boundaries)

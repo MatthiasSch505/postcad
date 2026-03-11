@@ -48,7 +48,9 @@ It does not replace the detailed docs elsewhere — it points to them in the rig
 
 ```
 release/
+├── INDEX.md                     top-level index of every release surface
 ├── README.md                    operator runbook
+├── print_release_index.sh       read-only: print all release surfaces + recommended paths
 ├── start_pilot.sh               start the local service
 ├── reset_pilot_data.sh          clean runtime data
 ├── smoke_test.sh                7-step deterministic smoke test
@@ -58,6 +60,7 @@ release/
 │   └── current/                 output from the last evidence run (gitignored)
 ├── review/                      external review packet (5 documents)
 ├── acceptance/                  acceptance checklist, worksheet, pre-check script
+├── walkthrough/                 single-surface 9-step walkthrough narrative + orientation script
 └── handoff/                     this packet
 ```
 

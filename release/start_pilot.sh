@@ -1,38 +1,47 @@
 #!/usr/bin/env bash
 # PostCAD pilot release — start the service locally.
 #
-# Usage:
+# Usage (from repo root or release/ directory):
 #   ./release/start_pilot.sh
 #
 # Starts postcad-service in the foreground on localhost:8080.
-# Runtime data is written to ./data/ relative to the working directory.
+# Runtime data is written under ./data/ (override with POSTCAD_DATA=…).
 # Stop with Ctrl-C.
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SERVICE_BIN="$ROOT_DIR/target/debug/postcad-service"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SERVICE_BIN="$REPO_ROOT/target/debug/postcad-service"
+DATA_DIR="${POSTCAD_DATA:-$REPO_ROOT/data}"
+BASE_URL="http://${POSTCAD_ADDR:-localhost:8080}"
+
+echo ""
+echo "══════════════════════════════════════════"
+echo "  PostCAD Pilot — Local Service Startup"
+echo "══════════════════════════════════════════"
+echo "  Repo root : $REPO_ROOT"
+echo "  Base URL  : $BASE_URL"
+echo "  Data root : $DATA_DIR"
+echo "  Data dirs : cases/ receipts/ policies/ dispatch/ verification/"
+echo "══════════════════════════════════════════"
+echo ""
 
 # ── build if binary is absent ─────────────────────────────────────────────────
 
 if [[ ! -x "$SERVICE_BIN" ]]; then
-  echo "[start_pilot] Building postcad-service..."
-  cargo build --bin postcad-service --manifest-path "$ROOT_DIR/Cargo.toml"
+  echo "[start_pilot] Binary not found at: $SERVICE_BIN"
+  echo "[start_pilot] Building postcad-service (this may take a minute)..."
+  cargo build --bin postcad-service --manifest-path "$REPO_ROOT/Cargo.toml"
+  echo "[start_pilot] Build complete."
+  echo ""
 fi
 
-# ── announce data paths ───────────────────────────────────────────────────────
-
-DATA_DIR="${POSTCAD_DATA:-$ROOT_DIR/data}"
-echo "[start_pilot] Data directory : $DATA_DIR"
-echo "[start_pilot]   cases        : $DATA_DIR/cases/"
-echo "[start_pilot]   receipts     : $DATA_DIR/receipts/"
-echo "[start_pilot]   policies     : $DATA_DIR/policies/"
-echo "[start_pilot]   dispatch     : $DATA_DIR/dispatch/"
-echo "[start_pilot]   verification : $DATA_DIR/verification/"
-echo "[start_pilot] Service address: ${POSTCAD_ADDR:-0.0.0.0:8080}"
-echo "[start_pilot] Starting service (Ctrl-C to stop)..."
-echo ""
-
 # ── start ─────────────────────────────────────────────────────────────────────
+
+echo "[start_pilot] Service starting — press Ctrl-C to stop."
+echo "[start_pilot] When the service prints its listen address, open a second"
+echo "[start_pilot] terminal and run:  ./release/smoke_test.sh"
+echo ""
 
 exec "$SERVICE_BIN"

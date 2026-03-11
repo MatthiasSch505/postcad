@@ -1,21 +1,28 @@
-# PostCAD Pilot Release Bundle
+# PostCAD Pilot — Operator Runbook
 
-This directory contains the operator-facing scripts for running, resetting, and smoke-testing the PostCAD pilot service locally. No external services, no Docker required.
+Local operator guide for the PostCAD pilot service. No Docker, no external services.
 
 ---
 
 ## Prerequisites
 
-- Rust toolchain (`cargo`) — the start script builds the binary automatically if absent
-- `python3` on `PATH` — used by smoke test for JSON pretty-printing only
-- `curl` — used by smoke test
-- Port 8080 free
+| Requirement | Notes |
+|---|---|
+| Rust toolchain (`cargo`) | `start_pilot.sh` builds the binary automatically if absent |
+| `python3` on PATH | used by smoke test for JSON parsing |
+| `curl` on PATH | used by smoke test |
+| Port 8080 free | or override with `POSTCAD_ADDR=host:port` |
+
+Quick check:
+```bash
+cargo --version && python3 --version && curl --version | head -1
+```
 
 ---
 
-## Exact order of commands
+## Exact sequence
 
-### 1. Reset runtime data (clean slate)
+### Step 1 — Reset (clean slate)
 
 ```bash
 ./release/reset_pilot_data.sh
@@ -24,56 +31,49 @@ This directory contains the operator-facing scripts for running, resetting, and 
 Removes `data/cases/`, `data/receipts/`, `data/policies/`, `data/dispatch/`, `data/verification/`.
 Does **not** touch source code, compiled artifacts, or canonical fixtures.
 
-### 2. Start the service
+### Step 2 — Start the service (Terminal A)
 
 ```bash
 ./release/start_pilot.sh
 ```
 
-Starts `postcad-service` in the foreground on `localhost:8080`.
-Leave it running in one terminal; use another for the smoke test.
-Stop with `Ctrl-C`.
+Starts `postcad-service` in the foreground on `http://localhost:8080`.
+Leave it running. Stop with `Ctrl-C`.
 
-To override address or data location:
-
+Overrides:
 ```bash
 POSTCAD_ADDR=127.0.0.1:9000 ./release/start_pilot.sh
 POSTCAD_DATA=/tmp/pilot_data  ./release/start_pilot.sh
 ```
 
-### 3. Run the smoke test (separate terminal)
+### Step 3 — Smoke test (Terminal B, while service is running)
 
 ```bash
 ./release/smoke_test.sh
 ```
 
-Runs a deterministic 7-step pilot flow against the running service:
+Runs a 7-step deterministic flow against the live service:
 
-| Step | Endpoint |
-|------|----------|
-| 1 | `GET /health` |
-| 2 | `POST /cases` |
-| 3 | `POST /cases/:id/route` |
-| 4 | `GET /receipts/:hash` |
-| 5 | `POST /dispatch/:hash` |
-| 6 | `POST /dispatch/:hash/verify` |
-| 7 | `GET /routes` |
+| Step | Method | Endpoint |
+|------|--------|----------|
+| 1 | GET | `/health` |
+| 2 | POST | `/cases` |
+| 3 | POST | `/cases/:id/route` |
+| 4 | GET | `/receipts/:hash` |
+| 5 | POST | `/dispatch/:hash` |
+| 6 | POST | `/dispatch/:hash/verify` |
+| 7 | GET | `/routes` |
 
-Exits 0 on success. Exits nonzero and prints `[FAIL]` on the first assertion failure.
+Exits 0 on success. Prints `[FAIL]` and exits nonzero on the first assertion failure.
 
----
+### Step 4 — Demo (optional, self-contained)
 
-## Where outputs live
+```bash
+./demo/run_demo.sh
+```
 
-| Directory | Contents |
-|-----------|----------|
-| `data/cases/` | Stored case JSON files, keyed by `case_id` |
-| `data/receipts/` | Routing receipts, keyed by `receipt_hash` |
-| `data/policies/` | Derived policies, keyed by `receipt_hash` |
-| `data/dispatch/` | Dispatch records, keyed by `receipt_hash` |
-| `data/verification/` | Verification results, keyed by `receipt_hash` |
-
-All directories are created lazily on first write.
+Starts its own service, runs an 8-step flow, then stops the service. No separate terminal needed.
+See `docs/demo_run.md` for details.
 
 ---
 
@@ -90,30 +90,48 @@ All directories are created lazily on first write.
 
 ---
 
+## Where data lives
+
+| Directory | Contents |
+|---|---|
+| `data/cases/` | Stored case JSON, keyed by `case_id` |
+| `data/receipts/` | Routing receipts, keyed by `receipt_hash` |
+| `data/policies/` | Derived policies, keyed by `receipt_hash` |
+| `data/dispatch/` | Dispatch records, keyed by `receipt_hash` |
+| `data/verification/` | Verification results, keyed by `receipt_hash` |
+
+Directories are created on first write.
+All removed by `reset_pilot_data.sh`.
+
+---
+
+## Common problems and direct fixes
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `[FAIL] Cannot reach http://localhost:8080/health` | Service not started | Run `./release/start_pilot.sh` in Terminal A first |
+| `cargo: command not found` | Rust not installed | Install from https://rustup.rs |
+| `python3: command not found` | Python 3 not on PATH | Install Python 3 and ensure it is on PATH |
+| Port 8080 in use | Another process bound to 8080 | `POSTCAD_ADDR=localhost:9090 ./release/start_pilot.sh` and `POSTCAD_ADDR=http://localhost:9090 ./release/smoke_test.sh` |
+| `Binary not found — building...` on start | First run or clean rebuild | Normal — wait for the build to finish |
+| Smoke test step 5 returns 409 | Receipt already dispatched from a previous run | Normal — the script accepts 409 as idempotent |
+| Smoke test fails after partial run | Data from previous incomplete run | Run `./release/reset_pilot_data.sh` and start over |
+
+---
+
 ## What this does NOT change
 
 - Protocol version (`postcad-v1`)
 - Routing kernel behavior
 - Receipt schema or canonical hashes
-- Any endpoint response shapes
+- Endpoint response shapes
 - Canonical fixtures in `examples/pilot/` or `tests/protocol_vectors/`
 
 ---
 
-## Additional commands
+## Additional references
 
-```bash
-# Full test suite (no service required)
-cargo test --workspace
-
-# Operator UI (browser)
-open http://localhost:8080/
-
-# Full external demo (starts/stops service itself)
-./demo/run_demo.sh
-```
-
-See also:
 - `docs/local_service_run.md` — full curl reference for every endpoint
+- `docs/demo_run.md` — single-command demo walkthrough
 - `docs/pilot_maturity_check.md` — readiness assessment
-- `docs/demo_run.md` — single-command external demo
+- `cargo test --workspace` — full test suite (no service required)

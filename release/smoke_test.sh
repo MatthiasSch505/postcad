@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # PostCAD pilot release — smoke test.
 #
-# Usage:
+# Usage (from repo root or release/ directory):
 #   ./release/smoke_test.sh
 #
 # Assumes postcad-service is already running on localhost:8080.
-# Runs a minimal deterministic pilot smoke flow and exits nonzero on failure.
+# Start it first with:  ./release/start_pilot.sh
+#
+# Runs a deterministic 7-step pilot smoke flow and exits nonzero on failure.
 #
 # Flow:
 #   1. GET  /health                      — service is up
@@ -21,10 +23,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BASE_URL="${POSTCAD_ADDR:-http://localhost:8080}"
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REGISTRY="$ROOT_DIR/examples/pilot/registry_snapshot.json"
-CONFIG="$ROOT_DIR/examples/pilot/config.json"
+REGISTRY="$REPO_ROOT/examples/pilot/registry_snapshot.json"
+CONFIG="$REPO_ROOT/examples/pilot/config.json"
 
 # Canonical pilot case — deterministic; same case_id every run.
 PILOT_CASE='{
@@ -45,7 +48,7 @@ fail() { echo "  [FAIL] $*" >&2; exit 1; }
 
 assert_status() {
   local label="$1" expected="$2" actual="$3"
-  [[ "$actual" == "$expected" ]] || fail "$label: expected HTTP $expected, got $actual"
+  [[ "$actual" == "$expected" ]] || fail "Phase $label: expected HTTP $expected, got HTTP $actual"
 }
 
 assert_field() {
@@ -58,10 +61,43 @@ v = d
 for k in keys:
     v = v[k]
 assert v is not None and v != '', f'field {sys.argv[2]} is null/empty'
-" "$json" "$field" || fail "$label: field '$field' missing or empty in response"
+" "$json" "$field" || fail "Phase $label: field '$field' missing or empty in response"
 }
 
 hr() { echo ""; echo "── $* ──────────────────────────────────────────────"; }
+
+# ── PRE-FLIGHT — required tools ───────────────────────────────────────────────
+
+hr "Pre-flight checks"
+for tool in curl python3; do
+  if ! command -v "$tool" &>/dev/null; then
+    fail "Pre-flight: '$tool' not found on PATH — install it before running this script"
+  fi
+  echo "  [OK] $tool found: $(command -v "$tool")"
+done
+
+for fixture in "$REGISTRY" "$CONFIG"; do
+  [[ -f "$fixture" ]] || fail "Pre-flight: fixture not found: $fixture"
+  echo "  [OK] fixture: $fixture"
+done
+
+echo "  [OK] Base URL: $BASE_URL"
+
+# ── PRE-FLIGHT — service reachable ────────────────────────────────────────────
+
+echo ""
+echo "  Checking service reachability..."
+REACH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "$BASE_URL/health" 2>/dev/null || echo "000")
+if [[ "$REACH_STATUS" == "000" ]]; then
+  echo "" >&2
+  echo "  [FAIL] Cannot reach $BASE_URL/health (connection refused or timeout)" >&2
+  echo "" >&2
+  echo "  Is the service running? Start it with:" >&2
+  echo "    ./release/start_pilot.sh" >&2
+  echo "" >&2
+  exit 1
+fi
+echo "  [OK] Service reachable (HTTP $REACH_STATUS)"
 
 # ── STEP 1 — health ───────────────────────────────────────────────────────────
 

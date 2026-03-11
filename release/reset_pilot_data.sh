@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
 # PostCAD pilot release — reset local runtime data.
 #
-# Usage:
+# Usage (from repo root or release/ directory):
 #   ./release/reset_pilot_data.sh
 #
-# Removes only the runtime data directories written by postcad-service:
-#   data/cases/, data/receipts/, data/policies/,
-#   data/dispatch/, data/verification/
+# Removes only the five runtime data directories written by postcad-service.
+# Stop the service before running this script.
 #
-# Does NOT touch:
-#   - source code
-#   - canonical fixture directories (frozen inputs and expected outputs)
-#   - any compiled artifacts
-#
-# Safe to run while the service is stopped. Do not run while the service
-# is writing to the same data directory.
+# Touches:          data/cases/  data/receipts/  data/policies/
+#                   data/dispatch/  data/verification/
+# Does NOT touch:   source code, compiled binaries, canonical fixtures
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DATA_DIR="${POSTCAD_DATA:-$ROOT_DIR/data}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DATA_DIR="${POSTCAD_DATA:-$REPO_ROOT/data}"
 
 RUNTIME_DIRS=(
   "$DATA_DIR/cases"
@@ -29,24 +25,32 @@ RUNTIME_DIRS=(
   "$DATA_DIR/verification"
 )
 
-echo "[reset_pilot_data] Data root: $DATA_DIR"
+echo ""
+echo "[reset_pilot_data] Repo root : $REPO_ROOT"
+echo "[reset_pilot_data] Data root : $DATA_DIR"
 echo ""
 
-any_removed=0
+removed=0
+skipped=0
 for dir in "${RUNTIME_DIRS[@]}"; do
   if [[ -d "$dir" ]]; then
-    file_count=$(find "$dir" -maxdepth 1 -type f | wc -l)
+    file_count=$(find "$dir" -maxdepth 1 -type f | wc -l | tr -d ' ')
     rm -rf "$dir"
-    echo "[reset_pilot_data] Removed: $dir  ($file_count file(s))"
-    any_removed=1
+    echo "[reset_pilot_data] REMOVED  $dir  ($file_count file(s))"
+    removed=$((removed + 1))
   else
-    echo "[reset_pilot_data] Skipped (not present): $dir"
+    echo "[reset_pilot_data] skipped  $dir  (not present)"
+    skipped=$((skipped + 1))
   fi
 done
 
 echo ""
-if [[ "$any_removed" == "1" ]]; then
-  echo "[reset_pilot_data] Reset complete. Runtime data cleared."
+echo "[reset_pilot_data] ── NOT touched ──────────────────────────────────────"
+echo "[reset_pilot_data]   source code, compiled artifacts, canonical fixtures"
+echo ""
+
+if [[ "$removed" -gt 0 ]]; then
+  echo "[reset_pilot_data] Done. $removed director(ies) removed, $skipped skipped."
 else
-  echo "[reset_pilot_data] Nothing to remove. Data directories were already absent."
+  echo "[reset_pilot_data] Nothing to remove. All runtime directories were already absent."
 fi

@@ -2,7 +2,7 @@ use std::fs;
 use std::process;
 
 use postcad_cli::{
-    build_manifest, route_case_from_json, route_case_from_policy_json,
+    build_manifest, route_case_from_json,
     route_case_from_registry_json, verify_receipt_from_inputs, verify_receipt_from_policy_json,
     PROTOCOL_VERSION,
 };
@@ -298,34 +298,44 @@ fn run_verify_receipt(args: &[String]) {
 
 // ── Frozen v1 demo fixtures (embedded at compile time) ───────────────────────
 
-/// Frozen case input for the v1 demo flow.
-const DEMO_CASE_JSON: &str = include_str!("../../../fixtures/case.json");
-/// Frozen RoutingPolicyBundle for the v1 demo flow.
-const DEMO_POLICY_JSON: &str = include_str!("../../../fixtures/policy.json");
+// Registry-backed pilot v1 demo fixtures (protocol vector v01).
+const DEMO_CASE_JSON: &str =
+    include_str!("../../../tests/protocol_vectors/v01_basic_routing/case.json");
+const DEMO_REGISTRY_JSON: &str =
+    include_str!("../../../tests/protocol_vectors/v01_basic_routing/registry_snapshot.json");
+const DEMO_CONFIG_JSON: &str =
+    include_str!("../../../tests/protocol_vectors/v01_basic_routing/policy.json");
 
 /// `demo-run` — executes the frozen PostCAD Protocol v1 flow in one command.
 ///
-/// Steps:
-///   1. Route the frozen demo case through the compliance pipeline.
-///   2. Print the routing outcome and key receipt fields.
-///   3. Verify the receipt against the same frozen inputs.
-///   4. Print VERIFIED (or exit 1 on failure).
+/// Demonstrates the full registry-backed pilot loop:
+///   1. Derive candidates from the registry snapshot.
+///   2. Route the case deterministically.
+///   3. Emit the routing receipt.
+///   4. Verify the receipt against the same inputs.
+///   5. Print VERIFIED (or exit 1 on failure).
 ///
 /// Uses only embedded compile-time fixtures; no file I/O, no flags required.
 /// `--json` emits a compact summary object instead of human-readable output.
 fn run_demo_v1(args: &[String]) {
     let json_output = args.iter().any(|a| a.as_str() == "--json");
 
-    // Step 1: route.
-    let receipt = match route_case_from_policy_json(DEMO_CASE_JSON, DEMO_POLICY_JSON) {
-        Ok(r) => r,
-        Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
-    };
+    // Step 1 + 2: derive candidates from registry and route.
+    let result =
+        match route_case_from_registry_json(DEMO_CASE_JSON, DEMO_REGISTRY_JSON, DEMO_CONFIG_JSON) {
+            Ok(r) => r,
+            Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
+        };
 
-    let receipt_json = serde_json::to_string(&receipt).unwrap();
+    let receipt = &result.receipt;
+    let receipt_json = serde_json::to_string(receipt).unwrap();
 
-    // Step 2 + 3: verify.
-    match verify_receipt_from_policy_json(&receipt_json, DEMO_CASE_JSON, DEMO_POLICY_JSON) {
+    // Step 3 + 4: verify using the derived policy bundle.
+    match verify_receipt_from_policy_json(
+        &receipt_json,
+        DEMO_CASE_JSON,
+        &result.derived_policy_json,
+    ) {
         Ok(()) => {
             if json_output {
                 println!(

@@ -1,134 +1,183 @@
-# PostCAD Protocol v1 — Pilot Workflow
+# PostCAD Pilot Bundle
 
-Runnable end-to-end demonstration of PostCAD Protocol v1: registry-backed routing, deterministic selection, and replay verification.
-
----
-
-## Pilot Overview
-
-The pilot exercises the full protocol loop:
-
-```
-case.json + registry_snapshot.json + config.json
-          ↓
-  route-case-from-registry
-          ↓
-  receipt.json  (committed, self-verified)
-          ↓
-  Verification: OK
-```
-
-Routing is deterministic: the same inputs always produce the same receipt hash.
-
-Self-verification runs automatically inside the routing step. If the receipt fails to verify, the command exits non-zero and no receipt is written.
+End-to-end runnable example of registry-backed routing and receipt verification using PostCAD Protocol v1.
 
 ---
 
-## Inputs
+## Files
 
 | File | Description |
 |------|-------------|
-| `case.json` | Dental case — procedure, material, jurisdiction, routing policy. |
-| `registry_snapshot.json` | Three manufacturing candidates with capabilities and attestation statuses. |
-| `config.json` | Routing configuration — jurisdiction `DE`, policy `allow_domestic_and_cross_border`. |
+| `case.json` | Dental case input — procedure, material, jurisdiction, routing policy |
+| `registry_snapshot.json` | Three active manufacturers in Germany, all capable of zirconia crowns |
+| `config.json` | Routing configuration — jurisdiction `DE`, policy `allow_domestic_and_cross_border` |
+| `derived_policy.json` | Full routing policy bundle derived from `registry_snapshot.json` — required for `verify-receipt` |
+| `expected_routed.json` | Locked routing receipt — canonical output for these inputs |
+| `expected_verify.json` | Locked verification result — `{"result":"VERIFIED"}` |
+| `receipt.json` | Written by `run_pilot.sh` at runtime |
 
-### case.json
+---
+
+## Prerequisites
+
+```bash
+cargo build --bin postcad-cli
+cargo build --bin postcad-service
+```
+
+Binaries are written to `target/debug/`.
+
+---
+
+## CLI: Route
+
+Routes the pilot case and self-verifies the receipt in one step. Exits non-zero if self-verification fails.
+
+```bash
+./target/debug/postcad-cli route-case-from-registry --json \
+  --case     examples/pilot/case.json \
+  --registry examples/pilot/registry_snapshot.json \
+  --config   examples/pilot/config.json
+```
+
+Expected output: contents of `expected_routed.json`.
+
+`run_pilot.sh` wraps this command and writes the receipt to `receipt.json`:
+
+```bash
+./examples/pilot/run_pilot.sh
+```
+
+---
+
+## CLI: Verify
+
+Explicit receipt verification against the locked receipt and derived policy:
+
+```bash
+./target/debug/postcad-cli verify-receipt --json \
+  --receipt    examples/pilot/expected_routed.json \
+  --case       examples/pilot/case.json \
+  --policy     examples/pilot/derived_policy.json \
+  --candidates examples/pilot/derived_policy.json
+```
+
+Note: `derived_policy.json` contains both `snapshots` (used by `--policy`) and `candidates` (used by `--candidates`). Pass it for both arguments.
+
+Expected exit code: 0. Expected stdout: `{"result":"VERIFIED"}`.
+
+---
+
+## Service: Run
+
+```bash
+./target/debug/postcad-service
+# listening on 0.0.0.0:8080
+```
+
+Set a custom address with `POSTCAD_ADDR`:
+
+```bash
+POSTCAD_ADDR=127.0.0.1:9000 ./target/debug/postcad-service
+```
+
+---
+
+## Service: /health
+
+```bash
+curl -s http://localhost:8080/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+---
+
+## Service: /version
+
+```bash
+curl -s http://localhost:8080/version
+```
+
+Expected response:
+
+```json
+{"protocol_version":"postcad-v1","routing_kernel_version":"postcad-routing-v1","service":"postcad-service"}
+```
+
+---
+
+## Service: POST /route
+
+```bash
+curl -s -X POST http://localhost:8080/route \
+  -H 'Content-Type: application/json' \
+  -d "{
+    \"case\":             $(cat examples/pilot/case.json),
+    \"registry_snapshot\": $(cat examples/pilot/registry_snapshot.json),
+    \"routing_config\":   $(cat examples/pilot/config.json)
+  }"
+```
+
+Expected response shape:
 
 ```json
 {
-  "case_id": "f1000001-0000-0000-0000-000000000001",
-  "jurisdiction": "DE",
-  "routing_policy": "allow_domestic_and_cross_border",
-  "patient_country": "germany",
-  "manufacturer_country": "germany",
-  "material": "zirconia",
-  "procedure": "crown",
-  "file_type": "stl"
+  "receipt": { ... },
+  "derived_policy": { ... }
 }
 ```
 
-### registry_snapshot.json
-
-Three active manufacturers, all serving Germany, all capable of zirconia crowns:
-
-- `pilot-de-001` — Alpha Dental GmbH (5-day SLA)
-- `pilot-de-002` — Beta Zahntechnik GmbH (3-day SLA)
-- `pilot-de-003` — Gamma Dental GmbH (7-day SLA)
-
-All three pass the compliance gate (`attestation_statuses: ["verified"]`). The routing kernel selects `pilot-de-001` deterministically via `HighestPriority` strategy.
+`receipt` matches `expected_routed.json`. `derived_policy` matches `derived_policy.json`.
 
 ---
 
-## Running the Pilot
-
-Prerequisites: Rust toolchain installed (`cargo`).
-
-### Full routing + verification
+## Service: POST /verify
 
 ```bash
-cd examples/pilot
-./run_pilot.sh
+curl -s -X POST http://localhost:8080/verify \
+  -H 'Content-Type: application/json' \
+  -d "{
+    \"receipt\": $(cat examples/pilot/expected_routed.json),
+    \"case\":    $(cat examples/pilot/case.json),
+    \"policy\":  $(cat examples/pilot/derived_policy.json)
+  }"
 ```
 
-Expected output:
+Expected response: contents of `expected_verify.json`.
 
-```
-PostCAD Protocol v1 — Pilot Workflow
-======================================
-
-Routing case...
-
-Result:               routed
-Selected candidate:   pilot-de-001
-Receipt hash:         <64-char hex digest>
-Kernel version:       postcad-routing-v1
-
-Receipt written to:   examples/pilot/receipt.json
-
-Verification: OK
-
-  (Self-verification ran inside the routing step.
-   The receipt would not have been emitted if it failed to verify.)
-```
-
-### Standalone end-to-end demo
-
-```bash
-cd examples/pilot
-./verify.sh
-```
-
-This runs the `demo-run` command using frozen protocol-vector v01 fixtures, which routes a case and immediately verifies the receipt. Output includes the VERIFIED result and protocol version.
-
-```bash
-./verify.sh --json    # JSON output
+```json
+{"result":"VERIFIED"}
 ```
 
 ---
 
-## Expected Output
+## Expected Output Files
 
-After `./run_pilot.sh`:
+`expected_routed.json` — locked routing receipt:
+- `outcome`: `"routed"`
+- `selected_candidate_id`: `"pilot-de-001"`
+- `receipt_hash`: `0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb`
 
-- `receipt.json` is written to `examples/pilot/`.
-- The receipt is a complete PostCAD Protocol v1 routing receipt with all 21 committed fields.
-- The `receipt_hash` is a SHA-256 digest of the canonical receipt content.
-- The receipt hash is stable: running the script again with the same inputs produces the same hash.
-
-Determinism check:
-
-```bash
-HASH1=$(./run_pilot.sh 2>/dev/null | grep "Receipt hash" | awk '{print $NF}')
-HASH2=$(./run_pilot.sh 2>/dev/null | grep "Receipt hash" | awk '{print $NF}')
-[ "$HASH1" = "$HASH2" ] && echo "Determinism: OK"
+`expected_verify.json`:
+```json
+{"result": "VERIFIED"}
 ```
+
+Running the same inputs twice produces the same `receipt_hash`. The receipt will not change unless the inputs change.
 
 ---
 
-## Protocol Reference
+## Smoke Test
 
-- Specification: `docs/postcad_protocol_v1.md`
-- Protocol version: `postcad-v1` (semver `1.0`)
-- Routing kernel: `postcad-routing-v1` (semver `1.0`)
-- Full manifest: `postcad-cli protocol-manifest`
-- Compact info:  `postcad-cli protocol-info`
+The pilot bundle is covered by an in-process smoke test:
+
+```bash
+cargo test -p postcad-service --test pilot_bundle_smoke_test
+```
+
+The test routes using the pilot fixtures, compares the receipt to `expected_routed.json` value-for-value, then verifies and compares to `expected_verify.json`.

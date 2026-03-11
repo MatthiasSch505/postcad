@@ -1,0 +1,61 @@
+{
+  "candidates": [
+    {
+      "accepts_case": true,
+      "eligibility": "eligible",
+      "id": "pilot-de-001",
+      "location": "domestic",
+      "manufacturer_id": "pilot-de-001"
+    },
+    {
+      "accepts_case": true,
+      "eligibility": "eligible",
+      "id": "pilot-de-002",
+      "location": "domestic",
+      "manufacturer_id": "pilot-de-002"
+    },
+    {
+      "accepts_case": true,
+      "eligibility": "eligible",
+      "id": "pilot-de-003",
+      "location": "domestic",
+      "manufacturer_id": "pilot-de-003"
+    }
+  ],
+  "compliance_profile": null,
+  "jurisdiction": "DE",
+  "policy_version": null,
+  "routing_policy": "allow_domestic_and_cross_border",
+  "snapshots": [
+    {
+      "attestation_statuses": [
+        "verified"
+      ],
+      "evidence_references": [
+        "registry::pilot-de-001::0"
+      ],
+      "is_eligible": true,
+      "manufacturer_id": "pilot-de-001"
+    },
+    {
+      "attestation_statuses": [
+        "verified"
+      ],
+      "evidence_references": [
+        "registry::pilot-de-002::0"
+      ],
+      "is_eligible": true,
+      "manufacturer_id": "pilot-de-002"
+    },
+    {
+      "attestation_statuses": [
+        "verified"
+      ],
+      "evidence_references": [
+        "registry::pilot-de-003::0"
+      ],
+      "is_eligible": true,
+      "manufacturer_id": "pilot-de-003"
+    }
+  ]
+}

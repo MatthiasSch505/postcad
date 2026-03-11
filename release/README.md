@@ -140,6 +140,7 @@ All removed by `reset_pilot_data.sh`.
 
 ## Additional references
 
+- `release/review/` — external review packet (system overview, operator flow, artifact guide, boundaries)
 - `docs/local_service_run.md` — full curl reference for every endpoint
 - `docs/demo_run.md` — single-command demo walkthrough
 - `docs/pilot_maturity_check.md` — readiness assessment

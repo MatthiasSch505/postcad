@@ -1,0 +1,9 @@
+target/
+.git/
+.github/
+examples/pilot/receipt.json
+docs/
+*.md
+.env
+.env.*
+!.env.example

@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  postcad-node:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: postcad-node:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./examples/pilot:/data/pilot
+    environment:
+      POSTCAD_ADDR: "0.0.0.0:8080"
+      RUST_LOG: "info"

@@ -176,8 +176,8 @@ postcad-cli         route-case and verify-receipt CLI commands
 
 ## Reviewer shell — one-page local app
 
-No shell scripts. No copy-pasting JSON. Open a browser, click two buttons, see
-real kernel output.
+A thin reviewer shell over the real route/verify kernel. No mocked decisions.
+No shell scripts. Fixed pilot fixtures are loaded from the backend at startup.
 
 ```bash
 # From the repo root:
@@ -186,11 +186,15 @@ cargo run -p postcad-service
 
 Then open: **http://localhost:8080/reviewer**
 
-The page auto-loads the pilot fixtures from `examples/pilot/`, runs the real
-routing kernel, and shows the receipt. Click **Verify Receipt** to replay the
-decision and confirm the hash matches.
+**Steps (under 30 seconds):**
 
-What you will see after clicking both buttons:
+1. The page auto-loads pilot fixtures from `examples/pilot/` — no input needed
+2. Click **Execute Routing Kernel** — runs real `POST /route`, shows receipt
+3. Click **Replay Verification** — runs real `POST /verify`, shows VERIFIED
+4. Click **Tamper + Verify** — modifies `selected_candidate_id` client-side,
+   submits to real `POST /verify`, shows the real verification failure
+
+What you will see:
 
 | Field | Value |
 |---|---|
@@ -198,9 +202,10 @@ What you will see after clicking both buttons:
 | selected_candidate_id | `pilot-de-001` |
 | receipt_hash | `0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb` |
 | verify result | `VERIFIED` |
+| tamper result | `routing_decision_hash_mismatch` (real error from verifier) |
 
 The receipt hash is deterministic — the same inputs always produce the same hash.
-Changing any input field will change the hash and cause verification to fail.
+The tamper demo proves receipts are tamper-evident: one field change is caught immediately.
 
 ---
 

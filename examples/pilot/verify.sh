@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# PostCAD Protocol v1 — Standalone Verification
+# PostCAD Protocol v1 — Pilot Receipt Verification
 #
-# Runs the end-to-end demo using embedded frozen protocol-vector v01 fixtures.
-# This command routes the case AND verifies the receipt in a single step,
-# printing a VERIFIED result.
+# Verifies the routing receipt produced by run_pilot.sh against the original
+# pilot inputs. Exits non-zero if verification fails.
 #
 # Usage:
 #   ./verify.sh              # human-readable output
@@ -20,18 +19,27 @@ if [[ ! -x "$BIN" ]]; then
   cargo build --bin postcad-cli --quiet --manifest-path "${REPO_ROOT}/Cargo.toml"
 fi
 
+RECEIPT="${SCRIPT_DIR}/receipt.json"
+
+if [[ ! -f "$RECEIPT" ]]; then
+  echo "error: receipt.json not found — run run_pilot.sh first" >&2
+  exit 1
+fi
+
 JSON_FLAG=""
 if [[ "${1:-}" == "--json" ]]; then
   JSON_FLAG="--json"
 fi
 
-echo "PostCAD Protocol v1 — Verification"
-echo "====================================="
-echo ""
-echo "Running demo route + verify..."
+echo "PostCAD Protocol v1 — Pilot Receipt Verification"
+echo "=================================================="
 echo ""
 
-"$BIN" demo-run $JSON_FLAG
+"$BIN" verify-receipt $JSON_FLAG \
+  --receipt    "${SCRIPT_DIR}/receipt.json" \
+  --case       "${SCRIPT_DIR}/case.json" \
+  --policy     "${SCRIPT_DIR}/derived_policy.json" \
+  --candidates "${SCRIPT_DIR}/candidates.json"
 
 echo ""
 echo "Verification complete."

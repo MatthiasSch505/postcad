@@ -1,0 +1,23 @@
+[
+  {
+    "accepts_case": true,
+    "eligibility": "eligible",
+    "id": "pilot-de-001",
+    "location": "domestic",
+    "manufacturer_id": "pilot-de-001"
+  },
+  {
+    "accepts_case": true,
+    "eligibility": "eligible",
+    "id": "pilot-de-002",
+    "location": "domestic",
+    "manufacturer_id": "pilot-de-002"
+  },
+  {
+    "accepts_case": true,
+    "eligibility": "eligible",
+    "id": "pilot-de-003",
+    "location": "domestic",
+    "manufacturer_id": "pilot-de-003"
+  }
+]

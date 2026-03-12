@@ -26,7 +26,8 @@ The `release/` tree is the local pilot package: scripts to run the service, chec
 
 | Path | Purpose | Action |
 |---|---|---|
-| `scripts/external_pilot_smoke.sh` | **One-command** end-to-end smoke run — builds, starts service, runs full 7-step pilot flow, confirms frozen receipt hash, shuts down. No prior setup required. | **run** |
+| `scripts/prepare_reviewer_handoff.sh` | **Single handoff command** — runs acceptance gate, exports reviewer pack, generates `HANDOFF_MESSAGE.txt`. Ready-to-send when it prints HANDOFF READY. | **run** |
+| `scripts/external_pilot_smoke.sh` | One-command end-to-end smoke run — builds, starts service, runs full 7-step pilot flow, confirms frozen receipt hash, shuts down. No prior setup required. | **run** |
 | `scripts/export_reviewer_pack.sh` | Export minimum reviewer-facing evidence to `release/out/reviewer-pack-pilot-local-v1/` — curated folder for handoff to an outside reviewer. | **run** |
 
 See `docs/external_pilot_smoke.md` for smoke run prerequisites, expected output, and failure fixes.
@@ -199,7 +200,8 @@ cat release/handoff/FIRST_HOUR_GUIDE.md
 
 | Script | Purpose | Must be run from |
 |---|---|---|
-| `scripts/external_pilot_smoke.sh` | **One-command external smoke run** (builds + runs service) | repo root |
+| `scripts/prepare_reviewer_handoff.sh` | **Full handoff sequence** (acceptance + export + message) | repo root |
+| `scripts/external_pilot_smoke.sh` | One-command external smoke run (builds + runs service) | repo root |
 | `scripts/export_reviewer_pack.sh` | Export reviewer pack to `release/out/` | repo root |
 | `release/start_pilot.sh` | Start service | repo root |
 | `release/reset_pilot_data.sh` | Clean runtime data | repo root |

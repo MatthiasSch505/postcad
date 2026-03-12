@@ -125,6 +125,14 @@ if [[ -f "${CHECKLIST_SRC}" ]]; then
     HAVE_CHECKLIST=true
 fi
 
+# Copy external feedback template if present
+FEEDBACK_SRC="${REPO_ROOT}/release/EXTERNAL_FEEDBACK_TEMPLATE.md"
+HAVE_FEEDBACK=false
+if [[ -f "${FEEDBACK_SRC}" ]]; then
+    cp "${FEEDBACK_SRC}" "${OUT_DIR}/EXTERNAL_FEEDBACK_TEMPLATE.md"
+    HAVE_FEEDBACK=true
+fi
+
 ok "files copied"
 
 # ── C. GENERATE README ────────────────────────────────────────────────────────
@@ -164,6 +172,7 @@ cat > "${OUT_DIR}/README.md" <<READMEEOF
 | \`EXTERNAL_BOUNDARIES.md\` | Explicit scope boundaries — what this package is and is not |
 | \`external_pilot_smoke.md\` | Quickstart for running the one-command end-to-end smoke run |
 | \`REVIEWER_DRY_RUN_CHECKLIST.md\` | Structured evaluation checklist for the reviewer |
+| \`EXTERNAL_FEEDBACK_TEMPLATE.md\` | Fillable feedback form to return to the pilot team |
 | \`fixtures/case.json\` | Canonical pilot case input |
 | \`fixtures/registry_snapshot.json\` | Manufacturer registry used for routing |
 | \`fixtures/config.json\` | Routing configuration |
@@ -239,6 +248,7 @@ stage "D. Generate MANIFEST.txt"
     echo "EXTERNAL_BOUNDARIES.md"
     echo "external_pilot_smoke.md"
     ${HAVE_CHECKLIST} && echo "REVIEWER_DRY_RUN_CHECKLIST.md"
+    ${HAVE_FEEDBACK}  && echo "EXTERNAL_FEEDBACK_TEMPLATE.md"
     echo "fixtures/case.json"
     echo "fixtures/registry_snapshot.json"
     echo "fixtures/config.json"

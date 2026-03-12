@@ -34,7 +34,7 @@ check_pass() { echo "$(pad "$1")PASS"; }
 check_fail() { echo "$(pad "$1")FAIL  — $2" >&2; OVERALL_PASS=false; }
 
 require_file() {
-    local path="$1" label="$2"
+    local path="$1"
     if [[ -f "${REPO_ROOT}/${path}" ]]; then
         echo "  [OK]  ${path}"
     else

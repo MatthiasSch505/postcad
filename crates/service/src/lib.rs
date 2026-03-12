@@ -4,6 +4,7 @@ mod dispatch_store;
 mod handlers;
 mod policy_store;
 mod receipt_store;
+mod reviewer;
 pub mod ui;
 mod verification_store;
 
@@ -158,6 +159,9 @@ pub fn app_with_all_stores(
             "/protocol-manifest",
             routing::get(handlers::protocol_manifest),
         )
+        // Reviewer shell
+        .route("/reviewer", routing::get(handlers::reviewer_page))
+        .route("/pilot-fixtures", routing::get(handlers::pilot_fixtures))
         // Pilot endpoints
         .route("/health", routing::get(handlers::health))
         .route("/version", routing::get(handlers::version))

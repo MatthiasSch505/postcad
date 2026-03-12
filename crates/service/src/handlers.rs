@@ -16,6 +16,7 @@ use serde_json::{json, Value};
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
 use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
 use crate::demo::DEMO_HTML;
+use crate::reviewer::REVIEWER_HTML;
 use crate::ui::OPERATOR_UI_HTML;
 use crate::{AppState, DispatchState, DispatchVerifyState};
 
@@ -245,6 +246,54 @@ pub async fn pilot_verify(Json(body): Json<Value>) -> impl IntoResponse {
         )
             .into_response(),
     }
+}
+
+// ── Reviewer endpoints ────────────────────────────────────────────────────────
+
+/// GET /reviewer
+///
+/// Serves the minimal reviewer shell — one page, two actions (Route + Verify),
+/// auto-loads pilot fixtures, calls real kernel endpoints.
+pub async fn reviewer_page() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        REVIEWER_HTML,
+    )
+}
+
+/// GET /pilot-fixtures
+///
+/// Reads `examples/pilot/{case.json, registry_snapshot.json, config.json}` and
+/// returns them as a single JSON object ready to POST to `POST /route`.
+///
+/// Returns 503 if any file is missing (service must be started from repo root).
+pub async fn pilot_fixtures() -> impl IntoResponse {
+    let paths = [
+        ("case",              "examples/pilot/case.json"),
+        ("registry_snapshot", "examples/pilot/registry_snapshot.json"),
+        ("routing_config",    "examples/pilot/config.json"),
+    ];
+
+    let mut out = serde_json::Map::new();
+    for (key, path) in &paths {
+        match std::fs::read_to_string(path) {
+            Ok(content) => match serde_json::from_str::<Value>(&content) {
+                Ok(v) => { out.insert((*key).to_string(), v); }
+                Err(e) => return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"error": {"code": "fixture_parse_error",
+                        "message": format!("{path}: {e}")}})),
+                ).into_response(),
+            },
+            Err(e) => return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({"error": {"code": "fixture_not_found",
+                    "message": format!("Could not read {path}: {e}. Start the service from the repo root.")}})),
+            ).into_response(),
+        }
+    }
+    (StatusCode::OK, Json(Value::Object(out))).into_response()
 }
 
 // ── Case intake endpoints ─────────────────────────────────────────────────────

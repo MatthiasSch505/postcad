@@ -174,6 +174,36 @@ postcad-cli         route-case and verify-receipt CLI commands
 
 ---
 
+## Reviewer shell — one-page local app
+
+No shell scripts. No copy-pasting JSON. Open a browser, click two buttons, see
+real kernel output.
+
+```bash
+# From the repo root:
+cargo run -p postcad-service
+```
+
+Then open: **http://localhost:8080/reviewer**
+
+The page auto-loads the pilot fixtures from `examples/pilot/`, runs the real
+routing kernel, and shows the receipt. Click **Verify Receipt** to replay the
+decision and confirm the hash matches.
+
+What you will see after clicking both buttons:
+
+| Field | Value |
+|---|---|
+| outcome | `routed` |
+| selected_candidate_id | `pilot-de-001` |
+| receipt_hash | `0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb` |
+| verify result | `VERIFIED` |
+
+The receipt hash is deterministic — the same inputs always produce the same hash.
+Changing any input field will change the hash and cause verification to fail.
+
+---
+
 ## Local service deployment
 
 See [docs/local_service_run.md](docs/local_service_run.md) for the one-command Docker-based local run path.

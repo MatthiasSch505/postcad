@@ -22,6 +22,14 @@ The `release/` tree is the local pilot package: scripts to run the service, chec
 
 ## Release surfaces
 
+### External entry point
+
+| Path | Purpose | Action |
+|---|---|---|
+| `scripts/external_pilot_smoke.sh` | **One-command** end-to-end smoke run — builds, starts service, runs full 7-step pilot flow, confirms frozen receipt hash, shuts down. No prior setup required. | **run** |
+
+See `docs/external_pilot_smoke.md` for prerequisites, expected output, and failure fixes.
+
 ### Operator scripts (executable)
 
 | Path | Purpose | Action |
@@ -190,6 +198,7 @@ cat release/handoff/FIRST_HOUR_GUIDE.md
 
 | Script | Purpose | Must be run from |
 |---|---|---|
+| `scripts/external_pilot_smoke.sh` | **One-command external smoke run** (builds + runs service) | repo root |
 | `release/start_pilot.sh` | Start service | repo root |
 | `release/reset_pilot_data.sh` | Clean runtime data | repo root |
 | `release/smoke_test.sh` | Smoke test (service must be running) | repo root |

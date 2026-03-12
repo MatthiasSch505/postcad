@@ -37,7 +37,7 @@ main{max-width:1100px;margin:1.2rem auto;padding:0 1rem 3.5rem;display:grid;gap:
 .hero-title{font-size:1.15rem;font-weight:700;color:#f0f6fc;margin-bottom:.2rem}
 .hero-sub{font-size:.82rem;color:#8b949e;margin-bottom:.25rem}
 .hero-why{font-size:.78rem;color:#6e7681;margin-bottom:.9rem;
-          border-left:2px solid #30363d;padding-left:.6rem}
+          border-left:2px solid #21262d;padding-left:.6rem}
 
 /* ── 4-step flow ── */
 .flow{display:flex;align-items:stretch;gap:0;overflow-x:auto}
@@ -50,7 +50,7 @@ main{max-width:1100px;margin:1.2rem auto;padding:0 1rem 3.5rem;display:grid;gap:
           text-transform:uppercase;margin-bottom:.2rem}
 .flow-label{font-size:.75rem;font-weight:700;color:#c9d1d9;margin-bottom:.2rem}
 .flow-desc{font-size:.68rem;color:#8b949e;line-height:1.45}
-.flow-arrow{align-self:center;color:#30363d;font-size:.9rem;padding:0 .1rem;
+.flow-arrow{align-self:center;color:#6e7681;font-size:.9rem;padding:0 .1rem;
             flex-shrink:0}
 
 /* ── card ── */
@@ -68,7 +68,7 @@ main{max-width:1100px;margin:1.2rem auto;padding:0 1rem 3.5rem;display:grid;gap:
              letter-spacing:.06em;margin:.55rem 0 .15rem;display:flex;
              align-items:center;gap:.4rem}
 .input-label:first-child{margin-top:0}
-.input-badge{font-size:.6rem;color:#30363d;background:#1c2128;
+.input-badge{font-size:.6rem;color:#8b949e;background:#1c2128;
              border:1px solid #30363d;border-radius:2px;padding:.02rem .3rem}
 details{margin-bottom:.15rem}
 summary{font-size:.72rem;color:#58a6ff;cursor:pointer;padding:.15rem 0;
@@ -97,7 +97,7 @@ pre.fixture{background:#0d1117;border:1px solid #21262d;border-radius:5px;
 /* ── artifact summary ── */
 .artifacts{background:#0d1117;border:1px solid #21262d;border-radius:6px;
            padding:.65rem .85rem;margin-bottom:.65rem}
-.artifact-row{display:grid;grid-template-columns:130px 1fr;gap:.15rem .6rem;
+.artifact-row{display:grid;grid-template-columns:max-content 1fr;gap:.15rem .6rem;
               align-items:baseline;margin-bottom:.2rem}
 .artifact-row:last-child{margin-bottom:0}
 .art-key{font-size:.65rem;color:#6e7681;text-transform:uppercase;
@@ -148,12 +148,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
        border-top:1px solid #21262d;padding:.45rem 1.2rem;
        display:flex;align-items:center;gap:1.4rem;font-size:.67rem;
        color:#6e7681;z-index:10;overflow-x:auto;white-space:nowrap}
-.ft-label{color:#30363d;font-size:.62rem;text-transform:uppercase;
+.ft-label{color:#6e7681;font-size:.62rem;text-transform:uppercase;
           letter-spacing:.07em;margin-right:.3rem}
 .ft-ep{color:#8b949e}
 .ft-ep .method{color:#d29922}
 .ft-ep .path{color:#58a6ff}
-.ft-arch{margin-left:auto;color:#30363d;font-size:.65rem}
+.ft-arch{margin-left:auto;color:#6e7681;font-size:.65rem}
 
 /* ── misc ── */
 .dimmed{color:#6e7681;font-size:.75rem}
@@ -322,9 +322,9 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
   <span>
     <span class="ft-label">endpoints</span>
     <span class="ft-ep"><span class="method">GET</span> <span class="path">/pilot-fixtures</span></span>
-    <span style="color:#21262d;margin:0 .3rem">·</span>
+    <span style="color:#30363d;margin:0 .3rem">·</span>
     <span class="ft-ep"><span class="method">POST</span> <span class="path">/route</span></span>
-    <span style="color:#21262d;margin:0 .3rem">·</span>
+    <span style="color:#30363d;margin:0 .3rem">·</span>
     <span class="ft-ep"><span class="method">POST</span> <span class="path">/verify</span></span>
   </span>
   <span class="ft-arch">Reviewer UI → HTTP API → PostCAD Service → Routing Kernel → Receipt / Verification</span>
@@ -496,10 +496,11 @@ function showVerifyResult(isVerified, data, kind) {
     banner.innerHTML = '✓ VERIFIED — receipt replay matched'
       + '<span class="verify-sub">The kernel reproduced the same receipt hash from the original inputs.</span>';
   } else {
-    const code = data?.error?.code || data?.result || 'FAILED';
-    const msg  = data?.error?.message || '';
+    const code    = data?.error?.code || data?.result || 'FAILED';
+    const msg     = data?.error?.message || '';
+    const heading = kind === 'Tamper Demo' ? '✗ TAMPER DETECTED' : '✗ VERIFICATION FAILED';
     banner.className = 'verify-banner banner-err';
-    banner.innerHTML = '✗ VERIFICATION FAILED'
+    banner.innerHTML = heading
       + `<span class="verify-sub">Error code: <strong>${esc(code)}</strong>${msg ? ' — ' + esc(msg) : ''}</span>`;
   }
 

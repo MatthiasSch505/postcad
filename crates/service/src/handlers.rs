@@ -14,8 +14,8 @@ use postcad_cli::{
 use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
-use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
 use crate::demo::DEMO_HTML;
+use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
 use crate::reviewer::REVIEWER_HTML;
 use crate::ui::OPERATOR_UI_HTML;
 use crate::{AppState, DispatchState, DispatchVerifyState};
@@ -270,9 +270,9 @@ pub async fn reviewer_page() -> impl IntoResponse {
 /// Returns 503 if any file is missing (service must be started from repo root).
 pub async fn pilot_fixtures() -> impl IntoResponse {
     let paths = [
-        ("case",              "examples/pilot/case.json"),
+        ("case", "examples/pilot/case.json"),
         ("registry_snapshot", "examples/pilot/registry_snapshot.json"),
-        ("routing_config",    "examples/pilot/config.json"),
+        ("routing_config", "examples/pilot/config.json"),
     ];
 
     let mut out = serde_json::Map::new();

@@ -46,6 +46,7 @@ See `docs/external_pilot_smoke.md` for smoke run prerequisites, expected output,
 | Path | Purpose | Action |
 |---|---|---|
 | `release/README.md` | Operator runbook: prerequisites, sequence, troubleshooting | read |
+| `release/REVIEWER_DRY_RUN_CHECKLIST.md` | Structured evaluation checklist for an external reviewer — 5 sections, fillable outcome block | read |
 
 ### Walkthrough bundle (`release/walkthrough/`)
 

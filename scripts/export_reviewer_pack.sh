@@ -117,6 +117,14 @@ cp "${REPO_ROOT}/examples/pilot/registry_snapshot.json"                "${OUT_DI
 cp "${REPO_ROOT}/examples/pilot/config.json"                           "${OUT_DIR}/fixtures/config.json"
 cp "${REPO_ROOT}/examples/pilot/expected_routed.json"                  "${OUT_DIR}/fixtures/expected_routed.json"
 
+# Copy reviewer dry-run checklist if present
+CHECKLIST_SRC="${REPO_ROOT}/release/REVIEWER_DRY_RUN_CHECKLIST.md"
+HAVE_CHECKLIST=false
+if [[ -f "${CHECKLIST_SRC}" ]]; then
+    cp "${CHECKLIST_SRC}" "${OUT_DIR}/REVIEWER_DRY_RUN_CHECKLIST.md"
+    HAVE_CHECKLIST=true
+fi
+
 ok "files copied"
 
 # ── C. GENERATE README ────────────────────────────────────────────────────────
@@ -155,6 +163,7 @@ cat > "${OUT_DIR}/README.md" <<READMEEOF
 | \`EXTERNAL_REVIEW_PATH.md\` | 8-step external inspection path with stop conditions |
 | \`EXTERNAL_BOUNDARIES.md\` | Explicit scope boundaries — what this package is and is not |
 | \`external_pilot_smoke.md\` | Quickstart for running the one-command end-to-end smoke run |
+| \`REVIEWER_DRY_RUN_CHECKLIST.md\` | Structured evaluation checklist for the reviewer |
 | \`fixtures/case.json\` | Canonical pilot case input |
 | \`fixtures/registry_snapshot.json\` | Manufacturer registry used for routing |
 | \`fixtures/config.json\` | Routing configuration |
@@ -214,26 +223,27 @@ ok "README.md written"
 
 stage "D. Generate MANIFEST.txt"
 
-cat > "${OUT_DIR}/MANIFEST.txt" <<MANIFESTEOF
-PostCAD Reviewer Pack — ${PILOT_VERSION}
-commit: ${GIT_COMMIT_FULL}
-branch: ${GIT_BRANCH}
-generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date)
-
-files:
-README.md
-MANIFEST.txt
-RELEASE_NOTES_PILOT.md
-PILOT_VERSION.md
-EXTERNAL_DELIVERY_OVERVIEW.md
-EXTERNAL_REVIEW_PATH.md
-EXTERNAL_BOUNDARIES.md
-external_pilot_smoke.md
-fixtures/case.json
-fixtures/registry_snapshot.json
-fixtures/config.json
-fixtures/expected_routed.json
-MANIFESTEOF
+{
+    echo "PostCAD Reviewer Pack — ${PILOT_VERSION}"
+    echo "commit: ${GIT_COMMIT_FULL}"
+    echo "branch: ${GIT_BRANCH}"
+    echo "generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date)"
+    echo ""
+    echo "files:"
+    echo "README.md"
+    echo "MANIFEST.txt"
+    echo "RELEASE_NOTES_PILOT.md"
+    echo "PILOT_VERSION.md"
+    echo "EXTERNAL_DELIVERY_OVERVIEW.md"
+    echo "EXTERNAL_REVIEW_PATH.md"
+    echo "EXTERNAL_BOUNDARIES.md"
+    echo "external_pilot_smoke.md"
+    ${HAVE_CHECKLIST} && echo "REVIEWER_DRY_RUN_CHECKLIST.md"
+    echo "fixtures/case.json"
+    echo "fixtures/registry_snapshot.json"
+    echo "fixtures/config.json"
+    echo "fixtures/expected_routed.json"
+} > "${OUT_DIR}/MANIFEST.txt"
 
 ok "MANIFEST.txt written"
 

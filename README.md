@@ -209,6 +209,31 @@ The tamper demo proves receipts are tamper-evident: one field change is caught i
 
 ---
 
+## Railway deployment
+
+Deploy the reviewer shell to Railway for a permanent public URL.
+
+1. Push this repo to GitHub (already done)
+2. Create a new Railway project → **Deploy from GitHub repo**
+3. Railway auto-detects Rust via `railway.toml` and builds with Nixpacks
+
+Railway will run:
+```
+cargo build --release -p postcad-service
+./target/release/postcad-service
+```
+
+Railway injects `PORT` automatically. The service binds to `0.0.0.0:$PORT`.
+
+After deploy, the reviewer shell is reachable at:
+```
+https://<your-railway-domain>/reviewer
+```
+
+No environment variables required. `examples/pilot/` fixtures are included in the repo and served from the binary's working directory.
+
+---
+
 ## Local service deployment
 
 See [docs/local_service_run.md](docs/local_service_run.md) for the one-command Docker-based local run path.

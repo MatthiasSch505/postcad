@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cargo build --release -p postcad-service"
+
+[deploy]
+startCommand = "./target/release/postcad-service"
+healthcheckPath = "/health"
+healthcheckTimeout = 30

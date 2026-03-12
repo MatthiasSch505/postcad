@@ -1,4 +1,5 @@
 mod case_store;
+mod demo;
 mod dispatch_store;
 mod handlers;
 mod policy_store;
@@ -146,6 +147,7 @@ pub fn app_with_all_stores(
 
     Router::new()
         .route("/", routing::get(handlers::operator_ui))
+        .route("/demo", routing::get(handlers::demo_page))
         .route("/route-case", routing::post(handlers::route_case))
         .route(
             "/route-case-from-registry",

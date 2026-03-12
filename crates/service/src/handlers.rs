@@ -15,6 +15,7 @@ use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
 use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
+use crate::demo::DEMO_HTML;
 use crate::ui::OPERATOR_UI_HTML;
 use crate::{AppState, DispatchState, DispatchVerifyState};
 
@@ -767,6 +768,17 @@ pub async fn get_receipt(
 }
 
 // ── Operator UI ───────────────────────────────────────────────────────────────
+
+/// GET /demo
+///
+/// Serves the embedded reviewer demo page.
+pub async fn demo_page() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        DEMO_HTML,
+    )
+}
 
 /// GET /
 ///

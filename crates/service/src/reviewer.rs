@@ -623,10 +623,17 @@ async function routeNormalized(btn) {
             + ' <button class="copy-btn" onclick="copyReceiptHash(this,'
             + JSON.stringify(rhash) + ')">Copy</button></span></div>'
         : previewRow('Receipt Hash', rhash);
+      const mfrRow = rc.selected_candidate_id
+        ? '<div class="norm-preview-row">'
+            + '<span class="norm-preview-key">Manufacturer</span>'
+            + '<span class="norm-preview-val">' + esc(selected)
+            + ' <button class="copy-btn" onclick="copyReceiptHash(this,'
+            + JSON.stringify(rc.selected_candidate_id) + ')">Copy</button></span></div>'
+        : previewRow('Manufacturer', selected);
       prev.innerHTML =
         '<div class="norm-preview">' +
         hashRow +
-        previewRow('Manufacturer',   selected) +
+        mfrRow +
         previewRow('Jurisdiction',   rc.routing_input?.jurisdiction || '—') +
         previewRow('Material',       rc.routing_input?.material     || '—') +
         previewRow('Created At',     rc.created_at                  || '—') +

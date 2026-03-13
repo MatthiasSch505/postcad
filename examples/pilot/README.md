@@ -2,12 +2,15 @@
 
 ## Quick Start — Canonical Demo
 
-One command runs the full pilot flow end-to-end against a live service:
+Check the environment first, then start the service and run the demo:
 
 ```bash
+./examples/pilot/preflight.sh           # check tools + fixtures (no side effects)
 cargo run -p postcad-service &          # start service on :8080
 ./examples/pilot/demo.sh                # route → dispatch → approve → export → verify
 ```
+
+`demo.sh` also runs preflight automatically at startup, so the explicit step above is optional.
 
 Expected final output:
 

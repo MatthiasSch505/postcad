@@ -31,11 +31,14 @@ sep()  { printf "\n── %s ──\n" "$*"; }
 jget() { python3 -c "import sys,json; d=json.loads(sys.argv[1]); v=d; [v:=v[k] for k in sys.argv[2].split('.')]; print(v)" "$1" "$2"; }
 jobj() { python3 -c "import sys,json; d=json.loads(sys.argv[1]); print(json.dumps(d[sys.argv[2]],separators=(',',':')))" "$1" "$2"; }
 
+# ── Preflight ────────────────────────────────────────────────────────────────
+"${SCRIPT_DIR}/preflight.sh" || exit 1
+
 REGISTRY=$(cat "$SCRIPT_DIR/registry_snapshot.json")
 CONFIG=$(cat "$SCRIPT_DIR/config.json")
 CASE=$(cat "$SCRIPT_DIR/case.json")
 
-printf "\n══════════════════════════════════════════\n"
+printf "══════════════════════════════════════════\n"
 printf "  PostCAD — Canonical Pilot Demo\n"
 printf "  Service: %s\n" "$BASE_URL"
 printf "══════════════════════════════════════════\n"

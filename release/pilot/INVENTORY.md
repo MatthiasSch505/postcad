@@ -18,6 +18,7 @@ during a run are listed separately at the bottom.
 | `docs/protocol_diagram.md` | One-page protocol flow and guarantee summary | Before starting — read to understand what the demo proves | Reference only |
 | `expected_routed.json` | Frozen canonical routing receipt for this input set | Step 7 — compare `receipt_hash` against demo output to confirm determinism | Reference only |
 | `expected_verify.json` | Frozen canonical verification result for this input set | Step 7 — confirms expected verify response is `{"result":"VERIFIED"}` | Reference only |
+| `ARTIFACT_REFERENCE.md` | Maps every artifact in the pilot flow to its source, shape, role, and determinism status; includes failure triage for missing/mismatched artifacts | External reviewer — consult when comparing expected vs actual artifacts | Reference only |
 | `AUDIT_CHECKLIST.md` | Structured audit checklist: 2-minute and 10-minute paths, integrity/contract/flow/determinism checks, failure triage table | External reviewer — run through before signing off on the bundle | Reference only |
 | `BUNDLE_SNAPSHOT.md` | Deterministic surface summary: build source, canonical flow surfaces, shipped artifact list, integrity and reviewer guidance pointers | Audit — one-file record of the exact bundle state at build time | Reference only |
 | `INVENTORY.md` | This file — maps every bundle file to its purpose and flow step | Before starting — consult if unsure what a file does | Reference only |

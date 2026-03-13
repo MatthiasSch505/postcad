@@ -70,6 +70,7 @@ receipt always returns `VERIFIED`.
 | `PROTOCOL_WALKTHROUGH.md` | Step-by-step explanation with artifact references and verification internals |
 | `docs/openapi.yaml` | Authoritative API contract for all 5 pilot endpoints |
 | `demo.sh` | Canonical 6-step demo script; source of truth for the correct invocation sequence |
+| `ARTIFACT_REFERENCE.md` | Maps every artifact (frozen and runtime) to its source, shape, and determinism status |
 | `expected_routed.json` | Frozen canonical receipt; 21 committed fields; `receipt_hash` is the integrity anchor |
 | `expected_verify.json` | Frozen expected verification response: `{"result":"VERIFIED"}` |
 | `MANIFEST.txt` | Source provenance — maps every bundle file back to its repo path |

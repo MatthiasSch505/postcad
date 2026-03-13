@@ -165,6 +165,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .dimmed{color:#6e7681;font-size:.75rem}
 .hidden{display:none!important}
 .error-note{font-size:.75rem;color:#f85149;margin-top:.4rem;line-height:1.5}
+.warn-note {font-size:.75rem;color:#d29922;margin-top:.4rem;line-height:1.5}
 </style>
 </head>
 <body>
@@ -572,10 +573,9 @@ function showVerifyResult(isVerified, data, kind) {
 async function createDispatch(btn) {
   if (!lastReceipt || !lastPolicy) return;
   setBtn(btn, 'Creating…', true);
-  hide('dispatch-created'); hide('dispatch-export-result'); hide('dispatch-error');
-  lastDispatchId = null;
-  document.getElementById('btn-dispatch-approve').disabled = true;
-  document.getElementById('btn-dispatch-export').disabled  = true;
+  // Only clear the error display — preserve any existing dispatch panel so
+  // that a 409 (already created) doesn't wipe the visible dispatch_id.
+  hide('dispatch-error');
 
   try {
     const r = await fetch('/dispatch/create', {
@@ -584,23 +584,29 @@ async function createDispatch(btn) {
       body: JSON.stringify({receipt: lastReceipt, case: fixtures.case, policy: lastPolicy}),
     });
     const data = await r.json();
+
     if (r.ok && data.dispatch_id) {
+      // Fresh creation — update full dispatch panel.
       lastDispatchId = data.dispatch_id;
       document.getElementById('art-dispatch-id').textContent = data.dispatch_id;
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-info">${esc(data.status)}</span>`;
+      hide('dispatch-export-result');
       show('dispatch-created');
       document.getElementById('btn-dispatch-approve').disabled = false;
+      document.getElementById('btn-dispatch-export').disabled  = true;
+    } else if (r.status === 409) {
+      // Already created for this receipt — show as a warning, not an error.
+      // Keep any existing dispatch panel visible so the operator can continue.
+      showDispatchMsg('warn',
+        '[' + (data?.error?.code || 'receipt_already_dispatched') + '] ' +
+        (data?.error?.message || 'Dispatch already exists for this receipt.'));
     } else {
-      const msg = data?.error?.message || JSON.stringify(data);
-      const errEl = document.getElementById('dispatch-error');
-      errEl.textContent = 'Create dispatch failed: ' + msg;
-      show('dispatch-error');
+      showDispatchMsg('error',
+        '[' + (data?.error?.code || 'error') + '] ' + (data?.error?.message || JSON.stringify(data)));
     }
   } catch(e) {
-    const errEl = document.getElementById('dispatch-error');
-    errEl.textContent = String(e);
-    show('dispatch-error');
+    showDispatchMsg('error', String(e));
   } finally {
     setBtn(btn, '⬦ Create Dispatch', false);
   }
@@ -609,6 +615,10 @@ async function createDispatch(btn) {
 async function approveDispatch(btn) {
   if (!lastDispatchId) return;
   setBtn(btn, 'Approving…', true);
+  hide('dispatch-error');
+  // Track whether this button should stay disabled after the call.
+  // true = terminal state (success or already-approved 409).
+  let terminal = false;
 
   try {
     const r = await fetch('/dispatch/' + lastDispatchId + '/approve', {
@@ -617,22 +627,29 @@ async function approveDispatch(btn) {
       body: JSON.stringify({approved_by: 'reviewer'}),
     });
     const data = await r.json();
+
     if (r.ok && data.status === 'approved') {
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
-      btn.disabled = true;   // immutable — second approve is rejected
+      terminal = true;   // immutable — disable approve permanently
       document.getElementById('btn-dispatch-export').disabled = false;
+    } else if (r.status === 409) {
+      // Already approved server-side — enable export so the operator can continue.
+      terminal = true;
+      document.getElementById('btn-dispatch-export').disabled = false;
+      showDispatchMsg('warn',
+        '[' + (data?.error?.code || 'dispatch_not_draft') + '] ' +
+        (data?.error?.message || 'Dispatch is already approved.') +
+        ' Export is now available.');
     } else {
-      const errEl = document.getElementById('dispatch-error');
-      errEl.textContent = 'Approve failed: ' + (data?.error?.message || JSON.stringify(data));
-      show('dispatch-error');
+      showDispatchMsg('error',
+        '[' + (data?.error?.code || 'error') + '] ' + (data?.error?.message || JSON.stringify(data)));
     }
   } catch(e) {
-    const errEl = document.getElementById('dispatch-error');
-    errEl.textContent = String(e);
-    show('dispatch-error');
+    showDispatchMsg('error', String(e));
   } finally {
-    setBtn(btn, '✓ Approve Dispatch', false);
+    // Re-enable only if not in a terminal state.
+    setBtn(btn, '✓ Approve Dispatch', terminal);
   }
 }
 
@@ -650,14 +667,11 @@ async function exportDispatch(btn) {
       document.getElementById('dispatch-export-json').textContent = fmt(data);
       show('dispatch-export-result');
     } else {
-      const errEl = document.getElementById('dispatch-error');
-      errEl.textContent = 'Export failed: ' + (data?.error?.message || JSON.stringify(data));
-      show('dispatch-error');
+      showDispatchMsg('error',
+        '[' + (data?.error?.code || 'error') + '] ' + (data?.error?.message || JSON.stringify(data)));
     }
   } catch(e) {
-    const errEl = document.getElementById('dispatch-error');
-    errEl.textContent = String(e);
-    show('dispatch-error');
+    showDispatchMsg('error', String(e));
   } finally {
     setBtn(btn, '↓ Export Dispatch Packet', false);
   }
@@ -669,6 +683,15 @@ function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&l
 function show(id)      { document.getElementById(id).classList.remove('hidden'); }
 function hide(id)      { document.getElementById(id).classList.add('hidden'); }
 function setBtn(btn, label, disabled) { btn.textContent = label; btn.disabled = disabled; }
+
+// Show a dispatch-section status message.
+// kind: 'error' (red) | 'warn' (amber)
+function showDispatchMsg(kind, text) {
+  const el = document.getElementById('dispatch-error');
+  el.className = (kind === 'warn' ? 'warn-note' : 'error-note');
+  el.textContent = text;
+  show('dispatch-error');
+}
 </script>
 </body>
 </html>"#;

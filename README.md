@@ -27,28 +27,46 @@ See [docs/pilot_run_example.md](docs/pilot_run_example.md) for a concrete trace 
 
 ---
 
-## Quickstart — verify a receipt in under 5 minutes
+## Run the pilot demo
 
 ```bash
 git clone https://github.com/MatthiasSch505/postcad.git
 cd postcad
-cargo build
-
-cargo run -p postcad-cli -- verify-receipt --json \
-  --receipt    examples/valid_routed_receipt.json \
-  --case       fixtures/scenarios/routed_domestic_allowed/case.json \
-  --policy     fixtures/scenarios/routed_domestic_allowed/policy.json \
-  --candidates fixtures/scenarios/routed_domestic_allowed/candidates.json
+./examples/pilot/run_pilot.sh   # route the pilot case + self-verify
+./examples/pilot/verify.sh      # independent receipt verification
 ```
+
+**Step 1 — `run_pilot.sh`** routes a canonical dental case (zirconia crown, jurisdiction DE)
+against a German manufacturer registry, emits a cryptographically committed receipt, and
+self-verifies it in one step. No service needed — pure CLI.
 
 Expected output:
 
-```json
-{"result":"VERIFIED"}
+```
+Result:               routed
+Selected candidate:   pilot-de-001
+Receipt hash:         0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+Kernel version:       postcad-routing-v1
+
+Receipt written to:   examples/pilot/receipt.json
+
+Verification: OK
 ```
 
-Tamper any field in the receipt and re-run — the response will include a stable `code`
-identifying the exact failing check.
+**Step 2 — `verify.sh`** replays the routing decision from the original inputs. No stored
+state is trusted — every hash field in the receipt is recomputed from scratch and confirmed.
+
+Expected output:
+
+```
+VERIFIED
+```
+
+Tamper any field in `examples/pilot/receipt.json` and re-run `verify.sh` — the verifier
+returns a machine-readable `code` identifying exactly which check failed.
+
+See [examples/pilot/README.md](examples/pilot/README.md) for the full pilot bundle guide,
+including the service-based flow (route → dispatch → approve → export).
 
 ---
 

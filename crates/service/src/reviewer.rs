@@ -518,11 +518,15 @@ async function routeNormalized(btn) {
   document.getElementById('btn-route').disabled = true;
 
   hide('results-placeholder');
-  hide('route-norm-inline');
   hide('route-result'); hide('route-error'); hide('verify-result');
   hide('dispatch-created'); hide('dispatch-export-result');
   hide('dispatch-success'); hide('dispatch-error');
   show('results-loading');
+  // Transition to submitting state immediately — button stays disabled until finally.
+  const ni = document.getElementById('route-norm-inline');
+  ni.textContent = 'Submitting…';
+  ni.className = 'loading-note';
+  ni.classList.remove('hidden');
   lastReceipt = null; lastPolicy = null; lastDispatchId = null;
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
@@ -536,16 +540,40 @@ async function routeNormalized(btn) {
   };
 
   try {
-    const r = await fetch('/pilot/route-normalized', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        pilot_case:        pilotCase,
-        registry_snapshot: fixtures.registry_snapshot,
-        routing_config:    fixtures.routing_config,
-      }),
-    });
-    const data = await r.json();
+    // ── fetch (network failure → inline error) ──────────────────────────────
+    let r;
+    try {
+      r = await fetch('/pilot/route-normalized', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          pilot_case:        pilotCase,
+          registry_snapshot: fixtures.registry_snapshot,
+          routing_config:    fixtures.routing_config,
+        }),
+      });
+    } catch(netErr) {
+      ni.textContent = 'Network failure — ' + String(netErr);
+      ni.className = 'error-note';
+      hide('route-error-banner');
+      document.getElementById('route-error-json').textContent = String(netErr);
+      show('route-error');
+      return;
+    }
+
+    // ── parse (invalid JSON → inline error) ────────────────────────────────
+    let data;
+    try {
+      data = await r.json();
+    } catch(parseErr) {
+      ni.textContent = 'Invalid JSON response (HTTP ' + r.status + ')';
+      ni.className = 'error-note';
+      hide('route-error-banner');
+      document.getElementById('route-error-json').textContent =
+        'HTTP ' + r.status + ' — response is not valid JSON: ' + String(parseErr);
+      show('route-error');
+      return;
+    }
 
     if (r.ok && data.receipt) {
       lastReceipt = data.receipt;
@@ -568,13 +596,14 @@ async function routeNormalized(btn) {
       document.getElementById('btn-verify').disabled          = false;
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
-      const ni = document.getElementById('route-norm-inline');
-      ni.textContent = '✓ Routing complete.';
+      ni.textContent = '✓ Routing complete — receipt ' + rhash.slice(0, 12) + '…';
       ni.className = 'success-note';
-      ni.classList.remove('hidden');
     } else {
+      // non-2xx HTTP response → inline error + details panel
       const code = data?.error?.code || data?.result || 'error';
       const msg  = data?.error?.message || '';
+      ni.textContent = '[' + code + ']' + (msg ? ' — ' + msg : '');
+      ni.className = 'error-note';
       const banner = document.getElementById('route-error-banner');
       banner.textContent = '[' + code + ']' + (msg ? ' ' + msg : '');
       banner.classList.remove('hidden');
@@ -582,6 +611,8 @@ async function routeNormalized(btn) {
       show('route-error');
     }
   } catch(e) {
+    ni.textContent = 'Unexpected error — ' + String(e);
+    ni.className = 'error-note';
     hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');

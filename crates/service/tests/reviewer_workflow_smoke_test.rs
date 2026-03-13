@@ -95,6 +95,52 @@ async fn get_html(app: axum::Router, uri: &str) -> (StatusCode, String) {
     (status, String::from_utf8(bytes.to_vec()).unwrap())
 }
 
+// ── UX state tests ────────────────────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain all required UX state elements for the
+/// normalized pilot submission flow: idle → submitting → success / failure.
+///
+/// These are static assertions on the served HTML — no network calls needed.
+#[tokio::test]
+async fn reviewer_shell_norm_submit_states_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Inline state element must exist
+    assert!(
+        html.contains("route-norm-inline"),
+        "inline state element id must be present"
+    );
+    // Button id must be present and the disable-while-in-flight label
+    assert!(
+        html.contains("btn-route-norm"),
+        "normalized-route button id must be present"
+    );
+    assert!(
+        html.contains("Running kernel"),
+        "in-flight button label must be present"
+    );
+    // Explicit submitting / success / failure state labels
+    assert!(html.contains("Submitting"), "submitting state label must be present");
+    assert!(
+        html.contains("Routing complete"),
+        "success state label must be present"
+    );
+    assert!(
+        html.contains("Network failure"),
+        "network failure error label must be present"
+    );
+    assert!(
+        html.contains("Invalid JSON response"),
+        "parse error label must be present"
+    );
+    // CSS classes for all three states must be referenced
+    assert!(html.contains("loading-note"), "loading-note class must be present");
+    assert!(html.contains("success-note"), "success-note class must be present");
+    assert!(html.contains("error-note"), "error-note class must be present");
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

@@ -1,0 +1,765 @@
+openapi: 3.1.0
+
+info:
+  title: PostCAD Service
+  version: postcad-v1
+  description: >
+    Deterministic, verifiable routing and handoff infrastructure for dental CAD
+    manufacturing. Every routing decision is cryptographically committed to a
+    receipt that can be independently replay-verified without the routing engine.
+
+    No AI. No randomness. Every decision carries a machine-readable reason code.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: routing
+    description: Route a dental case through the compliance and selection kernel
+  - name: verification
+    description: Replay-verify a routing receipt against its original inputs
+  - name: dispatch
+    description: Commit, approve, and export a verified routing decision
+  - name: pilot
+    description: Simplified normalized input path for pilot operators
+
+paths:
+
+  # ── Routing ────────────────────────────────────────────────────────────────
+
+  /route:
+    post:
+      tags: [routing]
+      summary: Route a case using registry-backed inputs
+      description: >
+        Routes a dental case against a typed manufacturer registry. Derives
+        the candidate pool and compliance snapshot from the registry records,
+        then forwards to the deterministic routing kernel. Returns a
+        cryptographically committed RoutingReceipt.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteRegistryRequest'
+            example:
+              case:
+                case_id: "f1000001-0000-0000-0000-000000000001"
+                jurisdiction: "DE"
+                routing_policy: "allow_domestic_and_cross_border"
+                patient_country: "germany"
+                manufacturer_country: "germany"
+                material: "zirconia"
+                procedure: "crown"
+                file_type: "stl"
+              registry_snapshot:
+                - manufacturer_id: "pilot-de-001"
+                  display_name: "Alpha Dental GmbH"
+                  country: "germany"
+                  is_active: true
+                  capabilities: ["crown", "bridge"]
+                  materials_supported: ["zirconia", "pmma"]
+                  jurisdictions_served: ["germany"]
+                  attestation_statuses: ["verified"]
+                  sla_days: 5
+              routing_config:
+                jurisdiction: "DE"
+                routing_policy: "allow_domestic_and_cross_border"
+      responses:
+        '200':
+          description: Routing succeeded or produced a deterministic refusal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '422':
+          description: Request could not be parsed or routed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pilot/route-normalized:
+    post:
+      tags: [pilot]
+      summary: Route a normalized pilot case (4-field input)
+      description: >
+        Accepts a minimal PilotCaseInput (case_id, restoration_type, material,
+        jurisdiction) and normalizes it into the full CaseInput shape before
+        routing. All receipt commitments, hash invariants, and verification
+        semantics are identical to /route. Intended for lab operators who
+        supply only clinical fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PilotRouteRequest'
+            example:
+              pilot_case:
+                case_id: "c0000001-0000-0000-0000-000000000001"
+                restoration_type: "crown"
+                material: "zirconia"
+                jurisdiction: "DE"
+              registry_snapshot:
+                - manufacturer_id: "pilot-de-001"
+                  display_name: "Alpha Dental GmbH"
+                  country: "germany"
+                  is_active: true
+                  capabilities: ["crown", "bridge"]
+                  materials_supported: ["zirconia", "pmma"]
+                  jurisdictions_served: ["germany"]
+                  attestation_statuses: ["verified"]
+                  sla_days: 5
+              routing_config:
+                jurisdiction: "DE"
+                routing_policy: "allow_domestic_and_cross_border"
+      responses:
+        '200':
+          description: Routing succeeded or produced a deterministic refusal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '422':
+          description: Normalization or routing error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── Verification ───────────────────────────────────────────────────────────
+
+  /verify:
+    post:
+      tags: [verification]
+      summary: Replay-verify a routing receipt
+      description: >
+        Recomputes every hash in the receipt from the original inputs. Does not
+        trust any field value in the receipt itself. Returns VERIFIED if all
+        commitments match, or FAILED with a stable error code identifying the
+        specific broken commitment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+            example:
+              receipt:
+                receipt_hash: "0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb"
+              case:
+                case_id: "f1000001-0000-0000-0000-000000000001"
+                jurisdiction: "DE"
+                routing_policy: "allow_domestic_and_cross_border"
+                patient_country: "germany"
+                manufacturer_country: "germany"
+                material: "zirconia"
+                procedure: "crown"
+                file_type: "stl"
+              policy: {}
+      responses:
+        '200':
+          description: Receipt verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+              example:
+                result: "VERIFIED"
+        '422':
+          description: Verification failed — receipt was tampered or inputs do not match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyFailedResponse'
+              example:
+                result: "FAILED"
+                error:
+                  code: "routing_decision_hash_mismatch"
+                  message: "routing_decision_hash does not match recomputed value"
+
+  # ── Dispatch ───────────────────────────────────────────────────────────────
+
+  /dispatch/create:
+    post:
+      tags: [dispatch]
+      summary: Create a dispatch commitment from a verified receipt
+      description: >
+        Re-verifies the receipt inline before creating the dispatch record.
+        Returns 422 if verification fails. Only one dispatch is permitted per
+        receipt_hash (409 if a dispatch already exists for this receipt).
+        The returned dispatch is in draft status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchCreateRequest'
+            example:
+              receipt:
+                receipt_hash: "0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb"
+              case:
+                case_id: "f1000001-0000-0000-0000-000000000001"
+                jurisdiction: "DE"
+                routing_policy: "allow_domestic_and_cross_border"
+                patient_country: "germany"
+                manufacturer_country: "germany"
+                material: "zirconia"
+                procedure: "crown"
+                file_type: "stl"
+              policy: {}
+      responses:
+        '200':
+          description: Dispatch record created in draft status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispatchRecord'
+        '409':
+          description: Dispatch already exists for this receipt_hash
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Receipt verification failed or request could not be parsed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dispatch/{dispatch_id}/approve:
+    post:
+      tags: [dispatch]
+      summary: Approve a draft dispatch
+      description: >
+        Transitions the dispatch from draft to approved. Records operator
+        identity and approval timestamp. All routing and receipt fields become
+        immutable after approval. Returns 409 if already approved.
+      parameters:
+        - name: dispatch_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                approved_by:
+                  type: string
+                  description: Operator identity. Defaults to "system" if absent.
+            example:
+              approved_by: "operator-de-01"
+      responses:
+        '200':
+          description: Dispatch approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispatchRecord'
+        '404':
+          description: Dispatch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Dispatch is already approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dispatch/{dispatch_id}/export:
+    get:
+      tags: [dispatch]
+      summary: Export an approved dispatch packet
+      description: >
+        Exports the approved dispatch as a deterministic canonical JSON packet.
+        Fields are serialized in fixed alphabetical order — identical bytes
+        every time for the same approved dispatch. Returns 422 if the dispatch
+        is still in draft status.
+      parameters:
+        - name: dispatch_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deterministic export packet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispatchExport'
+        '404':
+          description: Dispatch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Dispatch has not been approved yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+
+    # ── Request bodies ────────────────────────────────────────────────────────
+
+    RouteRegistryRequest:
+      type: object
+      required: [case, registry_snapshot, routing_config]
+      properties:
+        case:
+          $ref: '#/components/schemas/CaseInput'
+        registry_snapshot:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManufacturerRecord'
+        routing_config:
+          $ref: '#/components/schemas/RoutingConfig'
+
+    PilotRouteRequest:
+      type: object
+      required: [pilot_case, registry_snapshot, routing_config]
+      properties:
+        pilot_case:
+          $ref: '#/components/schemas/PilotCaseInput'
+        registry_snapshot:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManufacturerRecord'
+        routing_config:
+          $ref: '#/components/schemas/RoutingConfig'
+
+    VerifyRequest:
+      type: object
+      required: [receipt, case, policy]
+      properties:
+        receipt:
+          $ref: '#/components/schemas/RoutingReceipt'
+        case:
+          $ref: '#/components/schemas/CaseInput'
+        policy:
+          type: object
+          description: Derived policy bundle returned by the route endpoint.
+
+    DispatchCreateRequest:
+      type: object
+      required: [receipt, case, policy]
+      properties:
+        receipt:
+          $ref: '#/components/schemas/RoutingReceipt'
+        case:
+          $ref: '#/components/schemas/CaseInput'
+        policy:
+          type: object
+          description: Derived policy bundle returned by the route endpoint.
+
+    # ── Input types ───────────────────────────────────────────────────────────
+
+    PilotCaseInput:
+      type: object
+      required: [restoration_type, material, jurisdiction]
+      description: >
+        Minimal normalized pilot case input. Only four fields required.
+        Normalized to the full CaseInput shape by the routing adapter before
+        the kernel is invoked.
+      properties:
+        case_id:
+          type: string
+          format: uuid
+          description: Optional. A fresh UUID is generated by the kernel if absent.
+          example: "c0000001-0000-0000-0000-000000000001"
+        restoration_type:
+          type: string
+          description: >
+            Restoration type requested. Case-insensitive.
+            Supported values: crown, bridge, veneer, implant, denture.
+          example: "crown"
+        material:
+          type: string
+          description: >
+            Material requested. Case-insensitive.
+            Supported values: zirconia, pmma, emax, cobalt_chrome, titanium.
+          example: "zirconia"
+        jurisdiction:
+          type: string
+          description: >
+            Jurisdiction code. Determines patient_country, manufacturer_country,
+            and the compliance rules applied.
+            Supported values: DE, US, JP, FR, GB.
+          example: "DE"
+
+    CaseInput:
+      type: object
+      required: [patient_country, manufacturer_country, material, procedure, file_type]
+      properties:
+        case_id:
+          type: string
+          format: uuid
+          description: Optional. Generated by the kernel if absent.
+          example: "f1000001-0000-0000-0000-000000000001"
+        jurisdiction:
+          type: string
+          description: Defaults to "global" if absent.
+          example: "DE"
+        routing_policy:
+          type: string
+          description: Defaults to "allow_domestic_and_cross_border" if absent.
+          example: "allow_domestic_and_cross_border"
+        patient_country:
+          type: string
+          example: "germany"
+        manufacturer_country:
+          type: string
+          example: "germany"
+        material:
+          type: string
+          example: "zirconia"
+        procedure:
+          type: string
+          example: "crown"
+        file_type:
+          type: string
+          example: "stl"
+
+    ManufacturerRecord:
+      type: object
+      required:
+        - manufacturer_id
+        - display_name
+        - country
+        - is_active
+        - capabilities
+        - materials_supported
+        - jurisdictions_served
+        - attestation_statuses
+        - sla_days
+      properties:
+        manufacturer_id:
+          type: string
+          example: "pilot-de-001"
+        display_name:
+          type: string
+          example: "Alpha Dental GmbH"
+        country:
+          type: string
+          example: "germany"
+        is_active:
+          type: boolean
+          example: true
+        capabilities:
+          type: array
+          items:
+            type: string
+          example: ["crown", "bridge"]
+        materials_supported:
+          type: array
+          items:
+            type: string
+          example: ["zirconia", "pmma"]
+        jurisdictions_served:
+          type: array
+          items:
+            type: string
+          example: ["germany"]
+        attestation_statuses:
+          type: array
+          items:
+            type: string
+          example: ["verified"]
+        sla_days:
+          type: integer
+          example: 5
+
+    RoutingConfig:
+      type: object
+      properties:
+        jurisdiction:
+          type: string
+          example: "DE"
+        routing_policy:
+          type: string
+          example: "allow_domestic_and_cross_border"
+        policy_version:
+          type: string
+          nullable: true
+          description: Optional label committed into the receipt proof.
+
+    # ── Response types ────────────────────────────────────────────────────────
+
+    RouteResponse:
+      type: object
+      required: [receipt, derived_policy]
+      properties:
+        receipt:
+          $ref: '#/components/schemas/RoutingReceipt'
+        derived_policy:
+          type: object
+          description: >
+            The derived RoutingPolicyBundle serialized as JSON. Pass this to
+            /verify or /dispatch/create as the policy field.
+
+    VerifyResponse:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: [VERIFIED]
+          example: "VERIFIED"
+
+    VerifyFailedResponse:
+      type: object
+      required: [result, error]
+      properties:
+        result:
+          type: string
+          enum: [FAILED]
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    RoutingReceipt:
+      type: object
+      description: >
+        Cryptographically committed routing receipt. All 21 fields are covered
+        by receipt_hash. receipt_hash is verified before any semantic check.
+      required:
+        - schema_version
+        - routing_kernel_version
+        - outcome
+        - case_fingerprint
+        - policy_fingerprint
+        - routing_proof_hash
+        - registry_snapshot_hash
+        - candidate_pool_hash
+        - eligible_candidate_ids_hash
+        - selection_input_candidate_ids_hash
+        - candidate_order_hash
+        - routing_decision_hash
+        - audit_seq
+        - audit_entry_hash
+        - audit_previous_hash
+        - routing_input
+        - routing_input_hash
+        - receipt_hash
+      properties:
+        schema_version:
+          type: string
+          example: "1"
+        routing_kernel_version:
+          type: string
+          example: "postcad-routing-v1"
+        outcome:
+          type: string
+          enum: [routed, refused]
+          example: "routed"
+        case_fingerprint:
+          type: string
+          example: "169b48d0441c6acd7024710020886589dc9460c35c3ec47e278b4187641abefd"
+        policy_fingerprint:
+          type: string
+          example: "c6167ec7ca3e50b2d6d8ad135dbb3467f0a67b5a68a7ec91df14bec9b1b841b3"
+        policy_version:
+          type: string
+          nullable: true
+        routing_proof_hash:
+          type: string
+          example: "4173f789b8e1677d20ae9cd98fb5aebad27e8b9e6c7f55cf32a4a773b5d2b3b5"
+        registry_snapshot_hash:
+          type: string
+          example: "9b5e87ce43243821fc022048930f2f8d3d215c743a3fc1a3e33569df48ddf822"
+        candidate_pool_hash:
+          type: string
+        eligible_candidate_ids_hash:
+          type: string
+        selection_input_candidate_ids_hash:
+          type: string
+        candidate_order_hash:
+          type: string
+        routing_decision_hash:
+          type: string
+          example: "b97bb757d3f41b6bf764b9a17ff33faab56b59759f7e54df6bd5b44adb9952c5"
+        selected_candidate_id:
+          type: string
+          nullable: true
+          example: "pilot-de-001"
+        refusal_code:
+          type: string
+          nullable: true
+          description: >
+            Stable machine-readable refusal reason. Null when outcome is routed.
+            Possible values: no_eligible_manufacturer, no_active_manufacturer,
+            no_jurisdiction_match, no_capability_match, no_material_match,
+            attestation_failed.
+        audit_seq:
+          type: integer
+          example: 0
+        audit_entry_hash:
+          type: string
+          example: "7eaa6b6742e98a2037000c039138a5091f5ed1490f6dad9bafbc83bdf9d644eb"
+        audit_previous_hash:
+          type: string
+          description: 64 zeros for the genesis entry.
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
+        routing_input:
+          type: object
+          description: Canonical routing input envelope committed at routing time.
+          properties:
+            case_id:    { type: string }
+            file_type:  { type: string }
+            jurisdiction: { type: string }
+            manufacturer_country: { type: string }
+            material:   { type: string }
+            patient_country: { type: string }
+            procedure:  { type: string }
+            routing_policy: { type: string }
+        routing_input_hash:
+          type: string
+          example: "583ae0b91ca75562f89347dfe374475d38f23a749bd489a12f54611e73f6dc22"
+        receipt_hash:
+          type: string
+          description: >
+            SHA-256 of all other receipt fields (canonical BTreeMap serialization).
+            Verified first before any semantic check.
+          example: "0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb"
+
+    DispatchRecord:
+      type: object
+      description: >
+        Dispatch commitment record. Created in draft status; transitions to
+        approved (immutable) then exported. verification_passed is always true
+        — the handler gates on successful verification before writing the record.
+      required:
+        - dispatch_id
+        - case_id
+        - receipt_hash
+        - verification_passed
+        - status
+        - created_at
+      properties:
+        dispatch_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        selected_candidate_id:
+          type: string
+          nullable: true
+          example: "pilot-de-001"
+        receipt_hash:
+          type: string
+          example: "0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb"
+        verification_passed:
+          type: boolean
+          example: true
+        status:
+          type: string
+          enum: [draft, approved, exported]
+          example: "draft"
+        approved_by:
+          type: string
+          nullable: true
+          example: "operator-de-01"
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        manufacturer_payload_json:
+          type: string
+          nullable: true
+          description: Opaque JSON forwarded to the manufacturer. Null in most pilot runs.
+
+    DispatchExport:
+      type: object
+      description: >
+        Deterministic canonical export packet. Fields serialized in fixed
+        alphabetical order — identical bytes every time for the same approved
+        dispatch. This is the handoff artifact.
+      required:
+        - approved_at
+        - approved_by
+        - case_id
+        - created_at
+        - dispatch_id
+        - manufacturer_payload_json
+        - receipt_hash
+        - selected_candidate_id
+        - status
+        - verification_passed
+      properties:
+        approved_at:
+          type: string
+          format: date-time
+        approved_by:
+          type: string
+          example: "operator-de-01"
+        case_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        dispatch_id:
+          type: string
+          format: uuid
+        manufacturer_payload_json:
+          type: string
+          nullable: true
+        receipt_hash:
+          type: string
+          example: "0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb"
+        selected_candidate_id:
+          type: string
+          nullable: true
+          example: "pilot-de-001"
+        status:
+          type: string
+          enum: [exported]
+          example: "exported"
+        verification_passed:
+          type: boolean
+          example: true
+
+    # ── Error types ───────────────────────────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: >
+            Stable machine-readable error code. Common values:
+            parse_error, receipt_parse_failed, receipt_hash_mismatch,
+            routing_decision_hash_mismatch, registry_snapshot_hash_mismatch,
+            receipt_already_dispatched, dispatch_not_found, dispatch_not_draft,
+            dispatch_not_approved.
+          example: "parse_error"
+        message:
+          type: string
+          example: "unknown jurisdiction code: \"XX\""

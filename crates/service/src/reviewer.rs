@@ -180,6 +180,11 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           cursor:pointer;font-family:inherit;font-size:.6rem;padding:.05rem .3rem;
           margin-left:.35rem;transition:color .1s}
 .copy-btn:hover{color:#79c0ff}
+.btn-dl{display:inline-flex;align-items:center;gap:.3rem;background:#1a3455;
+        border:1px solid #388bfd;border-radius:4px;color:#79c0ff;cursor:pointer;
+        font-family:inherit;font-size:.72rem;font-weight:600;padding:.28rem .7rem;
+        margin-top:.45rem;transition:opacity .12s}
+.btn-dl:hover{opacity:.82}
 </style>
 </head>
 <body>
@@ -625,7 +630,8 @@ async function routeNormalized(btn) {
         previewRow('Jurisdiction',   rc.routing_input?.jurisdiction || '—') +
         previewRow('Material',       rc.routing_input?.material     || '—') +
         previewRow('Created At',     rc.created_at                  || '—') +
-        '</div>';
+        '</div>' +
+        '<button class="btn-dl" onclick="downloadReceiptJson()">↓ Download receipt.json</button>';
       prev.classList.remove('hidden');
     } else {
       // non-2xx HTTP response → inline error + details panel
@@ -862,6 +868,17 @@ function previewRow(k, v) {
     + '<span class="norm-preview-key">' + esc(k) + '</span>'
     + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
     + '</div>';
+}
+function downloadReceiptJson() {
+  if (!lastReceipt) return;
+  const blob = new Blob([JSON.stringify(lastReceipt, null, 2)], {type: 'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  const hash = lastReceipt.receipt_hash ? lastReceipt.receipt_hash.slice(0, 12) : 'receipt';
+  a.download = 'receipt_' + hash + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 async function copyReceiptHash(btn, hash) {
   try {

@@ -631,7 +631,12 @@ async function routeNormalized(btn) {
         previewRow('Material',       rc.routing_input?.material     || '—') +
         previewRow('Created At',     rc.created_at                  || '—') +
         '</div>' +
-        '<button class="btn-dl" onclick="downloadReceiptJson()">↓ Download receipt.json</button>';
+        '<button class="btn-dl" onclick="downloadReceiptJson()">↓ Download receipt.json</button>' +
+        '<button class="btn-route-norm" style="margin-top:.35rem;font-size:.72rem"' +
+        ' id="btn-toggle-receipt" onclick="toggleNormReceiptJson()">Show receipt JSON</button>' +
+        '<pre class="fixture hidden" id="norm-receipt-json-block"' +
+        ' style="margin-top:.3rem;max-height:300px"></pre>';
+      document.getElementById('norm-receipt-json-block').textContent = fmt(rc);
       prev.classList.remove('hidden');
     } else {
       // non-2xx HTTP response → inline error + details panel
@@ -868,6 +873,13 @@ function previewRow(k, v) {
     + '<span class="norm-preview-key">' + esc(k) + '</span>'
     + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
     + '</div>';
+}
+function toggleNormReceiptJson() {
+  const pre = document.getElementById('norm-receipt-json-block');
+  const btn = document.getElementById('btn-toggle-receipt');
+  if (!pre || !btn) return;
+  const isHidden = pre.classList.toggle('hidden');
+  btn.textContent = isHidden ? 'Show receipt JSON' : 'Hide receipt JSON';
 }
 function downloadReceiptJson() {
   if (!lastReceipt) return;

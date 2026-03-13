@@ -213,18 +213,26 @@ pub async fn pilot_route(Json(body): Json<Value>) -> impl IntoResponse {
             .into_response();
     }
 
+    let req_id = uuid::Uuid::new_v4();
+    let case_id = case["case_id"].as_str().unwrap_or("-");
+
     let case_json = serde_json::to_string(case).unwrap();
     let registry_json = serde_json::to_string(registry_snapshot).unwrap();
     let config_json = serde_json::to_string(routing_config).unwrap();
 
     match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
         Ok(result) => {
+            let receipt_val = serde_json::to_value(&result.receipt).unwrap();
+            let manufacturer = receipt_val["selected_candidate_id"].as_str().unwrap_or("-");
+            let receipt_hash = receipt_val["receipt_hash"].as_str().unwrap_or("-");
+            tracing::info!(event = "routing_decision_executed", request_id = %req_id, case_id = case_id, manufacturer = manufacturer);
+            tracing::info!(event = "receipt_generated", request_id = %req_id, case_id = case_id, manufacturer = manufacturer, receipt_hash = receipt_hash);
             let derived_policy: Value =
                 serde_json::from_str(&result.derived_policy_json).unwrap_or(Value::Null);
             (
                 StatusCode::OK,
                 Json(json!({
-                    "receipt": serde_json::to_value(&result.receipt).unwrap(),
+                    "receipt": receipt_val,
                     "derived_policy": derived_policy,
                 })),
             )
@@ -306,6 +314,10 @@ pub async fn pilot_route_normalized(Json(body): Json<Value>) -> impl IntoRespons
             .into_response();
     }
 
+    let req_id = uuid::Uuid::new_v4();
+    let case_id = pilot_case["case_id"].as_str().unwrap_or("-");
+    tracing::info!(event = "pilot_input_received", request_id = %req_id, case_id = case_id, manufacturer = "-");
+
     let pilot_case_json = serde_json::to_string(pilot_case).unwrap();
     let registry_json = serde_json::to_string(registry_snapshot).unwrap();
     let config_json = serde_json::to_string(routing_config).unwrap();
@@ -323,12 +335,17 @@ pub async fn pilot_route_normalized(Json(body): Json<Value>) -> impl IntoRespons
 
     match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
         Ok(result) => {
+            let receipt_val = serde_json::to_value(&result.receipt).unwrap();
+            let manufacturer = receipt_val["selected_candidate_id"].as_str().unwrap_or("-");
+            let receipt_hash = receipt_val["receipt_hash"].as_str().unwrap_or("-");
+            tracing::info!(event = "routing_decision_executed", request_id = %req_id, case_id = case_id, manufacturer = manufacturer);
+            tracing::info!(event = "receipt_generated", request_id = %req_id, case_id = case_id, manufacturer = manufacturer, receipt_hash = receipt_hash);
             let derived_policy: Value =
                 serde_json::from_str(&result.derived_policy_json).unwrap_or(Value::Null);
             (
                 StatusCode::OK,
                 Json(json!({
-                    "receipt": serde_json::to_value(&result.receipt).unwrap(),
+                    "receipt": receipt_val,
                     "derived_policy": derived_policy,
                 })),
             )
@@ -998,6 +1015,7 @@ pub async fn create_dispatch_commitment(
         .as_str()
         .map(|s| s.to_string());
 
+    let req_id = uuid::Uuid::new_v4();
     let dispatch_id = uuid::Uuid::new_v4().to_string();
     let record = DispatchRecord {
         dispatch_id: dispatch_id.clone(),
@@ -1013,18 +1031,21 @@ pub async fn create_dispatch_commitment(
     };
 
     match store.create(&record) {
-        Ok(()) => (
-            StatusCode::OK,
-            Json(json!({
-                "dispatch_id": dispatch_id,
-                "receipt_hash": receipt_hash,
-                "case_id": case_id,
-                "selected_candidate_id": selected_candidate_id,
-                "verification_passed": true,
-                "status": "draft",
-            })),
-        )
-            .into_response(),
+        Ok(()) => {
+            tracing::info!(event = "dispatch_created", request_id = %req_id, case_id = %case_id, manufacturer = selected_candidate_id.as_deref().unwrap_or("-"), dispatch_id = %dispatch_id);
+            (
+                StatusCode::OK,
+                Json(json!({
+                    "dispatch_id": dispatch_id,
+                    "receipt_hash": receipt_hash,
+                    "case_id": case_id,
+                    "selected_candidate_id": selected_candidate_id,
+                    "verification_passed": true,
+                    "status": "draft",
+                })),
+            )
+                .into_response()
+        }
         Err(DispatchCommitmentError::ReceiptAlreadyDispatched) => (
             StatusCode::CONFLICT,
             Json(json!({"error": {"code": "receipt_already_dispatched",
@@ -1053,6 +1074,7 @@ pub async fn approve_dispatch_commitment(
     Path(dispatch_id): Path<String>,
     body: Option<Json<Value>>,
 ) -> impl IntoResponse {
+    let req_id = uuid::Uuid::new_v4();
     let approved_by = body
         .as_ref()
         .and_then(|b| b["approved_by"].as_str())
@@ -1060,7 +1082,10 @@ pub async fn approve_dispatch_commitment(
         .to_string();
 
     match store.approve(&dispatch_id, &approved_by) {
-        Ok(record) => (StatusCode::OK, Json(serde_json::to_value(&record).unwrap())).into_response(),
+        Ok(record) => {
+            tracing::info!(event = "dispatch_approved", request_id = %req_id, case_id = %record.case_id, manufacturer = record.selected_candidate_id.as_deref().unwrap_or("-"), dispatch_id = %dispatch_id);
+            (StatusCode::OK, Json(serde_json::to_value(&record).unwrap())).into_response()
+        }
         Err(DispatchCommitmentError::NotFound) => (
             StatusCode::NOT_FOUND,
             Json(json!({"error": {"code": "dispatch_not_found",
@@ -1094,8 +1119,10 @@ pub async fn export_dispatch_commitment(
     State(store): State<std::sync::Arc<DispatchCommitmentStore>>,
     Path(dispatch_id): Path<String>,
 ) -> impl IntoResponse {
+    let req_id = uuid::Uuid::new_v4();
     match store.mark_exported(&dispatch_id) {
         Ok(record) => {
+            tracing::info!(event = "dispatch_exported", request_id = %req_id, case_id = %record.case_id, manufacturer = record.selected_candidate_id.as_deref().unwrap_or("-"), dispatch_id = %dispatch_id);
             // Build deterministic export payload: canonical field order, all fields present.
             let payload = json!({
                 "approved_at": record.approved_at,

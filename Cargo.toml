@@ -21,6 +21,8 @@ thiserror = "1"
 proptest = { version = "1", default-features = false, features = ["std"] }
 axum = "0.7"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 postcad-core = { path = "crates/core" }
 postcad-registry = { path = "crates/registry" }

@@ -2,6 +2,13 @@ use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("postcad_service=info")),
+        )
+        .init();
+
     let app = postcad_service::app();
     // Railway injects PORT; fall back to POSTCAD_ADDR, then the local default.
     let addr = if let Ok(port) = std::env::var("PORT") {

@@ -532,6 +532,24 @@ async function routeCase(btn) {
 // ── Route Normalized Pilot Case ────────────────────────────────────────────
 async function routeNormalized(btn) {
   if (!fixtures) return;
+
+  const pilotCase = {
+    case_id:          'f1000001-0000-0000-0000-000000000001',
+    restoration_type: 'crown',
+    material:         'zirconia',
+    jurisdiction:     'DE',
+  };
+  const ni = document.getElementById('route-norm-inline');
+
+  // ── client-side validation ──────────────────────────────────────────────
+  const missing = validateNormInput(pilotCase);
+  if (missing.length) {
+    ni.textContent = 'Required fields missing: ' + missing.join(', ');
+    ni.className = 'error-note';
+    ni.classList.remove('hidden');
+    return;   // button stays enabled; clearNormForm() / loadNormSample() clear this error
+  }
+
   setBtn(btn, 'Running kernel…', true);
   document.getElementById('btn-route').disabled = true;
 
@@ -542,7 +560,6 @@ async function routeNormalized(btn) {
   hide('route-norm-preview');
   show('results-loading');
   // Transition to submitting state immediately — button stays disabled until finally.
-  const ni = document.getElementById('route-norm-inline');
   ni.textContent = 'Submitting…';
   ni.className = 'loading-note';
   ni.classList.remove('hidden');
@@ -550,13 +567,6 @@ async function routeNormalized(btn) {
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
   document.getElementById('btn-dispatch-export').disabled  = true;
-
-  const pilotCase = {
-    case_id:          'f1000001-0000-0000-0000-000000000001',
-    restoration_type: 'crown',
-    material:         'zirconia',
-    jurisdiction:     'DE',
-  };
 
   try {
     // ── fetch (network failure → inline error) ──────────────────────────────
@@ -882,6 +892,10 @@ function previewRow(k, v) {
     + '<span class="norm-preview-key">' + esc(k) + '</span>'
     + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
     + '</div>';
+}
+function validateNormInput(c) {
+  return ['case_id', 'restoration_type', 'material', 'jurisdiction']
+    .filter(k => !c[k] || !String(c[k]).trim());
 }
 function loadNormSample() {
   document.getElementById('fix-normalized-case').textContent =

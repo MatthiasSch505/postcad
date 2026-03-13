@@ -176,6 +176,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .norm-preview-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;
                   letter-spacing:.05em;white-space:nowrap}
 .norm-preview-val{color:#c9d1d9;word-break:break-all}
+.norm-field-invalid{border-color:#f85149!important}
 .copy-btn{background:none;border:1px solid #30363d;border-radius:3px;color:#58a6ff;
           cursor:pointer;font-family:inherit;font-size:.6rem;padding:.05rem .3rem;
           margin-left:.35rem;transition:color .1s}
@@ -547,8 +548,10 @@ async function routeNormalized(btn) {
     ni.textContent = 'Required fields missing: ' + missing.join(', ');
     ni.className = 'error-note';
     ni.classList.remove('hidden');
+    document.getElementById('fix-normalized-case').classList.add('norm-field-invalid');
     return;   // button stays enabled; clearNormForm() / loadNormSample() clear this error
   }
+  document.getElementById('fix-normalized-case').classList.remove('norm-field-invalid');
 
   setBtn(btn, 'Running kernel…', true);
   document.getElementById('btn-route').disabled = true;
@@ -909,6 +912,7 @@ function clearNormForm() {
   const prev = document.getElementById('route-norm-preview');
   prev.innerHTML = '';
   prev.classList.add('hidden');
+  document.getElementById('fix-normalized-case').classList.remove('norm-field-invalid');
   if (fixtures) document.getElementById('btn-route-norm').disabled = false;
 }
 function toggleNormReceiptJson() {

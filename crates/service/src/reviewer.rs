@@ -273,6 +273,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         <button class="btn btn-route-norm" id="btn-route-norm" onclick="routeNormalized(this)" disabled>
           ▶ Route Normalized Pilot Case
         </button>
+        <button class="copy-btn" style="margin-top:.3rem" onclick="clearNormForm()">↺ Clear form</button>
         <div id="route-norm-inline" class="hidden"></div>
         <div id="route-norm-preview" class="hidden"></div>
       </div>
@@ -880,6 +881,15 @@ function previewRow(k, v) {
     + '<span class="norm-preview-key">' + esc(k) + '</span>'
     + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
     + '</div>';
+}
+function clearNormForm() {
+  const ni = document.getElementById('route-norm-inline');
+  ni.textContent = '';
+  ni.className = 'hidden';
+  const prev = document.getElementById('route-norm-preview');
+  prev.innerHTML = '';
+  prev.classList.add('hidden');
+  if (fixtures) document.getElementById('btn-route-norm').disabled = false;
 }
 function toggleNormReceiptJson() {
   const pre = document.getElementById('norm-receipt-json-block');

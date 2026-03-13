@@ -149,9 +149,33 @@ pub async fn protocol_manifest() -> impl IntoResponse {
 
 /// GET /health
 ///
-/// Liveness check. Always returns HTTP 200 `{"status":"ok"}`.
+/// Liveness check. Returns service identity, protocol version, and feature list.
 pub async fn health() -> impl IntoResponse {
-    Json(json!({"status": "ok"}))
+    Json(json!({
+        "status": "ok",
+        "service": "postcad",
+        "protocol": "v0",
+        "features": [
+            "deterministic-routing",
+            "receipt-verification",
+            "dispatch-commitment"
+        ]
+    }))
+}
+
+/// GET /protocol
+///
+/// Returns the canonical protocol flow steps for pilot orientation.
+pub async fn protocol() -> impl IntoResponse {
+    Json(json!({
+        "flow": [
+            "route",
+            "verify",
+            "dispatch:create",
+            "dispatch:approve",
+            "dispatch:export"
+        ]
+    }))
 }
 
 /// GET /version

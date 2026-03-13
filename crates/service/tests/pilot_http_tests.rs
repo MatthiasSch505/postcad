@@ -74,12 +74,31 @@ fn route_body(case: &str, registry: &str, config: &str) -> Value {
 
 // ── /health ───────────────────────────────────────────────────────────────────
 
-/// GET /health must return HTTP 200 with exactly {"status":"ok"}.
+/// GET /health must return HTTP 200 with status ok, service identity, protocol, and features.
 #[tokio::test]
 async fn health_returns_ok() {
     let (status, body) = get_json("/health").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body, json!({"status": "ok"}));
+    assert_eq!(body["status"], "ok");
+    assert_eq!(body["service"], "postcad");
+    assert_eq!(body["protocol"], "v0");
+    assert_eq!(
+        body["features"],
+        json!(["deterministic-routing", "receipt-verification", "dispatch-commitment"])
+    );
+}
+
+// ── /protocol ────────────────────────────────────────────────────────────────
+
+/// GET /protocol must return HTTP 200 with the canonical flow array.
+#[tokio::test]
+async fn protocol_returns_flow() {
+    let (status, body) = get_json("/protocol").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body["flow"],
+        json!(["route", "verify", "dispatch:create", "dispatch:approve", "dispatch:export"])
+    );
 }
 
 // ── /version ─────────────────────────────────────────────────────────────────

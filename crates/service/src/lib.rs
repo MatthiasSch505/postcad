@@ -188,6 +188,7 @@ pub fn app_with_all_stores(
         .route("/pilot-fixtures", routing::get(handlers::pilot_fixtures))
         // Pilot endpoints
         .route("/health", routing::get(handlers::health))
+        .route("/protocol", routing::get(handlers::protocol))
         .route("/version", routing::get(handlers::version))
         .route("/route", routing::post(handlers::pilot_route))
         .route("/verify", routing::post(handlers::pilot_verify))

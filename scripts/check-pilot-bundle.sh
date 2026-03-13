@@ -32,6 +32,7 @@ printf "  bundle: %s\n\n" "${BUNDLE}"
 REQUIRED=(
     INVENTORY.md
     MANIFEST.txt
+    PROTOCOL_WALKTHROUGH.md
     README.md
     manifest.sha256
     preflight.sh

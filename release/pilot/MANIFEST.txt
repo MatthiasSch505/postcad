@@ -1,10 +1,11 @@
 # PostCAD Pilot Bundle — File Manifest
-# Generated: 2026-03-13T10:19:56Z
-# Commit:    3c5bad8c9acfa63965e17892acea46e95ac2020c
+# Generated: 2026-03-13T10:53:08Z
+# Commit:    480102106789b2069a93f7e59f28d70c5cfe9a18
 #
 # Format: <bundle path>  <source path>
 #
 INVENTORY.md              release/pilot/INVENTORY.md
+PROTOCOL_WALKTHROUGH.md   release/pilot/PROTOCOL_WALKTHROUGH.md
 README.md                 release/pilot/README.md
 candidates.json           examples/pilot/candidates.json
 case.json                 examples/pilot/case.json

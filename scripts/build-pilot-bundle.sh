@@ -67,6 +67,7 @@ put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
     printf "#\n"
     for entry in \
         "INVENTORY.md              release/pilot/INVENTORY.md" \
+        "PROTOCOL_WALKTHROUGH.md   release/pilot/PROTOCOL_WALKTHROUGH.md" \
         "README.md                 release/pilot/README.md" \
         "candidates.json           examples/pilot/candidates.json" \
         "case.json                 examples/pilot/case.json" \

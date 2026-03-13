@@ -12,6 +12,7 @@ release/evidence/current/
 release/out/
 pilot.json
 receipt.json
+export_packet.json
 verify.json
 pilot_run_output.txt
 pilot_verify_output.txt

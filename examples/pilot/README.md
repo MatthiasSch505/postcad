@@ -1,5 +1,28 @@
 # PostCAD Pilot Bundle
 
+## Quick Start — Canonical Demo
+
+One command runs the full pilot flow end-to-end against a live service:
+
+```bash
+cargo run -p postcad-service &          # start service on :8080
+./examples/pilot/demo.sh                # route → dispatch → approve → export → verify
+```
+
+Expected final output:
+
+```
+  DEMO COMPLETE
+  Candidate:    pilot-de-001
+  Receipt hash: 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+  Verification: VERIFIED
+```
+
+The export packet is written to `examples/pilot/export_packet.json`.
+The reviewer shell is at `http://localhost:8080/reviewer`.
+
+---
+
 ## What PostCAD Solves
 
 After a dental CAD design is complete, someone still has to decide which manufacturer
@@ -124,23 +147,17 @@ Note: `--policy` takes `derived_policy.json` (full bundle including `snapshots`)
 Start the service:
 
 ```bash
-./target/debug/postcad-service
+cargo run -p postcad-service
 # listening on 0.0.0.0:8080
 ```
 
-Route via HTTP:
+Run the canonical demo (route → dispatch → approve → export → verify):
 
 ```bash
-curl -s -X POST http://localhost:8080/route \
-  -H 'Content-Type: application/json' \
-  -d "{
-    \"case\":             $(cat examples/pilot/case.json),
-    \"registry_snapshot\": $(cat examples/pilot/registry_snapshot.json),
-    \"routing_config\":   $(cat examples/pilot/config.json)
-  }"
+./examples/pilot/demo.sh
 ```
 
-Verify via HTTP:
+Independent verify against the locked receipt:
 
 ```bash
 curl -s -X POST http://localhost:8080/verify \

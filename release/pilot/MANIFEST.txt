@@ -1,0 +1,18 @@
+# PostCAD Pilot Bundle — File Manifest
+# Generated: 2026-03-13T10:11:02Z
+# Commit:    3b6eb2e08d0e066200924ec32baf83dcd4b45d30
+#
+# Format: <bundle path>  <source path>
+#
+preflight.sh            examples/pilot/preflight.sh
+demo.sh                 examples/pilot/demo.sh
+case.json               examples/pilot/case.json
+registry_snapshot.json  examples/pilot/registry_snapshot.json
+config.json             examples/pilot/config.json
+derived_policy.json     examples/pilot/derived_policy.json
+candidates.json         examples/pilot/candidates.json
+expected_routed.json    examples/pilot/expected_routed.json
+expected_verify.json    examples/pilot/expected_verify.json
+docs/openapi.yaml       docs/openapi.yaml
+docs/protocol_diagram.md  docs/protocol_diagram.md
+README.md               release/pilot/README.md

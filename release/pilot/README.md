@@ -20,6 +20,21 @@ No AI. No randomness. Same inputs always produce the same receipt hash.
 
 ---
 
+## Bundle integrity
+
+Before running anything, verify the bundle is intact:
+
+```bash
+./scripts/check-pilot-bundle.sh
+```
+
+Expected final line: `Bundle OK — all checks passed.`
+
+This verifies that all required files are present, no unexpected extras exist,
+and every file's SHA-256 hash matches `manifest.sha256`.
+
+---
+
 ## Bundle contents
 
 | File | Description |
@@ -36,6 +51,7 @@ No AI. No randomness. Same inputs always produce the same receipt hash.
 | `docs/openapi.yaml` | OpenAPI 3.1 spec for all pilot endpoints |
 | `docs/protocol_diagram.md` | One-page protocol flow and guarantees |
 | `MANIFEST.txt` | File inventory with source paths |
+| `manifest.sha256` | SHA-256 hashes of all bundle files (sha256sum -c compatible) |
 
 ---
 

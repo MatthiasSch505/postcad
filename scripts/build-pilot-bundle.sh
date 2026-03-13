@@ -56,9 +56,8 @@ done
 put "docs/openapi.yaml"         "docs/openapi.yaml"
 put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
 
-# ── Manifest ──────────────────────────────────────────────────────────────────
+# ── MANIFEST.txt (source provenance, human-readable) ─────────────────────────
 
-MANIFEST="${BUNDLE}/MANIFEST.txt"
 {
     printf "# PostCAD Pilot Bundle — File Manifest\n"
     printf "# Generated: %s\n" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -67,22 +66,37 @@ MANIFEST="${BUNDLE}/MANIFEST.txt"
     printf "# Format: <bundle path>  <source path>\n"
     printf "#\n"
     for entry in \
-        "preflight.sh            examples/pilot/preflight.sh" \
-        "demo.sh                 examples/pilot/demo.sh" \
-        "case.json               examples/pilot/case.json" \
-        "registry_snapshot.json  examples/pilot/registry_snapshot.json" \
-        "config.json             examples/pilot/config.json" \
-        "derived_policy.json     examples/pilot/derived_policy.json" \
-        "candidates.json         examples/pilot/candidates.json" \
-        "expected_routed.json    examples/pilot/expected_routed.json" \
-        "expected_verify.json    examples/pilot/expected_verify.json" \
-        "docs/openapi.yaml       docs/openapi.yaml" \
+        "candidates.json           examples/pilot/candidates.json" \
+        "case.json                 examples/pilot/case.json" \
+        "config.json               examples/pilot/config.json" \
+        "demo.sh                   examples/pilot/demo.sh" \
+        "derived_policy.json       examples/pilot/derived_policy.json" \
+        "docs/openapi.yaml         docs/openapi.yaml" \
         "docs/protocol_diagram.md  docs/protocol_diagram.md" \
-        "README.md               release/pilot/README.md"; do
+        "expected_routed.json      examples/pilot/expected_routed.json" \
+        "expected_verify.json      examples/pilot/expected_verify.json" \
+        "preflight.sh              examples/pilot/preflight.sh" \
+        "README.md                 release/pilot/README.md" \
+        "registry_snapshot.json    examples/pilot/registry_snapshot.json"; do
         printf "%s\n" "${entry}"
     done
-} > "${MANIFEST}"
+} > "${BUNDLE}/MANIFEST.txt"
 printf "  wrote   MANIFEST.txt\n"
+
+# ── manifest.sha256 (machine-verifiable, sha256sum -c compatible) ─────────────
+
+# Enumerate all bundle files, sorted, excluding the manifest itself and runtime artifacts.
+(
+    cd "${BUNDLE}"
+    find . -type f \
+        | grep -v '^./manifest\.sha256$' \
+        | grep -v '^./export_packet\.json$' \
+        | sort \
+        | sed 's|^\./||' \
+        | xargs sha256sum \
+        > manifest.sha256
+)
+printf "  wrote   manifest.sha256\n"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 

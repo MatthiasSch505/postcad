@@ -87,8 +87,10 @@ pre.fixture{background:#0d1117;border:1px solid #21262d;border-radius:5px;
      border:1px solid transparent;cursor:pointer;transition:opacity .12s;font-weight:600}
 .btn:hover:not(:disabled){opacity:.82}
 .btn:disabled{opacity:.4;cursor:default}
-.btn-route  {background:#238636;border-color:#2ea043;color:#fff;width:100%;
-             justify-content:center;margin-top:.5rem}
+.btn-route      {background:#238636;border-color:#2ea043;color:#fff;width:100%;
+                 justify-content:center;margin-top:.5rem}
+.btn-route-norm {background:#1a3455;border-color:#388bfd;color:#79c0ff;width:100%;
+                 justify-content:center;margin-top:.35rem;font-size:.75rem}
 .btn-verify {background:#6e40c9;border-color:#8957e5;color:#fff;width:100%;
              justify-content:center;margin-top:.5rem}
 .btn-tamper   {background:#21262d;border-color:#b36200;color:#d29922;width:100%;
@@ -244,6 +246,17 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
       <button class="btn btn-route" id="btn-route" onclick="routeCase(this)" disabled>
         ▶ Execute Routing Kernel
       </button>
+
+      <div style="margin-top:.75rem;border-top:1px solid #21262d;padding-top:.65rem">
+        <div class="input-label">normalized pilot input <span class="input-badge">4 fields only</span></div>
+        <details>
+          <summary>view JSON</summary>
+          <pre class="fixture" id="fix-normalized-case">{"case_id":"f1000001-0000-0000-0000-000000000001","restoration_type":"crown","material":"zirconia","jurisdiction":"DE"}</pre>
+        </details>
+        <button class="btn btn-route-norm" id="btn-route-norm" onclick="routeNormalized(this)" disabled>
+          ▶ Route Normalized Pilot Case
+        </button>
+      </div>
     </div>
 
     <!-- RIGHT: Results -->
@@ -371,6 +384,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
     <span style="color:#30363d;margin:0 .3rem">·</span>
     <span class="ft-ep"><span class="method">POST</span> <span class="path">/route</span></span>
     <span style="color:#30363d;margin:0 .3rem">·</span>
+    <span class="ft-ep"><span class="method">POST</span> <span class="path">/pilot/route-normalized</span></span>
+    <span style="color:#30363d;margin:0 .3rem">·</span>
     <span class="ft-ep"><span class="method">POST</span> <span class="path">/verify</span></span>
     <span style="color:#30363d;margin:0 .3rem">·</span>
     <span class="ft-ep"><span class="method">POST</span> <span class="path">/dispatch/create</span></span>
@@ -413,7 +428,8 @@ let lastDispatchId = null;
     document.getElementById('fix-config').textContent   = fmt(fixtures.routing_config);
     document.getElementById('fixtures-loading').classList.add('hidden');
     document.getElementById('fixtures-panel').classList.remove('hidden');
-    document.getElementById('btn-route').disabled = false;
+    document.getElementById('btn-route').disabled      = false;
+    document.getElementById('btn-route-norm').disabled  = false;
   } catch(e) {
     document.getElementById('fixtures-loading').classList.add('hidden');
     const errEl = document.getElementById('fixtures-error');
@@ -478,6 +494,71 @@ async function routeCase(btn) {
     show('route-error');
   } finally {
     setBtn(btn, '▶ Execute Routing Kernel', false);
+  }
+}
+
+// ── Route Normalized Pilot Case ────────────────────────────────────────────
+async function routeNormalized(btn) {
+  if (!fixtures) return;
+  setBtn(btn, 'Running kernel…', true);
+
+  hide('results-placeholder');
+  hide('route-result'); hide('route-error'); hide('verify-result');
+  hide('dispatch-created'); hide('dispatch-export-result'); hide('dispatch-error');
+  lastReceipt = null; lastPolicy = null; lastDispatchId = null;
+  document.getElementById('btn-dispatch-create').disabled  = true;
+  document.getElementById('btn-dispatch-approve').disabled = true;
+  document.getElementById('btn-dispatch-export').disabled  = true;
+
+  const pilotCase = {
+    case_id:          'f1000001-0000-0000-0000-000000000001',
+    restoration_type: 'crown',
+    material:         'zirconia',
+    jurisdiction:     'DE',
+  };
+
+  try {
+    const r = await fetch('/pilot/route-normalized', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        pilot_case:        pilotCase,
+        registry_snapshot: fixtures.registry_snapshot,
+        routing_config:    fixtures.routing_config,
+      }),
+    });
+    const data = await r.json();
+
+    if (r.ok && data.receipt) {
+      lastReceipt = data.receipt;
+      lastPolicy  = data.derived_policy;
+      const rc = data.receipt;
+
+      const outcome  = rc.outcome || '—';
+      const selected = rc.selected_candidate_id || '(none — refused)';
+      const rhash    = rc.receipt_hash || '—';
+      const kver     = rc.routing_kernel_version || '—';
+
+      document.getElementById('art-outcome').innerHTML =
+        `<span class="pill ${outcome === 'routed' ? 'pill-ok' : 'pill-warn'}">${esc(outcome)}</span>`;
+      document.getElementById('art-selected').textContent = selected;
+      document.getElementById('art-hash').textContent     = rhash;
+      document.getElementById('art-kver').textContent     = kver;
+      document.getElementById('route-receipt-json').textContent = fmt(rc);
+
+      show('route-result');
+      document.getElementById('btn-verify').disabled          = false;
+      document.getElementById('btn-tamper').disabled          = false;
+      document.getElementById('btn-dispatch-create').disabled = false;
+    } else {
+      document.getElementById('route-error-json').textContent = fmt(data);
+      show('route-error');
+    }
+  } catch(e) {
+    document.getElementById('route-error-json').textContent = String(e);
+    show('route-error');
+  } finally {
+    setBtn(btn, '▶ Route Normalized Pilot Case', false);
   }
 }
 

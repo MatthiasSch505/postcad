@@ -1,4 +1,4 @@
-//! Contract tests for POST /pilot/route-normalized.
+//! Contract tests for POST /pilot/route-normalized and the reviewer shell UI.
 //!
 //! Proves:
 //!  1. Normalized input routes successfully — outcome, candidate, receipt_hash present.
@@ -6,11 +6,29 @@
 //!  3. Same semantic case via normalized path and direct /route path → same receipt_hash.
 //!  4. Invalid pilot_case field returns 422 with stable error code.
 //!  5. Missing top-level fields return 422 with parse_error.
+//!  6. GET /reviewer serves HTML containing the normalized route button and endpoint.
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use serde_json::{json, Value};
 use tower::util::ServiceExt;
+
+// ── Reviewer HTML helper ──────────────────────────────────────────────────────
+
+async fn get_reviewer_html() -> String {
+    let app = postcad_service::app();
+    let req = Request::builder()
+        .method("GET")
+        .uri("/reviewer")
+        .body(Body::empty())
+        .unwrap();
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    String::from_utf8(bytes.to_vec()).unwrap()
+}
 
 // ── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -187,4 +205,28 @@ async fn missing_registry_snapshot_returns_422() {
 
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(resp["error"]["code"], "parse_error");
+}
+
+// ── Test 7: reviewer shell contains normalized route button and endpoint ──────
+
+#[tokio::test]
+async fn reviewer_shell_contains_normalized_route_button() {
+    let html = get_reviewer_html().await;
+    assert!(
+        html.contains("btn-route-norm"),
+        "reviewer HTML must contain the normalized route button element"
+    );
+    assert!(
+        html.contains("Route Normalized Pilot Case"),
+        "reviewer HTML must contain the button label"
+    );
+}
+
+#[tokio::test]
+async fn reviewer_shell_contains_normalized_route_endpoint() {
+    let html = get_reviewer_html().await;
+    assert!(
+        html.contains("/pilot/route-normalized"),
+        "reviewer HTML must reference the /pilot/route-normalized endpoint"
+    );
 }

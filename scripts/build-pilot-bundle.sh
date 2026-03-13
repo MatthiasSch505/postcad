@@ -66,6 +66,8 @@ put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
     printf "# Format: <bundle path>  <source path>\n"
     printf "#\n"
     for entry in \
+        "INVENTORY.md              release/pilot/INVENTORY.md" \
+        "README.md                 release/pilot/README.md" \
         "candidates.json           examples/pilot/candidates.json" \
         "case.json                 examples/pilot/case.json" \
         "config.json               examples/pilot/config.json" \
@@ -76,7 +78,6 @@ put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
         "expected_routed.json      examples/pilot/expected_routed.json" \
         "expected_verify.json      examples/pilot/expected_verify.json" \
         "preflight.sh              examples/pilot/preflight.sh" \
-        "README.md                 release/pilot/README.md" \
         "registry_snapshot.json    examples/pilot/registry_snapshot.json"; do
         printf "%s\n" "${entry}"
     done

@@ -30,8 +30,9 @@ printf "  bundle: %s\n\n" "${BUNDLE}"
 # ── Required files ─────────────────────────────────────────────────────────────
 
 REQUIRED=(
-    README.md
+    INVENTORY.md
     MANIFEST.txt
+    README.md
     manifest.sha256
     preflight.sh
     demo.sh

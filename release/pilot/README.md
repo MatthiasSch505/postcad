@@ -33,6 +33,8 @@ Expected final line: `Bundle OK — all checks passed.`
 This verifies that all required files are present, no unexpected extras exist,
 and every file's SHA-256 hash matches `manifest.sha256`.
 
+If you are unsure what a file does, see `INVENTORY.md`.
+
 ---
 
 ## Bundle contents
@@ -50,6 +52,7 @@ and every file's SHA-256 hash matches `manifest.sha256`.
 | `expected_verify.json` | Frozen canonical verification result |
 | `docs/openapi.yaml` | OpenAPI 3.1 spec for all pilot endpoints |
 | `docs/protocol_diagram.md` | One-page protocol flow and guarantees |
+| `INVENTORY.md` | Maps every bundle file to its purpose and flow step |
 | `MANIFEST.txt` | File inventory with source paths |
 | `manifest.sha256` | SHA-256 hashes of all bundle files (sha256sum -c compatible) |
 

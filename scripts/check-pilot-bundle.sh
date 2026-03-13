@@ -34,6 +34,7 @@ REQUIRED=(
     MANIFEST.txt
     PROTOCOL_WALKTHROUGH.md
     README.md
+    REVIEWER_HANDOFF.md
     SEQUENCE_DIAGRAM.md
     manifest.sha256
     preflight.sh

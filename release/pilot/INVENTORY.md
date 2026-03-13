@@ -25,6 +25,7 @@ during a run are listed separately at the bottom.
 | `manifest.sha256` | SHA-256 hashes of all bundle files (sha256sum -c compatible) | Before starting — consumed by `check-pilot-bundle.sh` | Required |
 | `preflight.sh` | Environment check: verifies required tools and fixture files are present | Step 1 — run before anything else | Required |
 | `README.md` | Step-by-step operator guide for running the canonical pilot flow | Before starting — primary entry point | Required |
+| `REVIEWER_HANDOFF.md` | Structured handoff for external reviewers: fastest review path, files that matter most, determinism and integrity checks | First file to read if you are an external reviewer | Reference only |
 | `registry_snapshot.json` | Manufacturer registry snapshot: three active manufacturers in Germany, all capable of zirconia crowns | Step 3 — loaded by `demo.sh` during the route step | Required |
 
 ---

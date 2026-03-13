@@ -69,6 +69,7 @@ put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
         "INVENTORY.md              release/pilot/INVENTORY.md" \
         "PROTOCOL_WALKTHROUGH.md   release/pilot/PROTOCOL_WALKTHROUGH.md" \
         "README.md                 release/pilot/README.md" \
+        "REVIEWER_HANDOFF.md       release/pilot/REVIEWER_HANDOFF.md" \
         "SEQUENCE_DIAGRAM.md       release/pilot/SEQUENCE_DIAGRAM.md" \
         "candidates.json           examples/pilot/candidates.json" \
         "case.json                 examples/pilot/case.json" \

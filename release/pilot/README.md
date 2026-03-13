@@ -33,6 +33,7 @@ Expected final line: `Bundle OK — all checks passed.`
 This verifies that all required files are present, no unexpected extras exist,
 and every file's SHA-256 hash matches `manifest.sha256`.
 
+If you are an external reviewer, start with `REVIEWER_HANDOFF.md`.
 If you are unsure what a file does, see `INVENTORY.md`.
 For a technical explanation of what each step does, see `PROTOCOL_WALKTHROUGH.md`.
 

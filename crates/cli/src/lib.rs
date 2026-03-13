@@ -56,6 +56,9 @@ pub use registry_routing::{
 pub mod registry_export;
 pub use registry_export::{export_registry, ExportError};
 
+pub mod pilot_input;
+pub use pilot_input::{normalize_pilot_case_json, PilotCaseInput};
+
 // ── Internal imports (used only by the mapping layer and pipeline helpers) ───
 
 use postcad_audit::{

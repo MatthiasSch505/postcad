@@ -2,9 +2,9 @@ use std::fs;
 use std::process;
 
 use postcad_cli::{
-    build_manifest, export_registry, route_case_from_json, route_case_from_registry_json,
-    verify_receipt_from_inputs, verify_receipt_from_policy_json, POSTCAD_PROTOCOL_VERSION,
-    PROTOCOL_VERSION, ROUTING_KERNEL_SEMVER,
+    build_manifest, export_registry, normalize_pilot_case_json, route_case_from_json,
+    route_case_from_registry_json, verify_receipt_from_inputs, verify_receipt_from_policy_json,
+    POSTCAD_PROTOCOL_VERSION, PROTOCOL_VERSION, ROUTING_KERNEL_SEMVER,
 };
 
 fn main() {
@@ -20,6 +20,7 @@ fn main() {
         Some("protocol-manifest") => run_protocol_manifest(),
         Some("protocol-info") => run_protocol_info(),
         Some("demo-run") | Some("demo") => run_demo_v1(&args[2..]),
+        Some("pilot-route-normalized") => run_pilot_route_normalized(&args[2..]),
         Some("--help") | Some("-h") | Some("help") => print_help(),
         Some(other) => emit_error_and_exit(
             json_output,
@@ -343,6 +344,74 @@ const DEMO_REGISTRY_JSON: &str =
 const DEMO_CONFIG_JSON: &str =
     include_str!("../../../tests/protocol_vectors/v01_basic_routing/policy.json");
 
+// ── Pilot normalized route fixtures (embedded at compile time) ────────────────
+
+/// Canonical normalized pilot case: case-001, crown / zirconia / DE jurisdiction.
+const PILOT_NORM_CASE_JSON: &str = r#"{
+  "case_id": "c0000001-0000-0000-0000-000000000001",
+  "restoration_type": "crown",
+  "material": "zirconia",
+  "jurisdiction": "DE"
+}"#;
+const PILOT_NORM_REGISTRY_JSON: &str =
+    include_str!("../../../examples/pilot/registry_snapshot.json");
+const PILOT_NORM_CONFIG_JSON: &str = include_str!("../../../examples/pilot/config.json");
+
+/// `pilot-route-normalized` — routes the canonical normalized pilot case.
+///
+/// Normalizes a minimal 4-field pilot input (case_id, restoration_type,
+/// material, jurisdiction) via the input adapter, routes it through the
+/// registry-backed kernel, self-verifies the receipt, and prints the result.
+///
+/// Uses only embedded compile-time fixtures; no file I/O, no flags required.
+/// `--json` emits a compact summary object instead of human-readable output.
+fn run_pilot_route_normalized(args: &[String]) {
+    let json_output = args.iter().any(|a| a.as_str() == "--json");
+
+    // Normalize the 4-field pilot input into a CaseInput-compatible JSON string.
+    let case_json = match normalize_pilot_case_json(PILOT_NORM_CASE_JSON) {
+        Ok(j) => j,
+        Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
+    };
+
+    // Route using the registry-backed kernel.
+    let result =
+        match route_case_from_registry_json(&case_json, PILOT_NORM_REGISTRY_JSON, PILOT_NORM_CONFIG_JSON) {
+            Ok(r) => r,
+            Err(e) => emit_error_and_exit(json_output, e.code(), &e.to_string()),
+        };
+
+    let receipt = &result.receipt;
+    let receipt_json = serde_json::to_string(receipt).unwrap();
+
+    // Self-verify: replay the routing decision before emitting output.
+    match verify_receipt_from_policy_json(&receipt_json, &case_json, &result.derived_policy_json) {
+        Ok(()) => {
+            if json_output {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "result":               "VERIFIED",
+                        "outcome":              receipt.outcome,
+                        "selected_candidate_id": receipt.selected_candidate_id,
+                        "receipt_hash":         receipt.receipt_hash,
+                    })
+                );
+            } else {
+                println!("pilot-route-normalized");
+                println!("----------------------");
+                println!(
+                    "Selected Candidate:   {}",
+                    receipt.selected_candidate_id.as_deref().unwrap_or("\u{2014}")
+                );
+                println!("Receipt Hash:         {}", receipt.receipt_hash);
+                println!("Verification:         VERIFIED");
+            }
+        }
+        Err(f) => emit_error_and_exit(json_output, &f.code, &f.message),
+    }
+}
+
 /// `demo-run` — executes the frozen PostCAD Protocol v1 flow in one command.
 ///
 /// Demonstrates the full registry-backed pilot loop:
@@ -535,9 +604,11 @@ fn print_help() {
     println!("    postcad-cli <subcommand> [options]");
     println!();
     println!("SUBCOMMANDS:");
-    println!("    route-case       Route a dental case through the compliance pipeline");
-    println!("    verify-receipt   Verify a routing receipt against its original inputs");
-    println!("    help             Print this help message");
+    println!("    route-case                Route a dental case through the compliance pipeline");
+    println!("    verify-receipt            Verify a routing receipt against its original inputs");
+    println!("    pilot-route-normalized    Route the canonical normalized pilot case (4-field input)");
+    println!("    demo-run                  Execute the frozen protocol v1 demo in one command");
+    println!("    help                      Print this help message");
     println!();
     println!("OPTIONS (route-case):");
     println!("    --case <path>         Path to case JSON file");

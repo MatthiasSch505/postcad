@@ -166,8 +166,10 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 /* ── misc ── */
 .dimmed{color:#6e7681;font-size:.75rem}
 .hidden{display:none!important}
-.error-note{font-size:.75rem;color:#f85149;margin-top:.4rem;line-height:1.5}
-.warn-note {font-size:.75rem;color:#d29922;margin-top:.4rem;line-height:1.5}
+.error-note  {font-size:.75rem;color:#f85149;margin-top:.4rem;line-height:1.5}
+.warn-note   {font-size:.75rem;color:#d29922;margin-top:.4rem;line-height:1.5}
+.success-note{font-size:.75rem;color:#3fb950;margin-top:.4rem;line-height:1.5}
+.loading-note{font-size:.75rem;color:#6e7681;margin-top:.4rem;line-height:1.5}
 </style>
 </head>
 <body>
@@ -256,14 +258,16 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         <button class="btn btn-route-norm" id="btn-route-norm" onclick="routeNormalized(this)" disabled>
           ▶ Route Normalized Pilot Case
         </button>
+        <div id="route-norm-inline" class="hidden"></div>
       </div>
     </div>
 
     <!-- RIGHT: Results -->
     <div class="card">
       <div id="results-placeholder" class="dimmed" style="padding:.5rem 0">
-        Click "Execute Routing Kernel" to run the real routing kernel against the pilot inputs.
+        No items awaiting review. Submit a pilot input to begin.
       </div>
+      <div id="results-loading" class="hidden loading-note" style="padding:.5rem 0">Running kernel…</div>
 
       <!-- B. Artifact summary (shown after route) -->
       <div id="route-result" class="hidden">
@@ -352,6 +356,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
             <pre class="result result-info" id="dispatch-export-json"></pre>
           </div>
 
+          <div id="dispatch-success" class="hidden success-note" style="margin-top:.4rem"></div>
           <div id="dispatch-error" class="hidden error-note" style="margin-top:.4rem"></div>
         </div>
       </div>
@@ -359,6 +364,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
       <!-- Route error -->
       <div id="route-error" class="hidden">
         <div class="card-title">Route error</div>
+        <div id="route-error-banner" class="hidden error-note" style="margin-bottom:.35rem"></div>
         <pre class="result result-err" id="route-error-json"></pre>
       </div>
 
@@ -443,10 +449,14 @@ let lastDispatchId = null;
 async function routeCase(btn) {
   if (!fixtures) return;
   setBtn(btn, 'Running kernel…', true);
+  document.getElementById('btn-route-norm').disabled = true;
 
   hide('results-placeholder');
+  hide('route-norm-inline');
   hide('route-result'); hide('route-error'); hide('verify-result');
-  hide('dispatch-created'); hide('dispatch-export-result'); hide('dispatch-error');
+  hide('dispatch-created'); hide('dispatch-export-result');
+  hide('dispatch-success'); hide('dispatch-error');
+  show('results-loading');
   lastReceipt = null; lastPolicy = null; lastDispatchId = null;
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
@@ -486,14 +496,18 @@ async function routeCase(btn) {
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
     } else {
+      hide('route-error-banner');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
     }
   } catch(e) {
+    hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
   } finally {
+    hide('results-loading');
     setBtn(btn, '▶ Execute Routing Kernel', false);
+    document.getElementById('btn-route-norm').disabled = false;
   }
 }
 
@@ -501,10 +515,14 @@ async function routeCase(btn) {
 async function routeNormalized(btn) {
   if (!fixtures) return;
   setBtn(btn, 'Running kernel…', true);
+  document.getElementById('btn-route').disabled = true;
 
   hide('results-placeholder');
+  hide('route-norm-inline');
   hide('route-result'); hide('route-error'); hide('verify-result');
-  hide('dispatch-created'); hide('dispatch-export-result'); hide('dispatch-error');
+  hide('dispatch-created'); hide('dispatch-export-result');
+  hide('dispatch-success'); hide('dispatch-error');
+  show('results-loading');
   lastReceipt = null; lastPolicy = null; lastDispatchId = null;
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
@@ -550,15 +568,27 @@ async function routeNormalized(btn) {
       document.getElementById('btn-verify').disabled          = false;
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
+      const ni = document.getElementById('route-norm-inline');
+      ni.textContent = '✓ Routing complete.';
+      ni.className = 'success-note';
+      ni.classList.remove('hidden');
     } else {
+      const code = data?.error?.code || data?.result || 'error';
+      const msg  = data?.error?.message || '';
+      const banner = document.getElementById('route-error-banner');
+      banner.textContent = '[' + code + ']' + (msg ? ' ' + msg : '');
+      banner.classList.remove('hidden');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
     }
   } catch(e) {
+    hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
   } finally {
+    hide('results-loading');
     setBtn(btn, '▶ Route Normalized Pilot Case', false);
+    document.getElementById('btn-route').disabled = false;
   }
 }
 
@@ -654,9 +684,9 @@ function showVerifyResult(isVerified, data, kind) {
 async function createDispatch(btn) {
   if (!lastReceipt || !lastPolicy) return;
   setBtn(btn, 'Creating…', true);
-  // Only clear the error display — preserve any existing dispatch panel so
-  // that a 409 (already created) doesn't wipe the visible dispatch_id.
-  hide('dispatch-error');
+  // Only clear the error/success displays — preserve any existing dispatch panel
+  // so that a 409 (already created) doesn't wipe the visible dispatch_id.
+  hide('dispatch-success'); hide('dispatch-error');
 
   try {
     const r = await fetch('/dispatch/create', {
@@ -696,7 +726,7 @@ async function createDispatch(btn) {
 async function approveDispatch(btn) {
   if (!lastDispatchId) return;
   setBtn(btn, 'Approving…', true);
-  hide('dispatch-error');
+  hide('dispatch-success'); hide('dispatch-error');
   // Track whether this button should stay disabled after the call.
   // true = terminal state (success or already-approved 409).
   let terminal = false;
@@ -714,6 +744,9 @@ async function approveDispatch(btn) {
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       terminal = true;   // immutable — disable approve permanently
       document.getElementById('btn-dispatch-export').disabled = false;
+      const s = document.getElementById('dispatch-success');
+      s.textContent = 'Dispatch approved.';
+      s.classList.remove('hidden');
     } else if (r.status === 409) {
       // Already approved server-side — enable export so the operator can continue.
       terminal = true;
@@ -737,7 +770,7 @@ async function approveDispatch(btn) {
 async function exportDispatch(btn) {
   if (!lastDispatchId) return;
   setBtn(btn, 'Exporting…', true);
-  hide('dispatch-export-result'); hide('dispatch-error');
+  hide('dispatch-export-result'); hide('dispatch-success'); hide('dispatch-error');
 
   try {
     const r = await fetch('/dispatch/' + lastDispatchId + '/export');
@@ -747,6 +780,9 @@ async function exportDispatch(btn) {
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       document.getElementById('dispatch-export-json').textContent = fmt(data);
       show('dispatch-export-result');
+      const s = document.getElementById('dispatch-success');
+      s.textContent = 'Export complete.';
+      s.classList.remove('hidden');
     } else {
       showDispatchMsg('error',
         '[' + (data?.error?.code || 'error') + '] ' + (data?.error?.message || JSON.stringify(data)));

@@ -237,9 +237,32 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
   <!-- A. Hero / info architecture -->
   <div class="hero">
-    <div class="hero-title">PostCAD Routing Kernel</div>
-    <div class="hero-sub">Deterministic manufacturing routing with verifiable receipts</div>
-    <div class="hero-why">PostCAD replaces manual lab selection with deterministic routing and auditable manufacturing receipts.</div>
+    <div class="hero-title">PostCAD — Human Review Surface</div>
+    <div class="hero-sub">Deterministic manufacturing routing · verifiable receipts · operator-gated dispatch</div>
+    <div class="hero-why"><strong style="color:#c9d1d9">What is this page?</strong> This is the PostCAD reviewer shell — a human review layer on top of a deterministic routing kernel. The operator reviews the routed result, supporting evidence, and dispatch readiness before a case is handed off to manufacturing. The protocol is auditable: every decision carries a machine-readable reason code and a cryptographic receipt. This UI does not make routing decisions; it presents the kernel output for human review.</div>
+
+    <div style="font-size:.6rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin:.8rem 0 .3rem">Operator flow — 3 steps</div>
+    <div class="flow" style="margin-bottom:.8rem">
+      <div class="flow-step">
+        <div class="flow-num">step 1</div>
+        <div class="flow-label">Review case</div>
+        <div class="flow-desc">Inspect the case inputs, jurisdiction, and routing policy before running the kernel</div>
+      </div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step">
+        <div class="flow-num">step 2</div>
+        <div class="flow-label">Confirm route + evidence</div>
+        <div class="flow-desc">Verify the receipt, inspect the selected manufacturer, and confirm the routing decision is correct</div>
+      </div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step">
+        <div class="flow-num">step 3</div>
+        <div class="flow-label">Dispatch or stop</div>
+        <div class="flow-desc">If everything checks out, approve and dispatch. If evidence is insufficient or the jurisdiction fit is unclear, stop — do not dispatch.</div>
+      </div>
+    </div>
+
+    <div style="font-size:.6rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Protocol internals</div>
     <div class="flow">
       <div class="flow-step">
         <div class="flow-num">01 · inputs</div>
@@ -267,12 +290,25 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
     </div>
   </div>
 
+  <!-- Glossary -->
+  <details class="card">
+    <summary style="color:#8b949e;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.65rem">Terms &amp; glossary</summary>
+    <div style="margin-top:.6rem;display:grid;gap:.3rem">
+      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Candidate</span><span style="color:#c9d1d9;line-height:1.5">A manufacturer that meets the capability and compliance requirements for this case.</span></div>
+      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Route</span><span style="color:#c9d1d9;line-height:1.5">Running the routing kernel: compliance rules are evaluated, candidates are filtered, one manufacturer is selected deterministically.</span></div>
+      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Receipt</span><span style="color:#c9d1d9;line-height:1.5">The auditable record of a routing decision — a JSON object with hash-committed fields that can be independently verified from the original inputs.</span></div>
+      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Dispatch</span><span style="color:#c9d1d9;line-height:1.5">A commitment to hand the case off to the selected manufacturer. Requires a verified receipt; irreversible once approved.</span></div>
+      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Refusal</span><span style="color:#c9d1d9;line-height:1.5">The kernel's explicit rejection of a case, always with a machine-readable reason code. Never a silent failure.</span></div>
+      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Replay verification</span><span style="color:#c9d1d9;line-height:1.5">Re-runs routing from the original inputs and recomputes every hash in the receipt. Does not trust stored state.</span></div>
+    </div>
+  </details>
+
   <!-- Two-column: inputs + results -->
   <div class="two-col">
 
     <!-- LEFT: Inputs -->
     <div class="card">
-      <div class="card-title">Pilot inputs <span style="font-weight:400;color:#6e7681">— examples/pilot/</span></div>
+      <div class="card-title">Case inputs <span style="font-weight:400;color:#6e7681">— pilot fixtures loaded from examples/pilot/</span></div>
 
       <p id="fixtures-loading" class="dimmed">Loading fixtures…</p>
       <div id="fixtures-panel" class="hidden">
@@ -371,7 +407,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
       <!-- B. Artifact summary (shown after route) -->
       <div id="route-result" class="hidden">
-        <div class="card-title">Routing result</div>
+        <div class="card-title">Routing decision — audit record</div>
 
         <div class="artifacts">
           <div class="artifact-row">
@@ -397,8 +433,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         </div>
 
         <div class="section-title">
-          Full receipt JSON
-          <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— raw kernel output</span>
+          Receipt JSON
+          <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— complete audit record of the routing decision</span>
         </div>
         <pre class="result result-ok" id="route-receipt-json"></pre>
 
@@ -409,11 +445,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
         <!-- E. Tamper demo -->
         <div class="tamper-section">
-          <div class="tamper-label">Tamper demo</div>
+          <div class="tamper-label">Tamper detection demo</div>
           <div class="tamper-desc">
             Modifies <code>selected_candidate_id</code> in the receipt client-side,
             then submits to the real <code>POST /verify</code> endpoint.
-            The verifier catches the mismatch — no backend changes.
+            The verifier catches the mismatch — no backend changes. This demonstrates
+            that the receipt is cryptographically bound to its content.
           </div>
           <button class="btn btn-tamper" id="btn-tamper" onclick="tamperVerify(this)" disabled>
             ⚠ Tamper + Verify
@@ -422,11 +459,14 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
         <!-- G. Dispatch commitment -->
         <div class="tamper-section" id="dispatch-section">
-          <div class="tamper-label">Dispatch Commitment</div>
+          <div class="tamper-label">Dispatch commitment — handoff to manufacturing</div>
           <div class="tamper-desc">
             Calls <code>POST /dispatch/create</code> — the server re-verifies the
             receipt before creating the record. Approve makes the commitment
             immutable; export produces the deterministic dispatch packet.
+          </div>
+          <div style="font-size:.7rem;color:#d29922;background:#2d200966;border:1px solid #d2992233;border-radius:4px;padding:.4rem .6rem;margin-bottom:.2rem;line-height:1.55">
+            <strong style="color:#f0f6fc">Stop here if:</strong> evidence is insufficient · jurisdiction or compliance fit is unclear · manufacturer handoff should not proceed. Dispatch is irreversible once approved.
           </div>
           <button class="btn btn-dispatch" id="btn-dispatch-create" onclick="createDispatch(this)" disabled>
             ⬦ Create Dispatch
@@ -452,7 +492,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           </div>
 
           <div id="dispatch-export-result" class="hidden" style="margin-top:.55rem">
-            <div class="section-title">Export Packet</div>
+            <div class="section-title">Export packet — deterministic dispatch record</div>
             <pre class="result result-info" id="dispatch-export-json"></pre>
           </div>
 
@@ -463,10 +503,10 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
       <!-- Route error -->
       <div id="route-error" class="hidden">
-        <div class="card-title">Routing failed</div>
+        <div class="card-title">Routing failed — case refused or invalid input</div>
         <div id="route-error-banner" class="hidden error-note" style="margin-bottom:.35rem"></div>
         <div style="font-size:.7rem;color:#6e7681;margin-bottom:.5rem">
-          Review the error below, correct the inputs on the left, and resubmit.
+          The kernel returned an explicit refusal with a reason code. Review the error below, correct the inputs, and resubmit. If the case genuinely does not meet routing criteria, refusal is the correct and expected outcome — not an error.
         </div>
         <pre class="result result-err" id="route-error-json"></pre>
       </div>

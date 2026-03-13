@@ -91,14 +91,20 @@ Key verification failure codes: `receipt_hash_mismatch`, `routing_proof_hash_mis
 
 ## Reviewer Shell
 
-A thin local app over the real route/verify kernel. No mocked decisions.
+The reviewer shell (`/reviewer`) is the human review layer on top of the PostCAD routing kernel. It is **not** a production UI — it is a deterministic review and dispatch demo that exercises the full operator path against real protocol endpoints, with no mocked decisions.
 
 ```bash
 cargo run -p postcad-service
 # then open http://localhost:8080/reviewer
 ```
 
-Loads pilot fixtures automatically. Full operator path: route → create dispatch → approve → export.
+**What `run_pilot.sh` produces:** Routes a canonical dental case (zirconia crown, jurisdiction DE) against a German manufacturer registry, emits a cryptographically committed receipt, and self-verifies it. The receipt hash is deterministic — the same inputs always produce the same hash.
+
+**What the reviewer page is for:** An operator loads the pilot fixtures, submits the case for routing, inspects the receipt (the audit record of the routing decision), replays verification, and — if the result is correct — creates, approves, and exports a dispatch commitment to the selected manufacturer. At every step the operator can stop instead of proceeding.
+
+**What `verify.sh` proves:** Independent replay of the routing decision from the original inputs. Every hash field in the receipt is recomputed from scratch. No stored state is trusted. Tampering any field in the receipt causes verification to fail with a specific error code.
+
+Full operator path: route → verify → create dispatch → approve → export.
 Expected receipt hash: `0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb`
 
 ---

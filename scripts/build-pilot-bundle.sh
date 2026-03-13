@@ -66,6 +66,7 @@ put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
     printf "# Format: <bundle path>  <source path>\n"
     printf "#\n"
     for entry in \
+        "BUNDLE_SNAPSHOT.md        release/pilot/BUNDLE_SNAPSHOT.md" \
         "INVENTORY.md              release/pilot/INVENTORY.md" \
         "PROTOCOL_WALKTHROUGH.md   release/pilot/PROTOCOL_WALKTHROUGH.md" \
         "README.md                 release/pilot/README.md" \
@@ -86,6 +87,91 @@ put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
     done
 } > "${BUNDLE}/MANIFEST.txt"
 printf "  wrote   MANIFEST.txt\n"
+
+# ── BUNDLE_SNAPSHOT.md (deterministic surface summary) ───────────────────────
+
+SNAPSHOT_COMMIT="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo 'unknown')"
+SNAP_COUNT=$(find "${BUNDLE}" -type f \
+    | grep -v '^'"${BUNDLE}"'/BUNDLE_SNAPSHOT\.md$' \
+    | grep -v '^'"${BUNDLE}"'/manifest\.sha256$' \
+    | grep -v '^'"${BUNDLE}"'/export_packet\.json$' \
+    | wc -l | tr -d ' ')
+
+{
+    cat <<HEADER
+# PostCAD — Pilot Bundle Snapshot
+
+**Protocol:** \`postcad-v1\` · **Kernel:** \`postcad-routing-v1\`
+
+---
+
+## Bundle purpose
+
+Frozen reproducible snapshot of the PostCAD pilot. Contains the scripts,
+fixtures, and specifications needed to reproduce the full routing and
+dispatch flow end-to-end against a fixed input set.
+
+---
+
+## Build source
+
+| Field | Value |
+|---|---|
+| Repository | \`postcad\` |
+| Commit | \`${SNAPSHOT_COMMIT}\` |
+
+---
+
+## Canonical flow surfaces
+
+| Surface | Path / Command |
+|---|---|
+| Preflight | \`./release/pilot/preflight.sh\` |
+| Demo entrypoint | \`./release/pilot/demo.sh\` |
+| Reviewer shell | \`http://localhost:8080/reviewer\` |
+| Verify command | \`POST /verify\` — see \`PROTOCOL_WALKTHROUGH.md\` Step 7 |
+| OpenAPI spec | \`release/pilot/docs/openapi.yaml\` |
+
+---
+
+## Shipped artifacts
+
+${SNAP_COUNT} files listed below (plus \`BUNDLE_SNAPSHOT.md\` and \`manifest.sha256\` generated after this step).
+See \`MANIFEST.txt\` for full inventory with source paths.
+
+\`\`\`
+HEADER
+    find "${BUNDLE}" -type f \
+        | grep -v '^'"${BUNDLE}"'/BUNDLE_SNAPSHOT\.md$' \
+        | grep -v '^'"${BUNDLE}"'/manifest\.sha256$' \
+        | grep -v '^'"${BUNDLE}"'/export_packet\.json$' \
+        | sort | sed "s|${BUNDLE}/||"
+    cat <<'FOOTER'
+```
+
+---
+
+## Integrity surfaces
+
+| Surface | Path |
+|---|---|
+| Human-readable manifest | `release/pilot/MANIFEST.txt` |
+| SHA-256 hashes | `release/pilot/manifest.sha256` |
+| Integrity check script | `./scripts/check-pilot-bundle.sh` |
+
+---
+
+## Reviewer guidance
+
+| Document | Purpose |
+|---|---|
+| `REVIEWER_HANDOFF.md` | Structured review path: 5-minute and 20-minute tracks |
+| `PROTOCOL_WALKTHROUGH.md` | Step-by-step execution flow with artifact references |
+| `SEQUENCE_DIAGRAM.md` | One-glance execution order across all five actors |
+| `INVENTORY.md` | Maps every bundle file to its purpose and flow step |
+FOOTER
+} > "${BUNDLE}/BUNDLE_SNAPSHOT.md"
+printf "  wrote   BUNDLE_SNAPSHOT.md\n"
 
 # ── manifest.sha256 (machine-verifiable, sha256sum -c compatible) ─────────────
 

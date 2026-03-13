@@ -1,5 +1,7 @@
 # PostCAD — Protocol Walkthrough
 
+For a one-glance view of the full execution order, see `SEQUENCE_DIAGRAM.md`.
+
 ---
 
 ## System overview

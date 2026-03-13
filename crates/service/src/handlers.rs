@@ -15,6 +15,7 @@ use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
 use crate::demo::DEMO_HTML;
+use crate::dispatch_commitment::{DispatchCommitmentError, DispatchCommitmentStore, DispatchRecord};
 use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
 use crate::reviewer::REVIEWER_HTML;
 use crate::ui::OPERATOR_UI_HTML;
@@ -838,4 +839,201 @@ pub async fn operator_ui() -> impl IntoResponse {
         [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
         OPERATOR_UI_HTML,
     )
+}
+
+// ── Dispatch Commitment Layer ─────────────────────────────────────────────────
+
+/// POST /dispatch/create
+///
+/// Creates a dispatch commitment from a **verification-passed** routing receipt.
+/// The receipt is verified inline; if verification fails the dispatch is rejected.
+///
+/// Request: `{"receipt": {...}, "case": {...}, "policy": {...}}`
+/// Success (200):   `{"dispatch_id": "...", "receipt_hash": "...", "case_id": "...",
+///                    "selected_candidate_id": "..." | null, "verification_passed": true, "status": "draft"}`
+/// Verify fail (422): `{"error": {"code": "...", "message": "..."}}`
+/// Already exists (409): `{"error": {"code": "receipt_already_dispatched", ...}}`
+pub async fn create_dispatch_commitment(
+    State(store): State<std::sync::Arc<DispatchCommitmentStore>>,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let receipt = &body["receipt"];
+    let case = &body["case"];
+    let policy = &body["policy"];
+
+    if receipt.is_null() || case.is_null() || policy.is_null() {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "parse_error",
+                "message": "request must contain 'receipt', 'case', and 'policy' fields"}})),
+        )
+            .into_response();
+    }
+
+    let receipt_json = serde_json::to_string(receipt).unwrap();
+    let case_json = serde_json::to_string(case).unwrap();
+    let policy_json = serde_json::to_string(policy).unwrap();
+
+    // Gate: verify the receipt before allowing dispatch creation.
+    if let Err(f) =
+        postcad_cli::verify_receipt_from_policy_json(&receipt_json, &case_json, &policy_json)
+    {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": f.code, "message": f.message}})),
+        )
+            .into_response();
+    }
+
+    // Extract receipt fields needed for the commitment record.
+    let receipt_hash = match receipt["receipt_hash"].as_str() {
+        Some(h) => h.to_string(),
+        None => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": {"code": "parse_error",
+                    "message": "receipt missing receipt_hash"}})),
+            )
+                .into_response();
+        }
+    };
+    let case_id = receipt["routing_input"]["case_id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    let selected_candidate_id = receipt["selected_candidate_id"]
+        .as_str()
+        .map(|s| s.to_string());
+
+    let dispatch_id = uuid::Uuid::new_v4().to_string();
+    let record = DispatchRecord {
+        dispatch_id: dispatch_id.clone(),
+        case_id: case_id.clone(),
+        selected_candidate_id: selected_candidate_id.clone(),
+        receipt_hash: receipt_hash.clone(),
+        verification_passed: true,
+        status: "draft".to_string(),
+        approved_by: None,
+        approved_at: None,
+        created_at: Utc::now().to_rfc3339(),
+        manufacturer_payload_json: None,
+    };
+
+    match store.create(&record) {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(json!({
+                "dispatch_id": dispatch_id,
+                "receipt_hash": receipt_hash,
+                "case_id": case_id,
+                "selected_candidate_id": selected_candidate_id,
+                "verification_passed": true,
+                "status": "draft",
+            })),
+        )
+            .into_response(),
+        Err(DispatchCommitmentError::ReceiptAlreadyDispatched) => (
+            StatusCode::CONFLICT,
+            Json(json!({"error": {"code": "receipt_already_dispatched",
+                "message": format!("a dispatch commitment already exists for receipt '{receipt_hash}'")}})),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
+}
+
+/// POST /dispatch/:dispatch_id/approve
+///
+/// Transitions a draft dispatch commitment to `approved`.
+/// Approved dispatches are immutable — a second approve call returns 409.
+///
+/// Request: `{"approved_by": "..."}` (optional; defaults to `"system"`)
+/// Success (200): full dispatch record JSON
+/// Not draft (409): `{"error": {"code": "dispatch_not_draft", ...}}`
+/// Not found (404): `{"error": {"code": "dispatch_not_found", ...}}`
+pub async fn approve_dispatch_commitment(
+    State(store): State<std::sync::Arc<DispatchCommitmentStore>>,
+    Path(dispatch_id): Path<String>,
+    body: Option<Json<Value>>,
+) -> impl IntoResponse {
+    let approved_by = body
+        .as_ref()
+        .and_then(|b| b["approved_by"].as_str())
+        .unwrap_or("system")
+        .to_string();
+
+    match store.approve(&dispatch_id, &approved_by) {
+        Ok(record) => (StatusCode::OK, Json(serde_json::to_value(&record).unwrap())).into_response(),
+        Err(DispatchCommitmentError::NotFound) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": {"code": "dispatch_not_found",
+                "message": format!("dispatch '{dispatch_id}' not found")}})),
+        )
+            .into_response(),
+        Err(DispatchCommitmentError::NotDraft) => (
+            StatusCode::CONFLICT,
+            Json(json!({"error": {"code": "dispatch_not_draft",
+                "message": format!("dispatch '{dispatch_id}' is not in draft state")}})),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
+}
+
+/// GET /dispatch/:dispatch_id/export
+///
+/// Returns a deterministic, exportable dispatch payload.
+/// Transitions `approved` → `exported`; idempotent if already `exported`.
+/// Rejected for `draft` dispatches (must be approved first).
+///
+/// Success (200): `{"dispatch_id": "...", "receipt_hash": "...", ...}`
+/// Not approved (422): `{"error": {"code": "dispatch_not_approved", ...}}`
+/// Not found (404): `{"error": {"code": "dispatch_not_found", ...}}`
+pub async fn export_dispatch_commitment(
+    State(store): State<std::sync::Arc<DispatchCommitmentStore>>,
+    Path(dispatch_id): Path<String>,
+) -> impl IntoResponse {
+    match store.mark_exported(&dispatch_id) {
+        Ok(record) => {
+            // Build deterministic export payload: canonical field order, all fields present.
+            let payload = json!({
+                "approved_at": record.approved_at,
+                "approved_by": record.approved_by,
+                "case_id": record.case_id,
+                "created_at": record.created_at,
+                "dispatch_id": record.dispatch_id,
+                "manufacturer_payload_json": record.manufacturer_payload_json,
+                "receipt_hash": record.receipt_hash,
+                "selected_candidate_id": record.selected_candidate_id,
+                "status": record.status,
+                "verification_passed": record.verification_passed,
+            });
+            (StatusCode::OK, Json(payload)).into_response()
+        }
+        Err(DispatchCommitmentError::NotFound) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": {"code": "dispatch_not_found",
+                "message": format!("dispatch '{dispatch_id}' not found")}})),
+        )
+            .into_response(),
+        Err(DispatchCommitmentError::NotApproved) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "dispatch_not_approved",
+                "message": format!("dispatch '{dispatch_id}' must be approved before export")}})),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response(),
+    }
 }

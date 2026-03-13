@@ -45,6 +45,9 @@ fn make_app(tmp: &tempfile::TempDir, seed_receipt: bool) -> axum::Router {
         Arc::new(postcad_service::VerificationStore::new(
             tmp.path().join("verification"),
         )),
+        Arc::new(postcad_service::DispatchCommitmentStore::new(
+            tmp.path().join("commitments"),
+        )),
     )
 }
 

@@ -15,8 +15,10 @@ path = "src/lib.rs"
 postcad-cli = { path = "../cli" }
 axum = { workspace = true }
 tokio = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
 tower = { version = "0.4", features = ["util"] }

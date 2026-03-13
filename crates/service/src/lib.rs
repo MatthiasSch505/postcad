@@ -1,5 +1,6 @@
 mod case_store;
 mod demo;
+mod dispatch_commitment;
 mod dispatch_store;
 mod handlers;
 mod policy_store;
@@ -13,6 +14,7 @@ use std::sync::Arc;
 use axum::{routing, Router};
 
 pub use case_store::CaseStore;
+pub use dispatch_commitment::DispatchCommitmentStore;
 pub use dispatch_store::DispatchStore;
 pub use policy_store::PolicyStore;
 pub use receipt_store::{ReceiptStore, ReceiptStoreError};
@@ -50,6 +52,7 @@ pub fn app() -> Router {
         Arc::new(DispatchStore::new("data/dispatch")),
         Arc::new(PolicyStore::new("data/policies")),
         Arc::new(VerificationStore::new("data/verification")),
+        Arc::new(DispatchCommitmentStore::new("data/commitments")),
     )
 }
 
@@ -65,6 +68,7 @@ pub fn app_with_store(store: Arc<CaseStore>) -> Router {
         Arc::new(DispatchStore::new("data/dispatch")),
         Arc::new(PolicyStore::new("data/policies")),
         Arc::new(VerificationStore::new("data/verification")),
+        Arc::new(DispatchCommitmentStore::new("data/commitments")),
     )
 }
 
@@ -79,19 +83,21 @@ pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptSto
         Arc::new(DispatchStore::new("data/dispatch")),
         Arc::new(PolicyStore::new("data/policies")),
         Arc::new(VerificationStore::new("data/verification")),
+        Arc::new(DispatchCommitmentStore::new("data/commitments")),
     )
 }
 
-/// Build the service router with explicit control over all five storage layers.
+/// Build the service router with explicit control over all storage layers.
 ///
 /// Use this in tests that need to inject temporary directories for dispatch,
-/// policy, or verification storage.
+/// policy, verification, or commitment storage.
 pub fn app_with_all_stores(
     case_store: Arc<CaseStore>,
     receipt_store: Arc<ReceiptStore>,
     dispatch_store: Arc<DispatchStore>,
     policy_store: Arc<PolicyStore>,
     verification_store: Arc<VerificationStore>,
+    commitment_store: Arc<DispatchCommitmentStore>,
 ) -> Router {
     // Case intake routes: State<Arc<CaseStore>>.
     let case_routes = Router::new()
@@ -146,6 +152,24 @@ pub fn app_with_all_stores(
             verification_store,
         }));
 
+    // Dispatch Commitment Layer endpoints: State<Arc<DispatchCommitmentStore>>.
+    // POST /dispatch/create must be registered before the parameterised
+    // /dispatch/:receipt_hash route so the literal wins.
+    let commitment_endpoints = Router::new()
+        .route(
+            "/dispatch/create",
+            routing::post(handlers::create_dispatch_commitment),
+        )
+        .route(
+            "/dispatch/:dispatch_id/approve",
+            routing::post(handlers::approve_dispatch_commitment),
+        )
+        .route(
+            "/dispatch/:dispatch_id/export",
+            routing::get(handlers::export_dispatch_commitment),
+        )
+        .with_state(commitment_store);
+
     Router::new()
         .route("/", routing::get(handlers::operator_ui))
         .route("/demo", routing::get(handlers::demo_page))
@@ -173,8 +197,10 @@ pub fn app_with_all_stores(
         .merge(receipt_endpoints)
         // Stored-case routing
         .merge(route_endpoint)
-        // Dispatch
+        // Dispatch commitment layer (must come before legacy dispatch to avoid literal conflict)
+        .merge(commitment_endpoints)
+        // Legacy dispatch
         .merge(dispatch_endpoint)
-        // Dispatch verification
+        // Legacy dispatch verification
         .merge(dispatch_verify_endpoint)
 }

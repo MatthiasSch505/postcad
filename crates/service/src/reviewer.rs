@@ -264,7 +264,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         ▶ Execute Routing Kernel
       </button>
 
-      <div style="margin-top:.75rem;border-top:1px solid #21262d;padding-top:.65rem">
+      <div id="norm-input-section" style="margin-top:.75rem;border-top:1px solid #21262d;padding-top:.65rem">
         <div class="input-label">normalized pilot input <span class="input-badge">4 fields only</span></div>
         <details>
           <summary>view JSON</summary>
@@ -929,6 +929,14 @@ async function copyReceiptHash(btn, hash) {
 function show(id)      { document.getElementById(id).classList.remove('hidden'); }
 function hide(id)      { document.getElementById(id).classList.add('hidden'); }
 function setBtn(btn, label, disabled) { btn.textContent = label; btn.disabled = disabled; }
+
+// Ctrl+Enter / Cmd+Enter inside the normalized input section submits the form.
+document.getElementById('norm-input-section').addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    const btn = document.getElementById('btn-route-norm');
+    if (btn && !btn.disabled) { e.preventDefault(); routeNormalized(btn); }
+  }
+});
 
 // Show a dispatch-section status message.
 // kind: 'error' (red) | 'warn' (amber)

@@ -107,6 +107,8 @@ cargo run -p postcad-service
 Full operator path: route → verify → create dispatch → approve → export.
 Expected receipt hash: `0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb`
 
+**Empty and incomplete states are intentionally non-dispatchable.** The reviewer requires a valid routed case with a receipt before any dispatch action becomes available. If fixtures cannot be loaded or no case has been submitted, the page shows an explicit "cannot review" state and all dispatch actions remain blocked. This is a safety property of the reviewer surface, not a missing feature.
+
 ---
 
 ## Workspace

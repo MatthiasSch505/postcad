@@ -396,9 +396,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
     <!-- RIGHT: Results -->
     <div class="card">
-      <div id="results-placeholder" style="padding:1.5rem .5rem;text-align:center">
-        <div style="font-size:.82rem;color:#484f58;margin-bottom:.3rem">No submission yet</div>
-        <div style="font-size:.72rem;color:#3d4349;line-height:1.6">Enter values on the left and click<br><strong style="color:#6e7681">Submit for Review</strong> to run the routing kernel.</div>
+      <div id="results-placeholder" style="padding:1.4rem .75rem">
+        <div style="font-size:.75rem;font-weight:700;color:#484f58;margin-bottom:.3rem">No case submitted yet</div>
+        <div style="font-size:.71rem;color:#3d4349;line-height:1.6;margin-bottom:.6rem">Enter the case details on the left and click <strong style="color:#6e7681">Submit for Review</strong> to run the routing kernel.</div>
+        <div style="font-size:.68rem;color:#3a3f44;line-height:1.55;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.45rem .65rem">
+          <strong style="color:#484f58">Not dispatchable in this state.</strong> A valid routed case with a receipt must exist before any dispatch action is available. This reviewer presents the output of the routing kernel — it does not generate cases or receipts independently.
+        </div>
       </div>
       <div id="results-loading" class="hidden" style="padding:1.5rem .5rem;text-align:center">
         <div class="loading-note" style="font-size:.82rem;font-weight:600">Routing in progress…</div>
@@ -582,15 +585,31 @@ let lastDispatchId = null;
   } catch(e) {
     document.getElementById('fixtures-loading').classList.add('hidden');
     const errEl = document.getElementById('fixtures-error');
-    errEl.textContent = 'Could not load pilot fixtures: ' + e.message
-      + '\n\nStart the service from the repo root so examples/pilot/ is reachable.';
+    errEl.innerHTML =
+      '<div style="background:#3d1f1f44;border:1px solid #f8514933;border-radius:5px;padding:.55rem .75rem;margin-bottom:.4rem">'
+      + '<div style="font-size:.65rem;font-weight:700;color:#f85149;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.25rem">Cannot review — no valid case context loaded</div>'
+      + '<div style="font-size:.71rem;color:#c9d1d9;line-height:1.5;margin-bottom:.3rem">Pilot fixtures could not be loaded. This reviewer requires a valid routed case context before any review or dispatch action is possible. This page is <strong>not dispatchable</strong> in this state.</div>'
+      + '<div style="font-size:.67rem;color:#8b949e;border-left:2px solid #f8514966;padding-left:.4rem;line-height:1.45">' + esc(e.message) + '</div>'
+      + '</div>'
+      + '<div style="font-size:.69rem;color:#d29922;line-height:1.55">'
+      + '<strong style="color:#f0f6fc">Safe action:</strong> Start the service from the repo root '
+      + '(<code style="color:#8b949e">cargo run -p postcad-service</code>) so <code style="color:#8b949e">examples/pilot/</code> '
+      + 'is reachable, then reload this page. Do not attempt to dispatch without a valid loaded case.'
+      + '</div>';
     errEl.classList.remove('hidden');
   }
 })();
 
 // ── Execute Routing Kernel ─────────────────────────────────────────────────
 async function routeCase(btn) {
-  if (!fixtures) return;
+  if (!fixtures) {
+    hide('results-placeholder');
+    document.getElementById('route-error-json').textContent =
+      'No case fixtures loaded. The reviewer cannot route without valid pilot fixtures.\n\n'
+      + 'Reload the page after starting the service from the repo root (cargo run -p postcad-service).';
+    show('route-error');
+    return;
+  }
   setBtn(btn, 'Running kernel…', true);
   document.getElementById('btn-route-norm').disabled = true;
 
@@ -841,7 +860,10 @@ async function routeNormalized(btn) {
 
 // ── Replay Verification ────────────────────────────────────────────────────
 async function verifyReceipt(btn) {
-  if (!lastReceipt || !lastPolicy) return;
+  if (!lastReceipt || !lastPolicy) {
+    showVerifyResult(false, {error: {code: 'no_review_context', message: 'No receipt available. Submit a case for review first, then use Replay Verification.'}}, 'No review context');
+    return;
+  }
   setBtn(btn, 'Replaying…', true);
   hide('verify-result');
 
@@ -866,7 +888,10 @@ async function verifyReceipt(btn) {
 
 // ── E. Tamper + Verify ─────────────────────────────────────────────────────
 async function tamperVerify(btn) {
-  if (!lastReceipt || !lastPolicy) return;
+  if (!lastReceipt || !lastPolicy) {
+    showVerifyResult(false, {error: {code: 'no_review_context', message: 'No receipt available. Submit a case for review before attempting the tamper demo.'}}, 'No review context');
+    return;
+  }
   setBtn(btn, 'Tampering…', true);
   hide('verify-result');
 
@@ -929,7 +954,10 @@ function showVerifyResult(isVerified, data, kind) {
 
 // ── G. Dispatch Commitment ─────────────────────────────────────────────────
 async function createDispatch(btn) {
-  if (!lastReceipt || !lastPolicy) return;
+  if (!lastReceipt || !lastPolicy) {
+    showDispatchMsg('error', 'Cannot create dispatch — no valid receipt. A routed case with a receipt is required. Submit a case for review first.');
+    return;
+  }
   setBtn(btn, 'Creating…', true);
   // Only clear the error/success displays — preserve any existing dispatch panel
   // so that a 409 (already created) doesn't wipe the visible dispatch_id.
@@ -971,7 +999,10 @@ async function createDispatch(btn) {
 }
 
 async function approveDispatch(btn) {
-  if (!lastDispatchId) return;
+  if (!lastDispatchId) {
+    showDispatchMsg('error', 'Cannot approve — no dispatch record found. Create a dispatch commitment first.');
+    return;
+  }
   setBtn(btn, 'Approving…', true);
   hide('dispatch-success'); hide('dispatch-error');
   // Track whether this button should stay disabled after the call.
@@ -1015,7 +1046,10 @@ async function approveDispatch(btn) {
 }
 
 async function exportDispatch(btn) {
-  if (!lastDispatchId) return;
+  if (!lastDispatchId) {
+    showDispatchMsg('error', 'Cannot export — no dispatch record found. Create and approve a dispatch commitment first.');
+    return;
+  }
   setBtn(btn, 'Exporting…', true);
   hide('dispatch-export-result'); hide('dispatch-success'); hide('dispatch-error');
 

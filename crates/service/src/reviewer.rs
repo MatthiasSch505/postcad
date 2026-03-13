@@ -170,6 +170,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .warn-note   {font-size:.75rem;color:#d29922;margin-top:.4rem;line-height:1.5}
 .success-note{font-size:.75rem;color:#3fb950;margin-top:.4rem;line-height:1.5}
 .loading-note{font-size:.75rem;color:#6e7681;margin-top:.4rem;line-height:1.5}
+.norm-preview{background:#0d1117;border:1px solid #21262d;border-radius:5px;
+              padding:.4rem .65rem;margin-top:.35rem;font-size:.67rem;line-height:1.6}
+.norm-preview-row{display:grid;grid-template-columns:max-content 1fr;gap:.1rem .6rem}
+.norm-preview-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;
+                  letter-spacing:.05em;white-space:nowrap}
+.norm-preview-val{color:#c9d1d9;word-break:break-all}
 </style>
 </head>
 <body>
@@ -259,6 +265,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           ▶ Route Normalized Pilot Case
         </button>
         <div id="route-norm-inline" class="hidden"></div>
+        <div id="route-norm-preview" class="hidden"></div>
       </div>
     </div>
 
@@ -452,7 +459,7 @@ async function routeCase(btn) {
   document.getElementById('btn-route-norm').disabled = true;
 
   hide('results-placeholder');
-  hide('route-norm-inline');
+  hide('route-norm-inline'); hide('route-norm-preview');
   hide('route-result'); hide('route-error'); hide('verify-result');
   hide('dispatch-created'); hide('dispatch-export-result');
   hide('dispatch-success'); hide('dispatch-error');
@@ -521,6 +528,7 @@ async function routeNormalized(btn) {
   hide('route-result'); hide('route-error'); hide('verify-result');
   hide('dispatch-created'); hide('dispatch-export-result');
   hide('dispatch-success'); hide('dispatch-error');
+  hide('route-norm-preview');
   show('results-loading');
   // Transition to submitting state immediately — button stays disabled until finally.
   const ni = document.getElementById('route-norm-inline');
@@ -598,6 +606,16 @@ async function routeNormalized(btn) {
       document.getElementById('btn-dispatch-create').disabled = false;
       ni.textContent = '✓ Routing complete — receipt ' + rhash.slice(0, 12) + '…';
       ni.className = 'success-note';
+      const prev = document.getElementById('route-norm-preview');
+      prev.innerHTML =
+        '<div class="norm-preview">' +
+        previewRow('Receipt Hash',   rhash) +
+        previewRow('Manufacturer',   selected) +
+        previewRow('Jurisdiction',   rc.routing_input?.jurisdiction || '—') +
+        previewRow('Material',       rc.routing_input?.material     || '—') +
+        previewRow('Created At',     rc.created_at                  || '—') +
+        '</div>';
+      prev.classList.remove('hidden');
     } else {
       // non-2xx HTTP response → inline error + details panel
       const code = data?.error?.code || data?.result || 'error';
@@ -828,6 +846,12 @@ async function exportDispatch(btn) {
 // ── helpers ────────────────────────────────────────────────────────────────
 function fmt(o)        { return JSON.stringify(o, null, 2); }
 function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function previewRow(k, v) {
+  return '<div class="norm-preview-row">'
+    + '<span class="norm-preview-key">' + esc(k) + '</span>'
+    + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
+    + '</div>';
+}
 function show(id)      { document.getElementById(id).classList.remove('hidden'); }
 function hide(id)      { document.getElementById(id).classList.add('hidden'); }
 function setBtn(btn, label, disabled) { btn.textContent = label; btn.disabled = disabled; }

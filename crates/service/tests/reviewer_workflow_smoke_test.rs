@@ -141,6 +141,43 @@ async fn reviewer_shell_norm_submit_states_present() {
     assert!(html.contains("error-note"), "error-note class must be present");
 }
 
+/// Reviewer shell HTML must expose all normalized-form controls and success-preview
+/// controls added since the initial UX hardening.
+///
+/// Covers:
+///   - form actions: submit, clear, load sample
+///   - success preview: receipt summary container, copy-hash, download, JSON toggle
+///   - validation surface: inline error element, invalid-field CSS marker
+#[tokio::test]
+async fn reviewer_shell_norm_ux_surface() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // ── form controls ─────────────────────────────────────────────────────────
+    assert!(html.contains("routeNormalized"),  "submit function must be present");
+    assert!(html.contains("clearNormForm"),    "clear action must be present");
+    assert!(html.contains("Clear form"),       "clear button label must be present");
+    assert!(html.contains("loadNormSample"),   "load-sample action must be present");
+    assert!(html.contains("Load sample"),      "load-sample button label must be present");
+
+    // ── success preview ───────────────────────────────────────────────────────
+    assert!(html.contains("route-norm-preview"),  "success preview container id must be present");
+    assert!(html.contains("norm-preview"),         "receipt summary CSS class must be present");
+    assert!(html.contains("copyReceiptHash"),      "copy-receipt-hash function must be present");
+    assert!(html.contains("downloadReceiptJson"),  "download function must be present");
+    assert!(html.contains("Download receipt.json"),"download button label must be present");
+    assert!(html.contains("toggleNormReceiptJson"),"receipt JSON toggle function must be present");
+    assert!(html.contains("Show receipt JSON"),    "receipt JSON toggle label must be present");
+    assert!(html.contains("btn-toggle-receipt"),   "receipt JSON toggle button id must be present");
+
+    // ── validation / UI markers ───────────────────────────────────────────────
+    assert!(html.contains("route-norm-inline"),       "inline validation element id must be present");
+    assert!(html.contains("Required fields missing"), "validation error message must be present");
+    assert!(html.contains("validateNormInput"),        "validation function must be present");
+    assert!(html.contains("norm-field-invalid"),       "invalid-field CSS marker must be present");
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

@@ -30,6 +30,7 @@ printf "  bundle: %s\n\n" "${BUNDLE}"
 # ── Required files ─────────────────────────────────────────────────────────────
 
 REQUIRED=(
+    AUDIT_CHECKLIST.md
     BUNDLE_SNAPSHOT.md
     INVENTORY.md
     MANIFEST.txt

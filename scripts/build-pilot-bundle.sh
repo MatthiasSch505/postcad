@@ -66,6 +66,7 @@ put "docs/protocol_diagram.md"  "docs/protocol_diagram.md"
     printf "# Format: <bundle path>  <source path>\n"
     printf "#\n"
     for entry in \
+        "AUDIT_CHECKLIST.md         release/pilot/AUDIT_CHECKLIST.md" \
         "BUNDLE_SNAPSHOT.md        release/pilot/BUNDLE_SNAPSHOT.md" \
         "INVENTORY.md              release/pilot/INVENTORY.md" \
         "PROTOCOL_WALKTHROUGH.md   release/pilot/PROTOCOL_WALKTHROUGH.md" \

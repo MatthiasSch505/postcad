@@ -1,9 +1,10 @@
 # PostCAD Pilot Bundle — File Manifest
-# Generated: 2026-03-13T11:04:39Z
-# Commit:    0b40825e4a8618b09aefabacc2545bec6440b49f
+# Generated: 2026-03-13T11:06:39Z
+# Commit:    c401e73a77f7b2670b4528b04592cb74dbe12eea
 #
 # Format: <bundle path>  <source path>
 #
+AUDIT_CHECKLIST.md         release/pilot/AUDIT_CHECKLIST.md
 BUNDLE_SNAPSHOT.md        release/pilot/BUNDLE_SNAPSHOT.md
 INVENTORY.md              release/pilot/INVENTORY.md
 PROTOCOL_WALKTHROUGH.md   release/pilot/PROTOCOL_WALKTHROUGH.md

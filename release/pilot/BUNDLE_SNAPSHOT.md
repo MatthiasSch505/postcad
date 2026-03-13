@@ -17,7 +17,7 @@ dispatch flow end-to-end against a fixed input set.
 | Field | Value |
 |---|---|
 | Repository | `postcad` |
-| Commit | `0b40825e4a8618b09aefabacc2545bec6440b49f` |
+| Commit | `c401e73a77f7b2670b4528b04592cb74dbe12eea` |
 
 ---
 
@@ -35,10 +35,11 @@ dispatch flow end-to-end against a fixed input set.
 
 ## Shipped artifacts
 
-17 files listed below (plus `BUNDLE_SNAPSHOT.md` and `manifest.sha256` generated after this step).
+18 files listed below (plus `BUNDLE_SNAPSHOT.md` and `manifest.sha256` generated after this step).
 See `MANIFEST.txt` for full inventory with source paths.
 
 ```
+AUDIT_CHECKLIST.md
 INVENTORY.md
 MANIFEST.txt
 PROTOCOL_WALKTHROUGH.md

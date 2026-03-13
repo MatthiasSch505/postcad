@@ -8,8 +8,8 @@ use axum::{
 };
 use chrono::Utc;
 use postcad_cli::{
-    build_manifest, route_case_from_policy_json, route_case_from_registry_json,
-    verify_receipt_from_policy_json, CaseInput, PROTOCOL_VERSION,
+    build_manifest, normalize_pilot_case_json, route_case_from_policy_json,
+    route_case_from_registry_json, verify_receipt_from_policy_json, CaseInput, PROTOCOL_VERSION,
 };
 use serde_json::{json, Value};
 
@@ -244,6 +244,75 @@ pub async fn pilot_verify(Json(body): Json<Value>) -> impl IntoResponse {
         Err(f) => (
             StatusCode::UNPROCESSABLE_ENTITY,
             Json(json!({"result": "FAILED", "error": {"code": f.code, "message": f.message}})),
+        )
+            .into_response(),
+    }
+}
+
+/// POST /pilot/route-normalized
+///
+/// Accepts a minimal normalized pilot case input and routes it through the
+/// existing registry-backed routing kernel.
+///
+/// Request:
+/// ```json
+/// {
+///   "pilot_case":     {"case_id"?: "...", "restoration_type": "crown",
+///                      "material": "zirconia", "jurisdiction": "DE"},
+///   "registry_snapshot": [...],
+///   "routing_config": {"jurisdiction": "DE", "routing_policy": "..."}
+/// }
+/// ```
+/// Success (200): `{"receipt": {...}, "derived_policy": {...}}`
+/// Error (422): `{"error": {"code": "...", "message": "..."}}`
+///
+/// The `pilot_case` is normalized via [`normalize_pilot_case_json`] before
+/// being forwarded to [`route_case_from_registry_json`]. All routing kernel
+/// semantics, receipt commitments, and determinism guarantees are unchanged.
+pub async fn pilot_route_normalized(Json(body): Json<Value>) -> impl IntoResponse {
+    let pilot_case = &body["pilot_case"];
+    let registry_snapshot = &body["registry_snapshot"];
+    let routing_config = &body["routing_config"];
+
+    if pilot_case.is_null() || registry_snapshot.is_null() || routing_config.is_null() {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "parse_error", "message": "request must contain 'pilot_case', 'registry_snapshot', and 'routing_config' fields"}})),
+        )
+            .into_response();
+    }
+
+    let pilot_case_json = serde_json::to_string(pilot_case).unwrap();
+    let registry_json = serde_json::to_string(registry_snapshot).unwrap();
+    let config_json = serde_json::to_string(routing_config).unwrap();
+
+    let case_json = match normalize_pilot_case_json(&pilot_case_json) {
+        Ok(j) => j,
+        Err(e) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": {"code": e.code(), "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    match route_case_from_registry_json(&case_json, &registry_json, &config_json) {
+        Ok(result) => {
+            let derived_policy: Value =
+                serde_json::from_str(&result.derived_policy_json).unwrap_or(Value::Null);
+            (
+                StatusCode::OK,
+                Json(json!({
+                    "receipt": serde_json::to_value(&result.receipt).unwrap(),
+                    "derived_policy": derived_policy,
+                })),
+            )
+                .into_response()
+        }
+        Err(e) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": e.code(), "message": e.to_string()}})),
         )
             .into_response(),
     }

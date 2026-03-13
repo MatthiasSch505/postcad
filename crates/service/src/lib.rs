@@ -191,6 +191,10 @@ pub fn app_with_all_stores(
         .route("/version", routing::get(handlers::version))
         .route("/route", routing::post(handlers::pilot_route))
         .route("/verify", routing::post(handlers::pilot_verify))
+        .route(
+            "/pilot/route-normalized",
+            routing::post(handlers::pilot_route_normalized),
+        )
         // Case intake
         .merge(case_routes)
         // Receipts + route history

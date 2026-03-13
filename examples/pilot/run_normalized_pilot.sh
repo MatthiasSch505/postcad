@@ -7,7 +7,7 @@
 #   ./examples/pilot/run_normalized_pilot.sh
 #
 # Requirements:
-#   - postcad-service running (default: http://localhost:3000)
+#   - postcad-service running (default: http://localhost:8080)
 #   - curl and jq installed
 #
 # Override the service address:
@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-BASE_URL="${POSTCAD_ADDR:-http://localhost:3000}"
+BASE_URL="${POSTCAD_ADDR:-http://localhost:8080}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 pass() { echo "  [OK]  $*"; }
@@ -43,12 +43,11 @@ echo ""
 
 echo "Step 1 — POST /pilot/route-normalized"
 
-# case_id c0000001-... is the canonical UUID form of "case-001"
 ROUTE_RESPONSE=$(curl -sf -X POST "$BASE_URL/pilot/route-normalized" \
   -H "Content-Type: application/json" \
   -d "{
     \"pilot_case\": {
-      \"case_id\":          \"c0000001-0000-0000-0000-000000000001\",
+      \"case_id\":          \"f1000001-0000-0000-0000-000000000001\",
       \"restoration_type\": \"crown\",
       \"material\":         \"zirconia\",
       \"jurisdiction\":     \"DE\"
@@ -73,10 +72,8 @@ echo ""
 
 echo "Step 2 — POST /dispatch/create"
 
-# The receipt's routing_input contains the full CaseInput shape needed for
-# dispatch verification; extract it directly instead of re-specifying.
 RECEIPT_OBJ=$(echo "$ROUTE_RESPONSE"  | jq '.receipt')
-CASE_OBJ=$(echo "$ROUTE_RESPONSE"     | jq '.receipt.routing_input')
+CASE_OBJ=$(cat "$SCRIPT_DIR/case.json")
 POLICY_OBJ=$(echo "$ROUTE_RESPONSE"   | jq '.derived_policy')
 
 DISPATCH_RESPONSE=$(curl -sf -X POST "$BASE_URL/dispatch/create" \

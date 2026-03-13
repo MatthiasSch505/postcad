@@ -80,7 +80,7 @@ cargo run -p postcad-service
 # then open http://localhost:8080/reviewer
 ```
 
-Loads pilot fixtures automatically. Three clicks: route → verify → tamper demo.
+Loads pilot fixtures automatically. Full operator path: route → create dispatch → approve → export.
 Expected receipt hash: `0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb`
 
 ---

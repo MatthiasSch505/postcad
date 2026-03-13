@@ -17,12 +17,12 @@ It is written for a technical mentor, lab operator, or pilot partner who wants t
 
 | Field | Value |
 |---|---|
-| `case_id` | `a1b2c3d4-0000-0000-0000-000000000001` |
+| `case_id` | `f1000001-0000-0000-0000-000000000001` |
 | `material` | `zirconia` |
 | `procedure` | `crown` |
 | `jurisdiction` | `DE` |
 | `routing_policy` | `allow_domestic_and_cross_border` |
-| Candidate pool | `rc-de-01` (backed by `mfr-de-01`) |
+| Candidate pool | `pilot-de-001` |
 | Compliance snapshot | `is_eligible: true`, attestation verified |
 
 ---
@@ -37,10 +37,10 @@ Every decision is wrapped in a `Decision<T>` carrying a `ReasonCode` and timesta
 The result is a `RoutingReceipt` with 21 committed fields.
 
 ```
-POST /cases/:id/route
+POST /pilot/route-normalized
 → outcome: "routed"
-  selected_candidate_id: "rc-de-01"
-  receipt_hash: "337f858244b2abb780a50a39774ba4ba44168571310785040b97977f59e7f036"
+  selected_candidate_id: "pilot-de-001"
+  receipt_hash: "0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb"
 ```
 
 The receipt locks in: case fingerprint, policy fingerprint, registry snapshot hash,
@@ -56,7 +56,8 @@ The service recomputes every hash in the receipt and checks all fields match.
 No external state. No trust required.
 
 ```
-POST /dispatch/:hash/verify   (legacy path)
+POST /verify
+  body: { receipt, case, policy }
 → result: "VERIFIED"
 ```
 

@@ -91,8 +91,14 @@ pre.fixture{background:#0d1117;border:1px solid #21262d;border-radius:5px;
              justify-content:center;margin-top:.5rem}
 .btn-verify {background:#6e40c9;border-color:#8957e5;color:#fff;width:100%;
              justify-content:center;margin-top:.5rem}
-.btn-tamper {background:#21262d;border-color:#b36200;color:#d29922;width:100%;
-             justify-content:center;margin-top:.4rem;font-size:.72rem}
+.btn-tamper   {background:#21262d;border-color:#b36200;color:#d29922;width:100%;
+               justify-content:center;margin-top:.4rem;font-size:.72rem}
+.btn-dispatch {background:#1a3455;border-color:#388bfd;color:#79c0ff;width:100%;
+               justify-content:center;margin-top:.5rem}
+.btn-approve  {background:#1a3e2c;border-color:#2ea043;color:#3fb950;width:100%;
+               justify-content:center;margin-top:.35rem}
+.btn-export   {background:#21262d;border-color:#388bfd;color:#58a6ff;width:100%;
+               justify-content:center;margin-top:.35rem;font-size:.72rem}
 
 /* ── artifact summary ── */
 .artifacts{background:#0d1117;border:1px solid #21262d;border-radius:6px;
@@ -295,6 +301,45 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
             ⚠ Tamper + Verify
           </button>
         </div>
+
+        <!-- G. Dispatch commitment -->
+        <div class="tamper-section" id="dispatch-section">
+          <div class="tamper-label">Dispatch Commitment</div>
+          <div class="tamper-desc">
+            Calls <code>POST /dispatch/create</code> — the server re-verifies the
+            receipt before creating the record. Approve makes the commitment
+            immutable; export produces the deterministic dispatch packet.
+          </div>
+          <button class="btn btn-dispatch" id="btn-dispatch-create" onclick="createDispatch(this)" disabled>
+            ⬦ Create Dispatch
+          </button>
+
+          <div id="dispatch-created" class="hidden" style="margin-top:.55rem">
+            <div class="artifacts">
+              <div class="artifact-row">
+                <span class="art-key">Dispatch ID</span>
+                <span class="art-hash" id="art-dispatch-id"></span>
+              </div>
+              <div class="artifact-row">
+                <span class="art-key">Status</span>
+                <span class="art-val" id="art-dispatch-status"></span>
+              </div>
+            </div>
+            <button class="btn btn-approve" id="btn-dispatch-approve" onclick="approveDispatch(this)" disabled>
+              ✓ Approve Dispatch
+            </button>
+            <button class="btn btn-export" id="btn-dispatch-export" onclick="exportDispatch(this)" disabled>
+              ↓ Export Dispatch Packet
+            </button>
+          </div>
+
+          <div id="dispatch-export-result" class="hidden" style="margin-top:.55rem">
+            <div class="section-title">Export Packet</div>
+            <pre class="result result-info" id="dispatch-export-json"></pre>
+          </div>
+
+          <div id="dispatch-error" class="hidden error-note" style="margin-top:.4rem"></div>
+        </div>
       </div>
 
       <!-- Route error -->
@@ -326,15 +371,22 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
     <span class="ft-ep"><span class="method">POST</span> <span class="path">/route</span></span>
     <span style="color:#30363d;margin:0 .3rem">·</span>
     <span class="ft-ep"><span class="method">POST</span> <span class="path">/verify</span></span>
+    <span style="color:#30363d;margin:0 .3rem">·</span>
+    <span class="ft-ep"><span class="method">POST</span> <span class="path">/dispatch/create</span></span>
+    <span style="color:#30363d;margin:0 .3rem">·</span>
+    <span class="ft-ep"><span class="method">POST</span> <span class="path">/dispatch/:id/approve</span></span>
+    <span style="color:#30363d;margin:0 .3rem">·</span>
+    <span class="ft-ep"><span class="method">GET</span> <span class="path">/dispatch/:id/export</span></span>
   </span>
-  <span class="ft-arch">Reviewer UI → HTTP API → PostCAD Service → Routing Kernel → Receipt / Verification</span>
+  <span class="ft-arch">Reviewer UI → HTTP API → PostCAD Service → Routing Kernel → Receipt / Verification / Dispatch</span>
 </footer>
 
 <script>
 // ── state ──────────────────────────────────────────────────────────────────
-let fixtures    = null;   // {case, registry_snapshot, routing_config}
-let lastReceipt = null;
-let lastPolicy  = null;
+let fixtures       = null;   // {case, registry_snapshot, routing_config}
+let lastReceipt    = null;
+let lastPolicy     = null;
+let lastDispatchId = null;
 
 // ── boot ───────────────────────────────────────────────────────────────────
 (async function boot() {
@@ -377,7 +429,11 @@ async function routeCase(btn) {
 
   hide('results-placeholder');
   hide('route-result'); hide('route-error'); hide('verify-result');
-  lastReceipt = null; lastPolicy = null;
+  hide('dispatch-created'); hide('dispatch-export-result'); hide('dispatch-error');
+  lastReceipt = null; lastPolicy = null; lastDispatchId = null;
+  document.getElementById('btn-dispatch-create').disabled  = true;
+  document.getElementById('btn-dispatch-approve').disabled = true;
+  document.getElementById('btn-dispatch-export').disabled  = true;
 
   try {
     const r = await fetch('/route', {
@@ -409,8 +465,9 @@ async function routeCase(btn) {
       document.getElementById('route-receipt-json').textContent = fmt(rc);
 
       show('route-result');
-      document.getElementById('btn-verify').disabled = false;
-      document.getElementById('btn-tamper').disabled = false;
+      document.getElementById('btn-verify').disabled          = false;
+      document.getElementById('btn-tamper').disabled          = false;
+      document.getElementById('btn-dispatch-create').disabled = false;
     } else {
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
@@ -509,6 +566,101 @@ function showVerifyResult(isVerified, data, kind) {
   pre.textContent = fmt(data);
   show('verify-result');
   document.getElementById('verify-result').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ── G. Dispatch Commitment ─────────────────────────────────────────────────
+async function createDispatch(btn) {
+  if (!lastReceipt || !lastPolicy) return;
+  setBtn(btn, 'Creating…', true);
+  hide('dispatch-created'); hide('dispatch-export-result'); hide('dispatch-error');
+  lastDispatchId = null;
+  document.getElementById('btn-dispatch-approve').disabled = true;
+  document.getElementById('btn-dispatch-export').disabled  = true;
+
+  try {
+    const r = await fetch('/dispatch/create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({receipt: lastReceipt, case: fixtures.case, policy: lastPolicy}),
+    });
+    const data = await r.json();
+    if (r.ok && data.dispatch_id) {
+      lastDispatchId = data.dispatch_id;
+      document.getElementById('art-dispatch-id').textContent = data.dispatch_id;
+      document.getElementById('art-dispatch-status').innerHTML =
+        `<span class="pill pill-info">${esc(data.status)}</span>`;
+      show('dispatch-created');
+      document.getElementById('btn-dispatch-approve').disabled = false;
+    } else {
+      const msg = data?.error?.message || JSON.stringify(data);
+      const errEl = document.getElementById('dispatch-error');
+      errEl.textContent = 'Create dispatch failed: ' + msg;
+      show('dispatch-error');
+    }
+  } catch(e) {
+    const errEl = document.getElementById('dispatch-error');
+    errEl.textContent = String(e);
+    show('dispatch-error');
+  } finally {
+    setBtn(btn, '⬦ Create Dispatch', false);
+  }
+}
+
+async function approveDispatch(btn) {
+  if (!lastDispatchId) return;
+  setBtn(btn, 'Approving…', true);
+
+  try {
+    const r = await fetch('/dispatch/' + lastDispatchId + '/approve', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({approved_by: 'reviewer'}),
+    });
+    const data = await r.json();
+    if (r.ok && data.status === 'approved') {
+      document.getElementById('art-dispatch-status').innerHTML =
+        `<span class="pill pill-ok">${esc(data.status)}</span>`;
+      btn.disabled = true;   // immutable — second approve is rejected
+      document.getElementById('btn-dispatch-export').disabled = false;
+    } else {
+      const errEl = document.getElementById('dispatch-error');
+      errEl.textContent = 'Approve failed: ' + (data?.error?.message || JSON.stringify(data));
+      show('dispatch-error');
+    }
+  } catch(e) {
+    const errEl = document.getElementById('dispatch-error');
+    errEl.textContent = String(e);
+    show('dispatch-error');
+  } finally {
+    setBtn(btn, '✓ Approve Dispatch', false);
+  }
+}
+
+async function exportDispatch(btn) {
+  if (!lastDispatchId) return;
+  setBtn(btn, 'Exporting…', true);
+  hide('dispatch-export-result'); hide('dispatch-error');
+
+  try {
+    const r = await fetch('/dispatch/' + lastDispatchId + '/export');
+    const data = await r.json();
+    if (r.ok) {
+      document.getElementById('art-dispatch-status').innerHTML =
+        `<span class="pill pill-ok">${esc(data.status)}</span>`;
+      document.getElementById('dispatch-export-json').textContent = fmt(data);
+      show('dispatch-export-result');
+    } else {
+      const errEl = document.getElementById('dispatch-error');
+      errEl.textContent = 'Export failed: ' + (data?.error?.message || JSON.stringify(data));
+      show('dispatch-error');
+    }
+  } catch(e) {
+    const errEl = document.getElementById('dispatch-error');
+    errEl.textContent = String(e);
+    show('dispatch-error');
+  } finally {
+    setBtn(btn, '↓ Export Dispatch Packet', false);
+  }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

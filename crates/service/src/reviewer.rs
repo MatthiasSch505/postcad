@@ -186,6 +186,42 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         font-family:inherit;font-size:.72rem;font-weight:600;padding:.28rem .7rem;
         margin-top:.45rem;transition:opacity .12s}
 .btn-dl:hover{opacity:.82}
+
+/* ── norm form inputs ── */
+.norm-field-wrap{margin:.42rem 0 .1rem}
+.norm-field-label{font-size:.62rem;color:#6e7681;text-transform:uppercase;
+                  letter-spacing:.06em;margin-bottom:.15rem;display:flex;
+                  align-items:center;gap:.3rem}
+.norm-req{color:#f85149;font-size:.65rem;line-height:1}
+.norm-input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:4px;
+            color:#c9d1d9;font-family:inherit;font-size:.8rem;padding:.3rem .5rem;
+            outline:none;transition:border-color .12s}
+.norm-input:focus{border-color:#388bfd}
+.norm-input.norm-field-invalid{border-color:#f85149!important}
+/* ── step framing inside norm section ── */
+.norm-step{display:flex;align-items:center;gap:.4rem;
+           margin:.65rem 0 .3rem;padding-top:.55rem;border-top:1px solid #21262d}
+.norm-step-num{background:#1e2d45;color:#58a6ff;border-radius:50%;
+               width:17px;height:17px;display:inline-flex;align-items:center;
+               justify-content:center;font-size:.58rem;font-weight:700;flex-shrink:0}
+.norm-step-num.done{background:#1a3e2c;color:#3fb950}
+.norm-step-lbl{font-size:.7rem;font-weight:700;color:#8b949e;text-transform:uppercase;
+               letter-spacing:.06em}
+/* ── success panel (steps 3–4) ── */
+.norm-success-panel{background:#0d1117;border:1px solid #2ea04355;border-radius:5px;
+                    padding:.55rem .75rem;margin-top:.1rem}
+.norm-success-title{font-size:.65rem;font-weight:700;color:#3fb950;
+                    text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem;
+                    display:flex;align-items:center;gap:.35rem}
+.norm-success-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.45rem;
+                      padding-top:.35rem;border-top:1px solid #21262d}
+/* ── error guidance panel ── */
+.norm-error-panel{background:#0d1117;border:1px solid #f8514944;border-radius:5px;
+                  padding:.55rem .75rem;margin-top:.1rem}
+.norm-error-code{font-size:.63rem;font-weight:700;color:#f85149;
+                 text-transform:uppercase;letter-spacing:.06em;margin-bottom:.18rem}
+.norm-error-hint{font-size:.7rem;color:#8b949e;border-left:2px solid #f8514966;
+                 padding-left:.45rem;margin-top:.2rem;line-height:1.5}
 </style>
 </head>
 <body>
@@ -266,27 +302,72 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
       </button>
 
       <div id="norm-input-section" style="margin-top:.75rem;border-top:1px solid #21262d;padding-top:.65rem">
-        <div class="input-label">normalized pilot input <span class="input-badge">4 fields only</span></div>
-        <details>
-          <summary>view JSON</summary>
-          <pre class="fixture" id="fix-normalized-case">{"case_id":"f1000001-0000-0000-0000-000000000001","restoration_type":"crown","material":"zirconia","jurisdiction":"DE"}</pre>
-        </details>
+
+        <!-- Step 1: Enter input -->
+        <div class="norm-step" style="border-top:none;padding-top:0;margin-top:0">
+          <span class="norm-step-num">1</span>
+          <span class="norm-step-lbl">Enter normalized pilot input</span>
+        </div>
+        <p style="font-size:.7rem;color:#6e7681;margin:.2rem 0 .5rem;line-height:1.5">
+          All four fields are required. Use <strong style="color:#c9d1d9">⊕ Load sample</strong> to pre-fill the canonical pilot case.
+        </p>
+        <div class="norm-field-wrap">
+          <div class="norm-field-label">case_id <span class="norm-req">*</span></div>
+          <input class="norm-input" id="norm-case-id"
+                 value="f1000001-0000-0000-0000-000000000001"
+                 placeholder="UUID" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="norm-field-wrap">
+          <div class="norm-field-label">restoration_type <span class="norm-req">*</span></div>
+          <input class="norm-input" id="norm-restoration-type"
+                 value="crown"
+                 placeholder="crown / bridge / …" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="norm-field-wrap">
+          <div class="norm-field-label">material <span class="norm-req">*</span></div>
+          <input class="norm-input" id="norm-material"
+                 value="zirconia"
+                 placeholder="zirconia / pmma / …" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="norm-field-wrap">
+          <div class="norm-field-label">jurisdiction <span class="norm-req">*</span></div>
+          <input class="norm-input" id="norm-jurisdiction"
+                 value="DE"
+                 placeholder="DE / US / JP / …" autocomplete="off" spellcheck="false">
+        </div>
+        <div style="margin-top:.4rem;display:flex;gap:.5rem;align-items:center">
+          <button class="copy-btn" onclick="clearNormForm()">↺ Clear form</button>
+          <button class="copy-btn" onclick="loadNormSample()">⊕ Load sample</button>
+        </div>
+
+        <!-- Step 2: Submit -->
+        <div class="norm-step">
+          <span class="norm-step-num">2</span>
+          <span class="norm-step-lbl">Submit for review</span>
+        </div>
+        <p style="font-size:.7rem;color:#6e7681;margin:.2rem 0 .35rem;line-height:1.5">
+          Keyboard shortcut: <strong style="color:#c9d1d9">Ctrl+Enter</strong> (or ⌘+Enter on Mac). The button disables during routing to prevent double-submission.
+        </p>
         <button class="btn btn-route-norm" id="btn-route-norm" onclick="routeNormalized(this)" disabled>
-          ▶ Route Normalized Pilot Case
+          ▶ Submit for Review
         </button>
-        <button class="copy-btn" style="margin-top:.3rem" onclick="clearNormForm()">↺ Clear form</button>
-        <button class="copy-btn" style="margin-top:.3rem;margin-left:.4rem" onclick="loadNormSample()">⊕ Load sample</button>
         <div id="route-norm-inline" class="hidden"></div>
+
+        <!-- Steps 3 + 4 rendered here by JS on success -->
         <div id="route-norm-preview" class="hidden"></div>
       </div>
     </div>
 
     <!-- RIGHT: Results -->
     <div class="card">
-      <div id="results-placeholder" class="dimmed" style="padding:.5rem 0">
-        No items awaiting review. Submit a pilot input to begin.
+      <div id="results-placeholder" style="padding:1.5rem .5rem;text-align:center">
+        <div style="font-size:.82rem;color:#484f58;margin-bottom:.3rem">No submission yet</div>
+        <div style="font-size:.72rem;color:#3d4349;line-height:1.6">Enter values on the left and click<br><strong style="color:#6e7681">Submit for Review</strong> to run the routing kernel.</div>
       </div>
-      <div id="results-loading" class="hidden loading-note" style="padding:.5rem 0">Running kernel…</div>
+      <div id="results-loading" class="hidden" style="padding:1.5rem .5rem;text-align:center">
+        <div class="loading-note" style="font-size:.82rem;font-weight:600">Routing in progress…</div>
+        <div style="font-size:.7rem;color:#484f58;margin-top:.3rem;line-height:1.5">Kernel is evaluating eligibility and selecting a manufacturer.</div>
+      </div>
 
       <!-- B. Artifact summary (shown after route) -->
       <div id="route-result" class="hidden">
@@ -382,8 +463,11 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
       <!-- Route error -->
       <div id="route-error" class="hidden">
-        <div class="card-title">Route error</div>
+        <div class="card-title">Routing failed</div>
         <div id="route-error-banner" class="hidden error-note" style="margin-bottom:.35rem"></div>
+        <div style="font-size:.7rem;color:#6e7681;margin-bottom:.5rem">
+          Review the error below, correct the inputs on the left, and resubmit.
+        </div>
         <pre class="result result-err" id="route-error-json"></pre>
       </div>
 
@@ -534,24 +618,19 @@ async function routeCase(btn) {
 async function routeNormalized(btn) {
   if (!fixtures) return;
 
-  const pilotCase = {
-    case_id:          'f1000001-0000-0000-0000-000000000001',
-    restoration_type: 'crown',
-    material:         'zirconia',
-    jurisdiction:     'DE',
-  };
+  const pilotCase = readNormInputs();
   const ni = document.getElementById('route-norm-inline');
 
   // ── client-side validation ──────────────────────────────────────────────
   const missing = validateNormInput(pilotCase);
   if (missing.length) {
+    markNormInvalid(missing);
     ni.textContent = 'Required fields missing: ' + missing.join(', ');
     ni.className = 'error-note';
     ni.classList.remove('hidden');
-    document.getElementById('fix-normalized-case').classList.add('norm-field-invalid');
     return;   // button stays enabled; clearNormForm() / loadNormSample() clear this error
   }
-  document.getElementById('fix-normalized-case').classList.remove('norm-field-invalid');
+  clearNormInvalid();
 
   setBtn(btn, 'Running kernel…', true);
   document.getElementById('btn-route').disabled = true;
@@ -585,8 +664,13 @@ async function routeNormalized(btn) {
         }),
       });
     } catch(netErr) {
-      ni.textContent = 'Network failure — ' + String(netErr);
-      ni.className = 'error-note';
+      ni.innerHTML = '<div class="norm-error-panel">'
+        + '<div class="norm-error-code">Network failure</div>'
+        + '<div class="norm-error-hint">' + esc(String(netErr)) + '</div>'
+        + '<div class="norm-error-hint" style="margin-top:.2rem">Check your network connection and confirm the PostCAD service is running.</div>'
+        + '</div>';
+      ni.className = '';
+      ni.classList.remove('hidden');
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent = String(netErr);
       show('route-error');
@@ -598,8 +682,13 @@ async function routeNormalized(btn) {
     try {
       data = await r.json();
     } catch(parseErr) {
-      ni.textContent = 'Invalid JSON response (HTTP ' + r.status + ')';
-      ni.className = 'error-note';
+      ni.innerHTML = '<div class="norm-error-panel">'
+        + '<div class="norm-error-code">Invalid JSON response</div>'
+        + '<div class="norm-error-hint">HTTP ' + r.status + ' — ' + esc(String(parseErr)) + '</div>'
+        + '<div class="norm-error-hint" style="margin-top:.2rem">The service returned an unexpected response. Check the server logs for details.</div>'
+        + '</div>';
+      ni.className = '';
+      ni.classList.remove('hidden');
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent =
         'HTTP ' + r.status + ' — response is not valid JSON: ' + String(parseErr);
@@ -646,41 +735,66 @@ async function routeNormalized(btn) {
             + JSON.stringify(rc.selected_candidate_id) + ')">Copy</button></span></div>'
         : previewRow('Manufacturer', selected);
       prev.innerHTML =
-        '<div class="norm-preview">' +
-        hashRow +
-        mfrRow +
-        previewRow('Jurisdiction',   rc.routing_input?.jurisdiction || '—') +
-        previewRow('Material',       rc.routing_input?.material     || '—') +
-        previewRow('Created At',     rc.created_at                  || '—') +
-        '</div>' +
-        '<button class="btn-dl" onclick="downloadReceiptJson()">↓ Download receipt.json</button>' +
-        '<button class="btn-route-norm" style="margin-top:.35rem;font-size:.72rem"' +
-        ' id="btn-toggle-receipt" onclick="toggleNormReceiptJson()">Show receipt JSON</button>' +
-        '<pre class="fixture hidden" id="norm-receipt-json-block"' +
-        ' style="margin-top:.3rem;max-height:300px"></pre>';
+        '<div class="norm-step" style="border-top:none;padding-top:0;margin-top:.55rem">'
+          + '<span class="norm-step-num done">3</span>'
+          + '<span class="norm-step-lbl">Inspect receipt summary</span>'
+        + '</div>'
+        + '<div class="norm-success-panel">'
+          + '<div class="norm-success-title">&#x2713; Routing complete</div>'
+          + '<div class="norm-preview">'
+          + hashRow + mfrRow
+          + previewRow('Jurisdiction', rc.routing_input?.jurisdiction || '—')
+          + previewRow('Material',     rc.routing_input?.material     || '—')
+          + previewRow('Created At',   rc.created_at                  || '—')
+          + '</div>'
+        + '</div>'
+        + '<div class="norm-step">'
+          + '<span class="norm-step-num done">4</span>'
+          + '<span class="norm-step-lbl">Copy or download receipt</span>'
+        + '</div>'
+        + '<div class="norm-success-actions">'
+          + '<button class="btn-dl" onclick="downloadReceiptJson()">↓ Download receipt.json</button>'
+          + '<button class="btn-route-norm" style="font-size:.72rem"'
+          + ' id="btn-toggle-receipt" onclick="toggleNormReceiptJson()">Show receipt JSON</button>'
+        + '</div>'
+        + '<pre class="fixture hidden" id="norm-receipt-json-block"'
+        + ' style="margin-top:.3rem;max-height:300px"></pre>';
       document.getElementById('norm-receipt-json-block').textContent = fmt(rc);
       prev.classList.remove('hidden');
     } else {
       // non-2xx HTTP response → inline error + details panel
       const code = data?.error?.code || data?.result || 'error';
       const msg  = data?.error?.message || '';
-      ni.textContent = '[' + code + ']' + (msg ? ' — ' + msg : '');
-      ni.className = 'error-note';
+      const hint = errorHint(code);
+      ni.innerHTML = '<div class="norm-error-panel">'
+        + '<div class="norm-error-code">' + esc(code) + '</div>'
+        + '<div class="norm-error-hint">' + esc(msg || 'The routing request could not be processed.') + '</div>'
+        + (hint ? '<div class="norm-error-hint" style="margin-top:.2rem">' + hint + '</div>' : '')
+        + '</div>';
+      ni.className = '';
+      ni.classList.remove('hidden');
       const banner = document.getElementById('route-error-banner');
-      banner.textContent = '[' + code + ']' + (msg ? ' ' + msg : '');
+      banner.innerHTML = '<strong>[' + esc(code) + ']</strong>'
+        + (msg ? ' ' + esc(msg) : '')
+        + (hint ? '<br><span style="font-weight:400;font-size:.7rem;color:#8b949e;display:block;margin-top:.2rem">' + hint + '</span>' : '');
       banner.classList.remove('hidden');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
     }
   } catch(e) {
-    ni.textContent = 'Unexpected error — ' + String(e);
-    ni.className = 'error-note';
+    ni.innerHTML = '<div class="norm-error-panel">'
+      + '<div class="norm-error-code">Unexpected error</div>'
+      + '<div class="norm-error-hint">' + esc(String(e)) + '</div>'
+      + '<div class="norm-error-hint" style="margin-top:.2rem">Try again, or check the browser console for details.</div>'
+      + '</div>';
+    ni.className = '';
+    ni.classList.remove('hidden');
     hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
   } finally {
     hide('results-loading');
-    setBtn(btn, '▶ Route Normalized Pilot Case', false);
+    setBtn(btn, '▶ Submit for Review', false);
     document.getElementById('btn-route').disabled = false;
   }
 }
@@ -900,19 +1014,52 @@ function validateNormInput(c) {
   return ['case_id', 'restoration_type', 'material', 'jurisdiction']
     .filter(k => !c[k] || !String(c[k]).trim());
 }
-function loadNormSample() {
-  document.getElementById('fix-normalized-case').textContent =
-    '{"case_id":"f1000001-0000-0000-0000-000000000001","restoration_type":"crown","material":"zirconia","jurisdiction":"DE"}';
-  clearNormForm();
+const NORM_INPUT_IDS = {
+  case_id:          'norm-case-id',
+  restoration_type: 'norm-restoration-type',
+  material:         'norm-material',
+  jurisdiction:     'norm-jurisdiction',
+};
+function readNormInputs() {
+  return Object.fromEntries(
+    Object.entries(NORM_INPUT_IDS).map(([k, id]) => [k, document.getElementById(id).value.trim()])
+  );
 }
-function clearNormForm() {
+function markNormInvalid(missing) {
+  Object.entries(NORM_INPUT_IDS).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    if (missing.includes(k)) el.classList.add('norm-field-invalid');
+    else                     el.classList.remove('norm-field-invalid');
+  });
+}
+function clearNormInvalid() {
+  Object.values(NORM_INPUT_IDS).forEach(id =>
+    document.getElementById(id).classList.remove('norm-field-invalid'));
+}
+function loadNormSample() {
+  document.getElementById('norm-case-id').value          = 'f1000001-0000-0000-0000-000000000001';
+  document.getElementById('norm-restoration-type').value = 'crown';
+  document.getElementById('norm-material').value         = 'zirconia';
+  document.getElementById('norm-jurisdiction').value     = 'DE';
   const ni = document.getElementById('route-norm-inline');
   ni.textContent = '';
   ni.className = 'hidden';
-  const prev = document.getElementById('route-norm-preview');
-  prev.innerHTML = '';
-  prev.classList.add('hidden');
-  document.getElementById('fix-normalized-case').classList.remove('norm-field-invalid');
+  document.getElementById('route-norm-preview').innerHTML = '';
+  document.getElementById('route-norm-preview').classList.add('hidden');
+  clearNormInvalid();
+  if (fixtures) document.getElementById('btn-route-norm').disabled = false;
+}
+function clearNormForm() {
+  document.getElementById('norm-case-id').value          = '';
+  document.getElementById('norm-restoration-type').value = '';
+  document.getElementById('norm-material').value         = '';
+  document.getElementById('norm-jurisdiction').value     = '';
+  const ni = document.getElementById('route-norm-inline');
+  ni.textContent = '';
+  ni.className = 'hidden';
+  document.getElementById('route-norm-preview').innerHTML = '';
+  document.getElementById('route-norm-preview').classList.add('hidden');
+  clearNormInvalid();
   if (fixtures) document.getElementById('btn-route-norm').disabled = false;
 }
 function toggleNormReceiptJson() {
@@ -947,6 +1094,18 @@ async function copyReceiptHash(btn, hash) {
 function show(id)      { document.getElementById(id).classList.remove('hidden'); }
 function hide(id)      { document.getElementById(id).classList.add('hidden'); }
 function setBtn(btn, label, disabled) { btn.textContent = label; btn.disabled = disabled; }
+
+// Returns an operator-readable guidance hint for a routing error code.
+function errorHint(code) {
+  const c = String(code || '').toLowerCase();
+  if (c.includes('normaliz') || c.includes('validat') || c.includes('parse'))
+    return 'Check that all fields contain valid values. Example: restoration_type=crown, material=zirconia, jurisdiction=DE.';
+  if (c.includes('no_eligible') || c.includes('routing') || c.includes('refused'))
+    return 'No manufacturer matched the routing criteria. Try a different material, restoration type, or jurisdiction.';
+  if (c.includes('registry') || c.includes('snapshot') || c.includes('fixture'))
+    return 'The registry snapshot could not be loaded. Start the service from the repo root so examples/pilot/ is reachable.';
+  return 'Clear the form and re-enter the values, or click \u2295 Load sample to use the canonical pilot input.';
+}
 
 // Ctrl+Enter / Cmd+Enter inside the normalized input section submits the form.
 document.getElementById('norm-input-section').addEventListener('keydown', function(e) {

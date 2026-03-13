@@ -178,6 +178,125 @@ async fn reviewer_shell_norm_ux_surface() {
     assert!(html.contains("norm-field-invalid"),       "invalid-field CSS marker must be present");
 }
 
+/// Reviewer shell must expose individual `<input>` fields for all four normalized-case
+/// fields so operators can edit values, trigger per-field validation, and use
+/// keyboard shortcuts without touching raw JSON.
+///
+/// Covers:
+///   - input element IDs for each of the four required fields
+///   - field-wrapper CSS structure (norm-field-wrap, norm-field-label, norm-req)
+///   - JS helpers that read/validate/mark those inputs (readNormInputs, markNormInvalid, clearNormInvalid)
+#[tokio::test]
+async fn reviewer_shell_norm_form_inputs_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // ── input element IDs ─────────────────────────────────────────────────────
+    assert!(html.contains("norm-case-id"),          "case_id input id must be present");
+    assert!(html.contains("norm-restoration-type"), "restoration_type input id must be present");
+    assert!(html.contains("norm-material"),         "material input id must be present");
+    assert!(html.contains("norm-jurisdiction"),     "jurisdiction input id must be present");
+
+    // ── field-wrapper structure ───────────────────────────────────────────────
+    assert!(html.contains("norm-field-wrap"),  "field wrapper class must be present");
+    assert!(html.contains("norm-field-label"), "field label class must be present");
+    assert!(html.contains("norm-input"),       "norm-input class must be used on inputs");
+    assert!(html.contains("norm-req"),         "required marker must be present");
+
+    // ── JS helpers for input reading / validation ─────────────────────────────
+    assert!(html.contains("readNormInputs"),   "readNormInputs helper must be present");
+    assert!(html.contains("markNormInvalid"),  "markNormInvalid helper must be present");
+    assert!(html.contains("clearNormInvalid"), "clearNormInvalid helper must be present");
+    assert!(html.contains("NORM_INPUT_IDS"),   "NORM_INPUT_IDS field-id map must be present");
+}
+
+/// Reviewer shell must expose explicit step framing for the 4-step operator flow
+/// so a non-technical operator can navigate the submission pipeline without guidance.
+///
+/// Steps checked:
+///   1. Enter normalized pilot input — static HTML label
+///   2. Submit for review — static HTML label
+///   3. Inspect receipt summary — JS-rendered label (in success preview builder)
+///   4. Copy or download receipt — JS-rendered label (in success preview builder)
+#[tokio::test]
+async fn reviewer_shell_step_framing_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // CSS classes for step framing must be defined
+    assert!(html.contains("norm-step"),     "norm-step CSS class must be referenced");
+    assert!(html.contains("norm-step-num"), "norm-step-num CSS class must be referenced");
+    assert!(html.contains("norm-step-lbl"), "norm-step-lbl CSS class must be referenced");
+
+    // Static HTML step labels (steps 1 and 2)
+    assert!(
+        html.contains("Enter normalized pilot input"),
+        "step 1 label must be present in HTML"
+    );
+    assert!(
+        html.contains("Submit for review"),
+        "step 2 label must be present in HTML"
+    );
+
+    // JS-rendered step labels (steps 3 and 4, emitted by the success preview builder)
+    assert!(
+        html.contains("Inspect receipt summary"),
+        "step 3 label must be present in JS success preview"
+    );
+    assert!(
+        html.contains("Copy or download receipt"),
+        "step 4 label must be present in JS success preview"
+    );
+
+    // Keyboard shortcut hint must be present
+    assert!(
+        html.contains("Ctrl+Enter"),
+        "keyboard shortcut hint must be present"
+    );
+}
+
+/// Reviewer shell must render actionable error guidance when routing fails so that
+/// a non-technical operator sees a next step rather than a raw error code.
+///
+/// Checks:
+///   - Error panel CSS classes (norm-error-panel, norm-error-hint) are defined
+///   - errorHint JS function is present
+///   - Specific guidance phrases appear in the JS source for validation and routing errors
+#[tokio::test]
+async fn reviewer_shell_error_guidance_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Error panel CSS classes must be defined
+    assert!(
+        html.contains("norm-error-panel"),
+        "norm-error-panel CSS class must be defined"
+    );
+    assert!(
+        html.contains("norm-error-hint"),
+        "norm-error-hint CSS class must be defined"
+    );
+
+    // JS errorHint function must be present
+    assert!(
+        html.contains("errorHint"),
+        "errorHint function must be defined in JS"
+    );
+
+    // Operator-readable guidance phrases must appear in the JS source
+    assert!(
+        html.contains("Check that all fields contain valid values"),
+        "field-check hint must be present in errorHint"
+    );
+    assert!(
+        html.contains("No manufacturer matched"),
+        "routing-refused hint must be present in errorHint"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

@@ -274,6 +274,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           ▶ Route Normalized Pilot Case
         </button>
         <button class="copy-btn" style="margin-top:.3rem" onclick="clearNormForm()">↺ Clear form</button>
+        <button class="copy-btn" style="margin-top:.3rem;margin-left:.4rem" onclick="loadNormSample()">⊕ Load sample</button>
         <div id="route-norm-inline" class="hidden"></div>
         <div id="route-norm-preview" class="hidden"></div>
       </div>
@@ -881,6 +882,11 @@ function previewRow(k, v) {
     + '<span class="norm-preview-key">' + esc(k) + '</span>'
     + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
     + '</div>';
+}
+function loadNormSample() {
+  document.getElementById('fix-normalized-case').textContent =
+    '{"case_id":"f1000001-0000-0000-0000-000000000001","restoration_type":"crown","material":"zirconia","jurisdiction":"DE"}';
+  clearNormForm();
 }
 function clearNormForm() {
   const ni = document.getElementById('route-norm-inline');

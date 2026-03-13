@@ -176,6 +176,10 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .norm-preview-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;
                   letter-spacing:.05em;white-space:nowrap}
 .norm-preview-val{color:#c9d1d9;word-break:break-all}
+.copy-btn{background:none;border:1px solid #30363d;border-radius:3px;color:#58a6ff;
+          cursor:pointer;font-family:inherit;font-size:.6rem;padding:.05rem .3rem;
+          margin-left:.35rem;transition:color .1s}
+.copy-btn:hover{color:#79c0ff}
 </style>
 </head>
 <body>
@@ -607,9 +611,16 @@ async function routeNormalized(btn) {
       ni.textContent = '✓ Routing complete — receipt ' + rhash.slice(0, 12) + '…';
       ni.className = 'success-note';
       const prev = document.getElementById('route-norm-preview');
+      const hashRow = rhash !== '—'
+        ? '<div class="norm-preview-row">'
+            + '<span class="norm-preview-key">Receipt Hash</span>'
+            + '<span class="norm-preview-val">' + esc(rhash)
+            + ' <button class="copy-btn" onclick="copyReceiptHash(this,'
+            + JSON.stringify(rhash) + ')">Copy</button></span></div>'
+        : previewRow('Receipt Hash', rhash);
       prev.innerHTML =
         '<div class="norm-preview">' +
-        previewRow('Receipt Hash',   rhash) +
+        hashRow +
         previewRow('Manufacturer',   selected) +
         previewRow('Jurisdiction',   rc.routing_input?.jurisdiction || '—') +
         previewRow('Material',       rc.routing_input?.material     || '—') +
@@ -851,6 +862,17 @@ function previewRow(k, v) {
     + '<span class="norm-preview-key">' + esc(k) + '</span>'
     + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
     + '</div>';
+}
+async function copyReceiptHash(btn, hash) {
+  try {
+    await navigator.clipboard.writeText(hash);
+    btn.textContent = 'Copied';
+    btn.style.color = '#3fb950';
+  } catch(e) {
+    btn.textContent = 'Copy failed';
+    btn.style.color = '#f85149';
+  }
+  setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
 }
 function show(id)      { document.getElementById(id).classList.remove('hidden'); }
 function hide(id)      { document.getElementById(id).classList.add('hidden'); }

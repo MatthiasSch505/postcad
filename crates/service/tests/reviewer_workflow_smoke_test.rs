@@ -1350,6 +1350,100 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Artifact freshness marker tests ──────────────────────────────────────────
+
+/// Reviewer shell must contain freshness marker elements for all three artifact
+/// sections so an operator can instantly see whether each artifact belongs to
+/// the current run.
+#[tokio::test]
+async fn reviewer_shell_freshness_markers_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"fm-receipt\""),  "fm-receipt freshness marker must be present");
+    assert!(html.contains("id=\"fm-verify\""),   "fm-verify freshness marker must be present");
+    assert!(html.contains("id=\"fm-dispatch\""), "fm-dispatch freshness marker must be present");
+}
+
+/// All three freshness markers must default to their pending wording at page
+/// load so a fresh session never shows a stale current-run label.
+#[tokio::test]
+async fn reviewer_shell_freshness_markers_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("not yet produced for current run"),
+        "receipt freshness marker must default to 'not yet produced for current run'"
+    );
+    assert!(
+        html.contains("not yet executed for current run"),
+        "verify freshness marker must default to 'not yet executed for current run'"
+    );
+    assert!(
+        html.contains("not yet exported for current run"),
+        "dispatch freshness marker must default to 'not yet exported for current run'"
+    );
+}
+
+/// All freshness wording strings must be present in the JS source so every
+/// artifact panel state resolves to a deterministic label.
+#[tokio::test]
+async fn reviewer_shell_freshness_marker_wording_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("current run artifact"),
+        "'current run artifact' label must be present in JS");
+    assert!(html.contains("not yet produced for current run"),
+        "'not yet produced for current run' label must be present");
+    assert!(html.contains("not yet executed for current run"),
+        "'not yet executed for current run' label must be present");
+    assert!(html.contains("not yet exported for current run"),
+        "'not yet exported for current run' label must be present");
+}
+
+/// CSS classes for fresh and pending states must both be defined so freshness
+/// markers have consistent visual styling across all three panels.
+#[tokio::test]
+async fn reviewer_shell_freshness_markers_css_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("fm-fresh"),   "fm-fresh CSS class must be defined");
+    assert!(html.contains("fm-pending"), "fm-pending CSS class must be defined");
+}
+
+/// JS functions for freshness markers must be present so state is derived only
+/// from existing reviewer signals without any new persisted state.
+#[tokio::test]
+async fn reviewer_shell_freshness_markers_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("setFreshness"),          "setFreshness JS function must be present");
+    assert!(html.contains("updateFreshnessMarkers"), "updateFreshnessMarkers JS function must be present");
+}
+
+/// updateFreshnessMarkers must be wired into updateOpState so markers reset on
+/// reroute and advance correctly through the route/verify/dispatch sequence.
+#[tokio::test]
+async fn reviewer_shell_freshness_markers_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateFreshnessMarkers()"),
+        "updateFreshnessMarkers() call must appear in updateOpState and exportDispatch"
+    );
+}
+
 // ── Outcome banner tests ──────────────────────────────────────────────────────
 
 /// Reviewer shell must contain the current-run outcome banner with its element

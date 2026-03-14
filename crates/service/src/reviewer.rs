@@ -275,6 +275,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── artifact freshness markers ── */
+.fm{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
+    font-weight:700;vertical-align:middle;margin-left:.2rem;letter-spacing:.03em;
+    text-transform:lowercase}
+.fm-fresh  {background:#1e2d45;color:#388bfd}
+.fm-pending{background:#1c2128;color:#484f58}
 /* ── panel microbadges ── */
 .mb{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
     font-weight:700;vertical-align:middle;margin-left:.35rem;letter-spacing:.03em;
@@ -771,6 +777,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           Receipt JSON
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— verification source of truth · inspect before dispatch</span>
           <span id="mb-receipt" class="mb mb-on">available</span>
+          <span id="fm-receipt" class="fm fm-pending">not yet produced for current run</span>
           <span id="receipt-json-badge" class="integrity-badge hidden"></span>
         </div>
         <pre class="result result-ok" id="route-receipt-json"></pre>
@@ -783,6 +790,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="section-title" style="margin-top:.8rem">Verify before dispatch
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— replay re-derives the receipt from original inputs</span>
           <span id="mb-verify" class="mb mb-dim">not available</span>
+          <span id="fm-verify" class="fm fm-pending">not yet executed for current run</span>
         </div>
         <div class="panel-subtitle">The kernel recomputes every hash from scratch. No stored state is trusted.</div>
         <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">verification not yet executed for current route</div>
@@ -822,6 +830,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           <div class="section-title">Dispatch commitment
             <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— handoff to manufacturing · irreversible once approved</span>
             <span id="mb-dispatch" class="mb mb-dim">not available</span>
+            <span id="fm-dispatch" class="fm fm-pending">not yet exported for current run</span>
           </div>
           <div class="panel-subtitle">Dispatch after verification succeeds. The server re-verifies the receipt before creating the record.</div>
           <div class="tamper-desc">
@@ -1518,6 +1527,7 @@ async function exportDispatch(btn) {
       updateIntegrityBadges();
       updateDispatchReadiness();
       updateMicrobadges();
+      updateFreshnessMarkers();
       updateRunTimeline();
       updateOab();
       updateOutcomeBanner();
@@ -1722,6 +1732,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateNextActionRail();
   updateHandoffNote();
   updateMicrobadges();
+  updateFreshnessMarkers();
   updateRunTimeline();
   updateOab();
   updateOutcomeBanner();
@@ -1816,6 +1827,28 @@ function updateMicrobadges() {
     opVerify === 'verified' ? 'verified' :
     opVerify === 'failed'   ? 'failed'   : 'not-available');
   setMicrobadge('mb-dispatch', lastExportPacket ? 'exported' : 'not-available');
+}
+
+// ── Artifact freshness markers ────────────────────────────────────────────
+function setFreshness(id, fresh, label) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className   = 'fm ' + (fresh ? 'fm-fresh' : 'fm-pending');
+  el.textContent = label;
+}
+function updateFreshnessMarkers() {
+  setFreshness('fm-receipt',
+    opRouting === 'available',
+    opRouting === 'available'
+      ? 'current run artifact'
+      : 'not yet produced for current run');
+  const verifyDone = opVerify === 'verified' || opVerify === 'failed';
+  setFreshness('fm-verify',
+    verifyDone,
+    verifyDone ? 'current run artifact' : 'not yet executed for current run');
+  setFreshness('fm-dispatch',
+    !!lastExportPacket,
+    lastExportPacket ? 'current run artifact' : 'not yet exported for current run');
 }
 
 // ── Run timeline ──────────────────────────────────────────────────────────

@@ -522,6 +522,29 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
 .sal-entry-older{color:#484f58}
 .sal-idx{color:#3d4349;font-size:.6rem;min-width:.9rem;flex-shrink:0;text-align:right}
 .sal-msg{color:#6e7681;font-size:.62rem}
+/* ── run identity block ── */
+.rib{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.45rem .75rem;margin-bottom:.5rem}
+.rib-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.25rem}
+.rib-row{display:grid;grid-template-columns:90px 1fr;gap:.06rem .5rem;
+         font-size:.68rem;align-items:baseline}
+.rib-key{color:#6e7681;font-size:.63rem;text-transform:uppercase;letter-spacing:.04em}
+.rib-val-current{color:#3fb950}.rib-val-prev{color:#d29922}.rib-val-idle{color:#484f58}
+.rib-val-err{color:#f85149}
+.rib-hint{font-size:.6rem;color:#6e7681;grid-column:2;margin-top:.02rem;font-style:italic}
+/* ── artifact lineage badge ── */
+.lin{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
+     font-weight:700;vertical-align:middle;margin-left:.2rem;letter-spacing:.03em;
+     text-transform:lowercase}
+.lin-current{background:#1a3e2c;color:#3fb950}
+.lin-prev   {background:#2d2009;color:#d29922}
+.lin-idle   {background:#1c2128;color:#484f58}
+/* ── lineage mismatch note ── */
+.lin-note{font-size:.67rem;line-height:1.5;color:#d29922;
+          background:#1c180055;border:1px solid #d2992244;border-radius:4px;
+          padding:.3rem .55rem;margin-top:.35rem;margin-bottom:.3rem}
+.lin-note-hint{font-size:.62rem;color:#8b949e;margin-top:.1rem}
 </style>
 </head>
 <body>
@@ -778,6 +801,15 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div id="rt-summary" class="rt-summary">Current run not started</div>
       </div>
 
+      <!-- Current run identity — lineage-aware status summary -->
+      <div id="rib" class="rib">
+        <div class="rib-label">Current run</div>
+        <div class="rib-row"><span class="rib-key">Route</span><span id="rib-route" class="rib-val-idle">no run yet</span></div>
+        <div class="rib-row"><span class="rib-key">Receipt</span><span id="rib-receipt" class="rib-val-idle">not generated</span></div>
+        <div class="rib-row"><span class="rib-key">Verification</span><span id="rib-verify" class="rib-val-idle">not executed</span></div>
+        <div class="rib-row"><span class="rib-key">Dispatch</span><span id="rib-dispatch" class="rib-val-idle">not exported</span></div>
+      </div>
+
       <!-- Operator action bar — always visible, exactly one next step -->
       <div id="oab" class="oab">
         <div class="oab-label">Next action</div>
@@ -1009,7 +1041,8 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <!-- F. Verify result (deterministic order: route → receipt → verification → dispatch) -->
         <div id="verify-result" class="hidden">
           <div class="verify-section">
-            <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span><span id="verify-result-badge" class="integrity-badge hidden"></span></div>
+            <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span><span id="lin-verify" class="lin lin-idle">not executed</span><span id="verify-result-badge" class="integrity-badge hidden"></span></div>
+            <div id="lin-verify-note" class="lin-note hidden">Verification belongs to previous run.<div class="lin-note-hint">Run verification again for current route.</div></div>
             <div id="verify-banner"></div>
             <pre class="result" id="verify-json"></pre>
             <div id="verify-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
@@ -1085,8 +1118,10 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
             <div class="section-title">Export packet — deterministic dispatch record
               <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> · ready for handoff</span>
               <span id="as-chip-export" class="as-chip hidden">active step</span>
+              <span id="lin-dispatch-export" class="lin lin-idle">not exported</span>
               <span id="dispatch-result-badge" class="integrity-badge hidden"></span>
             </div>
+            <div id="lin-dispatch-note" class="lin-note hidden">Dispatch export belongs to previous run.<div class="lin-note-hint">Export dispatch packet again for current route.</div></div>
             <pre class="result result-info" id="dispatch-export-json"></pre>
             <div id="dispatch-export-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.4rem;padding-top:.35rem;border-top:1px solid #21262d">
               <button class="btn-dl" onclick="downloadExportPacket()">↓ Download export_packet.json</button>
@@ -1158,6 +1193,9 @@ let opReceipt  = 'not-run';  // not-run | available | missing
 let opVerify   = 'not-run';  // not-run | verified  | failed
 let opDispatch = 'not-run';  // not-run | available | failed
 const runHistory = [];       // chronological pilot run actions
+let runSerial      = 0;   // monotonic counter, increments on each new route
+let verifySerial   = 0;   // set to runSerial when verification completes
+let dispatchSerial = 0;   // set to runSerial when dispatch is exported
 
 // ── boot ───────────────────────────────────────────────────────────────────
 (async function boot() {
@@ -1217,6 +1255,7 @@ async function routeCase(btn) {
   document.getElementById('btn-route-norm').disabled = true;
   if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
   salLog('Route requested', 'Routing kernel execution started.');
+  runSerial++;
 
   hide('results-placeholder');
   hide('route-norm-inline'); hide('route-norm-preview');
@@ -1329,6 +1368,7 @@ async function routeNormalized(btn) {
   document.getElementById('btn-route').disabled = true;
   if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
   salLog('Route requested', 'Routing kernel execution started.');
+  runSerial++;
 
   hide('results-placeholder');
   hide('route-result'); hide('route-error'); hide('verify-result');
@@ -1618,6 +1658,7 @@ function showVerifyResult(isVerified, data, kind) {
   }
 
   if (kind === 'Replay Verification') {
+    verifySerial = runSerial;
     updateOpState(null, null, isVerified ? 'verified' : 'failed', null);
     hide('verify-artifact-note');
     appendRunHistory('Verification executed', isVerified);
@@ -1740,6 +1781,7 @@ async function exportDispatch(btn) {
     const data = await r.json();
     if (r.ok) {
       lastExportPacket = data;
+      dispatchSerial = runSerial;
       updateIntegrityBadges();
       updateDispatchReadiness();
       updateDispatchBlockers();
@@ -1753,6 +1795,9 @@ async function exportDispatch(btn) {
       updateHandoffSummary();
       updateConsistencySentinel();
       updateActiveSectionEmphasis();
+      updateRunIdentityBlock();
+      updateLineageBadges();
+      updateLineageNotes();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -1973,6 +2018,65 @@ function dblNavigate(target) {
 }
 
 // ── Operator state block ───────────────────────────────────────────────────
+// ── Run identity + artifact lineage ───────────────────────────────────────
+function verifyLineage() {
+  if (runSerial === 0)                              return 'idle';
+  if (verifySerial === runSerial)                   return 'current';
+  if (verifySerial > 0 && verifySerial < runSerial) return 'prev';
+  return 'idle';
+}
+function dispatchLineage() {
+  if (runSerial === 0)                                    return 'idle';
+  if (dispatchSerial === runSerial)                       return 'current';
+  if (dispatchSerial > 0 && dispatchSerial < runSerial)   return 'prev';
+  return 'idle';
+}
+function setRibVal(id, state, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'rib-val-' + state;
+  el.textContent = text;
+}
+function updateRunIdentityBlock() {
+  if (runSerial === 0) {
+    setRibVal('rib-route',    'idle', 'no run yet');
+    setRibVal('rib-receipt',  'idle', 'not generated');
+    setRibVal('rib-verify',   'idle', 'not executed');
+    setRibVal('rib-dispatch', 'idle', 'not exported');
+    return;
+  }
+  if (opRouting === 'available') setRibVal('rib-route', 'current', 'current run');
+  else if (opRouting === 'failed') setRibVal('rib-route', 'err', 'failed');
+  else setRibVal('rib-route', 'idle', 'no run');
+  setRibVal('rib-receipt', opReceipt === 'available' ? 'current' : 'idle',
+                           opReceipt === 'available' ? 'current run' : 'not generated');
+  const vlin = verifyLineage();
+  setRibVal('rib-verify',
+    vlin === 'current' ? 'current' : (vlin === 'prev' ? 'prev' : 'idle'),
+    vlin === 'current' ? 'current run' : (vlin === 'prev' ? 'previous run' : 'not executed'));
+  const dlin = dispatchLineage();
+  setRibVal('rib-dispatch',
+    dlin === 'current' ? 'current' : (dlin === 'prev' ? 'prev' : 'idle'),
+    dlin === 'current' ? 'current run' : (dlin === 'prev' ? 'previous run' : 'not exported'));
+}
+function setLinBadge(id, lineage, idleLabel) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (lineage === 'current')      { el.className = 'lin lin-current'; el.textContent = 'current run'; }
+  else if (lineage === 'prev')    { el.className = 'lin lin-prev';    el.textContent = 'previous run'; }
+  else { el.className = 'lin lin-idle'; el.textContent = idleLabel || 'not executed'; }
+}
+function updateLineageBadges() {
+  setLinBadge('lin-verify',          verifyLineage(),   'not executed');
+  setLinBadge('lin-dispatch-export', dispatchLineage(), 'not exported');
+}
+function updateLineageNotes() {
+  const vn = document.getElementById('lin-verify-note');
+  const dn = document.getElementById('lin-dispatch-note');
+  if (vn) vn.classList.toggle('hidden', verifyLineage()   !== 'prev');
+  if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
+}
+
 function updateOpState(routing, receipt, verify, dispatch) {
   const MAP = {
     'not-run': 'op-not-run', 'available': 'op-available',
@@ -2014,6 +2118,9 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateHandoffSummary();
   updateConsistencySentinel();
   updateActiveSectionEmphasis();
+  updateRunIdentityBlock();
+  updateLineageBadges();
+  updateLineageNotes();
 }
 
 // ── Active run context ────────────────────────────────────────────────────

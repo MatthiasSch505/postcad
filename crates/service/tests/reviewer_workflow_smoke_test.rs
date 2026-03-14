@@ -1350,6 +1350,118 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Run identity + artifact lineage tests ─────────────────────────────────────
+
+/// Reviewer shell must contain the run identity block so the operator always
+/// sees a lineage-aware summary of the four pipeline steps for the active run.
+#[tokio::test]
+async fn reviewer_shell_run_identity_block_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"rib\""),          "rib container must be present");
+    assert!(html.contains("id=\"rib-route\""),    "rib-route row must be present");
+    assert!(html.contains("id=\"rib-receipt\""),  "rib-receipt row must be present");
+    assert!(html.contains("id=\"rib-verify\""),   "rib-verify row must be present");
+    assert!(html.contains("id=\"rib-dispatch\""), "rib-dispatch row must be present");
+    assert!(html.contains("Current run"),         "run identity label must be present");
+}
+
+/// Run identity block must default to the idle state on initial load so the
+/// operator sees explicit 'no run yet' labels before any route is submitted.
+#[tokio::test]
+async fn reviewer_shell_run_identity_block_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("no run yet"),     "initial route label must be 'no run yet'");
+    assert!(html.contains("not generated"),  "initial receipt label must be 'not generated'");
+    assert!(html.contains("not executed"),   "initial verify label must be 'not executed'");
+    assert!(html.contains("not exported"),   "initial dispatch label must be 'not exported'");
+}
+
+/// Lineage badges must be present in the verification result and dispatch export
+/// section titles so the operator can see artifact ownership at a glance.
+#[tokio::test]
+async fn reviewer_shell_artifact_lineage_badges_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"lin-verify\""),          "lin-verify badge must be present");
+    assert!(html.contains("id=\"lin-dispatch-export\""), "lin-dispatch-export badge must be present");
+    assert!(html.contains("lin-current"),                "lin-current CSS class must be defined");
+    assert!(html.contains("lin-prev"),                   "lin-prev CSS class must be defined");
+    assert!(html.contains("lin-idle"),                   "lin-idle CSS class must be defined");
+}
+
+/// Lineage mismatch notes must be present so the operator receives explicit
+/// guidance when an artifact belongs to a previous rather than the current run.
+#[tokio::test]
+async fn reviewer_shell_lineage_mismatch_notes_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"lin-verify-note\""),   "lin-verify-note must be present");
+    assert!(html.contains("id=\"lin-dispatch-note\""), "lin-dispatch-note must be present");
+    assert!(
+        html.contains("Verification belongs to previous run."),
+        "verify previous-run mismatch message must be present"
+    );
+    assert!(
+        html.contains("Run verification again for current route."),
+        "verify guidance hint must be present"
+    );
+    assert!(
+        html.contains("Dispatch export belongs to previous run."),
+        "dispatch previous-run mismatch message must be present"
+    );
+    assert!(
+        html.contains("Export dispatch packet again for current route."),
+        "dispatch guidance hint must be present"
+    );
+}
+
+/// Run serial tracking state and lineage functions must be present so the shell
+/// can determine whether each artifact belongs to the current or a previous run.
+#[tokio::test]
+async fn reviewer_shell_run_serial_tracking_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("runSerial"),      "runSerial state variable must be present");
+    assert!(html.contains("verifySerial"),   "verifySerial state variable must be present");
+    assert!(html.contains("dispatchSerial"), "dispatchSerial state variable must be present");
+    assert!(html.contains("verifyLineage"),  "verifyLineage JS function must be present");
+    assert!(html.contains("dispatchLineage"), "dispatchLineage JS function must be present");
+}
+
+/// Run identity and lineage update functions must be wired into updateOpState
+/// and exportDispatch so they re-evaluate on every state transition.
+#[tokio::test]
+async fn reviewer_shell_lineage_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateRunIdentityBlock()"),
+        "updateRunIdentityBlock() call must appear in state machine"
+    );
+    assert!(
+        html.contains("updateLineageBadges()"),
+        "updateLineageBadges() call must appear in state machine"
+    );
+    assert!(
+        html.contains("updateLineageNotes()"),
+        "updateLineageNotes() call must appear in state machine"
+    );
+}
+
 // ── Session activity log tests ────────────────────────────────────────────────
 
 /// Reviewer shell must contain the session activity log panel so the operator

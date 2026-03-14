@@ -275,6 +275,36 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── handoff summary card ── */
+.hsc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.55rem .8rem;margin-bottom:.5rem}
+.hsc-title{font-size:.7rem;font-weight:700;color:#c9d1d9;margin-bottom:.28rem}
+.hsc-verdict{font-size:.82rem;font-weight:700;margin-bottom:.22rem}
+.hsc-verdict-not-ready{color:#484f58}
+.hsc-verdict-ready    {color:#d29922}
+.hsc-verdict-complete {color:#3fb950}
+.hsc-section{margin-top:.28rem}
+.hsc-section-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+                   letter-spacing:.07em;margin-bottom:.12rem}
+.hsc-row{font-size:.67rem;display:flex;gap:.35rem;line-height:1.4;padding:.04rem 0}
+.hsc-row-ok{color:#3fb950}
+.hsc-row-no{color:#484f58}
+.hsc-summary-line{font-size:.7rem;color:#c9d1d9;margin-top:.3rem;padding-top:.28rem;
+                  border-top:1px solid #21262d;line-height:1.45;font-style:italic}
+@media print{
+  header,footer,#op-cheatsheet,.ase-bar,#nar-rail,#run-timeline,#oab,#orb,
+  #crc,#pfc,.op-state-block,#active-run-context,#run-history-panel,
+  #results-placeholder,#results-loading,#route-error,#route-result,
+  .hero,details,.two-col>div:first-child{display:none!important}
+  .two-col{display:block!important}
+  .card{border:none!important;padding:0!important}
+  #hsc{border:1px solid #ccc;background:#fff;color:#000;border-radius:0}
+  #hsc .hsc-title{color:#000}
+  #hsc .hsc-verdict-not-ready,#hsc .hsc-verdict-ready,#hsc .hsc-verdict-complete{color:#000}
+  #hsc .hsc-section-label{color:#555}
+  #hsc .hsc-row-ok,#hsc .hsc-row-no{color:#000}
+  #hsc .hsc-summary-line{color:#000;border-top-color:#ccc}
+}
 /* ── audit snapshot export ── */
 .ase-bar{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;
          padding:.35rem .65rem;background:#0d111766;border:1px solid #21262d;
@@ -682,6 +712,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <span class="ase-label">Audit snapshot — current-run artifacts only</span>
         <button class="ase-btn" id="btn-copy-snapshot" onclick="copyAuditSnapshot(this)">Copy snapshot</button>
         <button class="ase-btn" onclick="downloadAuditSnapshot()">↓ Download .txt</button>
+        <button class="ase-btn" id="btn-print-handoff" onclick="window.print()">⎙ Print summary</button>
       </div>
 
       <!-- Next-action rail — always visible, one action at a time -->
@@ -750,6 +781,25 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div id="pfc-detail" class="pfc-detail">Complete remaining workflow steps before dispatch export.</div>
         <div id="pfc-rows" class="pfc-rows"></div>
         <button id="pfc-link" class="pfc-link hidden" onclick="pfcNavigate()"></button>
+      </div>
+
+      <!-- Handoff summary card — visible in shell and printable -->
+      <div id="hsc" class="hsc">
+        <div class="hsc-title">PostCAD current-run handoff summary</div>
+        <div id="hsc-verdict" class="hsc-verdict hsc-verdict-not-ready">Not ready</div>
+        <div class="hsc-section">
+          <div class="hsc-section-label">Workflow status</div>
+          <div id="hsc-rows"></div>
+        </div>
+        <div class="hsc-section">
+          <div class="hsc-section-label">Dispatch readiness</div>
+          <div id="hsc-readiness"></div>
+        </div>
+        <div class="hsc-section">
+          <div class="hsc-section-label">Artifact availability</div>
+          <div id="hsc-artifacts"></div>
+        </div>
+        <div id="hsc-summary" class="hsc-summary-line">Current run requires routing before dispatch.</div>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1642,6 +1692,7 @@ async function exportDispatch(btn) {
       updateOutcomeBanner();
       updateCompletionChecklist();
       updatePreflightCard();
+      updateHandoffSummary();
       updateActiveSectionEmphasis();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
@@ -1900,6 +1951,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateOutcomeBanner();
   updateCompletionChecklist();
   updatePreflightCard();
+  updateHandoffSummary();
   updateActiveSectionEmphasis();
 }
 
@@ -2330,6 +2382,59 @@ function downloadAuditSnapshot() {
   const a    = document.createElement('a');
   a.href = url; a.download = 'postcad_audit_snapshot.txt'; a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Handoff summary card ──────────────────────────────────────────────────
+function updateHandoffSummary() {
+  const verdictEl = document.getElementById('hsc-verdict');
+  const rowsEl    = document.getElementById('hsc-rows');
+  const readyEl   = document.getElementById('hsc-readiness');
+  const artsEl    = document.getElementById('hsc-artifacts');
+  const sumEl     = document.getElementById('hsc-summary');
+  if (!verdictEl || !rowsEl || !readyEl || !artsEl || !sumEl) return;
+  const routeOk   = opRouting === 'available';
+  const receiptOk = opReceipt === 'available';
+  const verifyOk  = opVerify  === 'verified';
+  const exported  = !!lastExportPacket;
+  const vk = pfcVerdictKey();
+  const verdictText = {
+    'not-ready':'Not ready',
+    'ready':    'Ready for dispatch export',
+    'complete': 'Complete',
+  }[vk] || 'Not ready';
+  verdictEl.textContent = verdictText;
+  verdictEl.className   = 'hsc-verdict hsc-verdict-' + vk;
+  function hscRow(ok, label) {
+    return '<div class="hsc-row ' + (ok ? 'hsc-row-ok' : 'hsc-row-no') + '">'
+      + (ok ? '✓' : '✗') + ' ' + esc(label) + ': ' + (ok ? 'yes' : 'no') + '</div>';
+  }
+  rowsEl.innerHTML =
+    hscRow(routeOk,   'Route generated')
+    + hscRow(receiptOk, 'Receipt available')
+    + hscRow(verifyOk,  'Verification completed')
+    + hscRow(exported,  'Dispatch exported');
+  const drStatusEl = document.getElementById('dr-status');
+  const drReasonEl = document.getElementById('dr-reason');
+  const drStatus = drStatusEl ? drStatusEl.textContent.trim() : 'Not evaluated';
+  const drReason = drReasonEl ? drReasonEl.textContent.trim() : '';
+  const drOk = verifyOk || exported;
+  readyEl.innerHTML = '<div class="hsc-row ' + (drOk ? 'hsc-row-ok' : 'hsc-row-no') + '">'
+    + esc(drStatus) + (drReason ? ' — ' + esc(drReason) : '') + '</div>';
+  function artRow(ok, label, noLabel) {
+    return '<div class="hsc-row ' + (ok ? 'hsc-row-ok' : 'hsc-row-no') + '">'
+      + esc(label) + ': ' + esc(ok ? 'present' : noLabel) + '</div>';
+  }
+  artsEl.innerHTML =
+    artRow(routeOk,   'Route',        'not present')
+    + artRow(receiptOk, 'Receipt',      'not present')
+    + artRow(verifyOk,  'Verification', 'not executed')
+    + artRow(exported,  'Dispatch',     'not exported');
+  const summaryLines = {
+    'not-ready':'Current run requires additional workflow steps before dispatch.',
+    'ready':    'Current run is ready for dispatch export.',
+    'complete': 'Current run handoff is complete.',
+  };
+  sumEl.textContent = summaryLines[vk] || summaryLines['not-ready'];
 }
 
 // ── Active section emphasis ───────────────────────────────────────────────

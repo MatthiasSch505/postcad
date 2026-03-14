@@ -1350,6 +1350,98 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Handoff summary card tests ────────────────────────────────────────────────
+
+/// Reviewer shell must contain a print handoff summary control so an operator
+/// can trigger browser print for the current-run handoff card.
+#[tokio::test]
+async fn reviewer_shell_handoff_summary_control_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"btn-print-handoff\""), "print handoff button must be present");
+    assert!(html.contains("window.print()"),           "print button must call window.print()");
+    assert!(html.contains("Print summary"),            "print button label must be present");
+}
+
+/// Handoff summary card must be present with all its structural elements so it
+/// can show a complete current-run summary both on screen and in print.
+#[tokio::test]
+async fn reviewer_shell_handoff_summary_card_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"hsc\""),           "hsc container must be present");
+    assert!(html.contains("id=\"hsc-verdict\""),   "hsc-verdict must be present");
+    assert!(html.contains("id=\"hsc-rows\""),      "hsc-rows must be present");
+    assert!(html.contains("id=\"hsc-readiness\""), "hsc-readiness must be present");
+    assert!(html.contains("id=\"hsc-artifacts\""), "hsc-artifacts must be present");
+    assert!(html.contains("id=\"hsc-summary\""),   "hsc-summary must be present");
+    assert!(html.contains("PostCAD current-run handoff summary"),
+        "handoff summary title must be present");
+}
+
+/// Handoff card must default to the not-ready verdict and appropriate initial
+/// summary text so a fresh session never shows a stale complete state.
+#[tokio::test]
+async fn reviewer_shell_handoff_summary_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("hsc-verdict-not-ready"), "initial verdict CSS must be hsc-verdict-not-ready");
+    assert!(
+        html.contains("Current run requires routing before dispatch."),
+        "initial summary line must say 'Current run requires routing before dispatch.'"
+    );
+}
+
+/// All three verdict text strings and all three summary lines must be present
+/// in the JS source so every handoff state resolves to a deterministic verdict.
+#[tokio::test]
+async fn reviewer_shell_handoff_summary_all_verdict_strings() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("'Not ready'"),                 "Not ready verdict must be in JS");
+    assert!(html.contains("'Ready for dispatch export'"), "Ready for dispatch export verdict must be in JS");
+    assert!(html.contains("'Complete'"),                  "Complete verdict must be in JS");
+    assert!(html.contains("Current run requires additional workflow steps"),
+        "not-ready summary line must be present");
+    assert!(html.contains("Current run is ready for dispatch export."),
+        "ready summary line must be present");
+    assert!(html.contains("Current run handoff is complete."),
+        "complete summary line must be present");
+}
+
+/// The handoff summary JS function must be present and wired into the state
+/// machine so the card resets on reroute and advances through the workflow.
+#[tokio::test]
+async fn reviewer_shell_handoff_summary_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("updateHandoffSummary"), "updateHandoffSummary JS function must be present");
+}
+
+/// updateHandoffSummary must be called in updateOpState and exportDispatch so
+/// stale states clear on reroute and the complete state shows after dispatch.
+#[tokio::test]
+async fn reviewer_shell_handoff_summary_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateHandoffSummary()"),
+        "updateHandoffSummary() call must appear in updateOpState and exportDispatch"
+    );
+}
+
 // ── Audit snapshot export tests ──────────────────────────────────────────────
 
 /// Reviewer shell must contain the audit snapshot export controls so an

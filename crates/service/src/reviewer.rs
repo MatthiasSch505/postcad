@@ -222,6 +222,38 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
                  text-transform:uppercase;letter-spacing:.06em;margin-bottom:.18rem}
 .norm-error-hint{font-size:.7rem;color:#8b949e;border-left:2px solid #f8514966;
                  padding-left:.45rem;margin-top:.2rem;line-height:1.5}
+
+/* ── source-of-truth badge ── */
+.sot-badge{font-size:.55rem;color:#3fb950;background:#1a3e2c;border-radius:2px;
+           padding:.02rem .28rem;font-weight:700;letter-spacing:0;text-transform:none;
+           margin-left:.3rem;vertical-align:middle}
+/* ── artifact guide ── */
+.artifact-guide{background:#0d1117;border:1px solid #21262d;border-radius:5px;
+               padding:.5rem .75rem;margin-bottom:.55rem}
+.ag-row{display:grid;grid-template-columns:110px 1fr;gap:.1rem .55rem;
+        font-size:.7rem;align-items:baseline;margin-bottom:.25rem}
+.ag-row:last-child{margin-bottom:0}
+.ag-key{color:#6e7681;font-weight:700;font-size:.63rem;text-transform:uppercase;
+        letter-spacing:.04em;white-space:nowrap}
+.ag-val{color:#8b949e;line-height:1.5}
+/* ── operator state block ── */
+.op-state-block{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+               padding:.5rem .75rem;margin-bottom:.65rem}
+.op-state-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem .5rem}
+.op-state-item{display:flex;flex-direction:column;gap:.1rem}
+.op-state-key{font-size:.55rem;color:#6e7681;text-transform:uppercase;letter-spacing:.06em}
+.op-not-run  {font-size:.7rem;font-weight:700;color:#484f58}
+.op-available{font-size:.7rem;font-weight:700;color:#d29922}
+.op-verified {font-size:.7rem;font-weight:700;color:#3fb950}
+.op-failed   {font-size:.7rem;font-weight:700;color:#f85149}
+.op-missing  {font-size:.7rem;font-weight:700;color:#f85149}
+/* guidance notes */
+.guidance-note{font-size:.71rem;color:#d29922;background:#2d200944;
+               border:1px solid #d2992233;border-radius:4px;
+               padding:.35rem .6rem;margin-top:.35rem;line-height:1.5}
+.guidance-note-err{font-size:.71rem;color:#f85149;background:#3d1f1f44;
+                   border:1px solid #f8514933;border-radius:4px;
+                   padding:.35rem .6rem;margin-top:.35rem;line-height:1.5}
 </style>
 </head>
 <body>
@@ -241,24 +273,36 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
     <div class="hero-sub">Deterministic manufacturing routing · verifiable receipts · operator-gated dispatch</div>
     <div class="hero-why"><strong style="color:#c9d1d9">What is this page?</strong> This is the PostCAD reviewer shell — a human review layer on top of a deterministic routing kernel. The operator reviews the routed result, supporting evidence, and dispatch readiness before a case is handed off to manufacturing. The protocol is auditable: every decision carries a machine-readable reason code and a cryptographic receipt. This UI does not make routing decisions; it presents the kernel output for human review.</div>
 
-    <div style="font-size:.6rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin:.8rem 0 .3rem">Operator flow — 3 steps</div>
+    <div style="font-size:.6rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin:.8rem 0 .3rem">Operator flow — 5 steps</div>
     <div class="flow" style="margin-bottom:.8rem">
       <div class="flow-step">
         <div class="flow-num">step 1</div>
-        <div class="flow-label">Review case</div>
-        <div class="flow-desc">Inspect the case inputs, jurisdiction, and routing policy before running the kernel</div>
+        <div class="flow-label">Open reviewer</div>
+        <div class="flow-desc">Fixtures load automatically. Confirm all four pilot fields are present before proceeding.</div>
       </div>
       <div class="flow-arrow">›</div>
       <div class="flow-step">
         <div class="flow-num">step 2</div>
-        <div class="flow-label">Confirm route + evidence</div>
-        <div class="flow-desc">Verify the receipt, inspect the selected manufacturer, and confirm the routing decision is correct</div>
+        <div class="flow-label">Run route</div>
+        <div class="flow-desc">Submit for review. The kernel evaluates eligibility and issues a cryptographic receipt. Routing status changes to <strong>available</strong>.</div>
       </div>
       <div class="flow-arrow">›</div>
       <div class="flow-step">
         <div class="flow-num">step 3</div>
-        <div class="flow-label">Dispatch or stop</div>
-        <div class="flow-desc">If everything checks out, approve and dispatch. If evidence is insufficient or the jurisdiction fit is unclear, stop — do not dispatch.</div>
+        <div class="flow-label">Inspect receipt</div>
+        <div class="flow-desc">Review the receipt hash, selected manufacturer, and jurisdiction. Confirm the decision is correct before verifying.</div>
+      </div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step">
+        <div class="flow-num">step 4</div>
+        <div class="flow-label">Verify replay</div>
+        <div class="flow-desc">Run replay verification. The kernel re-derives the receipt from original inputs. Verification status changes to <strong>verified</strong>.</div>
+      </div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step">
+        <div class="flow-num">step 5</div>
+        <div class="flow-label">Dispatch</div>
+        <div class="flow-desc">If verified, create and approve the dispatch commitment. Stop here if evidence is insufficient. Dispatch is irreversible once approved.</div>
       </div>
     </div>
 
@@ -289,6 +333,28 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
       </div>
     </div>
   </div>
+
+  <!-- CLI quick reference -->
+  <details class="card" id="cli-quickref">
+    <summary style="color:#8b949e;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.65rem">CLI helper commands &amp; quick reference</summary>
+    <div style="margin-top:.6rem">
+      <div style="font-size:.65rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">Golden path</div>
+      <div style="font-size:.73rem;color:#8b949e;margin-bottom:.75rem;border-left:2px solid #21262d;padding-left:.6rem;line-height:1.6">Open reviewer &rarr; Run route &rarr; Inspect receipt &rarr; Verify replay &rarr; Dispatch</div>
+      <div style="font-size:.65rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">CLI companion scripts (no service required)</div>
+      <div style="display:grid;gap:.35rem;margin-bottom:.75rem">
+        <div style="display:grid;grid-template-columns:240px 1fr;gap:0 .75rem;font-size:.72rem;align-items:baseline">
+          <code style="color:#58a6ff">./examples/pilot/run_pilot.sh</code>
+          <span style="color:#8b949e">Route the pilot case + self-verify. Writes <code style="color:#8b949e">examples/pilot/receipt.json</code>.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:240px 1fr;gap:0 .75rem;font-size:.72rem;align-items:baseline">
+          <code style="color:#58a6ff">./examples/pilot/verify.sh</code>
+          <span style="color:#8b949e">Replay-verify the receipt against the original inputs. No stored state trusted.</span>
+        </div>
+      </div>
+      <div style="font-size:.65rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">This page uses the same protocol over HTTP</div>
+      <div style="font-size:.72rem;color:#8b949e;line-height:1.6">This reviewer calls <code style="color:#8b949e">POST /pilot/route-normalized</code> and <code style="color:#8b949e">POST /verify</code> — the same kernel and verifier as the CLI scripts. Pilot fixtures are loaded automatically from <code style="color:#8b949e">examples/pilot/</code>. Use this page for human review and dispatch; use the CLI scripts for headless CI or independent verification.</div>
+    </div>
+  </details>
 
   <!-- Glossary -->
   <details class="card">
@@ -396,6 +462,29 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
     <!-- RIGHT: Results -->
     <div class="card">
+      <!-- Operator workflow status — always visible -->
+      <div class="op-state-block">
+        <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem">Workflow status</div>
+        <div class="op-state-grid">
+          <div class="op-state-item">
+            <span class="op-state-key">Routing</span>
+            <span id="ops-routing" class="op-not-run">not-run</span>
+          </div>
+          <div class="op-state-item">
+            <span class="op-state-key">Receipt</span>
+            <span id="ops-receipt" class="op-not-run">not-run</span>
+          </div>
+          <div class="op-state-item">
+            <span class="op-state-key">Verification</span>
+            <span id="ops-verify" class="op-not-run">not-run</span>
+          </div>
+          <div class="op-state-item">
+            <span class="op-state-key">Dispatch</span>
+            <span id="ops-dispatch" class="op-not-run">not-run</span>
+          </div>
+        </div>
+      </div>
+
       <div id="results-placeholder" style="padding:1.4rem .75rem">
         <div style="font-size:.75rem;font-weight:700;color:#484f58;margin-bottom:.3rem">No case submitted yet</div>
         <div style="font-size:.71rem;color:#3d4349;line-height:1.6;margin-bottom:.6rem">Enter the case details on the left and click <strong style="color:#6e7681">Submit for Review</strong> to run the routing kernel.</div>
@@ -422,8 +511,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
             <span class="art-val" id="art-selected"></span>
           </div>
           <div class="artifact-row">
-            <span class="art-key">Receipt Hash</span>
-            <span class="art-hash" id="art-hash"></span>
+            <span class="art-key">Receipt Hash <span class="sot-badge">source of truth</span></span>
+            <span><span class="art-hash" id="art-hash"></span><button class="copy-btn hidden" id="art-hash-copy" onclick="copyArtHashVal(this)">Copy</button></span>
           </div>
           <div class="artifact-row">
             <span class="art-key">Kernel Version</span>
@@ -435,13 +524,37 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           </div>
         </div>
 
+        <!-- Artifact guide -->
+        <details style="margin-bottom:.5rem">
+          <summary id="artifact-guide-summary" style="color:#6e7681;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Artifacts in this flow</summary>
+          <div class="artifact-guide" id="artifact-guide">
+            <div class="ag-row">
+              <span class="ag-key">Receipt</span>
+              <span class="ag-val">Routing decision audit record — <strong style="color:#c9d1d9">inspect this first</strong> before verifying or dispatching.</span>
+            </div>
+            <div class="ag-row">
+              <span class="ag-key">Receipt Hash</span>
+              <span class="ag-val">Cryptographic commitment to all receipt fields. <strong style="color:#c9d1d9">Verification source of truth</strong> — the verifier recomputes this hash from the original inputs.</span>
+            </div>
+            <div class="ag-row">
+              <span class="ag-key">Verification</span>
+              <span class="ag-val">Confirms the receipt hash is authentic by replaying routing from scratch. No stored state trusted. Required before dispatch.</span>
+            </div>
+            <div class="ag-row">
+              <span class="ag-key">Dispatch packet</span>
+              <span class="ag-val">Manufacturer handoff commitment bound to the receipt hash. Irreversible once approved.</span>
+            </div>
+          </div>
+        </details>
+
         <div class="section-title">
           Receipt JSON
-          <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— complete audit record of the routing decision</span>
+          <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— verification source of truth · inspect before dispatch</span>
         </div>
         <pre class="result result-ok" id="route-receipt-json"></pre>
 
         <!-- D. Button labels -->
+        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">Artifact not yet generated. Run route to create.</div>
         <button class="btn btn-verify" id="btn-verify" onclick="verifyReceipt(this)" disabled>
           ↩ Replay Verification
         </button>
@@ -474,12 +587,14 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           <button class="btn btn-dispatch" id="btn-dispatch-create" onclick="createDispatch(this)" disabled>
             ⬦ Create Dispatch
           </button>
+          <div id="verify-pending-note" class="guidance-note hidden">Verification pending. Run verify before dispatch.</div>
+          <div id="dispatch-blocked-note" class="guidance-note-err hidden">Dispatch blocked until verification succeeds.</div>
 
           <div id="dispatch-created" class="hidden" style="margin-top:.55rem">
             <div class="artifacts">
               <div class="artifact-row">
                 <span class="art-key">Dispatch ID</span>
-                <span class="art-hash" id="art-dispatch-id"></span>
+                <span><span class="art-hash" id="art-dispatch-id"></span><button class="copy-btn hidden" id="art-dispatch-id-copy" onclick="copyDispatchId(this)">Copy</button></span>
               </div>
               <div class="artifact-row">
                 <span class="art-key">Status</span>
@@ -495,8 +610,14 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           </div>
 
           <div id="dispatch-export-result" class="hidden" style="margin-top:.55rem">
-            <div class="section-title">Export packet — deterministic dispatch record</div>
+            <div class="section-title">Export packet — deterministic dispatch record
+              <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> · ready for handoff</span>
+            </div>
             <pre class="result result-info" id="dispatch-export-json"></pre>
+            <div id="dispatch-export-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.4rem;padding-top:.35rem;border-top:1px solid #21262d">
+              <button class="btn-dl" onclick="downloadExportPacket()">↓ Download export_packet.json</button>
+              <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyExportJson(this)">Copy JSON</button>
+            </div>
           </div>
 
           <div id="dispatch-success" class="hidden success-note" style="margin-top:.4rem"></div>
@@ -517,7 +638,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
       <!-- F. Verify result (normal) -->
       <div id="verify-result" class="hidden">
         <div class="verify-section">
-          <div class="section-title">Verification result <span id="verify-kind-label"></span></div>
+          <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span></div>
           <div id="verify-banner"></div>
           <pre class="result" id="verify-json"></pre>
         </div>
@@ -555,6 +676,11 @@ let fixtures       = null;   // {case, registry_snapshot, routing_config}
 let lastReceipt    = null;
 let lastPolicy     = null;
 let lastDispatchId = null;
+let lastExportPacket = null;
+let opRouting  = 'not-run';  // not-run | available | failed
+let opReceipt  = 'not-run';  // not-run | available | missing
+let opVerify   = 'not-run';  // not-run | verified  | failed
+let opDispatch = 'not-run';  // not-run | available | failed
 
 // ── boot ───────────────────────────────────────────────────────────────────
 (async function boot() {
@@ -619,7 +745,13 @@ async function routeCase(btn) {
   hide('dispatch-created'); hide('dispatch-export-result');
   hide('dispatch-success'); hide('dispatch-error');
   show('results-loading');
-  lastReceipt = null; lastPolicy = null; lastDispatchId = null;
+  lastReceipt = null; lastPolicy = null; lastDispatchId = null; lastExportPacket = null;
+  updateOpState('not-run', 'not-run', 'not-run', 'not-run');
+  const _chb = document.getElementById('art-hash-copy');
+  if (_chb) _chb.classList.add('hidden');
+  const _dic = document.getElementById('art-dispatch-id-copy');
+  if (_dic) _dic.classList.add('hidden');
+  hide('dispatch-export-actions');
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
   document.getElementById('btn-dispatch-export').disabled  = true;
@@ -652,20 +784,25 @@ async function routeCase(btn) {
       document.getElementById('art-hash').textContent     = rhash;
       document.getElementById('art-kver').textContent     = kver;
       document.getElementById('route-receipt-json').textContent = fmt(rc);
+      const copyHashBtn = document.getElementById('art-hash-copy');
+      if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
 
       show('route-result');
       document.getElementById('btn-verify').disabled          = false;
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
+      updateOpState('available', 'available', 'not-run', 'available');
     } else {
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
+      updateOpState('failed', 'missing', null, null);
     }
   } catch(e) {
     hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
+    updateOpState('failed', 'missing', null, null);
   } finally {
     hide('results-loading');
     setBtn(btn, '▶ Execute Routing Kernel', false);
@@ -704,7 +841,13 @@ async function routeNormalized(btn) {
   ni.textContent = 'Submitting…';
   ni.className = 'loading-note';
   ni.classList.remove('hidden');
-  lastReceipt = null; lastPolicy = null; lastDispatchId = null;
+  lastReceipt = null; lastPolicy = null; lastDispatchId = null; lastExportPacket = null;
+  updateOpState('not-run', 'not-run', 'not-run', 'not-run');
+  const _chb = document.getElementById('art-hash-copy');
+  if (_chb) _chb.classList.add('hidden');
+  const _dic = document.getElementById('art-dispatch-id-copy');
+  if (_dic) _dic.classList.add('hidden');
+  hide('dispatch-export-actions');
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
   document.getElementById('btn-dispatch-export').disabled  = true;
@@ -733,6 +876,7 @@ async function routeNormalized(btn) {
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent = String(netErr);
       show('route-error');
+      updateOpState('failed', 'missing', null, null);
       return;
     }
 
@@ -752,6 +896,7 @@ async function routeNormalized(btn) {
       document.getElementById('route-error-json').textContent =
         'HTTP ' + r.status + ' — response is not valid JSON: ' + String(parseErr);
       show('route-error');
+      updateOpState('failed', 'missing', null, null);
       return;
     }
 
@@ -771,11 +916,14 @@ async function routeNormalized(btn) {
       document.getElementById('art-hash').textContent     = rhash;
       document.getElementById('art-kver').textContent     = kver;
       document.getElementById('route-receipt-json').textContent = fmt(rc);
+      const copyHashBtn = document.getElementById('art-hash-copy');
+      if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
 
       show('route-result');
       document.getElementById('btn-verify').disabled          = false;
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
+      updateOpState('available', 'available', 'not-run', 'available');
       ni.textContent = '✓ Routing complete — receipt ' + rhash.slice(0, 12) + '…';
       ni.className = 'success-note';
       const prev = document.getElementById('route-norm-preview');
@@ -839,6 +987,7 @@ async function routeNormalized(btn) {
       banner.classList.remove('hidden');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
+      updateOpState('failed', 'missing', null, null);
     }
   } catch(e) {
     ni.innerHTML = '<div class="norm-error-panel">'
@@ -851,6 +1000,7 @@ async function routeNormalized(btn) {
     hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
+    updateOpState('failed', 'missing', null, null);
   } finally {
     hide('results-loading');
     setBtn(btn, '▶ Submit for Review', false);
@@ -945,6 +1095,9 @@ function showVerifyResult(isVerified, data, kind) {
       + `<span class="verify-sub">Error code: <strong>${esc(code)}</strong>${msg ? ' — ' + esc(msg) : ''}</span>`;
   }
 
+  if (kind === 'Replay Verification') {
+    updateOpState(null, null, isVerified ? 'verified' : 'failed', null);
+  }
   const pre = document.getElementById('verify-json');
   pre.className = 'result ' + (isVerified ? 'result-ok' : 'result-err');
   pre.textContent = fmt(data);
@@ -977,6 +1130,8 @@ async function createDispatch(btn) {
       document.getElementById('art-dispatch-id').textContent = data.dispatch_id;
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-info">${esc(data.status)}</span>`;
+      const _dic2 = document.getElementById('art-dispatch-id-copy');
+      if (_dic2) _dic2.classList.remove('hidden');
       hide('dispatch-export-result');
       show('dispatch-created');
       document.getElementById('btn-dispatch-approve').disabled = false;
@@ -1057,12 +1212,14 @@ async function exportDispatch(btn) {
     const r = await fetch('/dispatch/' + lastDispatchId + '/export');
     const data = await r.json();
     if (r.ok) {
+      lastExportPacket = data;
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       document.getElementById('dispatch-export-json').textContent = fmt(data);
       show('dispatch-export-result');
+      show('dispatch-export-actions');
       const s = document.getElementById('dispatch-success');
-      s.textContent = 'Export complete.';
+      s.textContent = 'Export complete — dispatch packet ready for handoff.';
       s.classList.remove('hidden');
     } else {
       showDispatchMsg('error',
@@ -1073,6 +1230,73 @@ async function exportDispatch(btn) {
   } finally {
     setBtn(btn, '↓ Export Dispatch Packet', false);
   }
+}
+
+// ── Artifact export / dispatch-ID copy ────────────────────────────────────
+function downloadExportPacket() {
+  if (!lastExportPacket) return;
+  const id = lastDispatchId ? lastDispatchId.slice(0, 8) : 'dispatch';
+  const blob = new Blob([fmt(lastExportPacket)], {type: 'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'export_packet_' + id + '.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function copyExportJson(btn) {
+  if (!lastExportPacket) return;
+  navigator.clipboard.writeText(fmt(lastExportPacket)).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
+  }).catch(() => {
+    btn.textContent = 'Failed'; btn.style.color = '#f85149';
+  });
+  setTimeout(() => { btn.textContent = 'Copy JSON'; btn.style.color = ''; }, 1500);
+}
+function copyDispatchId(btn) {
+  const id = document.getElementById('art-dispatch-id').textContent.trim();
+  if (!id) return;
+  navigator.clipboard.writeText(id).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
+  }).catch(() => {
+    btn.textContent = 'Failed'; btn.style.color = '#f85149';
+  });
+  setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
+}
+
+// ── Artifact receipt-hash copy ─────────────────────────────────────────────
+function copyArtHashVal(btn) {
+  const hash = document.getElementById('art-hash').textContent.trim();
+  if (!hash || hash === '—') return;
+  navigator.clipboard.writeText(hash).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
+  }).catch(() => {
+    btn.textContent = 'Failed'; btn.style.color = '#f85149';
+  });
+  setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
+}
+
+// ── Operator state block ───────────────────────────────────────────────────
+function updateOpState(routing, receipt, verify, dispatch) {
+  const MAP = {
+    'not-run': 'op-not-run', 'available': 'op-available',
+    'verified': 'op-verified', 'failed': 'op-failed', 'missing': 'op-missing',
+  };
+  if (routing  != null) opRouting  = routing;
+  if (receipt  != null) opReceipt  = receipt;
+  if (verify   != null) opVerify   = verify;
+  if (dispatch != null) opDispatch = dispatch;
+  [['ops-routing', opRouting], ['ops-receipt', opReceipt],
+   ['ops-verify',  opVerify],  ['ops-dispatch', opDispatch]].forEach(([id, st]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = st;
+    el.className = MAP[st] || 'op-not-run';
+  });
+  // guidance notes in dispatch section
+  const vpn = document.getElementById('verify-pending-note');
+  if (vpn) vpn.classList.toggle('hidden',
+    !(opRouting === 'available' && opVerify === 'not-run'));
+  const dbn = document.getElementById('dispatch-blocked-note');
+  if (dbn) dbn.classList.toggle('hidden', opVerify !== 'failed');
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

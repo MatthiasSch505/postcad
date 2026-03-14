@@ -297,6 +297,338 @@ async fn reviewer_shell_error_guidance_present() {
     );
 }
 
+// ── Export/handoff surface tests ──────────────────────────────────────────────
+
+/// Reviewer shell HTML must expose download and copy actions for the export packet
+/// so an operator can hand off the dispatch artifact without manual copy-paste.
+#[tokio::test]
+async fn reviewer_shell_export_packet_handoff_actions_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Action container
+    assert!(
+        html.contains("dispatch-export-actions"),
+        "dispatch-export-actions container id must be present"
+    );
+
+    // Download button
+    assert!(
+        html.contains("downloadExportPacket"),
+        "downloadExportPacket JS function must be present"
+    );
+    assert!(
+        html.contains("export_packet"),
+        "export_packet filename hint must appear in download function"
+    );
+
+    // Copy JSON button
+    assert!(
+        html.contains("copyExportJson"),
+        "copyExportJson JS function must be present"
+    );
+
+    // Export section carries handoff label
+    assert!(
+        html.contains("ready for handoff"),
+        "ready for handoff label must appear in export packet section"
+    );
+
+    // Completion message
+    assert!(
+        html.contains("dispatch packet ready for handoff"),
+        "completion message must say dispatch packet ready for handoff"
+    );
+}
+
+/// Reviewer shell HTML must expose a copy button for the dispatch ID
+/// so an operator can reference it during handoff without manual text selection.
+#[tokio::test]
+async fn reviewer_shell_dispatch_id_copy_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("art-dispatch-id-copy"),
+        "art-dispatch-id-copy button id must be present"
+    );
+    assert!(
+        html.contains("copyDispatchId"),
+        "copyDispatchId JS function must be present"
+    );
+}
+
+// ── Artifact export/discovery tests ──────────────────────────────────────────
+
+/// Reviewer shell HTML must contain the artifact guide panel with all four
+/// artifact entries and their purpose labels, including source-of-truth and
+/// inspect-before-dispatch markers.
+#[tokio::test]
+async fn reviewer_shell_artifact_guide_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Panel anchor and summary toggle
+    assert!(
+        html.contains("artifact-guide"),
+        "artifact-guide element id must be present"
+    );
+    assert!(
+        html.contains("Artifacts in this flow"),
+        "artifact guide summary text must be present"
+    );
+
+    // All four artifact labels
+    assert!(html.contains("Receipt Hash"),     "Receipt Hash label must be present in artifact guide");
+    assert!(html.contains("Verification"),     "Verification label must be present in artifact guide");
+    assert!(html.contains("Dispatch packet"),  "Dispatch packet label must be present in artifact guide");
+
+    // Key guidance phrases
+    assert!(
+        html.contains("inspect this first"),
+        "inspect-this-first guidance must be present in artifact guide"
+    );
+    assert!(
+        html.contains("Verification source of truth"),
+        "Verification source of truth label must be present"
+    );
+    assert!(
+        html.contains("Required before dispatch"),
+        "required-before-dispatch guidance must be present"
+    );
+}
+
+/// Reviewer shell HTML must show the source-of-truth badge on the Receipt Hash
+/// artifact row so an operator can immediately identify which field drives verification.
+#[tokio::test]
+async fn reviewer_shell_receipt_hash_source_of_truth_badge() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("sot-badge"),
+        "sot-badge CSS class must be present on the Receipt Hash row"
+    );
+    assert!(
+        html.contains("source of truth"),
+        "source of truth text must appear in the receipt hash row"
+    );
+    assert!(
+        html.contains("art-hash-copy"),
+        "art-hash-copy button id must be present for one-click hash copy"
+    );
+    assert!(
+        html.contains("copyArtHashVal"),
+        "copyArtHashVal JS function must be present"
+    );
+}
+
+/// Reviewer shell section titles must clearly identify each artifact stage so an
+/// operator can tell receipt, verification, and dispatch results apart at a glance.
+#[tokio::test]
+async fn reviewer_shell_artifact_section_titles_clear() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Receipt JSON section subtitle
+    assert!(
+        html.contains("inspect before dispatch"),
+        "receipt JSON section must carry inspect-before-dispatch subtitle"
+    );
+
+    // Verification section subtitle
+    assert!(
+        html.contains("confirms receipt hash is authentic"),
+        "verification section must carry receipt-hash-confirmation subtitle"
+    );
+
+    // Dispatch export section title
+    assert!(
+        html.contains("Export packet"),
+        "dispatch export section title must be present"
+    );
+}
+
+// ── Golden-path guidance + CLI reference tests ────────────────────────────────
+
+/// Reviewer shell HTML must contain the CLI quick-reference panel with the
+/// two helper script names and the golden-path sequence so a new operator
+/// can move from the reviewer UI to the CLI and back without reading external docs.
+#[tokio::test]
+async fn reviewer_shell_cli_quickref_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Panel anchor
+    assert!(
+        html.contains("cli-quickref"),
+        "cli-quickref element id must be present"
+    );
+
+    // Section heading
+    assert!(
+        html.contains("CLI helper commands"),
+        "CLI helper commands heading must be present"
+    );
+
+    // Golden-path label
+    assert!(
+        html.contains("Golden path"),
+        "Golden path label must be present in quickref"
+    );
+
+    // Both CLI companion script names must appear
+    assert!(
+        html.contains("run_pilot.sh"),
+        "run_pilot.sh script name must be referenced"
+    );
+    assert!(
+        html.contains("verify.sh"),
+        "verify.sh script name must be referenced"
+    );
+
+    // The HTTP-vs-CLI orientation note
+    assert!(
+        html.contains("examples/pilot/"),
+        "examples/pilot/ fixture path must be referenced"
+    );
+}
+
+/// Reviewer shell HTML must carry the full golden-path sequence wording
+/// consistently in both the hero flow steps and the quick-reference panel.
+#[tokio::test]
+async fn reviewer_shell_golden_path_wording_consistent() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Hero 5-step labels
+    assert!(html.contains("Open reviewer"),  "hero step 1 label must be present");
+    assert!(html.contains("Run route"),       "hero step 2 label must be present");
+    assert!(html.contains("Inspect receipt"), "hero step 3 label must be present");
+    assert!(html.contains("Verify replay"),   "hero step 4 label must be present");
+    assert!(html.contains("Dispatch"),        "hero step 5 label must be present");
+
+    // Quick-ref golden path summary also contains the sequence
+    assert!(
+        html.contains("Verify replay"),
+        "Verify replay must appear in quick-reference golden path"
+    );
+}
+
+// ── Operator state block tests ────────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain a visible workflow status block with all four
+/// stage indicators: Routing, Receipt, Verification, Dispatch.
+///
+/// These are static HTML assertions — the block is always rendered in the page
+/// so an operator can see current stage at a glance without running any action.
+#[tokio::test]
+async fn reviewer_shell_operator_state_block_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // State block container
+    assert!(
+        html.contains("op-state-block"),
+        "op-state-block CSS class must be present"
+    );
+    assert!(
+        html.contains("op-state-grid"),
+        "op-state-grid CSS class must be present"
+    );
+
+    // All four stage label strings must appear
+    assert!(
+        html.contains("Routing"),
+        "Routing status label must be present"
+    );
+    assert!(
+        html.contains("Receipt"),
+        "Receipt status label must be present"
+    );
+    assert!(
+        html.contains("Verification"),
+        "Verification status label must be present"
+    );
+    assert!(
+        html.contains("Dispatch"),
+        "Dispatch status label must be present"
+    );
+
+    // Default state values must be initialised to not-run
+    assert!(
+        html.contains("not-run"),
+        "initial not-run state value must be present"
+    );
+}
+
+/// Reviewer shell HTML must expose the four operator state element IDs so that
+/// the JS state machine can update them on every routing / verification / dispatch
+/// transition without a page reload.
+#[tokio::test]
+async fn reviewer_shell_operator_state_ids_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("ops-routing"),  "ops-routing element id must be present");
+    assert!(html.contains("ops-receipt"),  "ops-receipt element id must be present");
+    assert!(html.contains("ops-verify"),   "ops-verify element id must be present");
+    assert!(html.contains("ops-dispatch"), "ops-dispatch element id must be present");
+
+    // CSS state classes for all five possible state values
+    assert!(html.contains("op-not-run"),   "op-not-run CSS class must be defined");
+    assert!(html.contains("op-available"), "op-available CSS class must be defined");
+    assert!(html.contains("op-verified"),  "op-verified CSS class must be defined");
+    assert!(html.contains("op-failed"),    "op-failed CSS class must be defined");
+    assert!(html.contains("op-missing"),   "op-missing CSS class must be defined");
+
+    // updateOpState JS function must be present to drive the block
+    assert!(
+        html.contains("updateOpState"),
+        "updateOpState JS function must be present"
+    );
+}
+
+/// Reviewer shell HTML must include operator guidance notes for the two key
+/// blocking states: verification pending and dispatch blocked.
+#[tokio::test]
+async fn reviewer_shell_operator_guidance_notes_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("verify-pending-note"),
+        "verify-pending-note element id must be present"
+    );
+    assert!(
+        html.contains("Verification pending"),
+        "verification pending guidance text must be present"
+    );
+    assert!(
+        html.contains("Run verify before dispatch"),
+        "run-verify guidance phrase must be present"
+    );
+
+    assert!(
+        html.contains("dispatch-blocked-note"),
+        "dispatch-blocked-note element id must be present"
+    );
+    assert!(
+        html.contains("Dispatch blocked until verification succeeds"),
+        "dispatch blocked guidance text must be present"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

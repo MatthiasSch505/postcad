@@ -91,23 +91,37 @@ Key verification failure codes: `receipt_hash_mismatch`, `routing_proof_hash_mis
 
 ## Reviewer Shell
 
-The reviewer shell (`/reviewer`) is the human review layer on top of the PostCAD routing kernel. It is **not** a production UI — it is a deterministic review and dispatch demo that exercises the full operator path against real protocol endpoints, with no mocked decisions.
+The reviewer shell (`/reviewer`) is the human review layer on top of the PostCAD routing kernel. It is **not** a production UI — it is a deterministic review and dispatch surface that exercises the full operator path against real protocol endpoints, with no mocked decisions.
 
 ```bash
 cargo run -p postcad-service
 # then open http://localhost:8080/reviewer
 ```
 
-**What `run_pilot.sh` produces:** Routes a canonical dental case (zirconia crown, jurisdiction DE) against a German manufacturer registry, emits a cryptographically committed receipt, and self-verifies it. The receipt hash is deterministic — the same inputs always produce the same hash.
+**Golden path — 5 steps:**
 
-**What the reviewer page is for:** An operator loads the pilot fixtures, submits the case for routing, inspects the receipt (the audit record of the routing decision), replays verification, and — if the result is correct — creates, approves, and exports a dispatch commitment to the selected manufacturer. At every step the operator can stop instead of proceeding.
+```
+Open reviewer → Run route → Inspect receipt → Verify replay → Dispatch
+```
+
+1. **Open reviewer** — fixtures load automatically; all workflow status indicators show `not-run`.
+2. **Run route** — submit the pilot case; the kernel issues a cryptographic receipt; status changes to `available`.
+3. **Inspect receipt** — review the selected manufacturer, receipt hash, and jurisdiction fit.
+4. **Verify replay** — the kernel re-derives every hash from original inputs; status changes to `verified`.
+5. **Dispatch** — create, approve, and export the dispatch commitment. Irreversible once approved.
+
+**Workflow status block:** A four-column status panel is always visible in the results area showing
+`Routing · Receipt · Verification · Dispatch` with states `not-run / available / verified / failed / missing`.
+Guidance notes appear automatically: _"Verification pending. Run verify before dispatch."_ and
+_"Dispatch blocked until verification succeeds."_
 
 **What `verify.sh` proves:** Independent replay of the routing decision from the original inputs. Every hash field in the receipt is recomputed from scratch. No stored state is trusted. Tampering any field in the receipt causes verification to fail with a specific error code.
 
-Full operator path: route → verify → create dispatch → approve → export.
 Expected receipt hash: `0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb`
 
-**Empty and incomplete states are intentionally non-dispatchable.** The reviewer requires a valid routed case with a receipt before any dispatch action becomes available. If fixtures cannot be loaded or no case has been submitted, the page shows an explicit "cannot review" state and all dispatch actions remain blocked. This is a safety property of the reviewer surface, not a missing feature.
+**Empty and incomplete states are intentionally non-dispatchable.** The reviewer requires a valid routed case with a receipt before any dispatch action becomes available. If fixtures cannot be loaded or no case has been submitted, the page shows an explicit "cannot review" state and all dispatch actions remain blocked.
+
+See [`docs/reviewer-shell.md`](docs/reviewer-shell.md) for the full operator guide.
 
 ---
 

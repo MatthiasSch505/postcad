@@ -1350,6 +1350,113 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Session activity log tests ────────────────────────────────────────────────
+
+/// Reviewer shell must contain the session activity log panel so the operator
+/// can see a chronological list of workflow actions performed this session.
+#[tokio::test]
+async fn reviewer_shell_session_activity_log_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"sal\""),       "sal container must be present");
+    assert!(html.contains("id=\"sal-list\""),  "sal-list must be present");
+    assert!(html.contains("id=\"sal-empty\""), "sal-empty must be present");
+    assert!(html.contains("Current session activity"), "session activity label must be present");
+}
+
+/// Session activity log must start empty on page load so a fresh session shows
+/// no spurious activity entries before the operator has done anything.
+#[tokio::test]
+async fn reviewer_shell_session_activity_log_starts_empty() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No activity yet. Start routing to begin."),
+        "initial empty-state message must be present"
+    );
+    assert!(
+        html.contains("sal-list hidden"),
+        "sal-list must be hidden on initial load"
+    );
+}
+
+/// Session activity log must record route-phase events so the operator can see
+/// when routing was requested and when the result was received.
+#[tokio::test]
+async fn reviewer_shell_session_activity_log_route_events() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Route requested"),
+        "'Route requested' event label must be present in JS"
+    );
+    assert!(
+        html.contains("Route result received"),
+        "'Route result received' event label must be present in JS"
+    );
+    assert!(
+        html.contains("Current run reset"),
+        "'Current run reset' event label must be present in JS"
+    );
+}
+
+/// Session activity log must record verification-phase events so the operator
+/// can trace whether verification was executed and what the outcome was.
+#[tokio::test]
+async fn reviewer_shell_session_activity_log_verify_events() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Verification executed"),
+        "'Verification executed' event label must be present in JS"
+    );
+    assert!(
+        html.contains("Verification completed"),
+        "'Verification completed' event label must be present in JS"
+    );
+}
+
+/// Session activity log must record the dispatch export event and provide a
+/// clear-log control so the operator can reset the log at any time.
+#[tokio::test]
+async fn reviewer_shell_session_activity_log_dispatch_and_clear() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Dispatch export generated"),
+        "'Dispatch export generated' event label must be present in JS"
+    );
+    assert!(
+        html.contains("clearSessionLog()"),
+        "clearSessionLog() call must be present on clear control"
+    );
+    assert!(html.contains("Clear log"), "clear log button label must be present");
+}
+
+/// Session activity log must define salLog, renderSessionLog, clearSessionLog
+/// and a bounded SAL_MAX constant so the log never grows unbounded.
+#[tokio::test]
+async fn reviewer_shell_session_activity_log_js_and_cap() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("function salLog"),         "salLog JS function must be present");
+    assert!(html.contains("function renderSessionLog"), "renderSessionLog JS function must be present");
+    assert!(html.contains("function clearSessionLog"), "clearSessionLog JS function must be present");
+    assert!(html.contains("SAL_MAX"),                 "SAL_MAX constant must be present");
+}
+
 // ── Consistency sentinel tests ────────────────────────────────────────────────
 
 /// Reviewer shell must contain the consistency sentinel card so the operator

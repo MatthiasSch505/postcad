@@ -505,6 +505,23 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
 .orb-success{border-left-color:#2ea043}
 .orb-warning{border-left-color:#d29922}
 .orb-blocked{border-left-color:#f85149}
+/* ── session activity log ── */
+.sal{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.45rem .75rem;margin-bottom:.5rem}
+.sal-header{display:flex;align-items:center;margin-bottom:.22rem}
+.sal-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;flex:1}
+.sal-clear{background:none;border:none;color:#484f58;font-family:inherit;font-size:.6rem;
+           cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
+.sal-clear:hover{color:#8b949e}
+.sal-empty{font-size:.65rem;color:#3d4349;font-style:italic}
+.sal-list{display:flex;flex-direction:column;gap:.06rem}
+.sal-entry{font-size:.67rem;display:flex;align-items:baseline;gap:.4rem;
+           padding:.06rem 0;line-height:1.4}
+.sal-entry-latest{color:#c9d1d9;font-weight:600}
+.sal-entry-older{color:#484f58}
+.sal-idx{color:#3d4349;font-size:.6rem;min-width:.9rem;flex-shrink:0;text-align:right}
+.sal-msg{color:#6e7681;font-size:.62rem}
 </style>
 </head>
 <body>
@@ -871,6 +888,16 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div id="run-history-list" class="run-history"></div>
       </div>
 
+      <!-- Session activity log — current page session only, not persisted -->
+      <div id="sal" class="sal">
+        <div class="sal-header">
+          <span class="sal-label">Current session activity</span>
+          <button class="sal-clear" onclick="clearSessionLog()">Clear log</button>
+        </div>
+        <div id="sal-empty" class="sal-empty">No activity yet. Start routing to begin.</div>
+        <div id="sal-list" class="sal-list hidden"></div>
+      </div>
+
       <div id="results-placeholder" style="padding:1.4rem .75rem">
         <div style="font-size:.75rem;font-weight:700;color:#484f58;margin-bottom:.3rem">No case submitted yet</div>
         <div style="font-size:.71rem;color:#3d4349;line-height:1.6;margin-bottom:.45rem">Artifact not yet generated. Run route to continue.</div>
@@ -1188,6 +1215,8 @@ async function routeCase(btn) {
   }
   setBtn(btn, 'Running kernel…', true);
   document.getElementById('btn-route-norm').disabled = true;
+  if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
+  salLog('Route requested', 'Routing kernel execution started.');
 
   hide('results-placeholder');
   hide('route-norm-inline'); hide('route-norm-preview');
@@ -1252,6 +1281,7 @@ async function routeCase(btn) {
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
       updateOpState('available', 'available', 'not-run', 'available');
+      salLog('Route result received', 'Route receipt generated.');
       appendRunHistory('Route executed', true);
     } else {
       hide('route-error-banner');
@@ -1259,6 +1289,7 @@ async function routeCase(btn) {
       show('route-error');
       show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
+      salLog('Route result received', 'Route execution returned an error.');
       appendRunHistory('Route executed', false);
     }
   } catch(e) {
@@ -1267,6 +1298,7 @@ async function routeCase(btn) {
     show('route-error');
     show('receipt-empty-state');
     updateOpState('failed', 'missing', null, null);
+    salLog('Route result received', 'Route execution returned an error.');
     appendRunHistory('Route executed', false);
   } finally {
     hide('results-loading');
@@ -1295,6 +1327,8 @@ async function routeNormalized(btn) {
 
   setBtn(btn, 'Running kernel…', true);
   document.getElementById('btn-route').disabled = true;
+  if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
+  salLog('Route requested', 'Routing kernel execution started.');
 
   hide('results-placeholder');
   hide('route-result'); hide('route-error'); hide('verify-result');
@@ -1403,6 +1437,7 @@ async function routeNormalized(btn) {
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
       updateOpState('available', 'available', 'not-run', 'available');
+      salLog('Route result received', 'Route receipt generated.');
       appendRunHistory('Route executed', true);
       ni.textContent = '✓ Routing complete — receipt ' + rhash.slice(0, 12) + '…';
       ni.className = 'success-note';
@@ -1469,6 +1504,7 @@ async function routeNormalized(btn) {
       show('route-error');
       show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
+      salLog('Route result received', 'Route execution returned an error.');
       appendRunHistory('Route executed', false);
     }
   } catch(e) {
@@ -1484,6 +1520,7 @@ async function routeNormalized(btn) {
     show('route-error');
     show('receipt-empty-state');
     updateOpState('failed', 'missing', null, null);
+    salLog('Route result received', 'Route execution returned an error.');
     appendRunHistory('Route executed', false);
   } finally {
     hide('results-loading');
@@ -1500,6 +1537,7 @@ async function verifyReceipt(btn) {
   }
   setBtn(btn, 'Replaying…', true);
   hide('verify-result');
+  salLog('Verification executed', 'Replay verification started against current receipt.');
 
   try {
     const r = await fetch('/verify', {
@@ -1583,6 +1621,7 @@ function showVerifyResult(isVerified, data, kind) {
     updateOpState(null, null, isVerified ? 'verified' : 'failed', null);
     hide('verify-artifact-note');
     appendRunHistory('Verification executed', isVerified);
+    salLog('Verification completed', isVerified ? 'Receipt replay matched.' : 'Verification failed.');
   }
   const pre = document.getElementById('verify-json');
   pre.className = 'result ' + (isVerified ? 'result-ok' : 'result-err');
@@ -1725,6 +1764,7 @@ async function exportDispatch(btn) {
       show('dispatch-export-result');
       show('dispatch-export-actions');
       appendRunHistory('Dispatch executed', true);
+      salLog('Dispatch export generated', 'Dispatch packet exported for current run.');
       const s = document.getElementById('dispatch-success');
       s.textContent = 'Export complete — dispatch packet ready for handoff.';
       s.classList.remove('hidden');
@@ -2548,6 +2588,39 @@ function clearRunHistory() {
   const list = document.getElementById('run-history-list');
   if (list) list.innerHTML = '';
   hide('run-history-panel');
+}
+
+// ── Session activity log ───────────────────────────────────────────────────
+const SAL_MAX = 20;
+let sessionLog = [];
+function salLog(label, msg) {
+  sessionLog.unshift({label, msg});
+  if (sessionLog.length > SAL_MAX) sessionLog.length = SAL_MAX;
+  renderSessionLog();
+}
+function renderSessionLog() {
+  const empty = document.getElementById('sal-empty');
+  const list  = document.getElementById('sal-list');
+  if (!empty || !list) return;
+  if (sessionLog.length === 0) {
+    empty.classList.remove('hidden');
+    list.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  empty.classList.add('hidden');
+  list.classList.remove('hidden');
+  list.innerHTML = sessionLog.map((e, i) =>
+    '<div class="sal-entry ' + (i === 0 ? 'sal-entry-latest' : 'sal-entry-older') + '">'
+    + '<span class="sal-idx">' + (i + 1) + '</span>'
+    + '<span>' + esc(e.label) + '</span>'
+    + '<span class="sal-msg">' + esc(e.msg) + '</span>'
+    + '</div>'
+  ).join('');
+}
+function clearSessionLog() {
+  sessionLog = [];
+  renderSessionLog();
 }
 
 // ── Artifact size guard ────────────────────────────────────────────────────

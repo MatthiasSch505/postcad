@@ -3025,6 +3025,121 @@ async fn reviewer_shell_rrc_wired_to_state_machine() {
     );
 }
 
+// ── Operator dry-run status panel tests ──────────────────────────────────────
+
+/// Reviewer shell HTML must expose the Operator Dry-Run Status panel so the
+/// operator has a dedicated surface summarising dry-run completion state.
+#[tokio::test]
+async fn reviewer_shell_drs_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"drs\""),
+        "drs panel id must be present in HTML"
+    );
+    assert!(
+        html.contains("Operator Dry-Run Status"),
+        "panel must be labelled 'Operator Dry-Run Status'"
+    );
+    assert!(
+        html.contains("id=\"drs-verdict\""),
+        "drs-verdict element id must be present"
+    );
+}
+
+/// The dry-run panel must default to 'No dry-run in progress' at initial load
+/// so the operator sees an explicit idle description, not a blank panel.
+#[tokio::test]
+async fn reviewer_shell_drs_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No dry-run in progress"),
+        "drs initial verdict must read 'No dry-run in progress'"
+    );
+    assert!(
+        html.contains("Generate a route to begin the dry-run"),
+        "drs initial next-step must prompt route generation"
+    );
+}
+
+/// The dry-run panel must carry the passed-state wording so the operator can
+/// recognise when all minimum pilot workflow steps have been completed.
+#[tokio::test]
+async fn reviewer_shell_drs_passed_wording_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Dry-run passed"),
+        "passed verdict wording must be present in JS"
+    );
+    assert!(
+        html.contains("Dry-run complete for current route"),
+        "passed next-step wording must be present"
+    );
+}
+
+/// The dry-run panel must carry attention-state wording to cover the case where
+/// verification failed, preventing a false 'passed' verdict from being shown.
+#[tokio::test]
+async fn reviewer_shell_drs_attention_on_verify_failure_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Dry-run requires attention"),
+        "attention verdict wording must be present in JS"
+    );
+    assert!(
+        html.contains("Resolve failed verification before completing dry-run"),
+        "verify-failure next-step wording must be present"
+    );
+}
+
+/// The dry-run panel must carry attention wording for reproducibility mismatch
+/// so that a mismatch does not silently allow a 'passed' verdict.
+#[tokio::test]
+async fn reviewer_shell_drs_attention_on_repro_mismatch_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Reproducibility mismatch detected"),
+        "repro-mismatch attention wording must be present"
+    );
+}
+
+/// The dry-run panel must carry reroute-detected attention wording so the
+/// operator knows a prior dry-run result does not apply to the new route.
+#[tokio::test]
+async fn reviewer_shell_drs_reroute_downgrade_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Reroute detected"),
+        "reroute attention wording must be present"
+    );
+    assert!(
+        html.contains("dry-run must be completed again for current route"),
+        "reroute downgrade message must be present"
+    );
+    // updateDryRunPanel must be wired into updateOpState
+    assert!(
+        html.contains("updateDryRunPanel()"),
+        "updateDryRunPanel() call must appear in JS"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

@@ -603,6 +603,27 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
          margin-top:.12rem}
 .rrc-btn:disabled{opacity:.45;cursor:not-allowed}
 .rrc-btn:hover:not(:disabled){background:#30363d}
+/* ── operator dry-run status ── */
+.drs{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-bottom:.4rem}
+.drs-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.28rem}
+.drs-verdict{font-size:.8rem;font-weight:700;margin-bottom:.12rem}
+.drs-verdict-none       {color:#484f58}
+.drs-verdict-incomplete {color:#d29922}
+.drs-verdict-passed     {color:#3fb950}
+.drs-verdict-attention  {color:#f85149}
+.drs-meaning{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.28rem}
+.drs-checklist{margin-bottom:.22rem}
+.drs-row{display:flex;align-items:baseline;gap:.4rem;font-size:.67rem;
+         color:#c9d1d9;line-height:1.5;padding:.04rem 0}
+.drs-ok  {color:#3fb950;flex-shrink:0;width:.85rem}
+.drs-no  {color:#484f58;flex-shrink:0;width:.85rem}
+.drs-warn{color:#d29922;flex-shrink:0;width:.85rem}
+.drs-next{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
+          border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
+.drs-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+                letter-spacing:.07em;display:block;margin-bottom:.06rem}
 </style>
 </head>
 <body>
@@ -900,6 +921,18 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div id="pfc-detail" class="pfc-detail">Complete remaining workflow steps before dispatch export.</div>
         <div id="pfc-rows" class="pfc-rows"></div>
         <button id="pfc-link" class="pfc-link hidden" onclick="pfcNavigate()"></button>
+      </div>
+
+      <!-- Operator dry-run status panel -->
+      <div id="drs" class="drs">
+        <div class="drs-label">Operator Dry-Run Status</div>
+        <div id="drs-verdict" class="drs-verdict drs-verdict-none">No dry-run in progress</div>
+        <div id="drs-meaning" class="drs-meaning">Complete all minimum pilot workflow steps to validate this run as a successful dry-run.</div>
+        <div id="drs-checklist" class="drs-checklist"></div>
+        <div class="drs-next">
+          <span class="drs-next-label">Next step</span>
+          <span id="drs-next-text">Generate a route to begin the dry-run.</span>
+        </div>
       </div>
 
       <!-- Handoff summary card — visible in shell and printable -->
@@ -1907,6 +1940,7 @@ async function exportDispatch(btn) {
       updateLineageNotes();
       updateDpi();
       updateDossier();
+      updateDryRunPanel();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -2300,6 +2334,115 @@ function updateLineageNotes() {
   if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
 }
 
+// ── Operator dry-run status ────────────────────────────────────────────────
+function drsVerdictKey() {
+  if (runSerial === 0) return 'none';
+  const vlin = verifyLineage();
+  const dlin = dispatchLineage();
+  if (opRouting === 'failed') return 'attention';
+  if (vlin === 'prev' || dlin === 'prev') return 'attention';
+  if (vlin === 'current' && opVerify === 'failed') return 'attention';
+  if (reproStatus === 'mismatch') return 'attention';
+  const reproExec = reproStatus === 'reproducible' || reproStatus === 'mismatch';
+  if (opRouting === 'available' && opReceipt === 'available' &&
+      vlin === 'current' && opVerify === 'verified' &&
+      dlin === 'current' && reproExec && reproStatus === 'reproducible') {
+    return 'passed';
+  }
+  return 'incomplete';
+}
+const DRS_VERDICTS = {
+  'none':       {cls:'drs-verdict-none',       text:'No dry-run in progress'},
+  'incomplete': {cls:'drs-verdict-incomplete', text:'Dry-run incomplete'},
+  'passed':     {cls:'drs-verdict-passed',     text:'Dry-run passed'},
+  'attention':  {cls:'drs-verdict-attention',  text:'Dry-run requires attention'},
+};
+const DRS_MEANINGS = {
+  'none':       'No route has been generated yet. Complete all minimum pilot workflow steps to begin a dry-run.',
+  'incomplete': 'A route has been generated but not all minimum workflow steps are complete for the current run.',
+  'passed':     'The current run has completed all minimum pilot workflow steps. This run is suitable for operator review and pilot simulation.',
+  'attention':  'One or more workflow steps for the current run have failed or belong to a previous run. Review the checklist below.',
+};
+function drsNextStep(key) {
+  if (key === 'none')   return 'Generate a route to begin the dry-run.';
+  if (key === 'passed') return 'Dry-run complete for current route.';
+  if (key === 'attention') {
+    if (opRouting === 'failed') return 'Route generation failed \u2014 re-submit for review.';
+    const vlin = verifyLineage();
+    const dlin = dispatchLineage();
+    if (vlin === 'prev' || dlin === 'prev')
+      return 'Reroute detected \u2014 dry-run must be completed again for current route.';
+    if (vlin === 'current' && opVerify === 'failed')
+      return 'Resolve failed verification before completing dry-run.';
+    if (reproStatus === 'mismatch')
+      return 'Reproducibility mismatch detected \u2014 review routing determinism.';
+    return 'Resolve current run issues before completing dry-run.';
+  }
+  if (opRouting !== 'available') return 'Generate a route to begin the dry-run.';
+  if (opReceipt !== 'available') return 'Await receipt \u2014 routing in progress.';
+  const vlin = verifyLineage();
+  if (vlin !== 'current') return 'Run verification for current route.';
+  if (opVerify !== 'verified') return 'Resolve verification before proceeding.';
+  if (dispatchLineage() !== 'current') return 'Export dispatch packet for current route.';
+  if (reproStatus === 'not-tested') return 'Execute reproducibility check for current route.';
+  return 'All dry-run steps complete.';
+}
+function drsRow(icon, cls, label) {
+  return '<div class="drs-row"><span class="' + cls + '">' + icon + '</span><span>' + esc(label) + '</span></div>';
+}
+function updateDryRunPanel() {
+  const vkey     = drsVerdictKey();
+  const conf     = DRS_VERDICTS[vkey];
+  const verdict  = document.getElementById('drs-verdict');
+  const meaning  = document.getElementById('drs-meaning');
+  const list     = document.getElementById('drs-checklist');
+  const nextText = document.getElementById('drs-next-text');
+  if (!verdict) return;
+  verdict.className   = 'drs-verdict ' + conf.cls;
+  verdict.textContent = conf.text;
+  if (meaning)  meaning.textContent  = DRS_MEANINGS[vkey];
+  if (nextText) nextText.textContent = drsNextStep(vkey);
+  if (list) {
+    const vlin = verifyLineage();
+    const dlin = dispatchLineage();
+    const routeOk    = opRouting === 'available';
+    const receiptOk  = opReceipt === 'available';
+    const verifyExec = vlin === 'current';
+    const verifyPass = vlin === 'current' && opVerify === 'verified';
+    const dispOk     = dlin === 'current';
+    const reproExec  = reproStatus === 'reproducible' || reproStatus === 'mismatch';
+    const reproPass  = reproStatus === 'reproducible';
+    let h = '';
+    h += drsRow(routeOk   ? '✓' : '◻', routeOk   ? 'drs-ok' : 'drs-no', 'Route generated');
+    h += drsRow(receiptOk ? '✓' : '◻', receiptOk ? 'drs-ok' : 'drs-no', 'Receipt available');
+    if (vlin === 'prev') {
+      h += drsRow('⚠', 'drs-warn', 'Verification executed \u2014 previous run only');
+    } else {
+      h += drsRow(verifyExec ? '✓' : '◻', verifyExec ? 'drs-ok' : 'drs-no',
+                  'Verification executed for current run');
+    }
+    if (vlin === 'current' && opVerify === 'failed') {
+      h += drsRow('⚠', 'drs-warn', 'Verification failed \u2014 not passed');
+    } else {
+      h += drsRow(verifyPass ? '✓' : '◻', verifyPass ? 'drs-ok' : 'drs-no', 'Verification passed');
+    }
+    if (dlin === 'prev') {
+      h += drsRow('⚠', 'drs-warn', 'Dispatch exported \u2014 previous run only');
+    } else {
+      h += drsRow(dispOk ? '✓' : '◻', dispOk ? 'drs-ok' : 'drs-no',
+                  'Dispatch packet exported for current run');
+    }
+    if (reproStatus === 'mismatch') {
+      h += drsRow('⚠', 'drs-warn', 'Reproducibility check executed \u2014 mismatch detected');
+    } else {
+      h += drsRow(reproExec ? '✓' : '◻', reproExec ? 'drs-ok' : 'drs-no',
+                  'Reproducibility check executed');
+    }
+    h += drsRow(reproPass ? '✓' : '◻', reproPass ? 'drs-ok' : 'drs-no', 'Reproducibility passed');
+    list.innerHTML = h;
+  }
+}
+
 // ── Route reproducibility check ────────────────────────────────────────────
 const REPRO_STATES = {
   'not-tested':   {cls:'rrc-not-tested', text:'Reproducibility not tested',
@@ -2331,6 +2474,7 @@ async function runReproCheck(btn) {
     reproStatus = 'mismatch';
   } finally {
     updateReproPanel();
+    updateDryRunPanel();
   }
 }
 function updateReproPanel() {
@@ -2392,6 +2536,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateDpi();
   updateDossier();
   updateReproPanel();
+  updateDryRunPanel();
 }
 
 // ── Active run context ────────────────────────────────────────────────────

@@ -518,6 +518,76 @@ async fn reviewer_shell_integrity_badge_js_present() {
     );
 }
 
+// ── Demo-mode readability tests ───────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain panel subtitles so a first-time viewer can
+/// scan the screen quickly during a live demo without reading the full guide.
+#[tokio::test]
+async fn reviewer_shell_panel_subtitles_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Run the deterministic pilot route"),
+        "left-card subtitle must be present"
+    );
+    assert!(
+        html.contains("Inspect generated audit artifacts"),
+        "route-result subtitle must be present"
+    );
+    assert!(
+        html.contains("Dispatch after verification succeeds"),
+        "dispatch section subtitle must be present"
+    );
+}
+
+/// Reviewer shell HTML must contain the 'Verify before dispatch' section header
+/// so the verification step is clearly labelled between receipt and dispatch.
+#[tokio::test]
+async fn reviewer_shell_verify_section_header_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Verify before dispatch"),
+        "Verify before dispatch section header must be present"
+    );
+}
+
+/// Reviewer shell HTML must contain the compact cheat sheet with the golden-path
+/// summary so an operator can locate the next step in one glance.
+#[tokio::test]
+async fn reviewer_shell_cheatsheet_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Quick path:"),
+        "Quick path cheat sheet strip must be present"
+    );
+    assert!(
+        html.contains("op-cheatsheet"),
+        "op-cheatsheet element id must be present"
+    );
+}
+
+/// Reviewer shell HTML must contain the calm empty-state phrase 'Run route to continue'
+/// in the results placeholder so a first-time viewer knows what to do next.
+#[tokio::test]
+async fn reviewer_shell_empty_state_run_route_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Run route to continue"),
+        "Run route to continue empty-state text must be present in results placeholder"
+    );
+}
+
 // ── Artifact export/discovery tests ──────────────────────────────────────────
 
 /// Reviewer shell HTML must contain the artifact guide panel with all four

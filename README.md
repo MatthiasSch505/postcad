@@ -98,6 +98,8 @@ cargo run -p postcad-service
 # then open http://localhost:8080/reviewer
 ```
 
+**One-glance summary:** Run route → Inspect artifacts → Verify replay → Dispatch after verification succeeds.
+
 **Golden path — 5 steps:**
 
 ```
@@ -110,7 +112,9 @@ Open reviewer → Run route → Inspect receipt → Verify replay → Dispatch
 4. **Verify replay** — the kernel re-derives every hash from original inputs; status changes to `verified`.
 5. **Dispatch** — create, approve, and export the dispatch commitment. Irreversible once approved.
 
-**Workflow status block:** A four-column status panel is always visible in the results area showing
+**Panel structure:** The results panel is divided into four labelled sections — routing decision, verify before dispatch, dispatch commitment, and verification result — each with a short subtitle so a first-time viewer can scan without reading the full guide.
+
+**Workflow status block:** A four-column status panel is always visible showing
 `Routing · Receipt · Verification · Dispatch` with states `not-run / available / verified / failed / missing`.
 Guidance notes appear automatically: _"Verification pending. Run verify before dispatch."_ and
 _"Dispatch blocked until verification succeeds."_

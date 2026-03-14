@@ -254,6 +254,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .guidance-note-err{font-size:.71rem;color:#f85149;background:#3d1f1f44;
                    border:1px solid #f8514933;border-radius:4px;
                    padding:.35rem .6rem;margin-top:.35rem;line-height:1.5}
+/* ── panel subtitle ── */
+.panel-subtitle{font-size:.72rem;color:#6e7681;margin:.05rem 0 .65rem;line-height:1.5}
 /* ── integrity badges ── */
 .integrity-badge{display:inline-flex;align-items:center;font-size:.52rem;font-weight:700;
                  border-radius:2px;padding:.03rem .28rem;text-transform:uppercase;
@@ -382,6 +384,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
     <!-- LEFT: Inputs -->
     <div class="card">
       <div class="card-title">Case inputs <span style="font-weight:400;color:#6e7681">— pilot fixtures loaded from examples/pilot/</span></div>
+      <div class="panel-subtitle">Run the deterministic pilot route — pilot fixtures auto-load from <code style="color:#6e7681">examples/pilot/</code>.</div>
 
       <p id="fixtures-loading" class="dimmed">Loading fixtures…</p>
       <div id="fixtures-panel" class="hidden">
@@ -469,6 +472,11 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
     <!-- RIGHT: Results -->
     <div class="card">
+      <!-- Operator cheat sheet — always visible -->
+      <div id="op-cheatsheet" style="font-size:.67rem;color:#484f58;margin-bottom:.5rem;padding:.3rem .6rem;background:#0d111766;border:1px solid #21262d;border-radius:4px;line-height:1.7">
+        <span style="color:#6e7681;font-weight:700">Quick path: </span>Run route &rarr; Inspect artifacts &rarr; Verify replay &rarr; Dispatch after verification succeeds
+      </div>
+
       <!-- Operator workflow status — always visible -->
       <div class="op-state-block">
         <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem">Workflow status</div>
@@ -494,9 +502,9 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
       <div id="results-placeholder" style="padding:1.4rem .75rem">
         <div style="font-size:.75rem;font-weight:700;color:#484f58;margin-bottom:.3rem">No case submitted yet</div>
-        <div style="font-size:.71rem;color:#3d4349;line-height:1.6;margin-bottom:.6rem">Enter the case details on the left and click <strong style="color:#6e7681">Submit for Review</strong> to run the routing kernel.</div>
-        <div style="font-size:.68rem;color:#3a3f44;line-height:1.55;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.45rem .65rem">
-          <strong style="color:#484f58">Not dispatchable in this state.</strong> A valid routed case with a receipt must exist before any dispatch action is available. This reviewer presents the output of the routing kernel — it does not generate cases or receipts independently.
+        <div style="font-size:.71rem;color:#3d4349;line-height:1.6;margin-bottom:.45rem">Artifact not yet generated. Run route to continue.</div>
+        <div style="font-size:.68rem;color:#3a3f44;line-height:1.55;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.4rem .6rem">
+          Enter case details on the left and click <strong style="color:#6e7681">Submit for Review</strong>. Dispatch actions are not available until a routed receipt exists.
         </div>
       </div>
       <div id="results-loading" class="hidden" style="padding:1.5rem .5rem;text-align:center">
@@ -507,6 +515,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
       <!-- B. Artifact summary (shown after route) -->
       <div id="route-result" class="hidden">
         <div class="card-title">Routing decision — audit record<span id="route-result-badge" class="integrity-badge hidden"></span></div>
+        <div class="panel-subtitle">Inspect generated audit artifacts. Verify before dispatching.</div>
 
         <div class="artifacts">
           <div class="artifact-row">
@@ -564,8 +573,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyReceiptJson(this)">Copy artifact</button>
         </div>
 
-        <!-- D. Button labels -->
-        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">Artifact not yet generated.</div>
+        <!-- D. Verify section -->
+        <div class="section-title" style="margin-top:.8rem">Verify before dispatch
+          <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— replay re-derives the receipt from original inputs</span>
+        </div>
+        <div class="panel-subtitle">The kernel recomputes every hash from scratch. No stored state is trusted.</div>
+        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">Artifact not yet generated. Verification pending.</div>
         <button class="btn btn-verify" id="btn-verify" onclick="verifyReceipt(this)" disabled>
           ↩ Replay Verification
         </button>
@@ -586,10 +599,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
         <!-- G. Dispatch commitment -->
         <div class="tamper-section" id="dispatch-section">
-          <div class="tamper-label">Dispatch commitment — handoff to manufacturing</div>
+          <div class="section-title">Dispatch commitment
+            <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— handoff to manufacturing · irreversible once approved</span>
+          </div>
+          <div class="panel-subtitle">Dispatch after verification succeeds. The server re-verifies the receipt before creating the record.</div>
           <div class="tamper-desc">
-            Calls <code>POST /dispatch/create</code> — the server re-verifies the
-            receipt before creating the record. Approve makes the commitment
+            Calls <code>POST /dispatch/create</code> — approve makes the commitment
             immutable; export produces the deterministic dispatch packet.
           </div>
           <div style="font-size:.7rem;color:#d29922;background:#2d200966;border:1px solid #d2992233;border-radius:4px;padding:.4rem .6rem;margin-bottom:.2rem;line-height:1.55">

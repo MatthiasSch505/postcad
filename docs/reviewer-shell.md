@@ -9,6 +9,8 @@ It exercises the full operator path against real protocol endpoints with no mock
 Open reviewer → Run route → Inspect receipt → Verify replay → Dispatch
 ```
 
+**One-glance summary:** Run route → Inspect artifacts → Verify replay → Dispatch after verification succeeds.
+
 When routing via the CLI first, substitute step 2 with `./examples/pilot/run_pilot.sh`
 (writes `examples/pilot/receipt.json`); then open the reviewer for steps 3–5.
 
@@ -36,12 +38,26 @@ The reviewer shell calls the same kernel and verifier over HTTP (`POST /pilot/ro
 `POST /verify`). Use the CLI scripts for headless CI or independent verification; use this page
 for human review and dispatch.
 
+## Panel structure
+
+The results panel is divided into four readable sections:
+
+| Section | Purpose |
+|---|---|
+| **Quick path / Workflow status** | Always-visible cheat sheet + four-column state block |
+| **Routing decision** | Inspect generated audit artifacts. Verify before dispatching. |
+| **Verify before dispatch** | Run replay verification — kernel re-derives the receipt from original inputs |
+| **Dispatch commitment** | Dispatch after verification succeeds — irreversible once approved |
+
+Each section carries a short subtitle so a first-time viewer can scan the screen without reading the full docs.
+
 ## Reviewer shell — 5 steps
 
 ### Step 1 — Open reviewer
 
-Navigate to `/reviewer`. Pilot fixtures (`examples/pilot/`) load automatically. The workflow status
-block at the top of the results panel shows all four stages as **not-run**.
+Navigate to `/reviewer`. Pilot fixtures (`examples/pilot/`) load automatically. A compact
+**Quick path** strip and the workflow status block at the top of the results panel show all four
+stages as **not-run**.
 
 If fixtures fail to load, the page shows an explicit "cannot review" state and all dispatch
 actions remain blocked. Start the service from the repo root:

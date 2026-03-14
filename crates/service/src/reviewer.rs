@@ -275,6 +275,15 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── audit snapshot export ── */
+.ase-bar{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;
+         padding:.35rem .65rem;background:#0d111766;border:1px solid #21262d;
+         border-radius:4px}
+.ase-label{font-size:.62rem;color:#6e7681;flex:1}
+.ase-btn{background:none;border:1px solid #30363d;border-radius:3px;color:#58a6ff;
+         cursor:pointer;font-family:inherit;font-size:.65rem;font-weight:700;
+         padding:.18rem .5rem;white-space:nowrap;transition:color .1s,border-color .1s}
+.ase-btn:hover{color:#79c0ff;border-color:#388bfd}
 /* ── preflight summary card ── */
 .pfc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
      padding:.5rem .75rem;margin-bottom:.5rem}
@@ -666,6 +675,13 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
       <!-- Operator cheat sheet — always visible -->
       <div id="op-cheatsheet" style="font-size:.67rem;color:#484f58;margin-bottom:.5rem;padding:.3rem .6rem;background:#0d111766;border:1px solid #21262d;border-radius:4px;line-height:1.7">
         <span style="color:#6e7681;font-weight:700">Quick path: </span>Run route &rarr; Inspect artifacts &rarr; Verify replay &rarr; Dispatch after verification succeeds
+      </div>
+
+      <!-- Audit snapshot export bar — always visible -->
+      <div class="ase-bar">
+        <span class="ase-label">Audit snapshot — current-run artifacts only</span>
+        <button class="ase-btn" id="btn-copy-snapshot" onclick="copyAuditSnapshot(this)">Copy snapshot</button>
+        <button class="ase-btn" onclick="downloadAuditSnapshot()">↓ Download .txt</button>
       </div>
 
       <!-- Next-action rail — always visible, one action at a time -->
@@ -2246,6 +2262,74 @@ function pfcNavigate() {
   if (!el) return;
   el.scrollIntoView({behavior:'smooth', block:'nearest'});
   if (typeof el.focus === 'function') el.focus({preventScroll:true});
+}
+
+// ── Audit snapshot export ─────────────────────────────────────────────────
+function buildAuditSnapshot() {
+  const verdict = PFC_VERDICTS[pfcVerdictKey()].headline;
+  const routeSummary = lastReceipt
+    ? 'Outcome: ' + (lastReceipt.outcome || '—')
+      + '\nManufacturer: ' + (lastReceipt.selected_candidate_id || '(none)')
+      + '\nReceipt hash: ' + (lastReceipt.receipt_hash || '—')
+      + '\nKernel version: ' + (lastReceipt.routing_kernel_version || '—')
+    : 'not present';
+  const receiptJson = lastReceipt ? fmt(lastReceipt) : 'not present';
+  const verifyEl    = document.getElementById('verify-json');
+  const verifyText  = (verifyEl && verifyEl.textContent.trim())
+    ? verifyEl.textContent.trim() : 'not executed';
+  const dispatchText = lastExportPacket ? fmt(lastExportPacket) : 'not exported';
+  const drStatusEl = document.getElementById('dr-status');
+  const drReasonEl = document.getElementById('dr-reason');
+  const readinessText = drStatusEl
+    ? (drStatusEl.textContent.trim()
+       + (drReasonEl ? ' — ' + drReasonEl.textContent.trim() : ''))
+    : 'not available';
+  return [
+    'POSTCAD REVIEWER AUDIT SNAPSHOT',
+    '================================',
+    'Current run only. Does not include historical runs.',
+    '',
+    'Current run status',
+    '------------------',
+    verdict,
+    '',
+    'Route',
+    '-----',
+    routeSummary,
+    '',
+    'Receipt',
+    '-------',
+    receiptJson,
+    '',
+    'Verification',
+    '------------',
+    verifyText,
+    '',
+    'Dispatch',
+    '--------',
+    dispatchText,
+    '',
+    'Dispatch readiness',
+    '------------------',
+    readinessText,
+  ].join('\n');
+}
+function copyAuditSnapshot(btn) {
+  const snapshot = buildAuditSnapshot();
+  navigator.clipboard.writeText(snapshot).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
+  }).catch(() => {
+    btn.textContent = 'Failed'; btn.style.color = '#f85149';
+  });
+  setTimeout(() => { btn.textContent = 'Copy snapshot'; btn.style.color = ''; }, 1500);
+}
+function downloadAuditSnapshot() {
+  const snapshot = buildAuditSnapshot();
+  const blob = new Blob([snapshot], {type: 'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'postcad_audit_snapshot.txt'; a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Active section emphasis ───────────────────────────────────────────────

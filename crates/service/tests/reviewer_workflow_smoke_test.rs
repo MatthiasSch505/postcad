@@ -1350,6 +1350,100 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Audit snapshot export tests ──────────────────────────────────────────────
+
+/// Reviewer shell must contain the audit snapshot export controls so an
+/// operator can export or copy a deterministic current-run artifact bundle.
+#[tokio::test]
+async fn reviewer_shell_audit_snapshot_controls_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"btn-copy-snapshot\""),  "copy snapshot button must be present");
+    assert!(html.contains("copyAuditSnapshot"),          "copyAuditSnapshot JS call must be wired");
+    assert!(html.contains("downloadAuditSnapshot"),      "downloadAuditSnapshot JS call must be wired");
+    assert!(html.contains("Audit snapshot"),             "audit snapshot label must be present");
+}
+
+/// The audit snapshot title and all six section headers must be present in the
+/// JS source so the generated snapshot always has a fixed deterministic structure.
+#[tokio::test]
+async fn reviewer_shell_audit_snapshot_section_headers_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("POSTCAD REVIEWER AUDIT SNAPSHOT"),
+        "snapshot title must be present in JS");
+    assert!(html.contains("'Current run status'"),
+        "Current run status section header must be present");
+    assert!(html.contains("'Route'"),
+        "Route section header must be present");
+    assert!(html.contains("'Receipt'"),
+        "Receipt section header must be present");
+    assert!(html.contains("'Verification'"),
+        "Verification section header must be present");
+    assert!(html.contains("'Dispatch'"),
+        "Dispatch section header must be present");
+    assert!(html.contains("'Dispatch readiness'"),
+        "Dispatch readiness section header must be present");
+}
+
+/// Placeholder strings for missing artifacts must be present in the JS source
+/// so an unstarted current run produces a valid deterministic snapshot.
+#[tokio::test]
+async fn reviewer_shell_audit_snapshot_placeholder_strings_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("not present"),   "'not present' placeholder must be in JS");
+    assert!(html.contains("not executed"),  "'not executed' placeholder must be in JS");
+    assert!(html.contains("not exported"),  "'not exported' placeholder must be in JS");
+}
+
+/// Snapshot JS functions must all be present so the export operates entirely
+/// on client-side current-run state without any backend calls.
+#[tokio::test]
+async fn reviewer_shell_audit_snapshot_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("buildAuditSnapshot"),    "buildAuditSnapshot JS function must be present");
+    assert!(html.contains("copyAuditSnapshot"),     "copyAuditSnapshot JS function must be present");
+    assert!(html.contains("downloadAuditSnapshot"), "downloadAuditSnapshot JS function must be present");
+}
+
+/// The snapshot must explicitly state it covers current run only so any
+/// consumer of the exported file cannot confuse it with a full history export.
+#[tokio::test]
+async fn reviewer_shell_audit_snapshot_scoped_to_current_run() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Current run only"),
+        "snapshot must declare it covers current run only"
+    );
+}
+
+/// The snapshot download filename must be deterministic so exported files
+/// have a predictable and consistent name for audit purposes.
+#[tokio::test]
+async fn reviewer_shell_audit_snapshot_deterministic_filename() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("postcad_audit_snapshot.txt"),
+        "download filename must be 'postcad_audit_snapshot.txt'"
+    );
+}
+
 // ── Preflight summary card tests ─────────────────────────────────────────────
 
 /// Reviewer shell must contain the preflight card with its container and body

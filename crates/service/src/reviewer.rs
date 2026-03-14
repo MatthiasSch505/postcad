@@ -275,6 +275,11 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── active section emphasis ── */
+.as-chip{display:inline-block;padding:.04rem .3rem;border-radius:2px;font-size:.55rem;
+         font-weight:700;vertical-align:middle;margin-left:.35rem;letter-spacing:.03em;
+         background:#1e2d45;color:#388bfd;text-transform:lowercase}
+.as-active{border-color:#388bfd44!important;box-shadow:inset 0 0 0 1px #388bfd1a}
 /* ── current-run checklist card ── */
 .crc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
      padding:.5rem .75rem;margin-bottom:.5rem}
@@ -547,8 +552,8 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
   <div class="two-col">
 
     <!-- LEFT: Inputs -->
-    <div class="card">
-      <div class="card-title">Case inputs <span style="font-weight:400;color:#6e7681">— pilot fixtures loaded from examples/pilot/</span></div>
+    <div id="as-route-section" class="card as-active">
+      <div class="card-title">Case inputs <span style="font-weight:400;color:#6e7681">— pilot fixtures loaded from examples/pilot/</span><span id="as-chip-route" class="as-chip">active step</span></div>
       <div class="panel-subtitle">Run the deterministic pilot route — pilot fixtures auto-load from <code style="color:#6e7681">examples/pilot/</code>.</div>
 
       <p id="fixtures-loading" class="dimmed">Loading fixtures…</p>
@@ -831,16 +836,19 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <button class="expand-btn hidden" id="receipt-expand-btn" onclick="expandArtifact('route-receipt-json','receipt-expand-btn')">Expand artifact</button>
 
         <!-- D. Verify section -->
+        <div id="as-verify-section" style="border-radius:6px;border:1px solid transparent;padding:.1rem 0">
         <div class="section-title" style="margin-top:.8rem">Verify before dispatch
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— replay re-derives the receipt from original inputs</span>
           <span id="mb-verify" class="mb mb-dim">not available</span>
           <span id="fm-verify" class="fm fm-pending">not yet executed for current run</span>
+          <span id="as-chip-verify" class="as-chip hidden">active step</span>
         </div>
         <div class="panel-subtitle">The kernel recomputes every hash from scratch. No stored state is trusted.</div>
         <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">verification not yet executed for current route</div>
         <button class="btn btn-verify" id="btn-verify" onclick="verifyReceipt(this)" disabled>
           ↩ Replay Verification
         </button>
+        </div>
 
         <!-- E. Tamper demo -->
         <div class="tamper-section">
@@ -875,6 +883,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
             <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— handoff to manufacturing · irreversible once approved</span>
             <span id="mb-dispatch" class="mb mb-dim">not available</span>
             <span id="fm-dispatch" class="fm fm-pending">not yet exported for current run</span>
+            <span id="as-chip-dispatch" class="as-chip hidden">active step</span>
           </div>
           <div class="panel-subtitle">Dispatch after verification succeeds. The server re-verifies the receipt before creating the record.</div>
           <div class="tamper-desc">
@@ -933,6 +942,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           <div id="dispatch-export-result" class="hidden" style="margin-top:.55rem">
             <div class="section-title">Export packet — deterministic dispatch record
               <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> · ready for handoff</span>
+              <span id="as-chip-export" class="as-chip hidden">active step</span>
               <span id="dispatch-result-badge" class="integrity-badge hidden"></span>
             </div>
             <pre class="result result-info" id="dispatch-export-json"></pre>
@@ -1585,6 +1595,7 @@ async function exportDispatch(btn) {
       updateOab();
       updateOutcomeBanner();
       updateCompletionChecklist();
+      updateActiveSectionEmphasis();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -1841,6 +1852,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateOab();
   updateOutcomeBanner();
   updateCompletionChecklist();
+  updateActiveSectionEmphasis();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -2140,6 +2152,29 @@ function crcNavigate(target) {
   if (!el) return;
   el.scrollIntoView({behavior:'smooth', block:'nearest'});
   if (typeof el.focus === 'function') el.focus({preventScroll:true});
+}
+
+// ── Active section emphasis ───────────────────────────────────────────────
+const AS_CONTAINERS = ['as-route-section','as-verify-section','dispatch-section','dispatch-export-result'];
+const AS_CHIPS      = ['as-chip-route','as-chip-verify','as-chip-dispatch','as-chip-export'];
+function activeSectionIndex() {
+  if (lastExportPacket)                                    return 3;
+  if (opVerify === 'verified' || opVerify === 'failed')    return 2;
+  if (opRouting === 'available')                           return 1;
+  return 0;
+}
+function updateActiveSectionEmphasis() {
+  const active = activeSectionIndex();
+  AS_CONTAINERS.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('as-active', i === active);
+  });
+  AS_CHIPS.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('hidden', i !== active);
+  });
 }
 
 // ── Pilot run history ─────────────────────────────────────────────────────

@@ -1350,6 +1350,103 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Active section emphasis tests ────────────────────────────────────────────
+
+/// All four active-step chip elements must be present so the JS can show/hide
+/// exactly one "active step" label at a time as workflow state advances.
+#[tokio::test]
+async fn reviewer_shell_active_section_chips_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"as-chip-route\""),    "as-chip-route must be present");
+    assert!(html.contains("id=\"as-chip-verify\""),   "as-chip-verify must be present");
+    assert!(html.contains("id=\"as-chip-dispatch\""), "as-chip-dispatch must be present");
+    assert!(html.contains("id=\"as-chip-export\""),   "as-chip-export must be present");
+}
+
+/// At initial load the routing section must be marked as the active step and
+/// all other section chips must be hidden so no stale active label appears.
+#[tokio::test]
+async fn reviewer_shell_active_section_initial_routing() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Route chip visible initially (no "hidden" class on as-chip-route)
+    assert!(
+        html.contains("id=\"as-chip-route\" class=\"as-chip\""),
+        "as-chip-route must be visible (no hidden class) on initial load"
+    );
+    // Verify/dispatch/export chips hidden initially
+    assert!(
+        html.contains("id=\"as-chip-verify\" class=\"as-chip hidden\""),
+        "as-chip-verify must be hidden on initial load"
+    );
+    assert!(
+        html.contains("id=\"as-chip-dispatch\" class=\"as-chip hidden\""),
+        "as-chip-dispatch must be hidden on initial load"
+    );
+    assert!(
+        html.contains("id=\"as-chip-export\" class=\"as-chip hidden\""),
+        "as-chip-export must be hidden on initial load"
+    );
+}
+
+/// Container IDs for active section emphasis must be present so JS can apply
+/// the as-active class to the correct section wrapper.
+#[tokio::test]
+async fn reviewer_shell_active_section_containers_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"as-route-section\""),  "as-route-section container must be present");
+    assert!(html.contains("id=\"as-verify-section\""), "as-verify-section container must be present");
+    // dispatch-section and dispatch-export-result already tested elsewhere
+}
+
+/// CSS classes for active emphasis must be defined so the treatment is visually
+/// consistent across all four sections.
+#[tokio::test]
+async fn reviewer_shell_active_section_css_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("as-chip"),   "as-chip CSS class must be defined");
+    assert!(html.contains("as-active"), "as-active CSS class must be defined");
+}
+
+/// JS functions and arrays for active section emphasis must be present so the
+/// active step is derived only from existing reviewer signals.
+#[tokio::test]
+async fn reviewer_shell_active_section_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("AS_CONTAINERS"),                "AS_CONTAINERS array must be present");
+    assert!(html.contains("AS_CHIPS"),                     "AS_CHIPS array must be present");
+    assert!(html.contains("activeSectionIndex"),           "activeSectionIndex JS function must be present");
+    assert!(html.contains("updateActiveSectionEmphasis"),  "updateActiveSectionEmphasis JS function must be present");
+}
+
+/// updateActiveSectionEmphasis must be wired into updateOpState so the active
+/// section resets on reroute and advances through the workflow sequence.
+#[tokio::test]
+async fn reviewer_shell_active_section_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateActiveSectionEmphasis()"),
+        "updateActiveSectionEmphasis() call must appear in updateOpState and exportDispatch"
+    );
+}
+
 // ── Current-run completion checklist tests ────────────────────────────────────
 
 /// Reviewer shell must contain the completion checklist card with its container

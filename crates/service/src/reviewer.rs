@@ -275,6 +275,18 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── active run context ── */
+.arc-block{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+           padding:.5rem .75rem;margin-bottom:.5rem}
+.arc-row{display:grid;grid-template-columns:90px 1fr;gap:.1rem .5rem;
+         font-size:.68rem;align-items:baseline;margin-bottom:.2rem}
+.arc-row:last-child{margin-bottom:0}
+.arc-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;
+         letter-spacing:.05em;white-space:nowrap}
+.arc-val{color:#c9d1d9;word-break:break-all}
+.arc-val-pending{color:#484f58;font-style:italic;word-break:break-all}
+.arc-val-ok {color:#3fb950;word-break:break-all}
+.arc-val-err{color:#f85149;word-break:break-all}
 /* ── run history ── */
 .run-history{background:#0d1117;border:1px solid #21262d;border-radius:5px;
              padding:.45rem .7rem;margin-bottom:.3rem}
@@ -527,6 +539,27 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         </div>
       </div>
 
+      <!-- Active run context -->
+      <div id="active-run-context" class="arc-block hidden">
+        <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Active run context</div>
+        <div class="arc-row">
+          <span class="arc-key">Manufacturer</span>
+          <span class="arc-val" id="arc-manufacturer">—</span>
+        </div>
+        <div class="arc-row">
+          <span class="arc-key">Receipt hash</span>
+          <span class="arc-val" id="arc-receipt-hash">—</span>
+        </div>
+        <div class="arc-row">
+          <span class="arc-key">Verification</span>
+          <span id="arc-verify-status" class="arc-val-pending">No verification result for current route</span>
+        </div>
+        <div class="arc-row">
+          <span class="arc-key">Dispatch</span>
+          <span id="arc-dispatch-status" class="arc-val-pending">No dispatch export for current route</span>
+        </div>
+      </div>
+
       <!-- Pilot run history -->
       <div id="run-history-panel" class="hidden" style="margin-bottom:.5rem">
         <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.28rem">Pilot run history</div>
@@ -612,7 +645,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— replay re-derives the receipt from original inputs</span>
         </div>
         <div class="panel-subtitle">The kernel recomputes every hash from scratch. No stored state is trusted.</div>
-        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">Artifact not yet generated. Verification pending.</div>
+        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">No verification result for current route. Run Replay Verification when ready.</div>
         <button class="btn btn-verify" id="btn-verify" onclick="verifyReceipt(this)" disabled>
           ↩ Replay Verification
         </button>
@@ -674,6 +707,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           </button>
           <div id="verify-pending-note" class="guidance-note hidden">Verification pending. Run verify before dispatch.</div>
           <div id="dispatch-blocked-note" class="guidance-note-err hidden">Dispatch blocked until verification succeeds.</div>
+          <div id="dispatch-stale-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-top:.35rem;line-height:1.5">No dispatch export for current route.</div>
 
           <div id="dispatch-created" class="hidden" style="margin-top:.55rem">
             <div class="artifacts">
@@ -1328,6 +1362,9 @@ async function exportDispatch(btn) {
       lastExportPacket = data;
       updateIntegrityBadges();
       updateDispatchReadiness();
+      const _dsn = document.getElementById('dispatch-stale-note');
+      if (_dsn) _dsn.classList.add('hidden');
+      updateActiveRunContext();
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       document.getElementById('dispatch-export-json').textContent = fmt(data);
@@ -1516,8 +1553,35 @@ function updateOpState(routing, receipt, verify, dispatch) {
     !(opRouting === 'available' && opVerify === 'not-run'));
   const dbn = document.getElementById('dispatch-blocked-note');
   if (dbn) dbn.classList.toggle('hidden', opVerify !== 'failed');
+  // dispatch stale note: visible when routed but no export yet
+  const dsn = document.getElementById('dispatch-stale-note');
+  if (dsn) dsn.classList.toggle('hidden', !(opRouting === 'available' && !lastExportPacket));
   updateIntegrityBadges();
   updateDispatchReadiness();
+  updateActiveRunContext();
+}
+
+// ── Active run context ────────────────────────────────────────────────────
+function updateActiveRunContext() {
+  const block = document.getElementById('active-run-context');
+  if (!block) return;
+  if (opRouting !== 'available' || !lastReceipt) {
+    block.classList.add('hidden');
+    return;
+  }
+  block.classList.remove('hidden');
+  document.getElementById('arc-manufacturer').textContent =
+    lastReceipt.selected_candidate_id || '(none — refused)';
+  const hash = lastReceipt.receipt_hash || '—';
+  document.getElementById('arc-receipt-hash').textContent =
+    hash !== '—' ? hash.slice(0, 16) + '…' : '—';
+  const verEl = document.getElementById('arc-verify-status');
+  if      (opVerify === 'verified') { verEl.textContent = 'Verified'; verEl.className = 'arc-val-ok'; }
+  else if (opVerify === 'failed')   { verEl.textContent = 'Failed';   verEl.className = 'arc-val-err'; }
+  else { verEl.textContent = 'No verification result for current route'; verEl.className = 'arc-val-pending'; }
+  const dispEl = document.getElementById('arc-dispatch-status');
+  if (lastExportPacket) { dispEl.textContent = 'Exported'; dispEl.className = 'arc-val-ok'; }
+  else { dispEl.textContent = 'No dispatch export for current route'; dispEl.className = 'arc-val-pending'; }
 }
 
 // ── Pilot run history ─────────────────────────────────────────────────────

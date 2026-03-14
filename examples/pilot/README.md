@@ -193,6 +193,51 @@ change unless the inputs change.
 
 ---
 
+## Pilot Run Bundle
+
+A pilot run bundle is the complete, shareable artifact set produced by a single PostCAD run. It contains every artifact needed for external review or lab handoff:
+
+| Bundle file | Contents |
+|---|---|
+| `route.json` | Routing result — the receipt produced by the routing kernel |
+| `receipt.json` | Same receipt (canonical copy) |
+| `verification.json` | Verification result confirming the receipt hash |
+| `export_packet.json` | Approved dispatch packet bound to the receipt |
+| `reproducibility.json` | Reproducibility check result confirming determinism |
+| `bundle_manifest.json` | Generated index with artifact list and timestamp |
+
+### Generating a bundle
+
+Complete the full pilot run first (route → verify → export → reproducibility check), then:
+
+```bash
+./examples/pilot/package_run.sh
+```
+
+By default this reads artifacts from `examples/pilot/` and writes the bundle to `pilot_bundle/`.
+
+Override source and output directories:
+
+```bash
+./examples/pilot/package_run.sh <source_dir> <output_dir>
+```
+
+The script is idempotent: running it twice produces the same output. It exits non-zero with a clear message if any required artifact is missing.
+
+### Inspecting a bundle
+
+```bash
+cat pilot_bundle/bundle_manifest.json   # artifact index + timestamp
+cat pilot_bundle/receipt.json           # routing decision + receipt hash
+cat pilot_bundle/verification.json      # VERIFIED / FAILED
+cat pilot_bundle/export_packet.json     # dispatch packet
+cat pilot_bundle/reproducibility.json   # reproducibility result
+```
+
+Generated bundles are excluded from version control via `.gitignore`.
+
+---
+
 ## Smoke Test
 
 ```bash

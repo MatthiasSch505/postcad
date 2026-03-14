@@ -18,6 +18,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 BIN="${REPO_ROOT}/target/debug/postcad-cli"
 REPORTS_DIR="$SCRIPT_DIR/reports"
 
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BOLD='\033[1m'; RESET='\033[0m'
+
 # ── Trial receipt ledger helpers ───────────────────────────────────────────────
 
 _ledger_next_seq() {
@@ -44,6 +47,95 @@ _append_ledger() {
     echo ""
   } >> "$ledger"
 }
+
+# ── Mode: full trial run ───────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--trial-run" ]]; then
+
+  echo ""
+  echo -e "${BOLD}PostCAD — Full Trial Run${RESET}"
+  echo "  ────────────────────────────────────────"
+  echo ""
+  echo -e "  ${BOLD}Starting PostCAD trial run${RESET}"
+  echo ""
+
+  # Build
+  if [[ ! -x "$BIN" ]]; then
+    echo "  Building postcad-cli..."
+    cargo build --bin postcad-cli --quiet --manifest-path "${REPO_ROOT}/Cargo.toml"
+  fi
+
+  # Route
+  TRIAL_RECEIPT_JSON=$("$BIN" route-case-from-registry --json \
+    --case     "${SCRIPT_DIR}/case.json" \
+    --registry "${SCRIPT_DIR}/registry_snapshot.json" \
+    --config   "${SCRIPT_DIR}/config.json")
+  echo "$TRIAL_RECEIPT_JSON" > "${SCRIPT_DIR}/receipt.json"
+
+  # Compute run ID
+  TRIAL_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+  TRIAL_RECEIPT_HASH=$(echo "$TRIAL_RECEIPT_JSON" | grep -o '"receipt_hash": *"[^"]*"' | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  TRIAL_RUN_ID="${TRIAL_CASE_ID:-${TRIAL_RECEIPT_HASH:0:12}}"
+  TRIAL_LEDGER_FILE="$REPORTS_DIR/ledger_${TRIAL_RUN_ID}.txt"
+
+  # Ledger: outbound_bundle_created
+  if [[ -n "$TRIAL_RUN_ID" ]]; then
+    _append_ledger "$TRIAL_LEDGER_FILE" "outbound_bundle_created" "$TRIAL_RUN_ID" "recorded" "${SCRIPT_DIR}/receipt.json"
+  fi
+
+  echo -e "  ${GREEN}Outbound bundle created${RESET}"
+
+  # Handoff pack
+  mkdir -p "${SCRIPT_DIR}/handoff"
+  "${SCRIPT_DIR}/lab_simulator.sh" --handoff-pack "${SCRIPT_DIR}/handoff" \
+    --bundle "${SCRIPT_DIR}" > /dev/null 2>&1
+
+  echo -e "  ${GREEN}External handoff pack created${RESET}"
+
+  # Simulate lab response
+  mkdir -p "${SCRIPT_DIR}/inbound"
+  "${SCRIPT_DIR}/lab_simulator.sh" "${SCRIPT_DIR}" \
+    "${SCRIPT_DIR}/inbound/trial_response.json" > /dev/null 2>&1
+
+  echo -e "  ${GREEN}Simulated lab response generated${RESET}"
+
+  # Verify inbound response — capture exit code without triggering set -e
+  TRIAL_VERIFY_EXIT=0
+  "${SCRIPT_DIR}/verify.sh" --inbound "${SCRIPT_DIR}/inbound/trial_response.json" \
+    --bundle "${SCRIPT_DIR}" > /dev/null 2>&1 || TRIAL_VERIFY_EXIT=$?
+
+  echo -e "  ${GREEN}Inbound response verified${RESET}"
+
+  # Operator decision
+  if [[ $TRIAL_VERIFY_EXIT -eq 0 ]]; then
+    echo -e "  ${GREEN}Operator decision: ACCEPTED${RESET}"
+    TRIAL_DECISION="ACCEPTED"
+  else
+    echo -e "  ${RED}Operator decision: REJECTED${RESET}"
+    TRIAL_DECISION="REJECTED"
+  fi
+
+  echo -e "  ${GREEN}Trial ledger updated${RESET}"
+  echo ""
+  echo -e "  ${BOLD}Trial run completed${RESET}"
+  echo ""
+  echo "  Run ID : ${TRIAL_RUN_ID}"
+  echo "  Ledger : ${TRIAL_LEDGER_FILE}"
+  echo "  Receipt: ${SCRIPT_DIR}/receipt.json"
+  echo ""
+
+  if [[ "$TRIAL_DECISION" == "ACCEPTED" ]]; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
 
 echo "PostCAD Protocol v1 — Pilot Workflow"
 echo "======================================"

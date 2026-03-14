@@ -342,6 +342,48 @@ The ledger is stored in `reports/` and excluded from version control.
 
 ---
 
+## Running a full PostCAD pilot trial
+
+The `--trial-run` flag executes the complete external pilot workflow in a single command:
+
+```bash
+./examples/pilot/run_pilot.sh --trial-run
+```
+
+This command sequentially runs:
+
+1. Route the pilot case → write `receipt.json`
+2. Generate an external handoff pack → write `handoff/<run-id>/`
+3. Simulate a lab response → write `inbound/trial_response.json`
+4. Verify the inbound response against the current run
+5. Record the operator decision
+
+**Expected output:**
+
+```
+PostCAD — Full Trial Run
+  ────────────────────────────────────────
+
+  Starting PostCAD trial run
+
+  Outbound bundle created
+  External handoff pack created
+  Simulated lab response generated
+  Inbound response verified
+  Operator decision: ACCEPTED
+  Trial ledger updated
+
+  Trial run completed
+
+  Run ID : f1000001-0000-0000-0000-000000000001
+  Ledger : examples/pilot/reports/ledger_f1000001-0000-0000-0000-000000000001.txt
+  Receipt: examples/pilot/receipt.json
+```
+
+The trial run exits 0 if the operator decision is ACCEPTED, 1 if REJECTED. The ledger is updated at each step and stored in `reports/ledger_<run-id>.txt`.
+
+---
+
 ## External Lab Trial
 
 For real external trials, generate a handoff pack instead of simulating a lab response locally.

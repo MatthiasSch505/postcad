@@ -330,6 +330,26 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
             color:#58a6ff;cursor:pointer;font-family:inherit;font-size:.63rem;
             padding:.1rem .38rem;margin-top:.2rem;transition:color .1s}
 .expand-btn:hover{color:#79c0ff}
+/* ── run timeline ── */
+.run-timeline{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+              padding:.5rem .75rem;margin-bottom:.5rem}
+.rt-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+          letter-spacing:.08em;margin-bottom:.35rem}
+.rt-steps{display:flex;align-items:center;gap:0;margin-bottom:.28rem}
+.rt-step{display:flex;flex-direction:column;align-items:center;gap:.12rem;flex:1;min-width:0}
+.rt-dot{width:8px;height:8px;border-radius:50%;background:#1c2128;border:1px solid #30363d}
+.rt-name{font-size:.6rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+         color:#484f58;white-space:nowrap}
+.rt-conn{flex:1;height:1px;background:#21262d;min-width:.4rem}
+.rt-idle    .rt-dot{background:#1c2128;border-color:#30363d}
+.rt-idle    .rt-name{color:#484f58}
+.rt-ready   .rt-dot{background:#1e2d45;border-color:#388bfd}
+.rt-ready   .rt-name{color:#58a6ff}
+.rt-done    .rt-dot{background:#1a3e2c;border-color:#2ea043}
+.rt-done    .rt-name{color:#3fb950}
+.rt-blocked .rt-dot{background:#2d2009;border-color:#d29922}
+.rt-blocked .rt-name{color:#6e7681}
+.rt-summary{font-size:.69rem;color:#6e7681;line-height:1.4}
 </style>
 </head>
 <body>
@@ -549,6 +569,33 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="nar-label">Next action</div>
         <span id="nar-action" class="nar-action nar-action-idle">Next: run route</span>
         <span id="nar-reason" class="nar-reason">No current receipt loaded.</span>
+      </div>
+
+      <!-- Current-run timeline strip — always visible -->
+      <div id="run-timeline" class="run-timeline">
+        <div class="rt-label">Current run</div>
+        <div class="rt-steps">
+          <div id="rt-route" class="rt-step rt-idle">
+            <div class="rt-dot"></div>
+            <div class="rt-name">Route</div>
+          </div>
+          <div class="rt-conn"></div>
+          <div id="rt-receipt" class="rt-step rt-idle">
+            <div class="rt-dot"></div>
+            <div class="rt-name">Receipt</div>
+          </div>
+          <div class="rt-conn"></div>
+          <div id="rt-verify" class="rt-step rt-idle">
+            <div class="rt-dot"></div>
+            <div class="rt-name">Verify</div>
+          </div>
+          <div class="rt-conn"></div>
+          <div id="rt-dispatch" class="rt-step rt-idle">
+            <div class="rt-dot"></div>
+            <div class="rt-name">Dispatch</div>
+          </div>
+        </div>
+        <div id="rt-summary" class="rt-summary">Current run not started</div>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1418,6 +1465,7 @@ async function exportDispatch(btn) {
       updateIntegrityBadges();
       updateDispatchReadiness();
       updateMicrobadges();
+      updateRunTimeline();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -1619,6 +1667,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateNextActionRail();
   updateHandoffNote();
   updateMicrobadges();
+  updateRunTimeline();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -1710,6 +1759,40 @@ function updateMicrobadges() {
     opVerify === 'verified' ? 'verified' :
     opVerify === 'failed'   ? 'failed'   : 'not-available');
   setMicrobadge('mb-dispatch', lastExportPacket ? 'exported' : 'not-available');
+}
+
+// ── Run timeline ──────────────────────────────────────────────────────────
+function timelineStepState(step) {
+  if (step === 'route')   return opRouting === 'available' ? 'rt-done' : 'rt-idle';
+  if (step === 'receipt') return opReceipt === 'available' ? 'rt-done' : 'rt-idle';
+  if (step === 'verify') {
+    if (opVerify === 'verified') return 'rt-done';
+    if (opRouting === 'available') return 'rt-ready';
+    return 'rt-idle';
+  }
+  if (step === 'dispatch') {
+    if (lastExportPacket)       return 'rt-done';
+    if (opVerify === 'failed')  return 'rt-blocked';
+    if (opVerify === 'verified') return 'rt-ready';
+    return 'rt-idle';
+  }
+  return 'rt-idle';
+}
+function timelineSummary() {
+  if (lastExportPacket)            return 'Dispatch exported for current run';
+  if (opVerify === 'verified')     return 'Verification completed — dispatch ready';
+  if (opVerify === 'failed')       return 'Verification failed — review inputs before dispatch';
+  if (opRouting === 'available')   return 'Route produced — verification pending';
+  return 'Current run not started';
+}
+function updateRunTimeline() {
+  ['route', 'receipt', 'verify', 'dispatch'].forEach(step => {
+    const el = document.getElementById('rt-' + step);
+    if (!el) return;
+    el.className = 'rt-step ' + timelineStepState(step);
+  });
+  const sumEl = document.getElementById('rt-summary');
+  if (sumEl) sumEl.textContent = timelineSummary();
 }
 
 // ── Pilot run history ─────────────────────────────────────────────────────

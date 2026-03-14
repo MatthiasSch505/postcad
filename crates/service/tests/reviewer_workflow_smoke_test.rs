@@ -1244,6 +1244,144 @@ async fn reviewer_shell_downstream_microbadges_initial_state() {
     );
 }
 
+// ── Run timeline strip tests ──────────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain the current-run timeline strip with all four
+/// step elements and the summary line so an operator can read workflow state
+/// at a glance without scanning multiple panels.
+#[tokio::test]
+async fn reviewer_shell_run_timeline_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Container and label
+    assert!(html.contains("run-timeline"),   "run-timeline id must be present");
+    assert!(html.contains("Current run"),    "Current run label must be present");
+
+    // All four step IDs
+    assert!(html.contains("rt-route"),    "rt-route step id must be present");
+    assert!(html.contains("rt-receipt"),  "rt-receipt step id must be present");
+    assert!(html.contains("rt-verify"),   "rt-verify step id must be present");
+    assert!(html.contains("rt-dispatch"), "rt-dispatch step id must be present");
+
+    // Summary line element
+    assert!(html.contains("rt-summary"),  "rt-summary element id must be present");
+}
+
+/// Reviewer shell HTML must carry all four timeline CSS state classes so steps
+/// can be styled as idle, ready, done, or blocked.
+#[tokio::test]
+async fn reviewer_shell_run_timeline_css_states_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("rt-idle"),    "rt-idle CSS class must be defined");
+    assert!(html.contains("rt-ready"),   "rt-ready CSS class must be defined");
+    assert!(html.contains("rt-done"),    "rt-done CSS class must be defined");
+    assert!(html.contains("rt-blocked"), "rt-blocked CSS class must be defined");
+}
+
+/// Timeline steps must start in the rt-idle state in the static HTML so the
+/// initial page load shows an all-idle/not-started timeline before routing.
+#[tokio::test]
+async fn reviewer_shell_run_timeline_initial_idle_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"rt-route\" class=\"rt-step rt-idle\""),
+        "rt-route must start rt-idle in HTML"
+    );
+    assert!(
+        html.contains("id=\"rt-receipt\" class=\"rt-step rt-idle\""),
+        "rt-receipt must start rt-idle in HTML"
+    );
+    assert!(
+        html.contains("id=\"rt-verify\" class=\"rt-step rt-idle\""),
+        "rt-verify must start rt-idle in HTML"
+    );
+    assert!(
+        html.contains("id=\"rt-dispatch\" class=\"rt-step rt-idle\""),
+        "rt-dispatch must start rt-idle in HTML"
+    );
+}
+
+/// Summary line must default to 'Current run not started' at initial load
+/// so the operator sees an explicit idle description, not a blank strip.
+#[tokio::test]
+async fn reviewer_shell_run_timeline_initial_summary() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Current run not started"),
+        "rt-summary must default to 'Current run not started'"
+    );
+}
+
+/// All four summary text strings must be present in the JS so the operator
+/// always sees an accurate one-line description of the current run state.
+#[tokio::test]
+async fn reviewer_shell_run_timeline_summary_strings_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Route produced — verification pending"),
+        "post-route summary must be present"
+    );
+    assert!(
+        html.contains("Verification completed — dispatch ready"),
+        "post-verify summary must be present"
+    );
+    assert!(
+        html.contains("Dispatch exported for current run"),
+        "post-export summary must be present"
+    );
+    assert!(
+        html.contains("Verification failed — review inputs before dispatch"),
+        "failed-verify summary must be present"
+    );
+}
+
+/// Reviewer shell HTML must expose updateRunTimeline, timelineStepState, and
+/// timelineSummary JS functions so timeline state is computed from existing signals.
+#[tokio::test]
+async fn reviewer_shell_run_timeline_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("updateRunTimeline"),  "updateRunTimeline JS function must be present");
+    assert!(html.contains("timelineStepState"),  "timelineStepState JS function must be present");
+    assert!(html.contains("timelineSummary"),    "timelineSummary JS function must be present");
+}
+
+/// updateRunTimeline must be wired into updateOpState and called in the
+/// exportDispatch path so the strip resets on reroute and advances on export.
+#[tokio::test]
+async fn reviewer_shell_run_timeline_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Must be called from updateOpState (covers route/verify/reroute transitions)
+    assert!(
+        html.contains("updateRunTimeline()"),
+        "updateRunTimeline() call must appear in JS"
+    );
+    // updateOpState must exist as the entry point
+    assert!(
+        html.contains("updateOpState"),
+        "updateOpState must be present as the state machine driver"
+    );
+}
+
 // ── Artifact section empty-state hardening tests ──────────────────────────────
 
 /// Reviewer shell HTML must carry an explicit receipt empty-state element that

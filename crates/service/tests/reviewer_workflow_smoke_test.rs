@@ -1244,6 +1244,112 @@ async fn reviewer_shell_downstream_microbadges_initial_state() {
     );
 }
 
+// ── Operator action bar tests ────────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain the operator action bar with its element
+/// IDs and a navigate button so an operator always sees exactly one next step.
+#[tokio::test]
+async fn reviewer_shell_oab_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"oab\""),     "oab container id must be present");
+    assert!(html.contains("oab-action"),     "oab-action id must be present");
+    assert!(html.contains("oab-reason"),     "oab-reason id must be present");
+    assert!(html.contains("oab-btn"),        "oab-btn id must be present");
+    assert!(html.contains("oabNavigate"),    "oabNavigate JS function must be present");
+}
+
+/// Action bar must default to the 'route' state at initial load with the
+/// correct action text and reason so a fresh operator session is immediately actionable.
+#[tokio::test]
+async fn reviewer_shell_oab_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Start a route for the current case"),
+        "initial action text must say 'Start a route for the current case'"
+    );
+    assert!(
+        html.contains("No current route artifacts exist yet."),
+        "initial reason must say 'No current route artifacts exist yet.'"
+    );
+    assert!(
+        html.contains("→ Go to route"),
+        "initial button label must say '→ Go to route'"
+    );
+}
+
+/// All five action bar state labels must be present in the JS source so every
+/// current-run transition has a deterministic one-line instruction.
+#[tokio::test]
+async fn reviewer_shell_oab_all_state_labels_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Start a route for the current case"),         "route state label must be present");
+    assert!(html.contains("Run verification for the current route"),     "verify state label must be present");
+    assert!(html.contains("Export dispatch packet"),                     "export state label must be present");
+    assert!(html.contains("Resolve readiness items before dispatch"),    "resolve state label must be present");
+    assert!(html.contains("Current run complete"),                       "complete state label must be present");
+}
+
+/// All five reason lines must be present in OAB_STATES so the operator always
+/// sees a secondary explanation for why the given action is recommended.
+#[tokio::test]
+async fn reviewer_shell_oab_all_reason_lines_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("No current route artifacts exist yet."),
+        "route reason must be present");
+    assert!(html.contains("Verification has not been executed for the current route."),
+        "verify reason must be present");
+    assert!(html.contains("Dispatch is ready and no export exists for the current route."),
+        "export reason must be present");
+    assert!(html.contains("Verification failed. Resolve before dispatching."),
+        "resolve reason must be present");
+    assert!(html.contains("Current run already has a dispatch export."),
+        "complete reason must be present");
+}
+
+/// Action bar JS functions and state table must be present so badge state
+/// is computed purely from existing reviewer signals.
+#[tokio::test]
+async fn reviewer_shell_oab_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("OAB_STATES"),    "OAB_STATES constant must be present");
+    assert!(html.contains("oabStateKey"),   "oabStateKey JS function must be present");
+    assert!(html.contains("updateOab"),     "updateOab JS function must be present");
+    assert!(html.contains("oabNavigate"),   "oabNavigate JS function must be present");
+}
+
+/// updateOab must be wired into updateOpState and exportDispatch so the action
+/// bar resets on reroute and advances when export completes.
+#[tokio::test]
+async fn reviewer_shell_oab_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateOab()"),
+        "updateOab() call must appear in JS"
+    );
+    // CSS classes for all action states must be defined
+    assert!(html.contains("oab-action-idle"),     "oab-action-idle CSS class must be defined");
+    assert!(html.contains("oab-action-active"),   "oab-action-active CSS class must be defined");
+    assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
+}
+
 // ── Run timeline strip tests ──────────────────────────────────────────────────
 
 /// Reviewer shell HTML must contain the current-run timeline strip with all four

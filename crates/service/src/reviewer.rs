@@ -350,6 +350,23 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
 .rt-blocked .rt-dot{background:#2d2009;border-color:#d29922}
 .rt-blocked .rt-name{color:#6e7681}
 .rt-summary{font-size:.69rem;color:#6e7681;line-height:1.4}
+/* ── operator action bar ── */
+.oab{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.45rem .75rem;margin-bottom:.5rem}
+.oab-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.2rem}
+.oab-body{display:flex;align-items:center;gap:.5rem}
+.oab-action{font-size:.78rem;font-weight:700;flex:1}
+.oab-action-idle    {color:#484f58}
+.oab-action-active  {color:#d29922}
+.oab-action-complete{color:#3fb950}
+.oab-btn{background:none;border:1px solid #30363d;border-radius:3px;color:#58a6ff;
+         cursor:pointer;font-family:inherit;font-size:.68rem;font-weight:700;
+         padding:.15rem .5rem;white-space:nowrap;flex-shrink:0;
+         transition:color .1s,border-color .1s}
+.oab-btn:hover{color:#79c0ff;border-color:#388bfd}
+.oab-btn-complete{color:#6e7681;border-color:#21262d;cursor:default}
+.oab-reason{font-size:.65rem;color:#6e7681;margin-top:.18rem;line-height:1.4}
 </style>
 </head>
 <body>
@@ -596,6 +613,16 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           </div>
         </div>
         <div id="rt-summary" class="rt-summary">Current run not started</div>
+      </div>
+
+      <!-- Operator action bar — always visible, exactly one next step -->
+      <div id="oab" class="oab">
+        <div class="oab-label">Next action</div>
+        <div class="oab-body">
+          <span id="oab-action" class="oab-action oab-action-idle">Start a route for the current case</span>
+          <button id="oab-btn" class="oab-btn" onclick="oabNavigate()">→ Go to route</button>
+        </div>
+        <div id="oab-reason" class="oab-reason">No current route artifacts exist yet.</div>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1466,6 +1493,7 @@ async function exportDispatch(btn) {
       updateDispatchReadiness();
       updateMicrobadges();
       updateRunTimeline();
+      updateOab();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -1668,6 +1696,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateHandoffNote();
   updateMicrobadges();
   updateRunTimeline();
+  updateOab();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -1793,6 +1822,52 @@ function updateRunTimeline() {
   });
   const sumEl = document.getElementById('rt-summary');
   if (sumEl) sumEl.textContent = timelineSummary();
+}
+
+// ── Operator action bar ───────────────────────────────────────────────────
+const OAB_STATES = {
+  route:    {action:'Start a route for the current case',
+             reason:'No current route artifacts exist yet.',
+             btnLabel:'→ Go to route',     target:'norm-input-section', cls:'oab-action-idle'},
+  verify:   {action:'Run verification for the current route',
+             reason:'Verification has not been executed for the current route.',
+             btnLabel:'→ Go to verify',    target:'btn-verify',          cls:'oab-action-active'},
+  export:   {action:'Export dispatch packet',
+             reason:'Dispatch is ready and no export exists for the current route.',
+             btnLabel:'→ Go to dispatch',  target:'btn-dispatch-export', cls:'oab-action-active'},
+  resolve:  {action:'Resolve readiness items before dispatch',
+             reason:'Verification failed. Resolve before dispatching.',
+             btnLabel:'→ View readiness',  target:'dispatch-readiness-panel', cls:'oab-action-active'},
+  complete: {action:'Current run complete',
+             reason:'Current run already has a dispatch export.',
+             btnLabel:'✓ Done',            target:'dispatch-export-result',   cls:'oab-action-complete'},
+};
+function oabStateKey() {
+  if (lastExportPacket)             return 'complete';
+  if (opVerify === 'verified')      return 'export';
+  if (opVerify === 'failed')        return 'resolve';
+  if (opRouting === 'available')    return 'verify';
+  return 'route';
+}
+function updateOab() {
+  const s = OAB_STATES[oabStateKey()];
+  const actionEl = document.getElementById('oab-action');
+  const reasonEl = document.getElementById('oab-reason');
+  const btnEl    = document.getElementById('oab-btn');
+  if (!actionEl || !reasonEl || !btnEl) return;
+  actionEl.textContent = s.action;
+  actionEl.className   = 'oab-action ' + s.cls;
+  reasonEl.textContent = s.reason;
+  btnEl.textContent    = s.btnLabel;
+  btnEl.className      = 'oab-btn' + (oabStateKey() === 'complete' ? ' oab-btn-complete' : '');
+}
+function oabNavigate() {
+  const target = OAB_STATES[oabStateKey()]?.target;
+  if (!target) return;
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  if (typeof el.focus === 'function') el.focus({preventScroll:true});
 }
 
 // ── Pilot run history ─────────────────────────────────────────────────────

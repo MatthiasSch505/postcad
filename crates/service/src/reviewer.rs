@@ -275,6 +275,13 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── panel microbadges ── */
+.mb{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
+    font-weight:700;vertical-align:middle;margin-left:.35rem;letter-spacing:.03em;
+    text-transform:lowercase}
+.mb-on {background:#1a3e2c;color:#3fb950}
+.mb-dim{background:#1c2128;color:#484f58}
+.mb-err{background:#3d1f1f;color:#f85149}
 /* ── next-action rail ── */
 .nar-rail{background:#0d1117;border:1px solid #21262d;border-radius:5px;
           padding:.4rem .65rem;margin-bottom:.5rem}
@@ -663,6 +670,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="section-title">
           Receipt JSON
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— verification source of truth · inspect before dispatch</span>
+          <span id="mb-receipt" class="mb mb-on">available</span>
           <span id="receipt-json-badge" class="integrity-badge hidden"></span>
         </div>
         <pre class="result result-ok" id="route-receipt-json"></pre>
@@ -674,6 +682,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <!-- D. Verify section -->
         <div class="section-title" style="margin-top:.8rem">Verify before dispatch
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— replay re-derives the receipt from original inputs</span>
+          <span id="mb-verify" class="mb mb-dim">not available</span>
         </div>
         <div class="panel-subtitle">The kernel recomputes every hash from scratch. No stored state is trusted.</div>
         <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">verification not yet executed for current route</div>
@@ -712,6 +721,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="tamper-section" id="dispatch-section">
           <div class="section-title">Dispatch commitment
             <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— handoff to manufacturing · irreversible once approved</span>
+            <span id="mb-dispatch" class="mb mb-dim">not available</span>
           </div>
           <div class="panel-subtitle">Dispatch after verification succeeds. The server re-verifies the receipt before creating the record.</div>
           <div class="tamper-desc">
@@ -1407,6 +1417,7 @@ async function exportDispatch(btn) {
       lastExportPacket = data;
       updateIntegrityBadges();
       updateDispatchReadiness();
+      updateMicrobadges();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -1607,6 +1618,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateActiveRunContext();
   updateNextActionRail();
   updateHandoffNote();
+  updateMicrobadges();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -1678,6 +1690,26 @@ function updateHandoffNote() {
     + '<div class="hn-row hn-row-check">&#x2713; Dispatch artifact exported</div>'
     + '<div class="hn-object">Handoff object: export packet &middot; dispatch ID <span style="color:#c9d1d9">'
     + esc(did) + '</span> &middot; copy or transfer using the panel above</div>';
+}
+
+// ── Panel microbadges ─────────────────────────────────────────────────────
+const MB_LABELS  = {'available':'available','not-available':'not available',
+                    'verified':'verified','exported':'exported','failed':'failed'};
+const MB_CLASSES = {'available':'mb mb-on','not-available':'mb mb-dim',
+                    'verified':'mb mb-on','exported':'mb mb-on','failed':'mb mb-err'};
+function setMicrobadge(id, state) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className   = MB_CLASSES[state] || 'mb mb-dim';
+  el.textContent = MB_LABELS[state]  || state;
+}
+function updateMicrobadges() {
+  setMicrobadge('mb-receipt',
+    opRouting === 'available' ? 'available' : 'not-available');
+  setMicrobadge('mb-verify',
+    opVerify === 'verified' ? 'verified' :
+    opVerify === 'failed'   ? 'failed'   : 'not-available');
+  setMicrobadge('mb-dispatch', lastExportPacket ? 'exported' : 'not-available');
 }
 
 // ── Pilot run history ─────────────────────────────────────────────────────

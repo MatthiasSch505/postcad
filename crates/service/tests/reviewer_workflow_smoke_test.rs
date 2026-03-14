@@ -3477,6 +3477,113 @@ async fn reviewer_shell_cab_previous_run_artifact_wording() {
     );
 }
 
+// ── Operator session guard tests ─────────────────────────────────────────────
+
+/// Reviewer shell HTML must expose the Operator Session Guard panel so the
+/// operator is warned when interacting with previous-run artifacts.
+#[tokio::test]
+async fn reviewer_shell_osg_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"osg\""),
+        "osg panel id must be present in HTML"
+    );
+    assert!(
+        html.contains("Operator Session Guard"),
+        "panel must be labelled 'Operator Session Guard'"
+    );
+}
+
+/// The session guard must carry previous-run warning wording so the operator
+/// can clearly see that stale artifacts are present in the session.
+#[tokio::test]
+async fn reviewer_shell_osg_previous_run_warning_text() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Previous-run artifacts detected"),
+        "warning headline must be present"
+    );
+    assert!(
+        html.contains("previous run"),
+        "previous-run wording must appear in guard reasons"
+    );
+}
+
+/// The session guard must expose a Start Clean Run button so the operator
+/// has a safe reset path that clears previous-run artifacts from the UI.
+#[tokio::test]
+async fn reviewer_shell_osg_start_clean_run_button() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Start Clean Run"),
+        "Start Clean Run button label must be present"
+    );
+    assert!(
+        html.contains("startCleanRun"),
+        "startCleanRun function must be referenced in onclick"
+    );
+}
+
+/// The session guard must carry explanation text about previous-run artifact
+/// confusion so the operator understands why the guard is shown.
+#[tokio::test]
+async fn reviewer_shell_osg_explanation_text_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Starting a clean run prevents confusion"),
+        "explanation text must describe why clean run is needed"
+    );
+}
+
+/// updateSessionGuard must be wired into updateOpState so the guard
+/// activates on reroute and clears once the new run is clean.
+#[tokio::test]
+async fn reviewer_shell_osg_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateSessionGuard()"),
+        "updateSessionGuard() call must appear in updateOpState"
+    );
+    assert!(
+        html.contains("updateSessionGuard"),
+        "updateSessionGuard function must be defined"
+    );
+}
+
+/// The session guard must default to hidden (no osg-active class) at initial
+/// load so the operator does not see a false warning before routing starts.
+#[tokio::test]
+async fn reviewer_shell_osg_hidden_at_initial_load() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // osg panel must not carry osg-active at initial load
+    assert!(
+        !html.contains("id=\"osg\" class=\"osg osg-active\""),
+        "osg must not be active at initial load"
+    );
+    assert!(
+        html.contains("id=\"osg\" class=\"osg\""),
+        "osg must start with only the base osg class"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

@@ -687,6 +687,20 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
 .cab-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
                 letter-spacing:.07em;display:block;margin-bottom:.06rem}
+/* ── operator session guard ── */
+.osg{background:#1a0f0f;border:1px solid #f8514933;border-radius:6px;
+     padding:.5rem .75rem;margin-bottom:.4rem;display:none}
+.osg-active{display:block}
+.osg-label{font-size:.55rem;font-weight:700;color:#f85149;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.18rem}
+.osg-headline{font-size:.75rem;font-weight:700;color:#f85149;margin-bottom:.15rem}
+.osg-detail{font-size:.67rem;color:#c9d1d9;line-height:1.45;margin-bottom:.22rem}
+.osg-reasons{margin-bottom:.25rem}
+.osg-reason{font-size:.65rem;color:#d29922;line-height:1.5;padding:.02rem 0}
+.osg-btn{background:#f8514918;border:1px solid #f85149;border-radius:4px;
+         color:#f85149;font-size:.68rem;font-weight:700;cursor:pointer;
+         padding:.25rem .65rem}
+.osg-btn:hover{background:#f8514933}
 </style>
 </head>
 <body>
@@ -950,6 +964,15 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="rib-row"><span class="rib-key">Receipt</span><span id="rib-receipt" class="rib-val-idle">not generated</span></div>
         <div class="rib-row"><span class="rib-key">Verification</span><span id="rib-verify" class="rib-val-idle">not executed</span></div>
         <div class="rib-row"><span class="rib-key">Dispatch</span><span id="rib-dispatch" class="rib-val-idle">not exported</span></div>
+      </div>
+
+      <!-- Operator session guard — warns when interacting with previous-run artifacts -->
+      <div id="osg" class="osg">
+        <div class="osg-label">Operator Session Guard</div>
+        <div class="osg-headline">Previous-run artifacts detected</div>
+        <div class="osg-detail">The current session may contain artifacts from a previous run. Starting a clean run prevents confusion and ensures all displayed artifacts belong to the active route.</div>
+        <div id="osg-reasons" class="osg-reasons"></div>
+        <button class="osg-btn" onclick="startCleanRun()">Start Clean Run</button>
       </div>
 
       <!-- Operator action bar — always visible, exactly one next step -->
@@ -2438,6 +2461,58 @@ function updateLineageNotes() {
   if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
 }
 
+// ── Operator session guard ─────────────────────────────────────────────────
+function updateSessionGuard() {
+  const el = document.getElementById('osg');
+  if (!el) return;
+  const vlin = verifyLineage();
+  const dlin = dispatchLineage();
+  const reasons = [];
+  if (vlin === 'prev')  reasons.push('Verification result belongs to a previous run \u2014 re-verify for current route');
+  if (dlin === 'prev')  reasons.push('Dispatch packet belongs to a previous run \u2014 re-export for current route');
+  if (reasons.length === 0) {
+    el.classList.remove('osg-active');
+    return;
+  }
+  el.classList.add('osg-active');
+  const reasonsEl = document.getElementById('osg-reasons');
+  if (reasonsEl) {
+    reasonsEl.innerHTML = reasons.map(r =>
+      '<div class="osg-reason">\u26a0 ' + esc(r) + '</div>'
+    ).join('');
+  }
+}
+function startCleanRun() {
+  lastReceipt = null; lastPolicy = null; lastDispatchId = null; lastExportPacket = null;
+  lastRouteInputs = null; lastRouteEndpoint = null;
+  reproStatus = 'not-tested';
+  runSerial = 0; verifySerial = 0; dispatchSerial = 0;
+  hide('route-result'); hide('route-error'); hide('verify-result');
+  hide('dispatch-created'); hide('dispatch-export-result');
+  hide('dispatch-success'); hide('dispatch-error');
+  hide('route-norm-preview'); hide('route-norm-inline');
+  show('results-placeholder');
+  show('receipt-empty-state');
+  hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
+  hide('dispatch-export-actions');
+  hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
+  ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
+    const el2 = document.getElementById(id); if (el2) el2.classList.remove('collapsed');
+  });
+  clearRunHistory();
+  const _chb = document.getElementById('art-hash-copy');
+  if (_chb) _chb.classList.add('hidden');
+  const _dic = document.getElementById('art-dispatch-id-copy');
+  if (_dic) _dic.classList.add('hidden');
+  document.getElementById('btn-dispatch-create').disabled  = true;
+  document.getElementById('btn-dispatch-approve').disabled = true;
+  document.getElementById('btn-dispatch-export').disabled  = true;
+  document.getElementById('btn-verify').disabled  = true;
+  document.getElementById('btn-tamper').disabled  = true;
+  salLog('Session reset', 'Operator initiated clean run. All previous-run artifacts cleared.');
+  updateOpState('not-run', 'not-run', 'not-run', 'not-run');
+}
+
 // ── Current-run artifact bundle ────────────────────────────────────────────
 function cabVerdictKey() {
   if (runSerial === 0) return 'none';
@@ -2918,6 +2993,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateRunIdentityBlock();
   updateLineageBadges();
   updateLineageNotes();
+  updateSessionGuard();
   updateDpi();
   updateDossier();
   updateReproPanel();

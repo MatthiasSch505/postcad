@@ -588,6 +588,21 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
             font-size:.67rem;line-height:1.45;padding:.4rem .6rem;
             white-space:pre-wrap;word-break:break-all;max-height:220px;
             overflow-y:auto;color:#8b949e;margin-top:.22rem}
+/* ── route reproducibility check ── */
+.rrc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-top:.5rem;margin-bottom:.3rem}
+.rrc-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.28rem}
+.rrc-status{font-size:.75rem;font-weight:700;margin-bottom:.15rem}
+.rrc-ok        {color:#3fb950}
+.rrc-mismatch  {color:#f85149}
+.rrc-not-tested{color:#484f58}
+.rrc-detail{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.22rem}
+.rrc-btn{background:#21262d;border:1px solid #30363d;border-radius:4px;
+         color:#c9d1d9;font-size:.68rem;cursor:pointer;padding:.22rem .55rem;
+         margin-top:.12rem}
+.rrc-btn:disabled{opacity:.45;cursor:not-allowed}
+.rrc-btn:hover:not(:disabled){background:#30363d}
 </style>
 </head>
 <body>
@@ -988,6 +1003,14 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
       <!-- Receipt empty-state: shown when no receipt for current run -->
       <div id="receipt-empty-state" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">no receipt for current route</div>
 
+      <!-- Route reproducibility check panel -->
+      <div id="rrc" class="rrc">
+        <div class="rrc-label">Route reproducibility check</div>
+        <div id="rrc-status" class="rrc-status rrc-not-tested">Reproducibility not tested</div>
+        <div id="rrc-detail" class="rrc-detail">Run a reproducibility check to confirm the routing result is deterministic.</div>
+        <button id="btn-repro" class="rrc-btn" onclick="runReproCheck(this)" disabled>&#x21BA; Run reproducibility check</button>
+      </div>
+
       <!-- B. Artifact summary (shown after route) -->
       <div id="route-result" class="hidden">
         <div class="card-title">Routing decision — audit record<span id="route-result-badge" class="integrity-badge hidden"></span></div>
@@ -1271,6 +1294,9 @@ const runHistory = [];       // chronological pilot run actions
 let runSerial      = 0;   // monotonic counter, increments on each new route
 let verifySerial   = 0;   // set to runSerial when verification completes
 let dispatchSerial = 0;   // set to runSerial when dispatch is exported
+let lastRouteInputs   = null;  // request body sent on last successful route
+let lastRouteEndpoint = null;  // endpoint used on last successful route
+let reproStatus = 'not-tested'; // 'not-tested'|'reproducible'|'mismatch'|'running'
 
 // ── boot ───────────────────────────────────────────────────────────────────
 (async function boot() {
@@ -1331,6 +1357,7 @@ async function routeCase(btn) {
   if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
   salLog('Route requested', 'Routing kernel execution started.');
   runSerial++;
+  lastRouteInputs = null; lastRouteEndpoint = null; reproStatus = 'not-tested';
 
   hide('results-placeholder');
   hide('route-norm-inline'); hide('route-norm-preview');
@@ -1394,6 +1421,8 @@ async function routeCase(btn) {
       document.getElementById('btn-verify').disabled          = false;
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
+      lastRouteEndpoint = '/route';
+      lastRouteInputs   = {case: fixtures.case, registry_snapshot: fixtures.registry_snapshot, routing_config: fixtures.routing_config};
       updateOpState('available', 'available', 'not-run', 'available');
       salLog('Route result received', 'Route receipt generated.');
       appendRunHistory('Route executed', true);
@@ -1444,6 +1473,7 @@ async function routeNormalized(btn) {
   if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
   salLog('Route requested', 'Routing kernel execution started.');
   runSerial++;
+  lastRouteInputs = null; lastRouteEndpoint = null; reproStatus = 'not-tested';
 
   hide('results-placeholder');
   hide('route-result'); hide('route-error'); hide('verify-result');
@@ -1551,6 +1581,8 @@ async function routeNormalized(btn) {
       document.getElementById('btn-verify').disabled          = false;
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
+      lastRouteEndpoint = '/pilot/route-normalized';
+      lastRouteInputs   = {pilot_case: pilotCase, registry_snapshot: fixtures.registry_snapshot, routing_config: fixtures.routing_config};
       updateOpState('available', 'available', 'not-run', 'available');
       salLog('Route result received', 'Route receipt generated.');
       appendRunHistory('Route executed', true);
@@ -2268,6 +2300,51 @@ function updateLineageNotes() {
   if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
 }
 
+// ── Route reproducibility check ────────────────────────────────────────────
+const REPRO_STATES = {
+  'not-tested':   {cls:'rrc-not-tested', text:'Reproducibility not tested',
+                   detail:'Run a reproducibility check to confirm the routing result is deterministic.'},
+  'running':      {cls:'rrc-not-tested', text:'Check in progress\u2026',
+                   detail:'Re-running route with same inputs.'},
+  'reproducible': {cls:'rrc-ok',        text:'Reproducible',
+                   detail:'The routing result was deterministically reproduced using the same inputs \u2014 receipt hash matched.'},
+  'mismatch':     {cls:'rrc-mismatch',  text:'Mismatch detected',
+                   detail:'The reproduced route returned a different receipt hash. Routing result may not be deterministic.'},
+};
+async function runReproCheck(btn) {
+  if (!lastRouteInputs || !lastRouteEndpoint || !lastReceipt) return;
+  reproStatus = 'running';
+  updateReproPanel();
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch(lastRouteEndpoint, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastRouteInputs),
+    });
+    if (!r.ok) { reproStatus = 'mismatch'; return; }
+    const data = await r.json();
+    const reproHash = data?.receipt?.receipt_hash;
+    const origHash  = lastReceipt?.receipt_hash;
+    reproStatus = (reproHash && origHash && reproHash === origHash) ? 'reproducible' : 'mismatch';
+  } catch(e) {
+    reproStatus = 'mismatch';
+  } finally {
+    updateReproPanel();
+  }
+}
+function updateReproPanel() {
+  const statusEl = document.getElementById('rrc-status');
+  const detailEl = document.getElementById('rrc-detail');
+  const btn      = document.getElementById('btn-repro');
+  if (!statusEl) return;
+  const st = REPRO_STATES[reproStatus] || REPRO_STATES['not-tested'];
+  statusEl.className   = 'rrc-status ' + st.cls;
+  statusEl.textContent = st.text;
+  if (detailEl) detailEl.textContent = st.detail;
+  if (btn) btn.disabled = !lastReceipt || reproStatus === 'running';
+}
+
 function updateOpState(routing, receipt, verify, dispatch) {
   const MAP = {
     'not-run': 'op-not-run', 'available': 'op-available',
@@ -2314,6 +2391,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateLineageNotes();
   updateDpi();
   updateDossier();
+  updateReproPanel();
 }
 
 // ── Active run context ────────────────────────────────────────────────────

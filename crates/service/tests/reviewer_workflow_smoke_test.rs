@@ -2916,6 +2916,115 @@ async fn reviewer_shell_empty_state_reroute_wiring() {
     );
 }
 
+// ── Route reproducibility check tests ────────────────────────────────────────
+
+/// Reviewer shell HTML must expose the reproducibility check panel element
+/// so the operator has a dedicated surface to confirm routing determinism.
+#[tokio::test]
+async fn reviewer_shell_rrc_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"rrc\""),
+        "rrc panel id must be present in HTML"
+    );
+    assert!(
+        html.contains("id=\"rrc-status\""),
+        "rrc-status element id must be present"
+    );
+}
+
+/// The reproducibility check panel must default to 'Reproducibility not tested'
+/// at initial load so the operator sees an explicit idle state, not a blank panel.
+#[tokio::test]
+async fn reviewer_shell_rrc_status_initial_text() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Reproducibility not tested"),
+        "rrc initial status must read 'Reproducibility not tested'"
+    );
+}
+
+/// The reproducibility check panel must carry operator guidance text in rrc-detail
+/// so the operator understands what the check does before triggering it.
+#[tokio::test]
+async fn reviewer_shell_rrc_detail_initial_text() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"rrc-detail\""),
+        "rrc-detail element id must be present"
+    );
+    assert!(
+        html.contains("Run a reproducibility check to confirm the routing result is deterministic"),
+        "rrc-detail must contain operator guidance text"
+    );
+}
+
+/// The reproducibility check panel must expose a trigger button so the operator
+/// can initiate the check without leaving the reviewer shell.
+#[tokio::test]
+async fn reviewer_shell_rrc_button_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"btn-repro\""),
+        "btn-repro element id must be present"
+    );
+    assert!(
+        html.contains("runReproCheck"),
+        "btn-repro must reference runReproCheck in onclick"
+    );
+}
+
+/// Reviewer shell HTML must expose runReproCheck, updateReproPanel, and REPRO_STATES
+/// so the reproducibility check logic is fully present in the JS.
+#[tokio::test]
+async fn reviewer_shell_rrc_js_functions_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("runReproCheck"),   "runReproCheck JS function must be present");
+    assert!(html.contains("updateReproPanel"), "updateReproPanel JS function must be present");
+    assert!(html.contains("REPRO_STATES"),     "REPRO_STATES constant must be present");
+}
+
+/// updateReproPanel must be wired into updateOpState so the reproducibility panel
+/// resets on reroute and reflects state changes driven by the state machine.
+#[tokio::test]
+async fn reviewer_shell_rrc_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateReproPanel()"),
+        "updateReproPanel() call must appear in JS"
+    );
+    assert!(
+        html.contains("lastRouteInputs"),
+        "lastRouteInputs state variable must be present"
+    );
+    assert!(
+        html.contains("lastRouteEndpoint"),
+        "lastRouteEndpoint state variable must be present"
+    );
+    assert!(
+        html.contains("reproStatus"),
+        "reproStatus state variable must be present"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

@@ -360,6 +360,94 @@ async fn reviewer_shell_dispatch_id_copy_present() {
     );
 }
 
+// ── Copyable artifact panel tests ─────────────────────────────────────────────
+
+/// Reviewer shell HTML must expose a "Copy artifact" button for the receipt JSON
+/// panel so an operator can copy the full artifact to the clipboard during a pilot run.
+#[tokio::test]
+async fn reviewer_shell_receipt_json_copy_button_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("receipt-json-actions"),
+        "receipt-json-actions container id must be present"
+    );
+    assert!(
+        html.contains("copyReceiptJson"),
+        "copyReceiptJson JS function must be present"
+    );
+}
+
+/// Reviewer shell HTML must expose a "Copy artifact" button for the verification
+/// result panel so an operator can copy the verification JSON during review.
+#[tokio::test]
+async fn reviewer_shell_verify_json_copy_button_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("verify-json-actions"),
+        "verify-json-actions container id must be present"
+    );
+    assert!(
+        html.contains("copyVerifyJson"),
+        "copyVerifyJson JS function must be present"
+    );
+}
+
+/// Reviewer shell HTML must expose a "Copy artifact" button for the route error
+/// panel so an operator can copy the error JSON for triage.
+#[tokio::test]
+async fn reviewer_shell_route_error_copy_button_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("route-error-json-actions"),
+        "route-error-json-actions container id must be present"
+    );
+    assert!(
+        html.contains("copyRouteErrorJson"),
+        "copyRouteErrorJson JS function must be present"
+    );
+}
+
+/// Reviewer shell HTML must contain "Copy artifact" button text so the action
+/// is consistently labelled across all artifact panels.
+#[tokio::test]
+async fn reviewer_shell_copy_artifact_label_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Copy artifact"),
+        "Copy artifact button text must appear in the reviewer shell"
+    );
+}
+
+/// Reviewer shell HTML must contain the verify-artifact-note element with the
+/// expected empty-state text for the verification artifact.
+#[tokio::test]
+async fn reviewer_shell_verify_artifact_note_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("verify-artifact-note"),
+        "verify-artifact-note element id must be present"
+    );
+    assert!(
+        html.contains("Artifact not yet generated"),
+        "Artifact not yet generated empty-state text must be present"
+    );
+}
+
 // ── Artifact export/discovery tests ──────────────────────────────────────────
 
 /// Reviewer shell HTML must contain the artifact guide panel with all four

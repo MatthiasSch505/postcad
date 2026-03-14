@@ -552,9 +552,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— verification source of truth · inspect before dispatch</span>
         </div>
         <pre class="result result-ok" id="route-receipt-json"></pre>
+        <div id="receipt-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem;margin-bottom:.35rem">
+          <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyReceiptJson(this)">Copy artifact</button>
+        </div>
 
         <!-- D. Button labels -->
-        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">Artifact not yet generated. Run route to create.</div>
+        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">Artifact not yet generated.</div>
         <button class="btn btn-verify" id="btn-verify" onclick="verifyReceipt(this)" disabled>
           ↩ Replay Verification
         </button>
@@ -633,6 +636,9 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           The kernel returned an explicit refusal with a reason code. Review the error below, correct the inputs, and resubmit. If the case genuinely does not meet routing criteria, refusal is the correct and expected outcome — not an error.
         </div>
         <pre class="result result-err" id="route-error-json"></pre>
+        <div id="route-error-json-actions" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
+          <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyRouteErrorJson(this)">Copy artifact</button>
+        </div>
       </div>
 
       <!-- F. Verify result (normal) -->
@@ -641,6 +647,9 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span></div>
           <div id="verify-banner"></div>
           <pre class="result" id="verify-json"></pre>
+          <div id="verify-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
+            <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyVerifyJson(this)">Copy artifact</button>
+          </div>
         </div>
       </div>
 
@@ -751,6 +760,7 @@ async function routeCase(btn) {
   if (_chb) _chb.classList.add('hidden');
   const _dic = document.getElementById('art-dispatch-id-copy');
   if (_dic) _dic.classList.add('hidden');
+  hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
   hide('dispatch-export-actions');
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
@@ -786,6 +796,8 @@ async function routeCase(btn) {
       document.getElementById('route-receipt-json').textContent = fmt(rc);
       const copyHashBtn = document.getElementById('art-hash-copy');
       if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
+      show('receipt-json-actions');
+      show('verify-artifact-note');
 
       show('route-result');
       document.getElementById('btn-verify').disabled          = false;
@@ -847,6 +859,7 @@ async function routeNormalized(btn) {
   if (_chb) _chb.classList.add('hidden');
   const _dic = document.getElementById('art-dispatch-id-copy');
   if (_dic) _dic.classList.add('hidden');
+  hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
   hide('dispatch-export-actions');
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
@@ -918,6 +931,8 @@ async function routeNormalized(btn) {
       document.getElementById('route-receipt-json').textContent = fmt(rc);
       const copyHashBtn = document.getElementById('art-hash-copy');
       if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
+      show('receipt-json-actions');
+      show('verify-artifact-note');
 
       show('route-result');
       document.getElementById('btn-verify').disabled          = false;
@@ -1097,11 +1112,13 @@ function showVerifyResult(isVerified, data, kind) {
 
   if (kind === 'Replay Verification') {
     updateOpState(null, null, isVerified ? 'verified' : 'failed', null);
+    hide('verify-artifact-note');
   }
   const pre = document.getElementById('verify-json');
   pre.className = 'result ' + (isVerified ? 'result-ok' : 'result-err');
   pre.textContent = fmt(data);
   show('verify-result');
+  show('verify-json-actions');
   document.getElementById('verify-result').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
@@ -1272,6 +1289,37 @@ function copyArtHashVal(btn) {
     btn.textContent = 'Failed'; btn.style.color = '#f85149';
   });
   setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
+}
+
+// ── Artifact panel copy ────────────────────────────────────────────────────
+function copyReceiptJson(btn) {
+  if (!lastReceipt) return;
+  navigator.clipboard.writeText(fmt(lastReceipt)).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
+  }).catch(() => {
+    btn.textContent = 'Failed'; btn.style.color = '#f85149';
+  });
+  setTimeout(() => { btn.textContent = 'Copy artifact'; btn.style.color = ''; }, 1500);
+}
+function copyVerifyJson(btn) {
+  const pre = document.getElementById('verify-json');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
+  }).catch(() => {
+    btn.textContent = 'Failed'; btn.style.color = '#f85149';
+  });
+  setTimeout(() => { btn.textContent = 'Copy artifact'; btn.style.color = ''; }, 1500);
+}
+function copyRouteErrorJson(btn) {
+  const pre = document.getElementById('route-error-json');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
+  }).catch(() => {
+    btn.textContent = 'Failed'; btn.style.color = '#f85149';
+  });
+  setTimeout(() => { btn.textContent = 'Copy artifact'; btn.style.color = ''; }, 1500);
 }
 
 // ── Operator state block ───────────────────────────────────────────────────

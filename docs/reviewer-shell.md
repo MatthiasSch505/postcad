@@ -75,7 +75,7 @@ Review the receipt artifact summary:
 | Receipt Hash | **Verification source of truth.** Deterministic — same inputs always produce the same hash. Copy it for reference before verifying. |
 | Kernel Version | Records the exact kernel version used |
 
-The full receipt JSON is shown below the summary. This is the artifact to inspect before proceeding.
+The full receipt JSON is shown below the summary. This is the artifact to inspect before proceeding. Use the **Copy artifact** button below the receipt JSON to copy it to the clipboard for use in external tools or documentation.
 
 If the routing decision looks wrong, stop here. Do not proceed to verification or dispatch.
 

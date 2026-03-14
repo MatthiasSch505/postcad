@@ -1350,6 +1350,94 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Dispatch blocker list tests ───────────────────────────────────────────────
+
+/// Reviewer shell must contain the dispatch blocker list panel so an operator
+/// can see why dispatch is not yet exportable in a single glance.
+#[tokio::test]
+async fn reviewer_shell_dispatch_blocker_list_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"dbl\""),      "dbl container id must be present");
+    assert!(html.contains("id=\"dbl-body\""), "dbl-body id must be present");
+    assert!(html.contains("Dispatch blockers"), "Dispatch blockers label must be present");
+}
+
+/// Blocker list must default to the route-missing blocker on initial load so a
+/// fresh session immediately tells the operator the first required step.
+#[tokio::test]
+async fn reviewer_shell_dispatch_blocker_list_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No current route result — run routing first."),
+        "initial blocker must say 'No current route result — run routing first.'"
+    );
+}
+
+/// All blocker text strings and state lines must be present in the JS source so
+/// every dispatch-path state resolves to a deterministic one-line explanation.
+#[tokio::test]
+async fn reviewer_shell_dispatch_blocker_list_all_texts_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("No current route result — run routing first."),
+        "route-missing blocker text must be present");
+    assert!(html.contains("Verification not yet executed for current run."),
+        "verify-pending blocker text must be present");
+    assert!(html.contains("Verification result does not satisfy dispatch readiness."),
+        "verify-failed blocker text must be present");
+    assert!(html.contains("No current blockers — dispatch export is available."),
+        "no-blockers ready text must be present");
+    assert!(html.contains("Dispatch already exported for current run."),
+        "dispatch-completed text must be present");
+}
+
+/// CSS classes for all blocker list states must be defined.
+#[tokio::test]
+async fn reviewer_shell_dispatch_blocker_list_css_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("dbl-item-blocked"), "dbl-item-blocked CSS class must be defined");
+    assert!(html.contains("dbl-clear"),        "dbl-clear CSS class must be defined");
+    assert!(html.contains("dbl-done"),         "dbl-done CSS class must be defined");
+}
+
+/// Blocker list JS functions must be present so the panel derives state only
+/// from existing reviewer signals without new persisted state.
+#[tokio::test]
+async fn reviewer_shell_dispatch_blocker_list_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("dispatchBlockers"),       "dispatchBlockers JS function must be present");
+    assert!(html.contains("updateDispatchBlockers"), "updateDispatchBlockers JS function must be present");
+    assert!(html.contains("dblNavigate"),            "dblNavigate JS function must be present");
+}
+
+/// updateDispatchBlockers must be wired into updateOpState so blockers reset on
+/// reroute and clear when dispatch export completes.
+#[tokio::test]
+async fn reviewer_shell_dispatch_blocker_list_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateDispatchBlockers()"),
+        "updateDispatchBlockers() call must appear in updateOpState and exportDispatch"
+    );
+}
+
 // ── Artifact freshness marker tests ──────────────────────────────────────────
 
 /// Reviewer shell must contain freshness marker elements for all three artifact

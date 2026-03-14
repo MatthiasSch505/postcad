@@ -275,6 +275,21 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── dispatch blocker list ── */
+.dbl{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.45rem .75rem;margin-top:.4rem;margin-bottom:.5rem}
+.dbl-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.22rem}
+.dbl-item{font-size:.68rem;display:flex;align-items:baseline;gap:.4rem;
+          padding:.1rem 0;line-height:1.45}
+.dbl-item-blocked{color:#d29922}
+.dbl-item-bullet{color:#d29922;flex-shrink:0}
+.dbl-clear{font-size:.68rem;color:#3fb950;line-height:1.45}
+.dbl-done {font-size:.68rem;color:#58a6ff;line-height:1.45}
+.dbl-anchor{font-size:.62rem;color:#58a6ff;background:none;border:none;
+            font-family:inherit;padding:0;cursor:pointer;
+            text-decoration:underline;text-underline-offset:2px;margin-left:.3rem}
+.dbl-anchor:hover{color:#79c0ff}
 /* ── artifact freshness markers ── */
 .fm{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
     font-weight:700;vertical-align:middle;margin-left:.2rem;letter-spacing:.03em;
@@ -846,6 +861,14 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
               <div id="cl-receipt"  class="cl-item cl-pending">◻ Receipt reviewed</div>
               <div id="cl-verify"   class="cl-item cl-pending">◻ Verification succeeded</div>
               <div id="cl-dispatch" class="cl-item cl-pending">◻ Dispatch action confirmed</div>
+            </div>
+          </div>
+
+          <!-- Dispatch blocker list -->
+          <div id="dbl" class="dbl">
+            <div class="dbl-label">Dispatch blockers</div>
+            <div id="dbl-body">
+              <div class="dbl-item dbl-item-blocked"><span class="dbl-item-bullet">▸</span><span>No current route result — run routing first.</span></div>
             </div>
           </div>
 
@@ -1526,6 +1549,7 @@ async function exportDispatch(btn) {
       lastExportPacket = data;
       updateIntegrityBadges();
       updateDispatchReadiness();
+      updateDispatchBlockers();
       updateMicrobadges();
       updateFreshnessMarkers();
       updateRunTimeline();
@@ -1700,6 +1724,55 @@ function updateDispatchReadiness() {
   }
 }
 
+// ── Dispatch blocker list ─────────────────────────────────────────────────
+function dispatchBlockers() {
+  const items = [];
+  if (opRouting !== 'available') {
+    items.push({text:'No current route result — run routing first.',
+                anchor:{label:'Go to routing', target:'norm-input-section'}});
+  } else {
+    if (opVerify === 'not-run') {
+      items.push({text:'Verification not yet executed for current run.',
+                  anchor:{label:'Go to verification', target:'btn-verify'}});
+    }
+    if (opVerify === 'failed') {
+      items.push({text:'Verification result does not satisfy dispatch readiness.',
+                  anchor:{label:'Review readiness', target:'dispatch-readiness-panel'}});
+    }
+  }
+  return items;
+}
+function updateDispatchBlockers() {
+  const body = document.getElementById('dbl-body');
+  if (!body) return;
+  if (lastExportPacket) {
+    body.innerHTML = '<div class="dbl-done">Dispatch already exported for current run.</div>';
+    return;
+  }
+  const items = dispatchBlockers();
+  if (items.length === 0) {
+    body.innerHTML = '<div class="dbl-clear">No current blockers — dispatch export is available.</div>';
+    return;
+  }
+  body.innerHTML = items.map(b =>
+    '<div class="dbl-item dbl-item-blocked">'
+    + '<span class="dbl-item-bullet">▸</span>'
+    + '<span>' + esc(b.text)
+    + (b.anchor
+        ? ' <button class="dbl-anchor" onclick="dblNavigate('
+          + JSON.stringify(b.anchor.target) + ')">'
+          + esc(b.anchor.label) + '</button>'
+        : '')
+    + '</span></div>'
+  ).join('');
+}
+function dblNavigate(target) {
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  if (typeof el.focus === 'function') el.focus({preventScroll:true});
+}
+
 // ── Operator state block ───────────────────────────────────────────────────
 function updateOpState(routing, receipt, verify, dispatch) {
   const MAP = {
@@ -1728,6 +1801,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   if (dsn) dsn.classList.toggle('hidden', !(opRouting === 'available' && !lastExportPacket));
   updateIntegrityBadges();
   updateDispatchReadiness();
+  updateDispatchBlockers();
   updateActiveRunContext();
   updateNextActionRail();
   updateHandoffNote();

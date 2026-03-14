@@ -3349,6 +3349,134 @@ async fn reviewer_shell_cpw_status_labels_present() {
     assert!(html.contains("cpwStepStatus"),     "cpwStepStatus function must be present");
 }
 
+// ── Current-run artifact bundle panel tests ───────────────────────────────────
+
+/// Reviewer shell HTML must expose the Current-Run Artifact Bundle panel so
+/// the operator can see the shareable artifact set for the active run.
+#[tokio::test]
+async fn reviewer_shell_cab_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"cab\""),
+        "cab panel id must be present in HTML"
+    );
+    assert!(
+        html.contains("Current-Run Artifact Bundle"),
+        "panel must be labelled 'Current-Run Artifact Bundle'"
+    );
+    assert!(
+        html.contains("id=\"cab-verdict\""),
+        "cab-verdict element id must be present"
+    );
+}
+
+/// The artifact bundle panel must default to 'No current bundle' at initial
+/// load so the operator sees an explicit empty state before routing starts.
+#[tokio::test]
+async fn reviewer_shell_cab_initial_no_bundle() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No current bundle"),
+        "initial verdict must read 'No current bundle'"
+    );
+    assert!(
+        html.contains("Generate a route to start the current-run bundle"),
+        "initial next-action must prompt route generation"
+    );
+}
+
+/// The artifact bundle panel must carry ready-state wording so the operator
+/// can recognise when all bundle artifacts are present and current.
+#[tokio::test]
+async fn reviewer_shell_cab_ready_wording_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Current bundle ready for review"),
+        "ready verdict wording must be present in JS"
+    );
+    assert!(
+        html.contains("Current-run bundle ready"),
+        "ready next-action wording must be present"
+    );
+}
+
+/// The artifact bundle panel must carry attention wording for verification
+/// failure so that a failed verify cannot produce a ready bundle verdict.
+#[tokio::test]
+async fn reviewer_shell_cab_verify_failure_attention_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Current bundle requires attention"),
+        "attention verdict wording must be present"
+    );
+    assert!(
+        html.contains("Resolve failed verification before completing the bundle"),
+        "verify-failure next-action wording must be present"
+    );
+}
+
+/// The artifact bundle panel must carry attention wording for reproducibility
+/// mismatch so that a mismatch cannot produce a ready bundle verdict.
+#[tokio::test]
+async fn reviewer_shell_cab_repro_mismatch_attention_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Reproducibility mismatch"),
+        "repro-mismatch attention wording must be present in cab"
+    );
+}
+
+/// The artifact bundle panel must carry reroute-detected attention wording so
+/// a prior ready bundle is visibly invalidated when the route changes.
+#[tokio::test]
+async fn reviewer_shell_cab_reroute_downgrade_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Reroute detected"),
+        "reroute downgrade wording must be present in cab"
+    );
+    assert!(
+        html.contains("rebuild current-run bundle"),
+        "rebuild bundle wording must be present"
+    );
+}
+
+/// The artifact bundle panel must carry previous-run artifact wording so the
+/// operator can see that stale artifacts do not belong to the current bundle.
+#[tokio::test]
+async fn reviewer_shell_cab_previous_run_artifact_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("previous run"),
+        "previous-run artifact wording must be present in cab artifact rows"
+    );
+    assert!(
+        html.contains("updateArtifactBundle"),
+        "updateArtifactBundle function must be present and wired"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

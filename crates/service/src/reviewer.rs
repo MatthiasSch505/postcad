@@ -663,6 +663,30 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
 .cpw-s-blocked    {color:#30363d}
 .cpw-s-not-started{color:#484f58}
 .cpw-s-warn       {color:#f85149}
+/* ── current-run artifact bundle ── */
+.cab{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-bottom:.4rem}
+.cab-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.28rem}
+.cab-verdict{font-size:.8rem;font-weight:700;margin-bottom:.12rem}
+.cab-verdict-none       {color:#484f58}
+.cab-verdict-incomplete {color:#d29922}
+.cab-verdict-ready      {color:#3fb950}
+.cab-verdict-attention  {color:#f85149}
+.cab-meaning{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.28rem}
+.cab-artifacts{margin-bottom:.22rem}
+.cab-row{display:flex;align-items:baseline;gap:.5rem;font-size:.67rem;
+         color:#c9d1d9;line-height:1.5;padding:.04rem 0}
+.cab-key{color:#6e7681;min-width:7rem;flex-shrink:0;font-size:.63rem;
+         text-transform:uppercase;letter-spacing:.04em}
+.cab-val-current{color:#3fb950;font-weight:700}
+.cab-val-missing{color:#484f58}
+.cab-val-prev   {color:#d29922;font-weight:700}
+.cab-val-failed {color:#f85149;font-weight:700}
+.cab-next{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
+          border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
+.cab-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+                letter-spacing:.07em;display:block;margin-bottom:.06rem}
 </style>
 </head>
 <body>
@@ -997,6 +1021,18 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="phs-action">
           <span class="phs-action-label">Required action</span>
           <span id="phs-action-text">Complete the current run before pilot handoff.</span>
+        </div>
+      </div>
+
+      <!-- Current-run artifact bundle panel -->
+      <div id="cab" class="cab">
+        <div class="cab-label">Current-Run Artifact Bundle</div>
+        <div id="cab-verdict" class="cab-verdict cab-verdict-none">No current bundle</div>
+        <div id="cab-meaning" class="cab-meaning">This panel shows the artifact set belonging to the active run. Previous-run artifacts do not belong to the current bundle.</div>
+        <div id="cab-artifacts" class="cab-artifacts"></div>
+        <div class="cab-next">
+          <span class="cab-next-label">Next action</span>
+          <span id="cab-next-text">Generate a route to start the current-run bundle.</span>
         </div>
       </div>
 
@@ -2007,6 +2043,7 @@ async function exportDispatch(btn) {
       updateDossier();
       updateDryRunPanel();
       updatePilotHandoffSummary();
+      updateArtifactBundle();
       updateCanonicalWorkflow();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
@@ -2401,6 +2438,115 @@ function updateLineageNotes() {
   if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
 }
 
+// ── Current-run artifact bundle ────────────────────────────────────────────
+function cabVerdictKey() {
+  if (runSerial === 0) return 'none';
+  const vlin = verifyLineage();
+  const dlin = dispatchLineage();
+  if (opRouting === 'failed') return 'attention';
+  if (vlin === 'prev' || dlin === 'prev') return 'attention';
+  if (vlin === 'current' && opVerify === 'failed') return 'attention';
+  if (reproStatus === 'mismatch') return 'attention';
+  if (opRouting === 'available' && opReceipt === 'available' &&
+      vlin === 'current' && opVerify === 'verified' &&
+      dlin === 'current' && reproStatus === 'reproducible') {
+    return 'ready';
+  }
+  return 'incomplete';
+}
+const CAB_VERDICTS = {
+  'none':       {cls:'cab-verdict-none',       text:'No current bundle'},
+  'incomplete': {cls:'cab-verdict-incomplete', text:'Current bundle incomplete'},
+  'ready':      {cls:'cab-verdict-ready',      text:'Current bundle ready for review'},
+  'attention':  {cls:'cab-verdict-attention',  text:'Current bundle requires attention'},
+};
+const CAB_MEANINGS = {
+  'none':       'No route has been generated. Generate a route to begin building the current-run artifact bundle.',
+  'incomplete': 'The current-run artifact bundle is not yet complete. Some artifacts are missing or not yet generated for this run.',
+  'ready':      'All artifacts are present and belong to the current run. This bundle is suitable for external sharing or pilot review.',
+  'attention':  'One or more artifacts are missing, failed, or belong to a previous run. Previous-run artifacts do not belong to the current bundle.',
+};
+function cabNextAction(key) {
+  if (key === 'none') return 'Generate a route to start the current-run bundle.';
+  if (key === 'ready') return 'Current-run bundle ready \u2014 all artifacts present and current.';
+  if (key === 'attention') {
+    if (opRouting === 'failed') return 'Route generation failed \u2014 re-submit for review.';
+    const vlin = verifyLineage();
+    const dlin = dispatchLineage();
+    if (vlin === 'prev' || dlin === 'prev')
+      return 'Reroute detected \u2014 rebuild current-run bundle for the new route.';
+    if (vlin === 'current' && opVerify === 'failed')
+      return 'Resolve failed verification before completing the bundle.';
+    if (reproStatus === 'mismatch')
+      return 'Reproducibility mismatch \u2014 review routing determinism.';
+    return 'Resolve current run issues to complete the bundle.';
+  }
+  if (opRouting !== 'available') return 'Generate a route to start the current-run bundle.';
+  const vlin = verifyLineage();
+  if (vlin !== 'current') return 'Run verification for current route.';
+  if (opVerify !== 'verified') return 'Resolve verification before completing the bundle.';
+  if (dispatchLineage() !== 'current') return 'Export dispatch packet for current route.';
+  if (reproStatus !== 'reproducible') return 'Execute reproducibility check for current route.';
+  return 'All bundle artifacts present.';
+}
+function cabArtRow(key, cls, label) {
+  return '<div class="cab-row"><span class="cab-key">' + esc(key) + '</span>'
+       + '<span class="' + cls + '">' + esc(label) + '</span></div>';
+}
+function updateArtifactBundle() {
+  const verdict  = document.getElementById('cab-verdict');
+  const meaning  = document.getElementById('cab-meaning');
+  const arts     = document.getElementById('cab-artifacts');
+  const nextText = document.getElementById('cab-next-text');
+  if (!verdict) return;
+  const vkey = cabVerdictKey();
+  const conf = CAB_VERDICTS[vkey];
+  verdict.className   = 'cab-verdict ' + conf.cls;
+  verdict.textContent = conf.text;
+  if (meaning)  meaning.textContent  = CAB_MEANINGS[vkey];
+  if (nextText) nextText.textContent = cabNextAction(vkey);
+  if (arts) {
+    const vlin = verifyLineage();
+    const dlin = dispatchLineage();
+    let h = '';
+    // Route artifact
+    if (opRouting === 'available')
+      h += cabArtRow('Route',          'cab-val-current', 'present \u2014 current run');
+    else if (opRouting === 'failed')
+      h += cabArtRow('Route',          'cab-val-failed',  'failed');
+    else
+      h += cabArtRow('Route',          'cab-val-missing', 'not generated');
+    // Receipt artifact
+    h += cabArtRow('Receipt',
+      opReceipt === 'available' ? 'cab-val-current' : 'cab-val-missing',
+      opReceipt === 'available' ? 'present \u2014 current run' : 'not generated');
+    // Verification result
+    if (vlin === 'current' && opVerify === 'verified')
+      h += cabArtRow('Verification',   'cab-val-current', 'passed \u2014 current run');
+    else if (vlin === 'current' && opVerify === 'failed')
+      h += cabArtRow('Verification',   'cab-val-failed',  'failed \u2014 current run');
+    else if (vlin === 'prev')
+      h += cabArtRow('Verification',   'cab-val-prev',    'present \u2014 previous run');
+    else
+      h += cabArtRow('Verification',   'cab-val-missing', 'not executed');
+    // Dispatch packet
+    if (dlin === 'current')
+      h += cabArtRow('Dispatch packet','cab-val-current', 'present \u2014 current run');
+    else if (dlin === 'prev')
+      h += cabArtRow('Dispatch packet','cab-val-prev',    'present \u2014 previous run');
+    else
+      h += cabArtRow('Dispatch packet','cab-val-missing', 'not exported');
+    // Reproducibility result
+    if (reproStatus === 'reproducible')
+      h += cabArtRow('Repro result',   'cab-val-current', 'passed \u2014 current run');
+    else if (reproStatus === 'mismatch')
+      h += cabArtRow('Repro result',   'cab-val-failed',  'mismatch \u2014 current run');
+    else
+      h += cabArtRow('Repro result',   'cab-val-missing', 'not executed');
+    arts.innerHTML = h;
+  }
+}
+
 // ── Canonical pilot workflow ───────────────────────────────────────────────
 function cpwStepStatus(step) {
   const vlin = verifyLineage();
@@ -2712,6 +2858,7 @@ async function runReproCheck(btn) {
     updateReproPanel();
     updateDryRunPanel();
     updatePilotHandoffSummary();
+    updateArtifactBundle();
     updateCanonicalWorkflow();
   }
 }
@@ -2776,6 +2923,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateReproPanel();
   updateDryRunPanel();
   updatePilotHandoffSummary();
+  updateArtifactBundle();
   updateCanonicalWorkflow();
 }
 

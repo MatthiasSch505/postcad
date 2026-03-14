@@ -275,6 +275,18 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── consistency sentinel ── */
+.ccs{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.45rem .75rem;margin-bottom:.5rem}
+.ccs-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.2rem}
+.ccs-headline{font-size:.72rem;font-weight:700;margin-bottom:.1rem}
+.ccs-detail{font-size:.65rem;line-height:1.4}
+.ccs-mismatch{color:#d29922;padding:.04rem 0}
+.ccs-consistent{border-left:3px solid #2ea04355}
+.ccs-consistent .ccs-headline{color:#3fb950}
+.ccs-attention {border-left:3px solid #d29922}
+.ccs-attention  .ccs-headline{color:#d29922}
 /* ── handoff summary card ── */
 .hsc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
      padding:.55rem .8rem;margin-bottom:.5rem}
@@ -800,6 +812,13 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           <div id="hsc-artifacts"></div>
         </div>
         <div id="hsc-summary" class="hsc-summary-line">Current run requires routing before dispatch.</div>
+      </div>
+
+      <!-- Current-run consistency sentinel — always visible -->
+      <div id="ccs" class="ccs ccs-consistent">
+        <div class="ccs-label">Current run consistency</div>
+        <div id="ccs-headline" class="ccs-headline">Current run shell state is consistent</div>
+        <div id="ccs-detail" class="ccs-detail"><span style="color:#484f58;font-size:.65rem">Visible workflow indicators agree for the current run.</span></div>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1693,6 +1712,7 @@ async function exportDispatch(btn) {
       updateCompletionChecklist();
       updatePreflightCard();
       updateHandoffSummary();
+      updateConsistencySentinel();
       updateActiveSectionEmphasis();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
@@ -1952,6 +1972,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateCompletionChecklist();
   updatePreflightCard();
   updateHandoffSummary();
+  updateConsistencySentinel();
   updateActiveSectionEmphasis();
 }
 
@@ -2435,6 +2456,55 @@ function updateHandoffSummary() {
     'complete': 'Current run handoff is complete.',
   };
   sumEl.textContent = summaryLines[vk] || summaryLines['not-ready'];
+}
+
+// ── Consistency sentinel ──────────────────────────────────────────────────
+function gatherConsistencyMismatches() {
+  const mismatches = [];
+  const verifyDone = opVerify !== 'not-run';
+  const exported   = !!lastExportPacket;
+  const routeOk    = opRouting === 'available';
+  const receiptOk  = opReceipt === 'available';
+  const verifyOk   = opVerify  === 'verified';
+  const vk         = pfcVerdictKey();
+  // Rule 1: verification present → route must be present
+  if (verifyDone && !routeOk)
+    mismatches.push('Verification marked present but route artifact missing.');
+  // Rule 2: dispatch present → verification must be present
+  if (exported && !verifyOk)
+    mismatches.push('Dispatch artifact shown without current-run verification.');
+  // Rule 3: dispatch present → receipt must be present
+  if (exported && !receiptOk)
+    mismatches.push('Dispatch artifact shown without current-run receipt.');
+  // Rule 4: complete verdict → dispatch must be present
+  if (vk === 'complete' && !exported)
+    mismatches.push('Complete verdict shown without current-run dispatch export.');
+  // Rule 5: ready verdict → verification must be present
+  if (vk === 'ready' && !verifyOk)
+    mismatches.push('Ready verdict shown but verification not present.');
+  // Rule 6: ready verdict → dispatch must not be present
+  if (vk === 'ready' && exported)
+    mismatches.push('Ready verdict shown but dispatch export already exists.');
+  return mismatches;
+}
+function updateConsistencySentinel() {
+  const card     = document.getElementById('ccs');
+  const headline = document.getElementById('ccs-headline');
+  const detail   = document.getElementById('ccs-detail');
+  if (!card || !headline || !detail) return;
+  const mismatches = gatherConsistencyMismatches();
+  if (mismatches.length === 0) {
+    card.className       = 'ccs ccs-consistent';
+    headline.textContent = 'Current run shell state is consistent';
+    detail.innerHTML     = '<span style="color:#484f58;font-size:.65rem">'
+      + 'Visible workflow indicators agree for the current run.</span>';
+  } else {
+    card.className       = 'ccs ccs-attention';
+    headline.textContent = 'Current run shell state needs attention';
+    detail.innerHTML     = mismatches.map(m =>
+      '<div class="ccs-mismatch">▸ ' + esc(m) + '</div>'
+    ).join('');
+  }
 }
 
 // ── Active section emphasis ───────────────────────────────────────────────

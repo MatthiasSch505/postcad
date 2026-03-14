@@ -1350,6 +1350,105 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Consistency sentinel tests ────────────────────────────────────────────────
+
+/// Reviewer shell must contain the consistency sentinel card so the operator
+/// can see at a glance whether all visible current-run indicators agree.
+#[tokio::test]
+async fn reviewer_shell_consistency_sentinel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"ccs\""),          "ccs container must be present");
+    assert!(html.contains("id=\"ccs-headline\""), "ccs-headline must be present");
+    assert!(html.contains("id=\"ccs-detail\""),   "ccs-detail must be present");
+    assert!(html.contains("Current run consistency"), "sentinel label must be present");
+}
+
+/// Sentinel must default to the consistent state on initial load so a fresh
+/// session never shows a spurious attention-needed indicator.
+#[tokio::test]
+async fn reviewer_shell_consistency_sentinel_initial_consistent() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("ccs-consistent"),
+        "initial sentinel CSS state must be ccs-consistent"
+    );
+    assert!(
+        html.contains("Current run shell state is consistent"),
+        "initial headline must say 'Current run shell state is consistent'"
+    );
+    assert!(
+        html.contains("Visible workflow indicators agree for the current run."),
+        "initial detail must confirm all indicators agree"
+    );
+}
+
+/// All mismatch message strings must be present in the JS source so every
+/// detectable shell-level inconsistency produces a deterministic plain-text line.
+#[tokio::test]
+async fn reviewer_shell_consistency_sentinel_all_mismatch_strings_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Verification marked present but route artifact missing."),
+        "rule-1 mismatch string must be present");
+    assert!(html.contains("Dispatch artifact shown without current-run verification."),
+        "rule-2 mismatch string must be present");
+    assert!(html.contains("Dispatch artifact shown without current-run receipt."),
+        "rule-3 mismatch string must be present");
+    assert!(html.contains("Complete verdict shown without current-run dispatch export."),
+        "rule-4 mismatch string must be present");
+    assert!(html.contains("Ready verdict shown but verification not present."),
+        "rule-5 mismatch string must be present");
+    assert!(html.contains("Ready verdict shown but dispatch export already exists."),
+        "rule-6 mismatch string must be present");
+}
+
+/// CSS classes for both sentinel states must be defined so the card always has
+/// a clear visual distinction between consistent and attention-needed states.
+#[tokio::test]
+async fn reviewer_shell_consistency_sentinel_css_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("ccs-consistent"), "ccs-consistent CSS class must be defined");
+    assert!(html.contains("ccs-attention"),  "ccs-attention CSS class must be defined");
+    assert!(html.contains("ccs-mismatch"),   "ccs-mismatch CSS class must be defined");
+}
+
+/// Sentinel JS functions must be present so checks are derived only from
+/// existing reviewer signals without any new persisted state.
+#[tokio::test]
+async fn reviewer_shell_consistency_sentinel_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("gatherConsistencyMismatches"),  "gatherConsistencyMismatches JS function must be present");
+    assert!(html.contains("updateConsistencySentinel"),    "updateConsistencySentinel JS function must be present");
+}
+
+/// updateConsistencySentinel must be wired into updateOpState and exportDispatch
+/// so the sentinel re-evaluates on every state transition including reroute.
+#[tokio::test]
+async fn reviewer_shell_consistency_sentinel_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateConsistencySentinel()"),
+        "updateConsistencySentinel() call must appear in updateOpState and exportDispatch"
+    );
+}
+
 // ── Handoff summary card tests ────────────────────────────────────────────────
 
 /// Reviewer shell must contain a print handoff summary control so an operator

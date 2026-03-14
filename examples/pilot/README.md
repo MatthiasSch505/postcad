@@ -337,6 +337,91 @@ This reads the bundle and writes `lab_response.json` bound to the exact run
 
 ---
 
+## Operator Intake Triage
+
+For batch processing of inbound lab response artifacts, use the `--batch-inbound`
+mode. This acts as an operator inbox: classify every artifact in a drop directory
+in one deterministic run.
+
+### Batch triage roundtrip
+
+**Step 1 — Export a run bundle**
+
+```bash
+./examples/pilot/package_run.sh
+```
+
+**Step 2 — Populate an inbound directory**
+
+Drop lab response artifacts (e.g. from `lab_simulator.sh`) into an `inbound/` directory:
+
+```bash
+./examples/pilot/lab_simulator.sh pilot_bundle inbound/response_a.json
+# copy other responses into inbound/ as needed
+```
+
+**Step 3 — Run intake triage**
+
+```bash
+./examples/pilot/verify.sh --batch-inbound inbound/ --bundle pilot_bundle
+```
+
+With a written report:
+
+```bash
+./examples/pilot/verify.sh --batch-inbound inbound/ --bundle pilot_bundle \
+  --report reports/intake_report.txt
+```
+
+**Expected output:**
+
+```
+  accepted        response_a.json
+                  Reason  : receipt_hash matches current run
+                  Hash    : 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+
+  mismatch        response_b.json
+                  Reason  : receipt_hash does not match current run
+                  Hash    : 0000000000000000000000000000000000000000000000000000000000000000
+
+  malformed       response_c.json
+                  Reason  : missing required field: receipt_hash
+
+  duplicate       response_dup.json
+                  Reason  : receipt_hash already accepted in this batch
+
+  ────────────────────────────────────────
+  Intake Summary
+
+  Total processed:     4
+  Accepted:            1
+  Mismatched:          1
+  Malformed:           1
+  Unverifiable:        0
+  Duplicate:           1
+```
+
+### Batch triage classifications
+
+| Classification | Meaning |
+|---|---|
+| `accepted` | Receipt hash matches current run |
+| `mismatch` | Receipt hash or dispatch ID belongs to a different run |
+| `malformed` | Missing required field (`receipt_hash`) |
+| `unverifiable` | File is not valid JSON |
+| `duplicate` | Identical receipt hash already accepted in this batch |
+
+### Inbound test fixtures
+
+| File | Description |
+|---|---|
+| `testdata/inbound/response_a.json` | Accepted — matches locked receipt hash |
+| `testdata/inbound/response_b.json` | Mismatch — wrong receipt hash |
+| `testdata/inbound/response_c.json` | Malformed — missing receipt_hash |
+| `testdata/inbound/response_dup.json` | Duplicate — same hash as response_a |
+
+---
+
 ## Smoke Test
 
 ```bash

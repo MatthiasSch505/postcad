@@ -262,6 +262,81 @@ Generated bundles are excluded from version control via `.gitignore`.
 
 ---
 
+## Inbound Lab Response Verification
+
+After exporting a run bundle, operators can simulate a lab response and verify
+it belongs to the exact current run.
+
+### Roundtrip
+
+**Step 1 — Export a run bundle**
+
+Complete the full pilot run (route → verify → export → reproducibility check), then:
+
+```bash
+./examples/pilot/package_run.sh
+```
+
+**Step 2 — Simulate a lab response**
+
+```bash
+./examples/pilot/lab_simulator.sh pilot_bundle lab_response.json
+```
+
+This reads the bundle and writes `lab_response.json` bound to the exact run
+(receipt_hash, dispatch_id, case_id).
+
+**Step 3 — Verify the inbound response**
+
+```bash
+./examples/pilot/verify.sh --inbound lab_response.json --bundle pilot_bundle
+```
+
+**Expected success output:**
+
+```
+  response verified for current run
+
+  Receipt hash : 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+  Case ID      : f1000001-0000-0000-0000-000000000001
+  Dispatch ID  : <dispatch_id>
+```
+
+**Expected failure output (stale or mismatched response):**
+
+```
+  response belongs to different run
+
+  Receipt hash mismatch:
+    bundle   : 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+    response : 0000000000000000000000000000000000000000000000000000000000000000
+```
+
+### Verification outcomes
+
+| Outcome | Meaning |
+|---|---|
+| `response verified for current run` | Receipt hash matches — response belongs to this run |
+| `response belongs to different run` | Receipt hash or dispatch ID mismatch |
+| `response missing required artifact/field` | `receipt_hash` field absent from lab response |
+| `response cannot be verified` | File missing, not valid JSON, or no bundle receipt |
+
+### Using a specific bundle directory
+
+```bash
+./examples/pilot/verify.sh --inbound lab_response.json --bundle /path/to/bundle
+```
+
+### Test fixtures
+
+| File | Description |
+|---|---|
+| `testdata/lab_response_valid.json` | Valid response — matches locked pilot receipt hash |
+| `testdata/lab_response_stale.json` | Stale response — different receipt hash |
+| `testdata/lab_response_malformed.json` | Malformed response — missing receipt_hash field |
+
+---
+
 ## Smoke Test
 
 ```bash

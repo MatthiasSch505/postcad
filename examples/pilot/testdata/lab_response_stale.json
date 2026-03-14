@@ -1,0 +1,10 @@
+{
+  "lab_response_schema": "1",
+  "receipt_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "dispatch_id": "00000000-0000-0000-0000-000000000000",
+  "case_id": "f1000001-0000-0000-0000-000000000001",
+  "selected_candidate_id": "pilot-de-001",
+  "lab_acknowledged_at": "2026-01-01T00:00:00Z",
+  "lab_id": "lab-simulator-001",
+  "status": "accepted"
+}

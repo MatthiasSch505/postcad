@@ -275,6 +275,16 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── next-action rail ── */
+.nar-rail{background:#0d1117;border:1px solid #21262d;border-radius:5px;
+          padding:.4rem .65rem;margin-bottom:.5rem}
+.nar-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.1rem}
+.nar-action{font-size:.75rem;font-weight:700;display:block}
+.nar-action-idle{color:#484f58}
+.nar-action-next{color:#d29922}
+.nar-action-done{color:#3fb950}
+.nar-reason{font-size:.65rem;color:#6e7681;margin-top:.08rem;line-height:1.4;display:block}
 /* ── active run context ── */
 .arc-block{background:#0d1117;border:1px solid #21262d;border-radius:6px;
            padding:.5rem .75rem;margin-bottom:.5rem}
@@ -514,6 +524,13 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
       <!-- Operator cheat sheet — always visible -->
       <div id="op-cheatsheet" style="font-size:.67rem;color:#484f58;margin-bottom:.5rem;padding:.3rem .6rem;background:#0d111766;border:1px solid #21262d;border-radius:4px;line-height:1.7">
         <span style="color:#6e7681;font-weight:700">Quick path: </span>Run route &rarr; Inspect artifacts &rarr; Verify replay &rarr; Dispatch after verification succeeds
+      </div>
+
+      <!-- Next-action rail — always visible, one action at a time -->
+      <div id="nar-rail" class="nar-rail">
+        <div class="nar-label">Next action</div>
+        <span id="nar-action" class="nar-action nar-action-idle">Next: run route</span>
+        <span id="nar-reason" class="nar-reason">No current receipt loaded.</span>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1365,6 +1382,7 @@ async function exportDispatch(btn) {
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
+      updateNextActionRail();
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       document.getElementById('dispatch-export-json').textContent = fmt(data);
@@ -1559,6 +1577,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateIntegrityBadges();
   updateDispatchReadiness();
   updateActiveRunContext();
+  updateNextActionRail();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -1582,6 +1601,34 @@ function updateActiveRunContext() {
   const dispEl = document.getElementById('arc-dispatch-status');
   if (lastExportPacket) { dispEl.textContent = 'Exported'; dispEl.className = 'arc-val-ok'; }
   else { dispEl.textContent = 'No dispatch export for current route'; dispEl.className = 'arc-val-pending'; }
+}
+
+// ── Next-action rail ──────────────────────────────────────────────────────
+function updateNextActionRail() {
+  const actionEl = document.getElementById('nar-action');
+  const reasonEl = document.getElementById('nar-reason');
+  if (!actionEl || !reasonEl) return;
+  let action, reason, cls;
+  if (lastExportPacket) {
+    action = 'Workflow complete';
+    reason = 'Dispatch packet exported for current route.';
+    cls    = 'nar-action-done';
+  } else if (opVerify === 'verified') {
+    action = 'Next: export dispatch';
+    reason = 'Verification complete. Dispatch not yet exported.';
+    cls    = 'nar-action-next';
+  } else if (opRouting === 'available') {
+    action = 'Next: verify current route';
+    reason = 'Receipt exists but verification not yet executed.';
+    cls    = 'nar-action-next';
+  } else {
+    action = 'Next: run route';
+    reason = 'No current receipt loaded.';
+    cls    = 'nar-action-idle';
+  }
+  actionEl.textContent = action;
+  actionEl.className   = 'nar-action ' + cls;
+  reasonEl.textContent = reason;
 }
 
 // ── Pilot run history ─────────────────────────────────────────────────────

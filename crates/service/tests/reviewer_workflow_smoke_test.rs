@@ -933,6 +933,75 @@ async fn reviewer_shell_operator_guidance_notes_present() {
     );
 }
 
+// ── Next-action rail tests ────────────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain the next-action rail element with all four
+/// state phrases so the operator always has one unambiguous instruction.
+#[tokio::test]
+async fn reviewer_shell_next_action_rail_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("nar-rail"),               "nar-rail id must be present");
+    assert!(html.contains("nar-action"),              "nar-action id must be present");
+    assert!(html.contains("nar-reason"),              "nar-reason id must be present");
+    assert!(html.contains("Next action"),             "Next action label must be present");
+    assert!(html.contains("updateNextActionRail"),    "updateNextActionRail JS function must be present");
+
+    // all four primary instruction strings
+    assert!(html.contains("Next: run route"),         "Next: run route phrase must be present");
+    assert!(html.contains("Next: verify current route"), "Next: verify current route phrase must be present");
+    assert!(html.contains("Next: export dispatch"),   "Next: export dispatch phrase must be present");
+    assert!(html.contains("Workflow complete"),       "Workflow complete phrase must be present");
+}
+
+/// Reviewer shell HTML must contain the supporting reason lines for all four
+/// rail states so operators understand why a given action is recommended.
+#[tokio::test]
+async fn reviewer_shell_next_action_rail_reasons_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No current receipt loaded"),
+        "idle reason must be present"
+    );
+    assert!(
+        html.contains("Receipt exists but verification not yet executed"),
+        "post-route reason must be present"
+    );
+    assert!(
+        html.contains("Verification complete. Dispatch not yet exported"),
+        "post-verify reason must be present"
+    );
+    assert!(
+        html.contains("Dispatch packet exported for current route"),
+        "complete reason must be present"
+    );
+}
+
+/// Reviewer shell HTML must wire updateNextActionRail into the operator state
+/// machine so the rail resets immediately on every new route submission.
+#[tokio::test]
+async fn reviewer_shell_next_action_rail_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // CSS classes for all three visual states
+    assert!(html.contains("nar-action-idle"), "nar-action-idle CSS class must be present");
+    assert!(html.contains("nar-action-next"), "nar-action-next CSS class must be present");
+    assert!(html.contains("nar-action-done"), "nar-action-done CSS class must be present");
+
+    // Rail initial state matches idle instruction
+    assert!(
+        html.contains("Next: run route"),
+        "initial rail state must show Next: run route"
+    );
+}
+
 // ── Active run context + stale artifact reset tests ───────────────────────────
 
 /// Reviewer shell HTML must contain the active run context block with all four

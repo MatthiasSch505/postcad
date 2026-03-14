@@ -262,6 +262,79 @@ Generated bundles are excluded from version control via `.gitignore`.
 
 ---
 
+## External Lab Trial
+
+For real external trials, generate a handoff pack instead of simulating a lab response locally.
+
+### Generate a handoff pack
+
+Complete the full pilot run and export a bundle, then:
+
+```bash
+./examples/pilot/lab_simulator.sh --handoff-pack handoff/ --bundle pilot_bundle
+```
+
+**Expected output:**
+
+```
+  ✓  Handoff pack written: handoff/f1000001-0000-0000-0000-000000000001
+
+  Run ID       : f1000001-0000-0000-0000-000000000001
+  Receipt hash : 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+
+  Contents:
+    artifacts/receipt.json
+    artifacts/export_packet.json
+    manifest.txt
+    operator_instructions.txt
+    lab_response_instructions.txt
+```
+
+### Inspect the pack
+
+```bash
+cat handoff/<run-id>/manifest.txt
+cat handoff/<run-id>/operator_instructions.txt
+cat handoff/<run-id>/lab_response_instructions.txt
+ls  handoff/<run-id>/artifacts/
+```
+
+### Send to real lab
+
+Send the `handoff/<run-id>/` directory to the external lab.
+
+The lab reads `lab_response_instructions.txt` to understand the required response format and returns a `lab_response.json` file.
+
+### Receive response and verify
+
+```bash
+# Place the returned response in the inbound directory
+cp lab_response.json inbound/lab_response_<run-id>.json
+
+# Verify single response
+./examples/pilot/verify.sh --inbound inbound/lab_response_<run-id>.json \
+                           --bundle pilot_bundle
+
+# Or run batch intake triage for all inbound responses
+./examples/pilot/verify.sh --batch-inbound inbound/ --bundle pilot_bundle
+```
+
+### Handoff pack structure
+
+```
+handoff/<run-id>/
+  manifest.txt                   index of included files + run identifiers
+  operator_instructions.txt      instructions for the sending operator
+  lab_response_instructions.txt  instructions for the receiving lab
+  artifacts/
+    receipt.json                 routing receipt — source of truth
+    export_packet.json           approved dispatch packet (if present)
+```
+
+Generated handoff packs are excluded from version control via `.gitignore`.
+
+---
+
 ## Pilot Operator Workflow
 
 End-to-end sequence from outbound bundle to finalized decision record.

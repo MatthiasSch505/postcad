@@ -1,0 +1,9 @@
+PostCAD External Handoff Pack
+run_id:
+receipt_hash:
+generated_at:
+files:
+  artifacts/receipt.json
+  manifest.txt
+  operator_instructions.txt
+  lab_response_instructions.txt

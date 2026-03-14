@@ -4,3 +4,6 @@ pilot_bundle_*/
 
 # Generated operator decision records — do not commit
 reports/
+
+# Generated external handoff packs — do not commit
+handoff/

@@ -275,6 +275,21 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── run history ── */
+.run-history{background:#0d1117;border:1px solid #21262d;border-radius:5px;
+             padding:.45rem .7rem;margin-bottom:.3rem}
+.rh-entry{font-size:.68rem;display:flex;align-items:baseline;gap:.5rem;
+          padding:.15rem 0;border-bottom:1px solid #21262d33;line-height:1.4}
+.rh-entry:last-child{border-bottom:none}
+.rh-ts{color:#484f58;font-size:.62rem;white-space:nowrap;flex-shrink:0}
+.rh-ok{color:#3fb950}
+.rh-err{color:#f85149}
+/* ── artifact size guard ── */
+pre.result.collapsed{max-height:120px;overflow:hidden}
+.expand-btn{background:none;border:1px solid #30363d;border-radius:3px;
+            color:#58a6ff;cursor:pointer;font-family:inherit;font-size:.63rem;
+            padding:.1rem .38rem;margin-top:.2rem;transition:color .1s}
+.expand-btn:hover{color:#79c0ff}
 </style>
 </head>
 <body>
@@ -512,6 +527,12 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         </div>
       </div>
 
+      <!-- Pilot run history -->
+      <div id="run-history-panel" class="hidden" style="margin-bottom:.5rem">
+        <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.28rem">Pilot run history</div>
+        <div id="run-history-list" class="run-history"></div>
+      </div>
+
       <div id="results-placeholder" style="padding:1.4rem .75rem">
         <div style="font-size:.75rem;font-weight:700;color:#484f58;margin-bottom:.3rem">No case submitted yet</div>
         <div style="font-size:.71rem;color:#3d4349;line-height:1.6;margin-bottom:.45rem">Artifact not yet generated. Run route to continue.</div>
@@ -584,6 +605,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         <div id="receipt-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem;margin-bottom:.35rem">
           <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyReceiptJson(this)">Copy artifact</button>
         </div>
+        <button class="expand-btn hidden" id="receipt-expand-btn" onclick="expandArtifact('route-receipt-json','receipt-expand-btn')">Expand artifact</button>
 
         <!-- D. Verify section -->
         <div class="section-title" style="margin-top:.8rem">Verify before dispatch
@@ -607,6 +629,19 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           <button class="btn btn-tamper" id="btn-tamper" onclick="tamperVerify(this)" disabled>
             ⚠ Tamper + Verify
           </button>
+        </div>
+
+        <!-- F. Verify result (deterministic order: route → receipt → verification → dispatch) -->
+        <div id="verify-result" class="hidden">
+          <div class="verify-section">
+            <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span><span id="verify-result-badge" class="integrity-badge hidden"></span></div>
+            <div id="verify-banner"></div>
+            <pre class="result" id="verify-json"></pre>
+            <div id="verify-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
+              <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyVerifyJson(this)">Copy artifact</button>
+            </div>
+            <button class="expand-btn hidden" id="verify-expand-btn" onclick="expandArtifact('verify-json','verify-expand-btn')">Expand artifact</button>
+          </div>
         </div>
 
         <!-- G. Dispatch commitment -->
@@ -669,6 +704,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
               <button class="btn-dl" onclick="downloadExportPacket()">↓ Download export_packet.json</button>
               <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyExportJson(this)">Copy JSON</button>
             </div>
+            <button class="expand-btn hidden" id="dispatch-expand-btn" onclick="expandArtifact('dispatch-export-json','dispatch-expand-btn')">Expand artifact</button>
           </div>
 
           <div id="dispatch-success" class="hidden success-note" style="margin-top:.4rem"></div>
@@ -689,17 +725,6 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         </div>
       </div>
 
-      <!-- F. Verify result (normal) -->
-      <div id="verify-result" class="hidden">
-        <div class="verify-section">
-          <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span><span id="verify-result-badge" class="integrity-badge hidden"></span></div>
-          <div id="verify-banner"></div>
-          <pre class="result" id="verify-json"></pre>
-          <div id="verify-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
-            <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyVerifyJson(this)">Copy artifact</button>
-          </div>
-        </div>
-      </div>
 
     </div>
   </div>
@@ -738,6 +763,7 @@ let opRouting  = 'not-run';  // not-run | available | failed
 let opReceipt  = 'not-run';  // not-run | available | missing
 let opVerify   = 'not-run';  // not-run | verified  | failed
 let opDispatch = 'not-run';  // not-run | available | failed
+const runHistory = [];       // chronological pilot run actions
 
 // ── boot ───────────────────────────────────────────────────────────────────
 (async function boot() {
@@ -810,6 +836,11 @@ async function routeCase(btn) {
   if (_dic) _dic.classList.add('hidden');
   hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
   hide('dispatch-export-actions');
+  hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
+  ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.classList.remove('collapsed');
+  });
+  clearRunHistory();
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
   document.getElementById('btn-dispatch-export').disabled  = true;
@@ -842,6 +873,7 @@ async function routeCase(btn) {
       document.getElementById('art-hash').textContent     = rhash;
       document.getElementById('art-kver').textContent     = kver;
       document.getElementById('route-receipt-json').textContent = fmt(rc);
+      collapseIfLarge('route-receipt-json', 'receipt-expand-btn');
       const copyHashBtn = document.getElementById('art-hash-copy');
       if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
       show('receipt-json-actions');
@@ -852,17 +884,20 @@ async function routeCase(btn) {
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
       updateOpState('available', 'available', 'not-run', 'available');
+      appendRunHistory('Route executed', true);
     } else {
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
       updateOpState('failed', 'missing', null, null);
+      appendRunHistory('Route executed', false);
     }
   } catch(e) {
     hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
     updateOpState('failed', 'missing', null, null);
+    appendRunHistory('Route executed', false);
   } finally {
     hide('results-loading');
     setBtn(btn, '▶ Execute Routing Kernel', false);
@@ -909,6 +944,11 @@ async function routeNormalized(btn) {
   if (_dic) _dic.classList.add('hidden');
   hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
   hide('dispatch-export-actions');
+  hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
+  ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.classList.remove('collapsed');
+  });
+  clearRunHistory();
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
   document.getElementById('btn-dispatch-export').disabled  = true;
@@ -938,6 +978,7 @@ async function routeNormalized(btn) {
       document.getElementById('route-error-json').textContent = String(netErr);
       show('route-error');
       updateOpState('failed', 'missing', null, null);
+      appendRunHistory('Route executed', false);
       return;
     }
 
@@ -958,6 +999,7 @@ async function routeNormalized(btn) {
         'HTTP ' + r.status + ' — response is not valid JSON: ' + String(parseErr);
       show('route-error');
       updateOpState('failed', 'missing', null, null);
+      appendRunHistory('Route executed', false);
       return;
     }
 
@@ -977,6 +1019,7 @@ async function routeNormalized(btn) {
       document.getElementById('art-hash').textContent     = rhash;
       document.getElementById('art-kver').textContent     = kver;
       document.getElementById('route-receipt-json').textContent = fmt(rc);
+      collapseIfLarge('route-receipt-json', 'receipt-expand-btn');
       const copyHashBtn = document.getElementById('art-hash-copy');
       if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
       show('receipt-json-actions');
@@ -987,6 +1030,7 @@ async function routeNormalized(btn) {
       document.getElementById('btn-tamper').disabled          = false;
       document.getElementById('btn-dispatch-create').disabled = false;
       updateOpState('available', 'available', 'not-run', 'available');
+      appendRunHistory('Route executed', true);
       ni.textContent = '✓ Routing complete — receipt ' + rhash.slice(0, 12) + '…';
       ni.className = 'success-note';
       const prev = document.getElementById('route-norm-preview');
@@ -1051,6 +1095,7 @@ async function routeNormalized(btn) {
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
       updateOpState('failed', 'missing', null, null);
+      appendRunHistory('Route executed', false);
     }
   } catch(e) {
     ni.innerHTML = '<div class="norm-error-panel">'
@@ -1064,6 +1109,7 @@ async function routeNormalized(btn) {
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
     updateOpState('failed', 'missing', null, null);
+    appendRunHistory('Route executed', false);
   } finally {
     hide('results-loading');
     setBtn(btn, '▶ Submit for Review', false);
@@ -1161,10 +1207,12 @@ function showVerifyResult(isVerified, data, kind) {
   if (kind === 'Replay Verification') {
     updateOpState(null, null, isVerified ? 'verified' : 'failed', null);
     hide('verify-artifact-note');
+    appendRunHistory('Verification executed', isVerified);
   }
   const pre = document.getElementById('verify-json');
   pre.className = 'result ' + (isVerified ? 'result-ok' : 'result-err');
   pre.textContent = fmt(data);
+  collapseIfLarge('verify-json', 'verify-expand-btn');
   show('verify-result');
   show('verify-json-actions');
   document.getElementById('verify-result').scrollIntoView({behavior:'smooth', block:'nearest'});
@@ -1283,8 +1331,10 @@ async function exportDispatch(btn) {
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       document.getElementById('dispatch-export-json').textContent = fmt(data);
+      collapseIfLarge('dispatch-export-json', 'dispatch-expand-btn');
       show('dispatch-export-result');
       show('dispatch-export-actions');
+      appendRunHistory('Dispatch executed', true);
       const s = document.getElementById('dispatch-success');
       s.textContent = 'Export complete — dispatch packet ready for handoff.';
       s.classList.remove('hidden');
@@ -1468,6 +1518,48 @@ function updateOpState(routing, receipt, verify, dispatch) {
   if (dbn) dbn.classList.toggle('hidden', opVerify !== 'failed');
   updateIntegrityBadges();
   updateDispatchReadiness();
+}
+
+// ── Pilot run history ─────────────────────────────────────────────────────
+function appendRunHistory(label, ok) {
+  const ts = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  runHistory.push({ts, label, ok});
+  const list = document.getElementById('run-history-list');
+  if (!list) return;
+  const entry = document.createElement('div');
+  entry.className = 'rh-entry';
+  entry.innerHTML = '<span class="rh-ts">' + esc(ts) + '</span>'
+    + '<span class="rh-label ' + (ok ? 'rh-ok' : 'rh-err') + '">' + esc(label) + '</span>';
+  list.appendChild(entry);
+  show('run-history-panel');
+}
+function clearRunHistory() {
+  runHistory.length = 0;
+  const list = document.getElementById('run-history-list');
+  if (list) list.innerHTML = '';
+  hide('run-history-panel');
+}
+
+// ── Artifact size guard ────────────────────────────────────────────────────
+const ARTIFACT_COLLAPSE_LINES = 40;
+function collapseIfLarge(preId, btnId) {
+  const pre = document.getElementById(preId);
+  const btn = document.getElementById(btnId);
+  if (!pre || !btn) return;
+  const lines = (pre.textContent.match(/\n/g) || []).length + 1;
+  if (lines > ARTIFACT_COLLAPSE_LINES) {
+    pre.classList.add('collapsed');
+    btn.classList.remove('hidden');
+  } else {
+    pre.classList.remove('collapsed');
+    btn.classList.add('hidden');
+  }
+}
+function expandArtifact(preId, btnId) {
+  const pre = document.getElementById(preId);
+  const btn = document.getElementById(btnId);
+  if (pre) pre.classList.remove('collapsed');
+  if (btn) btn.classList.add('hidden');
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

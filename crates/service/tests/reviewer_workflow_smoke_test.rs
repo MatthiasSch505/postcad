@@ -933,6 +933,66 @@ async fn reviewer_shell_operator_guidance_notes_present() {
     );
 }
 
+// ── Operator usability batch tests ────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain the pilot run history panel with
+/// the JS function and label strings for all three chronological actions.
+#[tokio::test]
+async fn reviewer_shell_run_history_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("run-history-panel"),  "run-history-panel id must be present");
+    assert!(html.contains("run-history-list"),   "run-history-list id must be present");
+    assert!(html.contains("Pilot run history"),  "Pilot run history label must be present");
+    assert!(html.contains("appendRunHistory"),   "appendRunHistory JS function must be present");
+    assert!(html.contains("clearRunHistory"),    "clearRunHistory JS function must be present");
+    assert!(html.contains("Route executed"),     "Route executed history label must be present");
+    assert!(html.contains("Verification executed"), "Verification executed history label must be present");
+    assert!(html.contains("Dispatch executed"),  "Dispatch executed history label must be present");
+    assert!(html.contains("rh-entry"),           "rh-entry CSS class must be present");
+    assert!(html.contains("rh-ok"),              "rh-ok CSS class must be present");
+    assert!(html.contains("rh-err"),             "rh-err CSS class must be present");
+}
+
+/// Reviewer shell HTML must render artifact panels in deterministic order:
+/// route result → receipt → verification result → dispatch result.
+#[tokio::test]
+async fn reviewer_shell_artifact_panel_order_deterministic() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    let route_pos    = html.find("id=\"route-result\"").expect("route-result id must be present");
+    let receipt_pos  = html.find("id=\"route-receipt-json\"").expect("route-receipt-json id must be present");
+    let verify_pos   = html.find("id=\"verify-result\"").expect("verify-result id must be present");
+    let dispatch_pos = html.find("id=\"dispatch-export-result\"").expect("dispatch-export-result id must be present");
+
+    assert!(route_pos < receipt_pos,   "route-result must appear before receipt JSON");
+    assert!(receipt_pos < verify_pos,  "receipt JSON must appear before verification result");
+    assert!(verify_pos < dispatch_pos, "verification result must appear before dispatch result");
+}
+
+/// Reviewer shell HTML must contain the artifact size guard with collapse/expand
+/// functionality so large artifact panels do not overwhelm the operator view.
+#[tokio::test]
+async fn reviewer_shell_artifact_size_guard_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("expandArtifact"),          "expandArtifact JS function must be present");
+    assert!(html.contains("collapseIfLarge"),          "collapseIfLarge JS function must be present");
+    assert!(html.contains("ARTIFACT_COLLAPSE_LINES"), "ARTIFACT_COLLAPSE_LINES constant must be present");
+    assert!(html.contains("Expand artifact"),         "Expand artifact button text must be present");
+    assert!(html.contains("receipt-expand-btn"),      "receipt-expand-btn id must be present");
+    assert!(html.contains("verify-expand-btn"),       "verify-expand-btn id must be present");
+    assert!(html.contains("dispatch-expand-btn"),     "dispatch-expand-btn id must be present");
+    assert!(html.contains("collapsed"),               "collapsed CSS class must be present");
+    assert!(html.contains("expand-btn"),              "expand-btn CSS class must be present");
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

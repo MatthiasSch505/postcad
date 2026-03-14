@@ -624,6 +624,27 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
 .drs-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
                 letter-spacing:.07em;display:block;margin-bottom:.06rem}
+/* ── pilot handoff summary ── */
+.phs{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-bottom:.4rem}
+.phs-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.28rem}
+.phs-verdict{font-size:.8rem;font-weight:700;margin-bottom:.12rem}
+.phs-verdict-not-ready {color:#484f58}
+.phs-verdict-pending   {color:#d29922}
+.phs-verdict-ready     {color:#3fb950}
+.phs-verdict-attention {color:#f85149}
+.phs-meaning{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.28rem}
+.phs-checklist{margin-bottom:.22rem}
+.phs-row{display:flex;align-items:baseline;gap:.4rem;font-size:.67rem;
+         color:#c9d1d9;line-height:1.5;padding:.04rem 0}
+.phs-ok  {color:#3fb950;flex-shrink:0;width:.85rem}
+.phs-no  {color:#484f58;flex-shrink:0;width:.85rem}
+.phs-warn{color:#d29922;flex-shrink:0;width:.85rem}
+.phs-action{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
+            border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
+.phs-action-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+                  letter-spacing:.07em;display:block;margin-bottom:.06rem}
 </style>
 </head>
 <body>
@@ -932,6 +953,18 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="drs-next">
           <span class="drs-next-label">Next step</span>
           <span id="drs-next-text">Generate a route to begin the dry-run.</span>
+        </div>
+      </div>
+
+      <!-- Pilot handoff summary card -->
+      <div id="phs" class="phs">
+        <div class="phs-label">Pilot Handoff Summary</div>
+        <div id="phs-verdict" class="phs-verdict phs-verdict-not-ready">Not ready for pilot handoff</div>
+        <div id="phs-meaning" class="phs-meaning">Complete all minimum workflow steps before presenting this run to a pilot reviewer or external lab.</div>
+        <div id="phs-checklist" class="phs-checklist"></div>
+        <div class="phs-action">
+          <span class="phs-action-label">Required action</span>
+          <span id="phs-action-text">Complete the current run before pilot handoff.</span>
         </div>
       </div>
 
@@ -1941,6 +1974,7 @@ async function exportDispatch(btn) {
       updateDpi();
       updateDossier();
       updateDryRunPanel();
+      updatePilotHandoffSummary();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -2334,6 +2368,111 @@ function updateLineageNotes() {
   if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
 }
 
+// ── Pilot handoff summary ──────────────────────────────────────────────────
+function phsVerdictKey() {
+  if (runSerial === 0) return 'not-ready';
+  const vlin = verifyLineage();
+  const dlin = dispatchLineage();
+  // attention: any degraded state for current run
+  if (opRouting === 'failed') return 'attention';
+  if (vlin === 'prev' || dlin === 'prev') return 'attention';
+  if (vlin === 'current' && opVerify === 'failed') return 'attention';
+  if (reproStatus === 'mismatch') return 'attention';
+  // ready: all 6 checklist items complete for current run
+  if (opRouting === 'available' && opReceipt === 'available' &&
+      vlin === 'current' && opVerify === 'verified' &&
+      dlin === 'current' && reproStatus === 'reproducible' &&
+      drsVerdictKey() === 'passed') {
+    return 'ready';
+  }
+  // pending: started but not complete
+  if (opRouting === 'available') return 'pending';
+  return 'not-ready';
+}
+const PHS_VERDICTS = {
+  'not-ready': {cls:'phs-verdict-not-ready', text:'Not ready for pilot handoff'},
+  'pending':   {cls:'phs-verdict-pending',   text:'Pilot handoff pending final step'},
+  'ready':     {cls:'phs-verdict-ready',     text:'Ready for pilot handoff'},
+  'attention': {cls:'phs-verdict-attention', text:'Pilot handoff requires attention'},
+};
+const PHS_MEANINGS = {
+  'not-ready': 'No route has been generated. Complete all minimum workflow steps before presenting this run to a pilot reviewer or external lab.',
+  'pending':   'A route has been generated but not all minimum workflow steps are complete. Finish the remaining steps before pilot handoff.',
+  'ready':     'The current run has passed all minimum workflow requirements. This run is suitable for presentation to an external lab or pilot reviewer.',
+  'attention': 'One or more workflow steps have failed or belong to a previous run. Resolve the issues listed below before pilot handoff.',
+};
+function phsActionText(key) {
+  if (key === 'ready') return 'Pilot handoff ready \u2014 current run meets all minimum requirements.';
+  if (key === 'attention') {
+    if (opRouting === 'failed') return 'Route generation failed \u2014 re-submit for review.';
+    const vlin = verifyLineage();
+    const dlin = dispatchLineage();
+    if (vlin === 'prev' || dlin === 'prev')
+      return 'Reroute detected \u2014 complete the dry-run again for the current route.';
+    if (vlin === 'current' && opVerify === 'failed')
+      return 'Resolve failed verification before pilot handoff.';
+    if (reproStatus === 'mismatch')
+      return 'Reproducibility mismatch \u2014 review routing determinism before handoff.';
+    return 'Resolve current run issues before pilot handoff.';
+  }
+  if (opRouting !== 'available') return 'Generate a route to begin the pilot run.';
+  if (opReceipt !== 'available') return 'Await receipt.';
+  const vlin = verifyLineage();
+  if (vlin !== 'current') return 'Run verification for current route.';
+  if (opVerify !== 'verified') return 'Resolve verification before proceeding.';
+  if (dispatchLineage() !== 'current') return 'Export dispatch packet for current route.';
+  if (reproStatus !== 'reproducible') return 'Complete reproducibility check for current route.';
+  return 'Complete dry-run to finalise pilot handoff readiness.';
+}
+function phsRow(icon, cls, label) {
+  return '<div class="phs-row"><span class="' + cls + '">' + icon + '</span><span>' + esc(label) + '</span></div>';
+}
+function updatePilotHandoffSummary() {
+  const vkey    = phsVerdictKey();
+  const conf    = PHS_VERDICTS[vkey];
+  const verdict = document.getElementById('phs-verdict');
+  const meaning = document.getElementById('phs-meaning');
+  const list    = document.getElementById('phs-checklist');
+  const action  = document.getElementById('phs-action-text');
+  if (!verdict) return;
+  verdict.className   = 'phs-verdict ' + conf.cls;
+  verdict.textContent = conf.text;
+  if (meaning) meaning.textContent = PHS_MEANINGS[vkey];
+  if (action)  action.textContent  = phsActionText(vkey);
+  if (list) {
+    const vlin = verifyLineage();
+    const dlin = dispatchLineage();
+    const routeOk   = opRouting === 'available';
+    const receiptOk = opReceipt === 'available';
+    const verifyPass = vlin === 'current' && opVerify === 'verified';
+    const dispOk     = dlin === 'current';
+    const reproPass  = reproStatus === 'reproducible';
+    const dryRunPass = drsVerdictKey() === 'passed';
+    let h = '';
+    h += phsRow(routeOk    ? '✓' : '◻', routeOk    ? 'phs-ok' : 'phs-no', 'Route exists for current run');
+    h += phsRow(receiptOk  ? '✓' : '◻', receiptOk  ? 'phs-ok' : 'phs-no', 'Receipt available');
+    if (vlin === 'current' && opVerify === 'failed') {
+      h += phsRow('⚠', 'phs-warn', 'Verification failed \u2014 not passed');
+    } else if (vlin === 'prev') {
+      h += phsRow('⚠', 'phs-warn', 'Verification \u2014 previous run only');
+    } else {
+      h += phsRow(verifyPass ? '✓' : '◻', verifyPass ? 'phs-ok' : 'phs-no', 'Verification passed');
+    }
+    if (dlin === 'prev') {
+      h += phsRow('⚠', 'phs-warn', 'Dispatch exported \u2014 previous run only');
+    } else {
+      h += phsRow(dispOk ? '✓' : '◻', dispOk ? 'phs-ok' : 'phs-no', 'Dispatch packet exported');
+    }
+    if (reproStatus === 'mismatch') {
+      h += phsRow('⚠', 'phs-warn', 'Reproducibility mismatch detected');
+    } else {
+      h += phsRow(reproPass ? '✓' : '◻', reproPass ? 'phs-ok' : 'phs-no', 'Reproducibility passed');
+    }
+    h += phsRow(dryRunPass ? '✓' : '◻', dryRunPass ? 'phs-ok' : 'phs-no', 'Dry-run passed');
+    list.innerHTML = h;
+  }
+}
+
 // ── Operator dry-run status ────────────────────────────────────────────────
 function drsVerdictKey() {
   if (runSerial === 0) return 'none';
@@ -2475,6 +2614,7 @@ async function runReproCheck(btn) {
   } finally {
     updateReproPanel();
     updateDryRunPanel();
+    updatePilotHandoffSummary();
   }
 }
 function updateReproPanel() {
@@ -2537,6 +2677,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateDossier();
   updateReproPanel();
   updateDryRunPanel();
+  updatePilotHandoffSummary();
 }
 
 // ── Active run context ────────────────────────────────────────────────────

@@ -3140,6 +3140,112 @@ async fn reviewer_shell_drs_reroute_downgrade_wording() {
     );
 }
 
+// ── Pilot handoff summary card tests ─────────────────────────────────────────
+
+/// Reviewer shell HTML must expose the Pilot Handoff Summary panel so the
+/// operator has a dedicated surface for pilot-readiness status.
+#[tokio::test]
+async fn reviewer_shell_phs_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"phs\""),
+        "phs panel id must be present in HTML"
+    );
+    assert!(
+        html.contains("Pilot Handoff Summary"),
+        "panel must be labelled 'Pilot Handoff Summary'"
+    );
+    assert!(
+        html.contains("id=\"phs-verdict\""),
+        "phs-verdict element id must be present"
+    );
+}
+
+/// The pilot handoff summary must default to 'Not ready for pilot handoff' at
+/// initial load so the operator never sees a false ready state before routing.
+#[tokio::test]
+async fn reviewer_shell_phs_initial_not_ready() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Not ready for pilot handoff"),
+        "initial verdict must read 'Not ready for pilot handoff'"
+    );
+}
+
+/// The pilot handoff summary must carry ready-state wording so the operator
+/// can recognise when the run meets all minimum pilot handoff requirements.
+#[tokio::test]
+async fn reviewer_shell_phs_ready_wording_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Ready for pilot handoff"),
+        "ready verdict wording must be present in JS"
+    );
+    assert!(
+        html.contains("Pilot handoff ready"),
+        "ready action wording must be present"
+    );
+}
+
+/// The pilot handoff summary must carry attention wording for verification
+/// failure so that a failed verify cannot produce a ready state.
+#[tokio::test]
+async fn reviewer_shell_phs_verify_failure_attention_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Pilot handoff requires attention"),
+        "attention verdict wording must be present"
+    );
+    assert!(
+        html.contains("Resolve failed verification before pilot handoff"),
+        "verify-failure action wording must be present"
+    );
+}
+
+/// The pilot handoff summary must carry attention wording for reproducibility
+/// mismatch so that a mismatch cannot produce a ready state.
+#[tokio::test]
+async fn reviewer_shell_phs_repro_mismatch_attention_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Reproducibility mismatch"),
+        "repro-mismatch attention wording must be present in phs"
+    );
+}
+
+/// The pilot handoff summary must carry reroute-detected attention wording so
+/// a prior ready state is visibly invalidated when the route changes.
+#[tokio::test]
+async fn reviewer_shell_phs_reroute_downgrade_wording() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("complete the dry-run again for the current route"),
+        "reroute downgrade wording must be present in phs"
+    );
+    assert!(
+        html.contains("updatePilotHandoffSummary()"),
+        "updatePilotHandoffSummary() call must appear in JS"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

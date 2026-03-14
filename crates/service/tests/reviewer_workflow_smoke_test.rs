@@ -1137,6 +1137,133 @@ async fn reviewer_shell_artifact_size_guard_present() {
     assert!(html.contains("expand-btn"),              "expand-btn CSS class must be present");
 }
 
+// ── Artifact section empty-state hardening tests ──────────────────────────────
+
+/// Reviewer shell HTML must carry an explicit receipt empty-state element that
+/// is visible at initial load so the operator can never confuse a missing
+/// current-run receipt with a hidden or stale artifact.
+#[tokio::test]
+async fn reviewer_shell_receipt_empty_state_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("receipt-empty-state"),
+        "receipt-empty-state element id must be present"
+    );
+    assert!(
+        html.contains("no receipt for current route"),
+        "receipt empty-state must say 'no receipt for current route'"
+    );
+}
+
+/// Reviewer shell HTML must carry the verification empty-state wording
+/// 'verification not yet executed for current route' inside verify-artifact-note
+/// so the operator sees an unambiguous reason, not a generic placeholder.
+#[tokio::test]
+async fn reviewer_shell_verify_empty_state_text() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("verify-artifact-note"),
+        "verify-artifact-note id must be present"
+    );
+    assert!(
+        html.contains("verification not yet executed for current route"),
+        "verify empty-state must say 'verification not yet executed for current route'"
+    );
+}
+
+/// Reviewer shell HTML must carry the dispatch empty-state wording
+/// 'no dispatch export for current route' inside dispatch-stale-note
+/// so the operator sees an explicit reason, not a blank section.
+#[tokio::test]
+async fn reviewer_shell_dispatch_empty_state_text() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("dispatch-stale-note"),
+        "dispatch-stale-note id must be present"
+    );
+    assert!(
+        html.contains("no dispatch export for current route"),
+        "dispatch empty-state must say 'no dispatch export for current route'"
+    );
+}
+
+/// All three artifact section empty-states must be present simultaneously
+/// so none of the three sections ever appears blank during a review session.
+#[tokio::test]
+async fn reviewer_shell_all_artifact_empty_states_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("no receipt for current route"),
+        "receipt section empty-state text must be present"
+    );
+    assert!(
+        html.contains("verification not yet executed for current route"),
+        "verification section empty-state text must be present"
+    );
+    assert!(
+        html.contains("no dispatch export for current route"),
+        "dispatch section empty-state text must be present"
+    );
+}
+
+/// Reviewer shell HTML must wire receipt-empty-state into the JS state machine
+/// so it hides on route start and re-appears on route failure or reroute,
+/// and verify-artifact-note + dispatch-stale-note are also correctly wired.
+#[tokio::test]
+async fn reviewer_shell_empty_state_reroute_wiring() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // All three empty-state IDs must be referenced in the JS state machine
+    assert!(
+        html.contains("receipt-empty-state"),
+        "receipt-empty-state must be referenced in JS"
+    );
+    assert!(
+        html.contains("verify-artifact-note"),
+        "verify-artifact-note must be referenced in JS"
+    );
+    assert!(
+        html.contains("dispatch-stale-note"),
+        "dispatch-stale-note must be referenced in JS"
+    );
+
+    // receipt-empty-state hide must appear (route start hides it)
+    assert!(
+        html.contains("hide('receipt-empty-state')"),
+        "hide('receipt-empty-state') must be present in JS route-start reset"
+    );
+    // receipt-empty-state show must appear (failure paths restore it)
+    assert!(
+        html.contains("show('receipt-empty-state')"),
+        "show('receipt-empty-state') must be present in JS failure paths"
+    );
+
+    // verify-artifact-note show must appear (restores after successful route)
+    assert!(
+        html.contains("show('verify-artifact-note')"),
+        "show('verify-artifact-note') must be present in JS route-success path"
+    );
+    // verify-artifact-note hide must appear (cleared after verification runs)
+    assert!(
+        html.contains("hide('verify-artifact-note')"),
+        "hide('verify-artifact-note') must be present in JS route-start and post-verify"
+    );
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

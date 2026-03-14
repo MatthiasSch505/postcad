@@ -297,6 +297,17 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .arc-val-pending{color:#484f58;font-style:italic;word-break:break-all}
 .arc-val-ok {color:#3fb950;word-break:break-all}
 .arc-val-err{color:#f85149;word-break:break-all}
+/* ── handoff note ── */
+.handoff-note{background:#0d1117;border:1px solid #21262d;border-radius:5px;
+              padding:.45rem .7rem;margin-top:.5rem}
+.handoff-note-active{border-color:#388bfd44}
+.hn-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+          letter-spacing:.08em;margin-bottom:.22rem}
+.hn-row{font-size:.68rem;color:#8b949e;display:flex;align-items:baseline;
+        gap:.35rem;line-height:1.45;padding:.06rem 0}
+.hn-row-check{color:#3fb950}
+.hn-object{font-size:.67rem;color:#6e7681;margin-top:.2rem;padding-top:.2rem;
+           border-top:1px solid #21262d33;line-height:1.4}
 /* ── run history ── */
 .run-history{background:#0d1117;border:1px solid #21262d;border-radius:5px;
              padding:.45rem .7rem;margin-bottom:.3rem}
@@ -595,6 +606,9 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div style="font-size:.7rem;color:#484f58;margin-top:.3rem;line-height:1.5">Kernel is evaluating eligibility and selecting a manufacturer.</div>
       </div>
 
+      <!-- Receipt empty-state: shown when no receipt for current run -->
+      <div id="receipt-empty-state" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">no receipt for current route</div>
+
       <!-- B. Artifact summary (shown after route) -->
       <div id="route-result" class="hidden">
         <div class="card-title">Routing decision — audit record<span id="route-result-badge" class="integrity-badge hidden"></span></div>
@@ -662,7 +676,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— replay re-derives the receipt from original inputs</span>
         </div>
         <div class="panel-subtitle">The kernel recomputes every hash from scratch. No stored state is trusted.</div>
-        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">No verification result for current route. Run Replay Verification when ready.</div>
+        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">verification not yet executed for current route</div>
         <button class="btn btn-verify" id="btn-verify" onclick="verifyReceipt(this)" disabled>
           ↩ Replay Verification
         </button>
@@ -724,7 +738,7 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           </button>
           <div id="verify-pending-note" class="guidance-note hidden">Verification pending. Run verify before dispatch.</div>
           <div id="dispatch-blocked-note" class="guidance-note-err hidden">Dispatch blocked until verification succeeds.</div>
-          <div id="dispatch-stale-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-top:.35rem;line-height:1.5">No dispatch export for current route.</div>
+          <div id="dispatch-stale-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-top:.35rem;line-height:1.5">no dispatch export for current route</div>
 
           <div id="dispatch-created" class="hidden" style="margin-top:.55rem">
             <div class="artifacts">
@@ -756,6 +770,12 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
               <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyExportJson(this)">Copy JSON</button>
             </div>
             <button class="expand-btn hidden" id="dispatch-expand-btn" onclick="expandArtifact('dispatch-export-json','dispatch-expand-btn')">Expand artifact</button>
+          </div>
+
+          <!-- Operator handoff note — neutral until export exists -->
+          <div id="handoff-note" class="handoff-note">
+            <div class="hn-label">Handoff</div>
+            <div id="hn-body"><span style="color:#484f58;font-style:italic">No export for current route. Handoff not yet applicable.</span></div>
           </div>
 
           <div id="dispatch-success" class="hidden success-note" style="margin-top:.4rem"></div>
@@ -886,6 +906,7 @@ async function routeCase(btn) {
   const _dic = document.getElementById('art-dispatch-id-copy');
   if (_dic) _dic.classList.add('hidden');
   hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
+  hide('receipt-empty-state');
   hide('dispatch-export-actions');
   hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
   ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
@@ -940,6 +961,7 @@ async function routeCase(btn) {
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
+      show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
       appendRunHistory('Route executed', false);
     }
@@ -947,6 +969,7 @@ async function routeCase(btn) {
     hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
+    show('receipt-empty-state');
     updateOpState('failed', 'missing', null, null);
     appendRunHistory('Route executed', false);
   } finally {
@@ -994,6 +1017,7 @@ async function routeNormalized(btn) {
   const _dic = document.getElementById('art-dispatch-id-copy');
   if (_dic) _dic.classList.add('hidden');
   hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
+  hide('receipt-empty-state');
   hide('dispatch-export-actions');
   hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
   ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
@@ -1028,6 +1052,7 @@ async function routeNormalized(btn) {
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent = String(netErr);
       show('route-error');
+      show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
       appendRunHistory('Route executed', false);
       return;
@@ -1049,6 +1074,7 @@ async function routeNormalized(btn) {
       document.getElementById('route-error-json').textContent =
         'HTTP ' + r.status + ' — response is not valid JSON: ' + String(parseErr);
       show('route-error');
+      show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
       appendRunHistory('Route executed', false);
       return;
@@ -1145,6 +1171,7 @@ async function routeNormalized(btn) {
       banner.classList.remove('hidden');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
+      show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
       appendRunHistory('Route executed', false);
     }
@@ -1159,6 +1186,7 @@ async function routeNormalized(btn) {
     hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
+    show('receipt-empty-state');
     updateOpState('failed', 'missing', null, null);
     appendRunHistory('Route executed', false);
   } finally {
@@ -1578,6 +1606,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateDispatchReadiness();
   updateActiveRunContext();
   updateNextActionRail();
+  updateHandoffNote();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -1629,6 +1658,26 @@ function updateNextActionRail() {
   actionEl.textContent = action;
   actionEl.className   = 'nar-action ' + cls;
   reasonEl.textContent = reason;
+}
+
+// ── Operator handoff note ─────────────────────────────────────────────────
+function updateHandoffNote() {
+  const body  = document.getElementById('hn-body');
+  const block = document.getElementById('handoff-note');
+  if (!body || !block) return;
+  if (!lastExportPacket) {
+    block.classList.remove('handoff-note-active');
+    body.innerHTML = '<span style="color:#484f58;font-style:italic">No export for current route. Handoff not yet applicable.</span>';
+    return;
+  }
+  block.classList.add('handoff-note-active');
+  const did = lastDispatchId ? lastDispatchId.slice(0, 8) + '…' : '—';
+  body.innerHTML =
+    '<div class="hn-row hn-row-check">&#x2713; Route processed — manufacturer selected</div>'
+    + '<div class="hn-row hn-row-check">&#x2713; Verification completed</div>'
+    + '<div class="hn-row hn-row-check">&#x2713; Dispatch artifact exported</div>'
+    + '<div class="hn-object">Handoff object: export packet &middot; dispatch ID <span style="color:#c9d1d9">'
+    + esc(did) + '</span> &middot; copy or transfer using the panel above</div>';
 }
 
 // ── Pilot run history ─────────────────────────────────────────────────────

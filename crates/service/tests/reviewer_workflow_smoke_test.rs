@@ -1350,6 +1350,102 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Dispatch packet inspection tests ─────────────────────────────────────────
+
+/// Reviewer shell must contain the dispatch packet inspection panel so the
+/// operator can view export packet contents directly in the UI before handoff.
+#[tokio::test]
+async fn reviewer_shell_dispatch_packet_inspection_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"dpi\""),          "dpi container must be present");
+    assert!(html.contains("id=\"dpi-viewer\""),   "dpi-viewer pre element must be present");
+    assert!(html.contains("id=\"dpi-empty\""),    "dpi-empty must be present");
+    assert!(html.contains("Dispatch packet inspection"), "dpi label must be present");
+}
+
+/// Inspection panel must show the no-packet empty state on initial load so the
+/// operator sees explicit guidance rather than a blank section.
+#[tokio::test]
+async fn reviewer_shell_dispatch_packet_inspection_empty_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No dispatch packet generated for the current run."),
+        "empty-state message must be present"
+    );
+    assert!(
+        html.contains("Run dispatch export to generate a packet for inspection."),
+        "empty-state guidance hint must be present"
+    );
+    assert!(
+        html.contains("dpi-viewer hidden"),
+        "dpi-viewer must be hidden on initial load"
+    );
+}
+
+/// Packet origin and integrity meta indicators must be present so the operator
+/// can see at a glance which run the packet belongs to and its verification status.
+#[tokio::test]
+async fn reviewer_shell_dispatch_packet_inspection_meta_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"dpi-origin\""),    "dpi-origin element must be present");
+    assert!(html.contains("id=\"dpi-integrity\""), "dpi-integrity element must be present");
+    assert!(html.contains("Packet origin"),        "packet origin label must be present");
+    assert!(html.contains("Packet integrity"),     "packet integrity label must be present");
+}
+
+/// All packet origin CSS classes must be present so current-run, previous-run,
+/// and no-packet states each render with a distinct visual signal.
+#[tokio::test]
+async fn reviewer_shell_dispatch_packet_inspection_origin_states() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("dpi-origin-current"), "dpi-origin-current CSS class must be defined");
+    assert!(html.contains("dpi-origin-prev"),    "dpi-origin-prev CSS class must be defined");
+    assert!(html.contains("dpi-origin-none"),    "dpi-origin-none CSS class must be defined");
+}
+
+/// All packet integrity states must be present so the operator can see whether
+/// the packet was produced after a passing, failing, or absent verification.
+#[tokio::test]
+async fn reviewer_shell_dispatch_packet_inspection_integrity_states() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("dpi-integrity-ok"),    "dpi-integrity-ok CSS class must be defined");
+    assert!(html.contains("dpi-integrity-fail"),  "dpi-integrity-fail CSS class must be defined");
+    assert!(html.contains("dpi-integrity-none"),  "dpi-integrity-none CSS class must be defined");
+    assert!(html.contains("verified packet"),         "'verified packet' label must be present");
+    assert!(html.contains("verification failed"),     "'verification failed' label must be present");
+    assert!(html.contains("verification not executed"), "'verification not executed' label must be present");
+}
+
+/// updateDpi must be wired into updateOpState and exportDispatch so the panel
+/// refreshes on every state transition including reroute and new export.
+#[tokio::test]
+async fn reviewer_shell_dispatch_packet_inspection_wired() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateDpi()"),
+        "updateDpi() call must appear in state machine wiring"
+    );
+    assert!(html.contains("function updateDpi"), "updateDpi function must be defined");
+}
+
 // ── Dispatch handoff dossier tests ────────────────────────────────────────────
 
 /// Reviewer shell must contain the dispatch handoff dossier so the operator has

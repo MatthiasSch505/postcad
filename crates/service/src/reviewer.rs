@@ -568,6 +568,26 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
 .dhd-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
                 letter-spacing:.07em;display:block;margin-bottom:.06rem}
+/* ── dispatch packet inspection ── */
+.dpi{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-top:.5rem}
+.dpi-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.28rem}
+.dpi-meta{display:flex;align-items:center;gap:.65rem;margin-bottom:.3rem;flex-wrap:wrap}
+.dpi-meta-item{display:flex;align-items:baseline;gap:.3rem;font-size:.65rem}
+.dpi-meta-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;letter-spacing:.04em}
+.dpi-origin-current{color:#3fb950;font-weight:700}
+.dpi-origin-prev   {color:#d29922;font-weight:700}
+.dpi-origin-none   {color:#484f58;font-weight:700}
+.dpi-integrity-ok  {color:#3fb950;font-weight:700}
+.dpi-integrity-fail{color:#f85149;font-weight:700}
+.dpi-integrity-none{color:#484f58;font-weight:700}
+.dpi-empty{font-size:.67rem;color:#3d4349;font-style:italic;line-height:1.5}
+.dpi-empty-hint{font-size:.63rem;color:#3d4349;margin-top:.1rem}
+.dpi-viewer{background:#0d111788;border:1px solid #21262d;border-radius:4px;
+            font-size:.67rem;line-height:1.45;padding:.4rem .6rem;
+            white-space:pre-wrap;word-break:break-all;max-height:220px;
+            overflow-y:auto;color:#8b949e;margin-top:.22rem}
 </style>
 </head>
 <body>
@@ -1151,6 +1171,26 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
               <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyExportJson(this)">Copy JSON</button>
             </div>
             <button class="expand-btn hidden" id="dispatch-expand-btn" onclick="expandArtifact('dispatch-export-json','dispatch-expand-btn')">Expand artifact</button>
+          </div>
+
+          <!-- Dispatch packet inspection panel — always visible -->
+          <div id="dpi" class="dpi">
+            <div class="dpi-label">Dispatch packet inspection</div>
+            <div id="dpi-meta" class="dpi-meta hidden">
+              <div class="dpi-meta-item">
+                <span class="dpi-meta-key">Packet origin</span>
+                <span id="dpi-origin" class="dpi-origin-none">—</span>
+              </div>
+              <div class="dpi-meta-item">
+                <span class="dpi-meta-key">Packet integrity</span>
+                <span id="dpi-integrity" class="dpi-integrity-none">—</span>
+              </div>
+            </div>
+            <div id="dpi-empty">
+              <div class="dpi-empty">No dispatch packet generated for the current run.</div>
+              <div class="dpi-empty-hint">Run dispatch export to generate a packet for inspection.</div>
+            </div>
+            <pre id="dpi-viewer" class="dpi-viewer hidden"></pre>
           </div>
 
           <!-- Operator handoff note — neutral until export exists -->
@@ -1833,6 +1873,7 @@ async function exportDispatch(btn) {
       updateRunIdentityBlock();
       updateLineageBadges();
       updateLineageNotes();
+      updateDpi();
       updateDossier();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
@@ -2054,6 +2095,39 @@ function dblNavigate(target) {
 }
 
 // ── Operator state block ───────────────────────────────────────────────────
+// ── Dispatch packet inspection ────────────────────────────────────────────
+function updateDpi() {
+  const meta      = document.getElementById('dpi-meta');
+  const empty     = document.getElementById('dpi-empty');
+  const viewer    = document.getElementById('dpi-viewer');
+  const origin    = document.getElementById('dpi-origin');
+  const integrity = document.getElementById('dpi-integrity');
+  if (!meta) return;
+  if (!lastExportPacket) {
+    meta.classList.add('hidden');
+    empty.classList.remove('hidden');
+    viewer.classList.add('hidden');
+    viewer.textContent = '';
+    return;
+  }
+  empty.classList.add('hidden');
+  meta.classList.remove('hidden');
+  viewer.classList.remove('hidden');
+  viewer.textContent = fmt(lastExportPacket);
+  const dlin = dispatchLineage();
+  if (dlin === 'current')     { origin.className = 'dpi-origin-current'; origin.textContent = 'current run'; }
+  else if (dlin === 'prev')   { origin.className = 'dpi-origin-prev';    origin.textContent = 'previous run'; }
+  else                        { origin.className = 'dpi-origin-none';    origin.textContent = '—'; }
+  const vlin = verifyLineage();
+  if (vlin === 'current' && opVerify === 'verified') {
+    integrity.className = 'dpi-integrity-ok';   integrity.textContent = 'verified packet';
+  } else if (vlin === 'current' && opVerify === 'failed') {
+    integrity.className = 'dpi-integrity-fail'; integrity.textContent = 'verification failed';
+  } else {
+    integrity.className = 'dpi-integrity-none'; integrity.textContent = 'verification not executed';
+  }
+}
+
 // ── Dispatch handoff dossier ───────────────────────────────────────────────
 function dhdVerdictKey() {
   if (runSerial === 0)               return 'none';
@@ -2238,6 +2312,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateRunIdentityBlock();
   updateLineageBadges();
   updateLineageNotes();
+  updateDpi();
   updateDossier();
 }
 

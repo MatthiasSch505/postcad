@@ -254,6 +254,18 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .guidance-note-err{font-size:.71rem;color:#f85149;background:#3d1f1f44;
                    border:1px solid #f8514933;border-radius:4px;
                    padding:.35rem .6rem;margin-top:.35rem;line-height:1.5}
+/* ── dispatch readiness panel ── */
+.dr-panel{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+          padding:.5rem .75rem;margin-bottom:.5rem}
+.dr-ready    {font-size:.78rem;font-weight:700;color:#3fb950}
+.dr-not-ready{font-size:.78rem;font-weight:700;color:#d29922}
+.dr-completed{font-size:.78rem;font-weight:700;color:#58a6ff}
+.dr-reason   {font-size:.68rem;color:#8b949e;margin-top:.15rem;line-height:1.5}
+.checklist   {display:grid;gap:.2rem;margin-top:.4rem;padding-top:.35rem;
+              border-top:1px solid #21262d33}
+.cl-item     {font-size:.68rem;display:flex;align-items:center;gap:.3rem;line-height:1.4}
+.cl-ok       {color:#3fb950}
+.cl-pending  {color:#484f58}
 /* ── panel subtitle ── */
 .panel-subtitle{font-size:.72rem;color:#6e7681;margin:.05rem 0 .65rem;line-height:1.5}
 /* ── integrity badges ── */
@@ -607,6 +619,18 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
             Calls <code>POST /dispatch/create</code> — approve makes the commitment
             immutable; export produces the deterministic dispatch packet.
           </div>
+          <!-- Dispatch readiness panel -->
+          <div class="dr-panel" id="dispatch-readiness-panel">
+            <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Dispatch readiness</div>
+            <div id="dr-status" class="dr-not-ready">Not ready for dispatch</div>
+            <div id="dr-reason" class="dr-reason">Required artifact not yet generated.</div>
+            <div class="checklist">
+              <div id="cl-receipt"  class="cl-item cl-pending">◻ Receipt reviewed</div>
+              <div id="cl-verify"   class="cl-item cl-pending">◻ Verification succeeded</div>
+              <div id="cl-dispatch" class="cl-item cl-pending">◻ Dispatch action confirmed</div>
+            </div>
+          </div>
+
           <div style="font-size:.7rem;color:#d29922;background:#2d200966;border:1px solid #d2992233;border-radius:4px;padding:.4rem .6rem;margin-bottom:.2rem;line-height:1.55">
             <strong style="color:#f0f6fc">Stop here if:</strong> evidence is insufficient · jurisdiction or compliance fit is unclear · manufacturer handoff should not proceed. Dispatch is irreversible once approved.
           </div>
@@ -1255,6 +1279,7 @@ async function exportDispatch(btn) {
     if (r.ok) {
       lastExportPacket = data;
       updateIntegrityBadges();
+      updateDispatchReadiness();
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       document.getElementById('dispatch-export-json').textContent = fmt(data);
@@ -1373,6 +1398,51 @@ function copyRouteErrorJson(btn) {
   setTimeout(() => { btn.textContent = 'Copy artifact'; btn.style.color = ''; }, 1500);
 }
 
+// ── Dispatch readiness panel ───────────────────────────────────────────────
+const DR_LABELS = {
+  'cl-receipt':  'Receipt reviewed',
+  'cl-verify':   'Verification succeeded',
+  'cl-dispatch': 'Dispatch action confirmed',
+};
+function setCheck(id, ok) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'cl-item ' + (ok ? 'cl-ok' : 'cl-pending');
+  el.textContent = (ok ? '✓ ' : '◻ ') + (DR_LABELS[id] || '');
+}
+function updateDispatchReadiness() {
+  const status = document.getElementById('dr-status');
+  const reason = document.getElementById('dr-reason');
+  if (!status) return;
+  const receiptOk = opRouting === 'available';
+  const verifyOk  = opVerify  === 'verified';
+  const completed = !!lastExportPacket;
+  setCheck('cl-receipt',  receiptOk);
+  setCheck('cl-verify',   verifyOk);
+  setCheck('cl-dispatch', completed);
+  if (completed) {
+    status.textContent = 'Dispatch completed';
+    status.className   = 'dr-completed';
+    reason.textContent = 'Export packet produced. Current run is complete.';
+  } else if (verifyOk) {
+    status.textContent = 'Ready for dispatch';
+    status.className   = 'dr-ready';
+    reason.textContent = 'Verification succeeded. Create and approve the dispatch commitment.';
+  } else if (opVerify === 'failed') {
+    status.textContent = 'Not ready for dispatch';
+    status.className   = 'dr-not-ready';
+    reason.textContent = 'Verification failed. Resolve before dispatching.';
+  } else if (receiptOk) {
+    status.textContent = 'Not ready for dispatch';
+    status.className   = 'dr-not-ready';
+    reason.textContent = 'Verification pending. Run verify before dispatch.';
+  } else {
+    status.textContent = 'Not ready for dispatch';
+    status.className   = 'dr-not-ready';
+    reason.textContent = 'Required artifact not yet generated.';
+  }
+}
+
 // ── Operator state block ───────────────────────────────────────────────────
 function updateOpState(routing, receipt, verify, dispatch) {
   const MAP = {
@@ -1397,6 +1467,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   const dbn = document.getElementById('dispatch-blocked-note');
   if (dbn) dbn.classList.toggle('hidden', opVerify !== 'failed');
   updateIntegrityBadges();
+  updateDispatchReadiness();
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

@@ -114,6 +114,8 @@ Open reviewer → Run route → Inspect receipt → Verify replay → Dispatch
 
 **Panel structure:** The results panel is divided into four labelled sections — routing decision, verify before dispatch, dispatch commitment, and verification result — each with a short subtitle so a first-time viewer can scan without reading the full guide.
 
+**Dispatch readiness:** A compact panel above the Create Dispatch button shows one of three states — `Not ready for dispatch` · `Ready for dispatch` · `Dispatch completed` — with a single-line blocking reason when not ready and a pre-dispatch checklist (Receipt reviewed · Verification succeeded · Dispatch action confirmed). Once the export packet is produced the panel shows **Dispatch completed**; no further action is required for that run.
+
 **Workflow status block:** A four-column status panel is always visible showing
 `Routing · Receipt · Verification · Dispatch` with states `not-run / available / verified / failed / missing`.
 Guidance notes appear automatically: _"Verification pending. Run verify before dispatch."_ and

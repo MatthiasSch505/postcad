@@ -588,6 +588,82 @@ async fn reviewer_shell_empty_state_run_route_present() {
     );
 }
 
+// ── Dispatch readiness panel tests ────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain the dispatch readiness panel with all three
+/// state labels so an operator can immediately see whether dispatch is ready.
+#[tokio::test]
+async fn reviewer_shell_dispatch_readiness_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Dispatch readiness"),
+        "Dispatch readiness panel title must be present"
+    );
+    assert!(
+        html.contains("Ready for dispatch"),
+        "Ready for dispatch state label must be present in JS"
+    );
+    assert!(
+        html.contains("Not ready for dispatch"),
+        "Not ready for dispatch state label must be present"
+    );
+    assert!(
+        html.contains("Dispatch completed"),
+        "Dispatch completed state label must be present in JS"
+    );
+}
+
+/// Reviewer shell HTML must contain the dispatch readiness panel element IDs
+/// and JS functions so the panel updates correctly as state changes.
+#[tokio::test]
+async fn reviewer_shell_dispatch_readiness_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("dispatch-readiness-panel"), "dispatch-readiness-panel id must be present");
+    assert!(html.contains("dr-status"),                "dr-status element id must be present");
+    assert!(html.contains("dr-reason"),                "dr-reason element id must be present");
+    assert!(html.contains("updateDispatchReadiness"),  "updateDispatchReadiness JS function must be present");
+}
+
+/// Reviewer shell HTML must contain the pre-dispatch checklist items
+/// so an operator can verify each step before committing to dispatch.
+#[tokio::test]
+async fn reviewer_shell_dispatch_checklist_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Receipt reviewed"),          "Receipt reviewed checklist item must be present");
+    assert!(html.contains("Verification succeeded"),    "Verification succeeded checklist item must be present");
+    assert!(html.contains("Dispatch action confirmed"), "Dispatch action confirmed checklist item must be present");
+    assert!(html.contains("cl-receipt"),                "cl-receipt element id must be present");
+    assert!(html.contains("cl-verify"),                 "cl-verify element id must be present");
+    assert!(html.contains("cl-dispatch"),               "cl-dispatch element id must be present");
+}
+
+/// Reviewer shell HTML must contain the blocking-reason texts so an operator
+/// knows exactly why dispatch is not ready in each pre-dispatch state.
+#[tokio::test]
+async fn reviewer_shell_dispatch_blocking_reasons_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Required artifact not yet generated"),
+        "pre-routing blocking reason must be present"
+    );
+    assert!(
+        html.contains("Export packet produced. Current run is complete"),
+        "dispatch-completed calm state message must be present in JS"
+    );
+}
+
 // ── Artifact export/discovery tests ──────────────────────────────────────────
 
 /// Reviewer shell HTML must contain the artifact guide panel with all four

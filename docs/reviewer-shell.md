@@ -130,6 +130,31 @@ Do not skip Step 4: if verification fails in the browser, the server will also r
 **Dispatch is irreversible once approved.** If at any point the evidence is insufficient or the
 jurisdiction fit is unclear, stop and do not proceed.
 
+The **Dispatch readiness** panel immediately above the Create Dispatch button shows the current
+decision state — see the next section for details. Once the export packet is produced, the panel
+shows **Dispatch completed** and no further action is required for the current run.
+
+## Dispatch readiness panel
+
+A compact **Dispatch readiness** panel appears above the Create Dispatch button. It shows one of
+three states derived from existing verification signals — no new backend states are introduced:
+
+| State | Meaning |
+|---|---|
+| `Not ready for dispatch` | Verification has not run, is pending, or failed |
+| `Ready for dispatch` | Verification succeeded — dispatch commitment can be created |
+| `Dispatch completed` | Export packet produced — current run is complete |
+
+Blocking reason shown when not ready:
+
+- _"Required artifact not yet generated."_ — routing has not run yet
+- _"Verification pending. Run verify before dispatch."_ — routing done, verify not yet run
+- _"Verification failed. Resolve before dispatching."_ — verification failed
+
+A pre-dispatch checklist shows three visual indicators: **Receipt reviewed** · **Verification
+succeeded** · **Dispatch action confirmed**. These are presentational only and do not enforce
+workflow behavior.
+
 ## Workflow status block
 
 A four-column status block is always visible at the top of the results panel:

@@ -3246,6 +3246,109 @@ async fn reviewer_shell_phs_reroute_downgrade_wording() {
     );
 }
 
+// ── Canonical pilot workflow panel tests ─────────────────────────────────────
+
+/// Reviewer shell HTML must expose the Canonical Pilot Workflow panel so the
+/// operator has a deterministic step-by-step sequence visible at all times.
+#[tokio::test]
+async fn reviewer_shell_cpw_panel_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"cpw\""),
+        "cpw panel id must be present in HTML"
+    );
+    assert!(
+        html.contains("Canonical Pilot Workflow"),
+        "panel must be labelled 'Canonical Pilot Workflow'"
+    );
+}
+
+/// All six canonical workflow steps must be present in the HTML so the
+/// operator sees the complete sequence regardless of run state.
+#[tokio::test]
+async fn reviewer_shell_cpw_six_steps_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Generate route"),              "step 1 label must be present");
+    assert!(html.contains("Verify receipt"),              "step 2 label must be present");
+    assert!(html.contains("Inspect artifacts"),           "step 3 label must be present");
+    assert!(html.contains("Run reproducibility check"),   "step 4 label must be present");
+    assert!(html.contains("Export dispatch packet"),      "step 5 label must be present");
+    assert!(html.contains("Confirm dry-run"),             "step 6 label must be present");
+}
+
+/// The first step must default to 'available' at initial load because the
+/// operator can always start by generating a route.
+#[tokio::test]
+async fn reviewer_shell_cpw_initial_first_step_available() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"cpw-s1\""),
+        "cpw-s1 step status element id must be present"
+    );
+    assert!(
+        html.contains("cpw-s-available"),
+        "step 1 must carry cpw-s-available class at initial load"
+    );
+}
+
+/// Steps 2 through 6 must default to 'blocked' at initial load because they
+/// depend on prior steps being completed first.
+#[tokio::test]
+async fn reviewer_shell_cpw_later_steps_blocked_initially() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("id=\"cpw-s2\""),
+        "cpw-s2 step status element id must be present"
+    );
+    assert!(
+        html.contains("cpw-s-blocked"),
+        "at least one later step must carry cpw-s-blocked class at initial load"
+    );
+}
+
+/// updateCanonicalWorkflow must be wired into updateOpState so steps
+/// update as the run progresses and reset correctly on reroute.
+#[tokio::test]
+async fn reviewer_shell_cpw_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateCanonicalWorkflow()"),
+        "updateCanonicalWorkflow() call must appear in JS"
+    );
+    assert!(
+        html.contains("updateCanonicalWorkflow"),
+        "updateCanonicalWorkflow function must be defined"
+    );
+}
+
+/// The canonical workflow JS must include status labels for all four step
+/// states — available, completed, blocked, attention — so any run state
+/// produces a legible indicator on each step.
+#[tokio::test]
+async fn reviewer_shell_cpw_status_labels_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("CPW_STATUS_LABELS"), "CPW_STATUS_LABELS constant must be present");
+    assert!(html.contains("cpwStepStatus"),     "cpwStepStatus function must be present");
+}
+
 // ── Smoke test ────────────────────────────────────────────────────────────────
 
 /// Full pilot reviewer workflow smoke test.

@@ -645,6 +645,24 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
             border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
 .phs-action-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
                   letter-spacing:.07em;display:block;margin-bottom:.06rem}
+/* ── canonical pilot workflow ── */
+.cpw{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-bottom:.4rem}
+.cpw-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.18rem}
+.cpw-desc{font-size:.64rem;color:#484f58;line-height:1.45;margin-bottom:.28rem;font-style:italic}
+.cpw-steps{display:flex;flex-direction:column;gap:.06rem}
+.cpw-step{display:flex;align-items:baseline;gap:.45rem;font-size:.67rem;
+          color:#c9d1d9;line-height:1.55;padding:.1rem .25rem;border-radius:3px}
+.cpw-step-num{font-size:.6rem;font-weight:700;color:#6e7681;min-width:.85rem;flex-shrink:0}
+.cpw-step-name{flex:1}
+.cpw-step-status{font-size:.6rem;font-weight:700;text-transform:uppercase;
+                 letter-spacing:.05em;flex-shrink:0}
+.cpw-s-available  {color:#d29922}
+.cpw-s-completed  {color:#3fb950}
+.cpw-s-blocked    {color:#30363d}
+.cpw-s-not-started{color:#484f58}
+.cpw-s-warn       {color:#f85149}
 </style>
 </head>
 <body>
@@ -942,6 +960,20 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div id="pfc-detail" class="pfc-detail">Complete remaining workflow steps before dispatch export.</div>
         <div id="pfc-rows" class="pfc-rows"></div>
         <button id="pfc-link" class="pfc-link hidden" onclick="pfcNavigate()"></button>
+      </div>
+
+      <!-- Canonical pilot workflow panel -->
+      <div id="cpw" class="cpw">
+        <div class="cpw-label">Canonical Pilot Workflow</div>
+        <div class="cpw-desc">The correct operational sequence for executing a PostCAD pilot run. Steps reflect current-run progress only.</div>
+        <div class="cpw-steps">
+          <div class="cpw-step"><span class="cpw-step-num">1</span><span class="cpw-step-name">Generate route</span><span id="cpw-s1" class="cpw-step-status cpw-s-available">available</span></div>
+          <div class="cpw-step"><span class="cpw-step-num">2</span><span class="cpw-step-name">Verify receipt</span><span id="cpw-s2" class="cpw-step-status cpw-s-blocked">blocked</span></div>
+          <div class="cpw-step"><span class="cpw-step-num">3</span><span class="cpw-step-name">Inspect artifacts</span><span id="cpw-s3" class="cpw-step-status cpw-s-blocked">blocked</span></div>
+          <div class="cpw-step"><span class="cpw-step-num">4</span><span class="cpw-step-name">Run reproducibility check</span><span id="cpw-s4" class="cpw-step-status cpw-s-blocked">blocked</span></div>
+          <div class="cpw-step"><span class="cpw-step-num">5</span><span class="cpw-step-name">Export dispatch packet</span><span id="cpw-s5" class="cpw-step-status cpw-s-blocked">blocked</span></div>
+          <div class="cpw-step"><span class="cpw-step-num">6</span><span class="cpw-step-name">Confirm dry-run and pilot readiness</span><span id="cpw-s6" class="cpw-step-status cpw-s-blocked">blocked</span></div>
+        </div>
       </div>
 
       <!-- Operator dry-run status panel -->
@@ -1975,6 +2007,7 @@ async function exportDispatch(btn) {
       updateDossier();
       updateDryRunPanel();
       updatePilotHandoffSummary();
+      updateCanonicalWorkflow();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -2368,6 +2401,70 @@ function updateLineageNotes() {
   if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
 }
 
+// ── Canonical pilot workflow ───────────────────────────────────────────────
+function cpwStepStatus(step) {
+  const vlin = verifyLineage();
+  const dlin = dispatchLineage();
+  switch (step) {
+    case 1: // Generate route
+      if (opRouting === 'available') return 'completed';
+      if (opRouting === 'failed')    return 'warn';
+      return 'available';
+    case 2: // Verify receipt
+      if (opRouting !== 'available') return 'blocked';
+      if (vlin === 'prev') return 'warn';
+      if (vlin === 'current' && opVerify === 'failed') return 'warn';
+      if (vlin === 'current' && opVerify === 'verified') return 'completed';
+      return 'available';
+    case 3: // Inspect artifacts
+      if (opReceipt !== 'available') return 'blocked';
+      return 'completed';
+    case 4: // Run reproducibility check
+      if (opRouting !== 'available') return 'blocked';
+      if (reproStatus === 'mismatch')      return 'warn';
+      if (reproStatus === 'reproducible')  return 'completed';
+      return 'available';
+    case 5: // Export dispatch packet
+      if (dlin === 'prev') return 'warn';
+      if (dlin === 'current') return 'completed';
+      if (vlin !== 'current' || opVerify !== 'verified') return 'blocked';
+      return 'available';
+    case 6: { // Confirm dry-run / pilot readiness
+      const dk = drsVerdictKey();
+      const pk = phsVerdictKey();
+      if (dk === 'attention' || pk === 'attention') return 'warn';
+      if (pk === 'ready')    return 'completed';
+      if (dk === 'passed')   return 'available';
+      if (opRouting === 'available') return 'blocked';
+      return 'blocked';
+    }
+    default: return 'not-started';
+  }
+}
+const CPW_STATUS_LABELS = {
+  'available':   'available',
+  'completed':   'done',
+  'blocked':     'blocked',
+  'not-started': '\u2014',
+  'warn':        'attention',
+};
+const CPW_STATUS_CLS = {
+  'available':   'cpw-s-available',
+  'completed':   'cpw-s-completed',
+  'blocked':     'cpw-s-blocked',
+  'not-started': 'cpw-s-not-started',
+  'warn':        'cpw-s-warn',
+};
+function updateCanonicalWorkflow() {
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById('cpw-s' + i);
+    if (!el) continue;
+    const st = cpwStepStatus(i);
+    el.className   = 'cpw-step-status ' + (CPW_STATUS_CLS[st] || 'cpw-s-blocked');
+    el.textContent = CPW_STATUS_LABELS[st] || '\u2014';
+  }
+}
+
 // ── Pilot handoff summary ──────────────────────────────────────────────────
 function phsVerdictKey() {
   if (runSerial === 0) return 'not-ready';
@@ -2615,6 +2712,7 @@ async function runReproCheck(btn) {
     updateReproPanel();
     updateDryRunPanel();
     updatePilotHandoffSummary();
+    updateCanonicalWorkflow();
   }
 }
 function updateReproPanel() {
@@ -2678,6 +2776,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateReproPanel();
   updateDryRunPanel();
   updatePilotHandoffSummary();
+  updateCanonicalWorkflow();
 }
 
 // ── Active run context ────────────────────────────────────────────────────

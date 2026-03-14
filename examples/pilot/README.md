@@ -262,6 +262,86 @@ Generated bundles are excluded from version control via `.gitignore`.
 
 ---
 
+## Trial Receipt Ledger
+
+Each pilot run accumulates an append-only lifecycle record in:
+
+```
+examples/pilot/reports/ledger_<run-id>.txt
+```
+
+The ledger is written automatically by the pilot scripts as the workflow progresses.
+
+### Where entries are written
+
+| Script / command | Ledger event |
+|---|---|
+| `run_pilot.sh` | `outbound_bundle_created` |
+| `lab_simulator.sh --handoff-pack` | `handoff_pack_created` |
+| `verify.sh --inbound` | `inbound_artifact_processed`, `verification_recorded`, `operator_decision_recorded` |
+| `verify.sh --batch-inbound` | `inbound_artifact_processed`, `operator_decision_recorded` (per artifact) |
+
+### Ledger entry format
+
+Each entry is a plain-text block:
+
+```
+sequence: 001
+event: outbound_bundle_created
+run_id: f1000001-0000-0000-0000-000000000001
+artifact: examples/pilot/receipt.json
+result: recorded
+timestamp: 2026-03-14T10:00:00Z
+```
+
+### Complete trial flow with ledger
+
+```bash
+# 1. Route — writes ledger entry: outbound_bundle_created
+./examples/pilot/run_pilot.sh
+
+# 2. Export bundle + generate handoff pack — writes: handoff_pack_created
+./examples/pilot/package_run.sh
+./examples/pilot/lab_simulator.sh --handoff-pack handoff/ --bundle pilot_bundle
+
+# 3. Receive lab response + verify — writes: inbound_artifact_processed,
+#    verification_recorded, operator_decision_recorded
+./examples/pilot/verify.sh --inbound inbound/lab_response.json --bundle pilot_bundle
+
+# 4. Inspect the complete ledger
+cat examples/pilot/reports/ledger_f1000001-0000-0000-0000-000000000001.txt
+```
+
+Expected ledger after complete flow:
+
+```
+sequence: 001
+event: outbound_bundle_created
+run_id: f1000001-0000-0000-0000-000000000001
+...
+
+sequence: 002
+event: handoff_pack_created
+...
+
+sequence: 003
+event: inbound_artifact_processed
+...
+
+sequence: 004
+event: verification_recorded
+...
+
+sequence: 005
+event: operator_decision_recorded
+result: accepted
+...
+```
+
+The ledger is stored in `reports/` and excluded from version control.
+
+---
+
 ## External Lab Trial
 
 For real external trials, generate a handoff pack instead of simulating a lab response locally.

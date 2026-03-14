@@ -159,6 +159,33 @@ _write_decision() {
   echo "$outfile"
 }
 
+# ── Trial receipt ledger helpers ──────────────────────────────────────────────
+
+_ledger_next_seq() {
+  local ledger="$1"
+  if [[ ! -f "$ledger" ]]; then printf "%03d" 1; return; fi
+  local last
+  last=$(grep "^sequence:" "$ledger" 2>/dev/null | tail -1 | sed 's/sequence: *//' | sed 's/^0*//')
+  [[ -z "$last" ]] && last=0
+  printf "%03d" $((last + 1))
+}
+
+_append_ledger() {
+  local ledger="$1" event="$2" run_id="$3" result="$4" artifact="${5:-}"
+  mkdir -p "$(dirname "$ledger")"
+  local seq
+  seq=$(_ledger_next_seq "$ledger")
+  {
+    echo "sequence: $seq"
+    echo "event: $event"
+    echo "run_id: $run_id"
+    [[ -n "$artifact" ]] && echo "artifact: $artifact"
+    echo "result: $result"
+    echo "timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo ""
+  } >> "$ledger"
+}
+
 # ── Mode: single inbound lab response verification ────────────────────────────
 
 if [[ "$MODE" == "inbound" ]]; then
@@ -241,6 +268,14 @@ if [[ "$MODE" == "inbound" ]]; then
   DECISION_FILE=$(_write_decision "$REPORTS_DIR" "$ARTIFACT_NAME" "${BUNDLE_HASH:-unknown}" \
                     "$VRESULT_STR" "$DECISION" "$REASON")
 
+  # Append ledger entries
+  INBOUND_RUN_ID="${RESP_CASE_ID:-${BUNDLE_HASH:0:12}}"
+  if [[ -z "$INBOUND_RUN_ID" ]]; then INBOUND_RUN_ID="unknown"; fi
+  LEDGER_FILE="$REPORTS_DIR/ledger_${INBOUND_RUN_ID}.txt"
+  _append_ledger "$LEDGER_FILE" "inbound_artifact_processed" "$INBOUND_RUN_ID" "$VRESULT_STR" "$ARTIFACT_NAME"
+  _append_ledger "$LEDGER_FILE" "verification_recorded"      "$INBOUND_RUN_ID" "$VRESULT_STR"
+  _append_ledger "$LEDGER_FILE" "operator_decision_recorded" "$INBOUND_RUN_ID" "$DECISION"
+
   # Print verification outcome
   if [[ "$RESULT" == "verified" ]]; then
     echo -e "  ${GREEN}response verified for current run${RESET}"
@@ -280,6 +315,7 @@ if [[ "$MODE" == "inbound" ]]; then
     echo "  Reason:           $REASON"
   fi
   echo "  Decision record:  $DECISION_FILE"
+  echo "  Ledger:           $LEDGER_FILE"
   echo ""
 
   if [[ "$DECISION" == "accepted" ]]; then
@@ -315,10 +351,15 @@ if [[ "$MODE" == "batch" ]]; then
     exit 1
   fi
 
+  BUNDLE_CASE_ID=$(_field "$BUNDLE_DIR/receipt.json" "routing_input.case_id" 2>/dev/null || echo "")
+  BATCH_RUN_ID="${BUNDLE_CASE_ID:-${BUNDLE_HASH:0:12}}"
+  BATCH_LEDGER_FILE="$REPORTS_DIR/ledger_${BATCH_RUN_ID}.txt"
+
   echo "  Bundle directory : $BUNDLE_DIR"
   echo "  Receipt hash     : $BUNDLE_HASH"
   echo "  Inbound directory: $BATCH_DIR"
   echo "  Reports directory: $REPORTS_DIR"
+  echo "  Ledger:            $BATCH_LEDGER_FILE"
   echo ""
 
   # Collect inbound files in deterministic (sorted) order
@@ -425,6 +466,10 @@ if [[ "$MODE" == "batch" ]]; then
     # Write per-artifact decision record
     _write_decision "$REPORTS_DIR" "$BASENAME" "$BUNDLE_HASH" \
       "$BATCH_VRESULT" "$BATCH_DECISION" "$BATCH_REASON" > /dev/null
+
+    # Append ledger entries for this artifact
+    _append_ledger "$BATCH_LEDGER_FILE" "inbound_artifact_processed" "$BATCH_RUN_ID" "$BATCH_VRESULT" "$BASENAME"
+    _append_ledger "$BATCH_LEDGER_FILE" "operator_decision_recorded" "$BATCH_RUN_ID" "$BATCH_DECISION"
 
     # Print per-artifact result
     case "$CLASS" in

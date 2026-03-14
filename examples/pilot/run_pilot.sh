@@ -16,6 +16,34 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 BIN="${REPO_ROOT}/target/debug/postcad-cli"
+REPORTS_DIR="$SCRIPT_DIR/reports"
+
+# ── Trial receipt ledger helpers ───────────────────────────────────────────────
+
+_ledger_next_seq() {
+  local ledger="$1"
+  if [[ ! -f "$ledger" ]]; then printf "%03d" 1; return; fi
+  local last
+  last=$(grep "^sequence:" "$ledger" 2>/dev/null | tail -1 | sed 's/sequence: *//' | sed 's/^0*//')
+  [[ -z "$last" ]] && last=0
+  printf "%03d" $((last + 1))
+}
+
+_append_ledger() {
+  local ledger="$1" event="$2" run_id="$3" result="$4" artifact="${5:-}"
+  mkdir -p "$(dirname "$ledger")"
+  local seq
+  seq=$(_ledger_next_seq "$ledger")
+  {
+    echo "sequence: $seq"
+    echo "event: $event"
+    echo "run_id: $run_id"
+    [[ -n "$artifact" ]] && echo "artifact: $artifact"
+    echo "result: $result"
+    echo "timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo ""
+  } >> "$ledger"
+}
 
 echo "PostCAD Protocol v1 — Pilot Workflow"
 echo "======================================"
@@ -42,6 +70,21 @@ RECEIPT_JSON=$("$BIN" route-case-from-registry --json \
 # ── Step 3: Save receipt ───────────────────────────────────────────────────────
 echo "$RECEIPT_JSON" > "${SCRIPT_DIR}/receipt.json"
 
+# ── Step 3a: Append ledger entry ───────────────────────────────────────────────
+PILOT_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+PILOT_RECEIPT_HASH=$(echo "$RECEIPT_JSON" | grep -o '"receipt_hash": *"[^"]*"' | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+PILOT_RUN_ID="${PILOT_CASE_ID:-${PILOT_RECEIPT_HASH:0:12}}"
+if [[ -n "$PILOT_RUN_ID" ]]; then
+  LEDGER_FILE="$REPORTS_DIR/ledger_${PILOT_RUN_ID}.txt"
+  _append_ledger "$LEDGER_FILE" "outbound_bundle_created" "$PILOT_RUN_ID" "recorded" "${SCRIPT_DIR}/receipt.json"
+fi
+
 # ── Step 4: Print result ───────────────────────────────────────────────────────
 # Extract key fields with pure-shell JSON parsing (no jq dependency).
 OUTCOME=$(echo "$RECEIPT_JSON"       | grep -o '"outcome": *"[^"]*"'             | head -1 | sed 's/.*: *"\(.*\)"/\1/')
@@ -55,6 +98,9 @@ echo "Receipt hash:         ${RECEIPT_HASH}"
 echo "Kernel version:       ${KERNEL}"
 echo ""
 echo "Receipt written to:   examples/pilot/receipt.json"
+if [[ -n "${PILOT_RUN_ID:-}" ]]; then
+  echo "Ledger:               ${LEDGER_FILE:-}"
+fi
 echo ""
 echo "Verification: OK"
 echo ""

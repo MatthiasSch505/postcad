@@ -1,0 +1,32 @@
+sequence: 001
+event: outbound_bundle_created
+run_id: f1000001-0000-0000-0000-000000000001
+artifact: examples/pilot/receipt.json
+result: recorded
+timestamp: 2026-03-14T10:00:00Z
+
+sequence: 002
+event: handoff_pack_created
+run_id: f1000001-0000-0000-0000-000000000001
+artifact: handoff/f1000001-0000-0000-0000-000000000001
+result: recorded
+timestamp: 2026-03-14T10:01:00Z
+
+sequence: 003
+event: inbound_artifact_processed
+run_id: f1000001-0000-0000-0000-000000000001
+artifact: response_a.json
+result: verified_for_current_run
+timestamp: 2026-03-14T10:02:00Z
+
+sequence: 004
+event: verification_recorded
+run_id: f1000001-0000-0000-0000-000000000001
+result: verified_for_current_run
+timestamp: 2026-03-14T10:02:00Z
+
+sequence: 005
+event: operator_decision_recorded
+run_id: f1000001-0000-0000-0000-000000000001
+result: accepted
+timestamp: 2026-03-14T10:02:00Z

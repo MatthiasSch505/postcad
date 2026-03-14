@@ -33,8 +33,38 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPORTS_DIR="$SCRIPT_DIR/reports"
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'
 BOLD='\033[1m'; RESET='\033[0m'
+
+# ── Trial receipt ledger helpers ───────────────────────────────────────────────
+
+_ledger_next_seq() {
+  local ledger="$1"
+  if [[ ! -f "$ledger" ]]; then printf "%03d" 1; return; fi
+  local last
+  last=$(grep "^sequence:" "$ledger" 2>/dev/null | tail -1 | sed 's/sequence: *//' | sed 's/^0*//')
+  [[ -z "$last" ]] && last=0
+  printf "%03d" $((last + 1))
+}
+
+_append_ledger() {
+  local ledger="$1" event="$2" run_id="$3" result="$4" artifact="${5:-}"
+  mkdir -p "$(dirname "$ledger")"
+  local seq
+  seq=$(_ledger_next_seq "$ledger")
+  {
+    echo "sequence: $seq"
+    echo "event: $event"
+    echo "run_id: $run_id"
+    [[ -n "$artifact" ]] && echo "artifact: $artifact"
+    echo "result: $result"
+    echo "timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo ""
+  } >> "$ledger"
+}
 
 # ── Parse arguments ────────────────────────────────────────────────────────────
 
@@ -239,9 +269,15 @@ if [[ "$MODE" == "handoff" ]]; then
     echo "The response will be rejected if receipt_hash does not match."
   } > "$PACK_DIR/lab_response_instructions.txt"
 
+  # ── Append ledger entry ──────────────────────────────────────────────────────
+
+  LEDGER_FILE="$REPORTS_DIR/ledger_${RUN_ID}.txt"
+  _append_ledger "$LEDGER_FILE" "handoff_pack_created" "$RUN_ID" "recorded" "$PACK_DIR"
+
   # ── Print result ────────────────────────────────────────────────────────────
 
   echo -e "  ${GREEN}✓${RESET}  Handoff pack written: $PACK_DIR"
+  echo "  Ledger:           $LEDGER_FILE"
   echo ""
   echo "  Run ID       : $RUN_ID"
   echo "  Receipt hash : $RECEIPT_HASH"

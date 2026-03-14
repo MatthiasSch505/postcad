@@ -275,6 +275,27 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── preflight summary card ── */
+.pfc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-bottom:.5rem}
+.pfc-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.25rem}
+.pfc-headline{font-size:.82rem;font-weight:700;margin-bottom:.1rem}
+.pfc-detail{font-size:.67rem;color:#8b949e;line-height:1.45;margin-bottom:.2rem}
+.pfc-rows{display:grid;gap:.1rem;margin:.2rem 0 .15rem}
+.pfc-row{font-size:.67rem;display:flex;align-items:baseline;gap:.35rem;line-height:1.4}
+.pfc-ok {color:#3fb950}
+.pfc-dim{color:#484f58}
+.pfc-link{font-size:.62rem;color:#58a6ff;background:none;border:none;
+          font-family:inherit;padding:0;cursor:pointer;
+          text-decoration:underline;text-underline-offset:2px;margin-top:.15rem;display:inline-block}
+.pfc-link:hover{color:#79c0ff}
+.pfc-not-ready{border-left:3px solid #30363d}
+.pfc-ready    {border-left:3px solid #d29922}
+.pfc-complete {border-left:3px solid #2ea043}
+.pfc-not-ready .pfc-headline{color:#484f58}
+.pfc-ready     .pfc-headline{color:#d29922}
+.pfc-complete  .pfc-headline{color:#3fb950}
 /* ── active section emphasis ── */
 .as-chip{display:inline-block;padding:.04rem .3rem;border-radius:2px;font-size:.55rem;
          font-weight:700;vertical-align:middle;margin-left:.35rem;letter-spacing:.03em;
@@ -704,6 +725,15 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div class="crc-label">Current run checklist</div>
         <div id="crc-rows"></div>
         <div id="crc-footer" class="crc-footer crc-footer-incomplete">Current run incomplete</div>
+      </div>
+
+      <!-- Current-run preflight summary — always visible -->
+      <div id="pfc" class="pfc pfc-not-ready">
+        <div class="pfc-label">Current run preflight</div>
+        <div id="pfc-headline" class="pfc-headline">Current run not ready</div>
+        <div id="pfc-detail" class="pfc-detail">Complete remaining workflow steps before dispatch export.</div>
+        <div id="pfc-rows" class="pfc-rows"></div>
+        <button id="pfc-link" class="pfc-link hidden" onclick="pfcNavigate()"></button>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1595,6 +1625,7 @@ async function exportDispatch(btn) {
       updateOab();
       updateOutcomeBanner();
       updateCompletionChecklist();
+      updatePreflightCard();
       updateActiveSectionEmphasis();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
@@ -1852,6 +1883,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateOab();
   updateOutcomeBanner();
   updateCompletionChecklist();
+  updatePreflightCard();
   updateActiveSectionEmphasis();
 }
 
@@ -2148,6 +2180,68 @@ function updateCompletionChecklist() {
   }
 }
 function crcNavigate(target) {
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  if (typeof el.focus === 'function') el.focus({preventScroll:true});
+}
+
+// ── Preflight summary card ────────────────────────────────────────────────
+const PFC_VERDICTS = {
+  'not-ready': {type:'not-ready',
+    headline:'Current run not ready',
+    detail:'Complete remaining workflow steps before dispatch export.',
+    link:{label:'→ View next step', target:'nar-rail'}},
+  'ready':     {type:'ready',
+    headline:'Current run ready for dispatch',
+    detail:'All current-run prerequisites are satisfied and no dispatch export exists yet.',
+    link:{label:'→ Go to dispatch', target:'btn-dispatch-export'}},
+  'complete':  {type:'complete',
+    headline:'Current run complete',
+    detail:'Dispatch export exists for the current run.',
+    link:{label:'→ View export', target:'dispatch-export-result'}},
+};
+function pfcVerdictKey() {
+  if (lastExportPacket)        return 'complete';
+  if (opVerify === 'verified') return 'ready';
+  return 'not-ready';
+}
+function updatePreflightCard() {
+  const v        = PFC_VERDICTS[pfcVerdictKey()];
+  const card     = document.getElementById('pfc');
+  const headline = document.getElementById('pfc-headline');
+  const detail   = document.getElementById('pfc-detail');
+  const rows     = document.getElementById('pfc-rows');
+  const link     = document.getElementById('pfc-link');
+  if (!card || !headline || !detail || !rows || !link) return;
+  card.className       = 'pfc pfc-' + v.type;
+  headline.textContent = v.headline;
+  detail.textContent   = v.detail;
+  const routeOk   = opRouting === 'available';
+  const receiptOk = opReceipt === 'available';
+  const verifyOk  = opVerify  === 'verified';
+  const exported  = !!lastExportPacket;
+  function pfcRow(ok, label) {
+    return '<div class="pfc-row"><span class="' + (ok ? 'pfc-ok' : 'pfc-dim') + '">'
+      + (ok ? '✓' : '◻') + '</span><span class="' + (ok ? 'pfc-ok' : 'pfc-dim') + '">'
+      + esc(label) + '</span></div>';
+  }
+  rows.innerHTML =
+    pfcRow(routeOk,   'Route available')
+    + pfcRow(receiptOk, 'Receipt available')
+    + pfcRow(verifyOk,  'Verification complete')
+    + (exported ? pfcRow(true,  'Dispatch exported')
+                : pfcRow(false, 'Dispatch not yet exported'));
+  if (v.link) {
+    link.textContent = v.link.label;
+    link.classList.remove('hidden');
+  } else {
+    link.classList.add('hidden');
+  }
+}
+function pfcNavigate() {
+  const target = PFC_VERDICTS[pfcVerdictKey()]?.link?.target;
+  if (!target) return;
   const el = document.getElementById(target);
   if (!el) return;
   el.scrollIntoView({behavior:'smooth', block:'nearest'});

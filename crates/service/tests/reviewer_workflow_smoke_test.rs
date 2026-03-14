@@ -1350,6 +1350,110 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Preflight summary card tests ─────────────────────────────────────────────
+
+/// Reviewer shell must contain the preflight card with its container and body
+/// elements so the operator gets one deterministic go/not-yet/complete verdict.
+#[tokio::test]
+async fn reviewer_shell_preflight_card_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"pfc\""),          "pfc container must be present");
+    assert!(html.contains("id=\"pfc-headline\""), "pfc-headline must be present");
+    assert!(html.contains("id=\"pfc-detail\""),   "pfc-detail must be present");
+    assert!(html.contains("id=\"pfc-rows\""),     "pfc-rows must be present");
+    assert!(html.contains("Current run preflight"), "preflight label must be present");
+}
+
+/// Preflight card must default to the not-ready verdict on initial load so a
+/// fresh session never shows a stale ready or complete state.
+#[tokio::test]
+async fn reviewer_shell_preflight_card_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Current run not ready"),
+        "initial headline must say 'Current run not ready'"
+    );
+    assert!(
+        html.contains("Complete remaining workflow steps before dispatch export."),
+        "initial detail must say 'Complete remaining workflow steps before dispatch export.'"
+    );
+    assert!(
+        html.contains("pfc-not-ready"),
+        "initial card CSS state must be pfc-not-ready"
+    );
+}
+
+/// All three verdict headline and detail strings must be present in PFC_VERDICTS
+/// so every preflight state resolves to a deterministic one-line verdict.
+#[tokio::test]
+async fn reviewer_shell_preflight_card_all_verdict_strings() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Current run not ready"),
+        "not-ready verdict headline must be present");
+    assert!(html.contains("Current run ready for dispatch"),
+        "ready verdict headline must be present");
+    assert!(html.contains("Current run complete"),
+        "complete verdict headline must be present");
+    assert!(html.contains("Complete remaining workflow steps before dispatch export."),
+        "not-ready detail must be present");
+    assert!(html.contains("All current-run prerequisites are satisfied"),
+        "ready detail must be present");
+    assert!(html.contains("Dispatch export exists for the current run."),
+        "complete detail must be present");
+}
+
+/// All preflight gate row labels must be present in the JS source so every
+/// underlying gate is shown as a binary plain-language line.
+#[tokio::test]
+async fn reviewer_shell_preflight_card_row_labels_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Route available"),          "Route available row label must be present");
+    assert!(html.contains("Receipt available"),        "Receipt available row label must be present");
+    assert!(html.contains("Verification complete"),    "Verification complete row label must be present");
+    assert!(html.contains("Dispatch not yet exported"),"Dispatch not yet exported row label must be present");
+    assert!(html.contains("Dispatch exported"),        "Dispatch exported row label must be present");
+}
+
+/// Preflight card JS must be present so the verdict is derived only from
+/// existing reviewer signals without any new persisted state.
+#[tokio::test]
+async fn reviewer_shell_preflight_card_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("PFC_VERDICTS"),       "PFC_VERDICTS constant must be present");
+    assert!(html.contains("pfcVerdictKey"),       "pfcVerdictKey JS function must be present");
+    assert!(html.contains("updatePreflightCard"), "updatePreflightCard JS function must be present");
+    assert!(html.contains("pfcNavigate"),         "pfcNavigate JS function must be present");
+}
+
+/// updatePreflightCard must be wired into updateOpState so the verdict resets
+/// on reroute and advances when dispatch export completes.
+#[tokio::test]
+async fn reviewer_shell_preflight_card_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updatePreflightCard()"),
+        "updatePreflightCard() call must appear in updateOpState and exportDispatch"
+    );
+}
+
 // ── Active section emphasis tests ────────────────────────────────────────────
 
 /// All four active-step chip elements must be present so the JS can show/hide

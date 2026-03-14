@@ -7,3 +7,6 @@ reports/
 
 # Generated external handoff packs — do not commit
 handoff/
+
+# Generated inbound lab responses from trial runs — do not commit
+inbound/

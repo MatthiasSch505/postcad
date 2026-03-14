@@ -16,3 +16,6 @@ export_packet.json
 verify.json
 pilot_run_output.txt
 pilot_verify_output.txt
+
+# Campaign archives — local only
+ops/archive/

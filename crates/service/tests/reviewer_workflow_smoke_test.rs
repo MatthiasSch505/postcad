@@ -1350,6 +1350,118 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Outcome banner tests ──────────────────────────────────────────────────────
+
+/// Reviewer shell must contain the current-run outcome banner with its element
+/// IDs so an operator always sees a plain-language summary of workflow state.
+#[tokio::test]
+async fn reviewer_shell_orb_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"orb\""),        "orb container id must be present");
+    assert!(html.contains("id=\"orb-headline\""), "orb-headline id must be present");
+    assert!(html.contains("id=\"orb-detail\""),  "orb-detail id must be present");
+    assert!(html.contains("id=\"orb-link\""),    "orb-link id must be present");
+    assert!(html.contains("orbNavigate"),        "orbNavigate JS function must be present");
+}
+
+/// Outcome banner must default to the neutral empty state at page load so a
+/// fresh session never shows a stale outcome from a prior run.
+#[tokio::test]
+async fn reviewer_shell_orb_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No current run started"),
+        "initial headline must say 'No current run started'"
+    );
+    assert!(
+        html.contains("Start routing to generate current-run artifacts."),
+        "initial detail must say 'Start routing to generate current-run artifacts.'"
+    );
+    assert!(
+        html.contains("orb-neutral"),
+        "initial banner CSS state must be orb-neutral"
+    );
+}
+
+/// All five outcome banner headline strings must be present in ORB_STATES so
+/// every workflow state resolves to a deterministic one-line headline.
+#[tokio::test]
+async fn reviewer_shell_orb_all_state_headlines_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("No current run started"),
+        "empty state headline must be present");
+    assert!(html.contains("Route generated — verification pending"),
+        "routed state headline must be present");
+    assert!(html.contains("Verification completed"),
+        "verified state headline must be present");
+    assert!(html.contains("Verification not completed"),
+        "blocked state headline must be present");
+    assert!(html.contains("Dispatch exported for current run"),
+        "complete state headline must be present");
+}
+
+/// All five outcome banner detail strings must be present in ORB_STATES so the
+/// operator always gets a secondary explanation pointing to the next action.
+#[tokio::test]
+async fn reviewer_shell_orb_all_state_details_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Start routing to generate current-run artifacts."),
+        "empty state detail must be present");
+    assert!(html.contains("Receipt is available. Verification is the next audit step."),
+        "routed state detail must be present");
+    assert!(html.contains("Dispatch can be exported for the current run."),
+        "verified state detail must be present");
+    assert!(html.contains("Verification failed. Review the result before dispatching."),
+        "blocked state detail must be present");
+    assert!(html.contains("Current run artifacts are complete."),
+        "complete state detail must be present");
+}
+
+/// Outcome banner JS must be present so the banner is computed from existing
+/// reviewer signals without any new persisted state.
+#[tokio::test]
+async fn reviewer_shell_orb_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("ORB_STATES"),            "ORB_STATES constant must be present");
+    assert!(html.contains("orbStateKey"),            "orbStateKey JS function must be present");
+    assert!(html.contains("updateOutcomeBanner"),    "updateOutcomeBanner JS function must be present");
+    assert!(html.contains("orbNavigate"),            "orbNavigate JS function must be present");
+}
+
+/// updateOutcomeBanner must be called inside updateOpState so the banner resets
+/// on reroute and advances when dispatch export completes.
+#[tokio::test]
+async fn reviewer_shell_orb_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateOutcomeBanner()"),
+        "updateOutcomeBanner() call must appear in updateOpState and exportDispatch"
+    );
+    // All four CSS state classes must be defined
+    assert!(html.contains("orb-neutral"), "orb-neutral CSS class must be defined");
+    assert!(html.contains("orb-success"), "orb-success CSS class must be defined");
+    assert!(html.contains("orb-warning"), "orb-warning CSS class must be defined");
+    assert!(html.contains("orb-blocked"), "orb-blocked CSS class must be defined");
+}
+
 // ── Run timeline strip tests ──────────────────────────────────────────────────
 
 /// Reviewer shell HTML must contain the current-run timeline strip with all four

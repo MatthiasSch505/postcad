@@ -367,6 +367,24 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
 .oab-btn:hover{color:#79c0ff;border-color:#388bfd}
 .oab-btn-complete{color:#6e7681;border-color:#21262d;cursor:default}
 .oab-reason{font-size:.65rem;color:#6e7681;margin-top:.18rem;line-height:1.4}
+/* ── outcome banner ── */
+.orb{background:#0d1117;border-left:3px solid #30363d;border:1px solid #21262d;
+     border-radius:6px;padding:.5rem .75rem;margin-bottom:.5rem}
+.orb-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.22rem}
+.orb-headline{font-size:.8rem;font-weight:700;margin-bottom:.1rem}
+.orb-detail{font-size:.67rem;color:#8b949e;line-height:1.45;margin-bottom:.15rem}
+.orb-link{font-size:.67rem;color:#58a6ff;cursor:pointer;background:none;border:none;
+          font-family:inherit;padding:0;text-decoration:underline;text-underline-offset:2px}
+.orb-link:hover{color:#79c0ff}
+.orb-neutral .orb-headline{color:#484f58}
+.orb-success .orb-headline{color:#3fb950}
+.orb-warning .orb-headline{color:#d29922}
+.orb-blocked .orb-headline{color:#f85149}
+.orb-neutral{border-left-color:#30363d}
+.orb-success{border-left-color:#2ea043}
+.orb-warning{border-left-color:#d29922}
+.orb-blocked{border-left-color:#f85149}
 </style>
 </head>
 <body>
@@ -623,6 +641,14 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           <button id="oab-btn" class="oab-btn" onclick="oabNavigate()">→ Go to route</button>
         </div>
         <div id="oab-reason" class="oab-reason">No current route artifacts exist yet.</div>
+      </div>
+
+      <!-- Current-run outcome banner — always visible -->
+      <div id="orb" class="orb orb-neutral">
+        <div class="orb-label">Current run status</div>
+        <div id="orb-headline" class="orb-headline">No current run started</div>
+        <div id="orb-detail" class="orb-detail">Start routing to generate current-run artifacts.</div>
+        <button id="orb-link" class="orb-link hidden" onclick="orbNavigate()"></button>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1494,6 +1520,7 @@ async function exportDispatch(btn) {
       updateMicrobadges();
       updateRunTimeline();
       updateOab();
+      updateOutcomeBanner();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -1697,6 +1724,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateMicrobadges();
   updateRunTimeline();
   updateOab();
+  updateOutcomeBanner();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -1863,6 +1891,57 @@ function updateOab() {
 }
 function oabNavigate() {
   const target = OAB_STATES[oabStateKey()]?.target;
+  if (!target) return;
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  if (typeof el.focus === 'function') el.focus({preventScroll:true});
+}
+
+// ── Outcome banner ────────────────────────────────────────────────────────
+const ORB_STATES = {
+  empty:    {type:'neutral', headline:'No current run started',
+             detail:'Start routing to generate current-run artifacts.',
+             link:null},
+  routed:   {type:'warning', headline:'Route generated — verification pending',
+             detail:'Receipt is available. Verification is the next audit step.',
+             link:{label:'→ Go to verify', target:'btn-verify'}},
+  verified: {type:'success', headline:'Verification completed',
+             detail:'Dispatch can be exported for the current run.',
+             link:{label:'→ Go to dispatch', target:'btn-dispatch-export'}},
+  blocked:  {type:'blocked', headline:'Verification not completed',
+             detail:'Verification failed. Review the result before dispatching.',
+             link:{label:'→ Review verification', target:'verify-result'}},
+  complete: {type:'success', headline:'Dispatch exported for current run',
+             detail:'Current run artifacts are complete.',
+             link:{label:'→ View export', target:'dispatch-export-result'}},
+};
+function orbStateKey() {
+  if (lastExportPacket)          return 'complete';
+  if (opVerify === 'verified')   return 'verified';
+  if (opVerify === 'failed')     return 'blocked';
+  if (opRouting === 'available') return 'routed';
+  return 'empty';
+}
+function updateOutcomeBanner() {
+  const s        = ORB_STATES[orbStateKey()];
+  const orb      = document.getElementById('orb');
+  const headline = document.getElementById('orb-headline');
+  const detail   = document.getElementById('orb-detail');
+  const link     = document.getElementById('orb-link');
+  if (!orb || !headline || !detail || !link) return;
+  orb.className        = 'orb orb-' + s.type;
+  headline.textContent = s.headline;
+  detail.textContent   = s.detail;
+  if (s.link) {
+    link.textContent = s.link.label;
+    link.classList.remove('hidden');
+  } else {
+    link.classList.add('hidden');
+  }
+}
+function orbNavigate() {
+  const target = ORB_STATES[orbStateKey()]?.link?.target;
   if (!target) return;
   const el = document.getElementById(target);
   if (!el) return;

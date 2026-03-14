@@ -139,6 +139,7 @@ _extract_bundle_ids() {
     [[ -z "$CASE_ID"               ]] && CASE_ID=$(_field "$BUNDLE_DIR/export_packet.json" "case_id")
     [[ -z "$SELECTED_CANDIDATE_ID" ]] && SELECTED_CANDIDATE_ID=$(_field "$BUNDLE_DIR/export_packet.json" "selected_candidate_id")
   fi
+  return 0
 }
 
 # ── Mode: external handoff pack ───────────────────────────────────────────────

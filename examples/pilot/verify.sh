@@ -9,14 +9,26 @@
 #               --bundle  <bundle_dir>                 # verify against specific bundle
 #   ./verify.sh --batch-inbound <dir>                  # batch intake triage of all *.json in dir
 #   ./verify.sh --batch-inbound <dir> \
-#               --bundle  <bundle_dir> \
-#               --report  <report_file>                # batch triage with written report
+#               --bundle      <bundle_dir> \
+#               --report      <report_file> \
+#               --reports-dir <dir>                    # batch triage with written reports
 #
 # Inbound verification outcomes (single):
 #   response verified for current run
 #   response belongs to different run
 #   response missing required artifact/field
 #   response cannot be verified
+#
+# Operator decision (written to reports/ after each inbound verification):
+#   operator_decision: accepted
+#   operator_decision: rejected
+#
+# Decision mapping:
+#   verified_for_current_run  → accepted
+#   belongs_to_different_run  → rejected  (reason: run_mismatch)
+#   malformed                 → rejected  (reason: malformed)
+#   unverifiable              → rejected  (reason: unverifiable)
+#   duplicate                 → rejected  (reason: duplicate)
 #
 # Batch triage classifications:
 #   accepted        — receipt hash matches current run
@@ -68,6 +80,7 @@ INBOUND_FILE=""
 BATCH_DIR=""
 BUNDLE_DIR="$SCRIPT_DIR"
 REPORT_FILE=""
+REPORTS_DIR="${SCRIPT_DIR}/reports"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -87,6 +100,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --report)
       REPORT_FILE="${2:?--report requires a file argument}"
+      shift 2
+      ;;
+    --reports-dir)
+      REPORTS_DIR="${2:?--reports-dir requires a directory argument}"
       shift 2
       ;;
     --json)
@@ -123,6 +140,25 @@ _bundle_dispatch_id() {
   fi
 }
 
+# ── Shared: write operator decision artifact ──────────────────────────────────
+# _write_decision <reports_dir> <artifact_name> <run_id> <vresult> <decision> [<reason>]
+
+_write_decision() {
+  local dir="$1" artifact="$2" run_id="$3" vresult="$4" decision="$5" reason="${6:-}"
+  mkdir -p "$dir"
+  local stem="${artifact%.json}"
+  local outfile="$dir/decision_${stem}.txt"
+  {
+    echo "run_id: $run_id"
+    echo "artifact: $artifact"
+    echo "verification_result: $vresult"
+    echo "operator_decision: $decision"
+    [[ -n "$reason" ]] && echo "reason: $reason"
+    echo "timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  } > "$outfile"
+  echo "$outfile"
+}
+
 # ── Mode: single inbound lab response verification ────────────────────────────
 
 if [[ "$MODE" == "inbound" ]]; then
@@ -132,89 +168,125 @@ if [[ "$MODE" == "inbound" ]]; then
   echo "  ────────────────────────────────────────"
   echo ""
 
+  # Accumulate result — no early exits until after decision artifact is written
+  RESULT=""
+  RESULT_DETAIL=""
+  RESP_HASH=""
+  RESP_DISPATCH_ID=""
+  RESP_CASE_ID=""
+  BUNDLE_HASH=""
+  BUNDLE_DISPATCH_ID=""
+
   # 1. Check response file exists
   if [[ ! -f "$INBOUND_FILE" ]]; then
-    echo -e "  ${RED}response cannot be verified${RESET}"
-    echo ""
-    echo "  Reason: lab response file not found: $INBOUND_FILE"
-    echo ""
-    exit 1
+    RESULT="unverifiable"
+    RESULT_DETAIL="lab response file not found: $INBOUND_FILE"
   fi
 
   # 2. Check response is valid JSON
-  if command -v python3 &>/dev/null; then
+  if [[ -z "$RESULT" ]] && command -v python3 &>/dev/null; then
     if ! python3 -c "import json; json.load(open('$INBOUND_FILE'))" 2>/dev/null; then
-      echo -e "  ${RED}response cannot be verified${RESET}"
-      echo ""
-      echo "  Reason: lab response file is not valid JSON: $INBOUND_FILE"
-      echo ""
-      exit 1
+      RESULT="unverifiable"
+      RESULT_DETAIL="lab response file is not valid JSON: $INBOUND_FILE"
     fi
   fi
 
   # 3. Extract fields from lab response
-  RESP_HASH=""
-  RESP_DISPATCH_ID=""
-  RESP_CASE_ID=""
-  RESP_HASH=$(_field "$INBOUND_FILE" "receipt_hash")
-  RESP_DISPATCH_ID=$(_field "$INBOUND_FILE" "dispatch_id")
-  RESP_CASE_ID=$(_field "$INBOUND_FILE" "case_id")
+  if [[ -z "$RESULT" ]]; then
+    RESP_HASH=$(_field "$INBOUND_FILE" "receipt_hash")
+    RESP_DISPATCH_ID=$(_field "$INBOUND_FILE" "dispatch_id")
+    RESP_CASE_ID=$(_field "$INBOUND_FILE" "case_id")
+  fi
 
   # 4. Check required field
-  if [[ -z "$RESP_HASH" ]]; then
-    echo -e "  ${RED}response missing required artifact/field${RESET}"
-    echo ""
-    echo "  Reason: lab response is missing required field: receipt_hash"
-    echo "  File:   $INBOUND_FILE"
-    echo ""
-    exit 1
+  if [[ -z "$RESULT" && -z "$RESP_HASH" ]]; then
+    RESULT="malformed"
+    RESULT_DETAIL="missing required field: receipt_hash"
   fi
 
   # 5. Find bundle receipt hash
-  BUNDLE_HASH=""
-  BUNDLE_DISPATCH_ID=""
-  BUNDLE_HASH=$(_bundle_receipt_hash "$BUNDLE_DIR")
-  BUNDLE_DISPATCH_ID=$(_bundle_dispatch_id "$BUNDLE_DIR")
-
-  if [[ -z "$BUNDLE_HASH" ]]; then
-    echo -e "  ${RED}response cannot be verified${RESET}"
-    echo ""
-    echo "  Reason: no receipt artifact found in bundle directory: $BUNDLE_DIR"
-    echo "          expected receipt.json or export_packet.json with receipt_hash"
-    echo ""
-    exit 1
+  if [[ -z "$RESULT" ]]; then
+    BUNDLE_HASH=$(_bundle_receipt_hash "$BUNDLE_DIR")
+    BUNDLE_DISPATCH_ID=$(_bundle_dispatch_id "$BUNDLE_DIR")
+    if [[ -z "$BUNDLE_HASH" ]]; then
+      RESULT="unverifiable"
+      RESULT_DETAIL="no receipt artifact found in bundle directory: $BUNDLE_DIR"
+    fi
   fi
 
   # 6. Compare receipt hashes
-  if [[ "$RESP_HASH" != "$BUNDLE_HASH" ]]; then
-    echo -e "  ${RED}response belongs to different run${RESET}"
-    echo ""
-    echo "  Receipt hash mismatch:"
-    echo "    bundle   : $BUNDLE_HASH"
-    echo "    response : $RESP_HASH"
-    echo ""
-    exit 1
+  if [[ -z "$RESULT" ]]; then
+    if [[ "$RESP_HASH" != "$BUNDLE_HASH" ]]; then
+      RESULT="run_mismatch"
+      RESULT_DETAIL="receipt_hash does not match current run"
+    elif [[ -n "$RESP_DISPATCH_ID" && -n "$BUNDLE_DISPATCH_ID" && "$RESP_DISPATCH_ID" != "$BUNDLE_DISPATCH_ID" ]]; then
+      RESULT="run_mismatch"
+      RESULT_DETAIL="dispatch_id does not match current run"
+    else
+      RESULT="verified"
+    fi
   fi
 
-  # 7. Check dispatch_id consistency if both are present and non-empty
-  if [[ -n "$RESP_DISPATCH_ID" && -n "$BUNDLE_DISPATCH_ID" && "$RESP_DISPATCH_ID" != "$BUNDLE_DISPATCH_ID" ]]; then
+  # Map result → decision + verification_result string
+  case "$RESULT" in
+    verified)     DECISION="accepted"; VRESULT_STR="verified_for_current_run"; REASON="" ;;
+    run_mismatch) DECISION="rejected"; VRESULT_STR="belongs_to_different_run"; REASON="run_mismatch" ;;
+    malformed)    DECISION="rejected"; VRESULT_STR="malformed";                REASON="malformed" ;;
+    unverifiable) DECISION="rejected"; VRESULT_STR="unverifiable";             REASON="unverifiable" ;;
+    *)            DECISION="rejected"; VRESULT_STR="unknown";                  REASON="unknown" ;;
+  esac
+
+  # Write decision artifact
+  ARTIFACT_NAME=$(basename "$INBOUND_FILE")
+  DECISION_FILE=$(_write_decision "$REPORTS_DIR" "$ARTIFACT_NAME" "${BUNDLE_HASH:-unknown}" \
+                    "$VRESULT_STR" "$DECISION" "$REASON")
+
+  # Print verification outcome
+  if [[ "$RESULT" == "verified" ]]; then
+    echo -e "  ${GREEN}response verified for current run${RESET}"
+    echo ""
+    echo "  Receipt hash : $BUNDLE_HASH"
+    [[ -n "$RESP_CASE_ID"     ]] && echo "  Case ID      : $RESP_CASE_ID"
+    [[ -n "$RESP_DISPATCH_ID" ]] && echo "  Dispatch ID  : $RESP_DISPATCH_ID"
+  elif [[ "$RESULT" == "run_mismatch" ]]; then
     echo -e "  ${RED}response belongs to different run${RESET}"
     echo ""
-    echo "  Dispatch ID mismatch:"
-    echo "    bundle   : $BUNDLE_DISPATCH_ID"
-    echo "    response : $RESP_DISPATCH_ID"
+    if [[ "$RESULT_DETAIL" == *"receipt_hash"* ]]; then
+      echo "  Receipt hash mismatch:"
+      echo "    bundle   : ${BUNDLE_HASH:-—}"
+      echo "    response : $RESP_HASH"
+    else
+      echo "  Dispatch ID mismatch:"
+      echo "    bundle   : $BUNDLE_DISPATCH_ID"
+      echo "    response : $RESP_DISPATCH_ID"
+    fi
+  elif [[ "$RESULT" == "malformed" ]]; then
+    echo -e "  ${RED}response missing required artifact/field${RESET}"
     echo ""
-    exit 1
+    echo "  Reason: $RESULT_DETAIL"
+    echo "  File:   $INBOUND_FILE"
+  else
+    echo -e "  ${RED}response cannot be verified${RESET}"
+    echo ""
+    echo "  Reason: $RESULT_DETAIL"
   fi
 
-  # 8. Verified
-  echo -e "  ${GREEN}response verified for current run${RESET}"
+  # Print operator decision
   echo ""
-  echo "  Receipt hash : $BUNDLE_HASH"
-  [[ -n "$RESP_CASE_ID"     ]] && echo "  Case ID      : $RESP_CASE_ID"
-  [[ -n "$RESP_DISPATCH_ID" ]] && echo "  Dispatch ID  : $RESP_DISPATCH_ID"
+  if [[ "$DECISION" == "accepted" ]]; then
+    echo -e "  ${GREEN}Operator decision: ACCEPTED${RESET}"
+  else
+    echo -e "  ${RED}Operator decision: REJECTED${RESET}"
+    echo "  Reason:           $REASON"
+  fi
+  echo "  Decision record:  $DECISION_FILE"
   echo ""
-  exit 0
+
+  if [[ "$DECISION" == "accepted" ]]; then
+    exit 0
+  else
+    exit 1
+  fi
 fi
 
 # ── Mode: batch intake triage ─────────────────────────────────────────────────
@@ -246,6 +318,7 @@ if [[ "$MODE" == "batch" ]]; then
   echo "  Bundle directory : $BUNDLE_DIR"
   echo "  Receipt hash     : $BUNDLE_HASH"
   echo "  Inbound directory: $BATCH_DIR"
+  echo "  Reports directory: $REPORTS_DIR"
   echo ""
 
   # Collect inbound files in deterministic (sorted) order
@@ -339,6 +412,20 @@ if [[ "$MODE" == "batch" ]]; then
       fi
     fi
 
+    # Map batch classification → decision vresult string
+    case "$CLASS" in
+      accepted)     BATCH_VRESULT="verified_for_current_run";  BATCH_DECISION="accepted"; BATCH_REASON="" ;;
+      mismatch)     BATCH_VRESULT="belongs_to_different_run";  BATCH_DECISION="rejected"; BATCH_REASON="run_mismatch" ;;
+      malformed)    BATCH_VRESULT="malformed";                 BATCH_DECISION="rejected"; BATCH_REASON="malformed" ;;
+      unverifiable) BATCH_VRESULT="unverifiable";              BATCH_DECISION="rejected"; BATCH_REASON="unverifiable" ;;
+      duplicate)    BATCH_VRESULT="duplicate";                 BATCH_DECISION="rejected"; BATCH_REASON="duplicate" ;;
+      *)            BATCH_VRESULT="unknown";                   BATCH_DECISION="rejected"; BATCH_REASON="unknown" ;;
+    esac
+
+    # Write per-artifact decision record
+    _write_decision "$REPORTS_DIR" "$BASENAME" "$BUNDLE_HASH" \
+      "$BATCH_VRESULT" "$BATCH_DECISION" "$BATCH_REASON" > /dev/null
+
     # Print per-artifact result
     case "$CLASS" in
       accepted)     CLR="$GREEN"  ;;
@@ -350,12 +437,13 @@ if [[ "$MODE" == "batch" ]]; then
     esac
 
     printf "  ${CLR}%-14s${RESET}  %s\n" "$CLASS" "$BASENAME"
-    printf "  %-14s  Reason  : %s\n" "" "$REASON"
-    [[ -n "$RESP_HASH"    ]] && printf "  %-14s  Hash    : %s\n" "" "$RESP_HASH"
-    [[ -n "$RESP_CASE_ID" ]] && printf "  %-14s  Case ID : %s\n" "" "$RESP_CASE_ID"
+    printf "  %-14s  Reason   : %s\n" "" "$REASON"
+    printf "  %-14s  Decision : %s\n" "" "$BATCH_DECISION"
+    [[ -n "$RESP_HASH"    ]] && printf "  %-14s  Hash     : %s\n" "" "$RESP_HASH"
+    [[ -n "$RESP_CASE_ID" ]] && printf "  %-14s  Case ID  : %s\n" "" "$RESP_CASE_ID"
     echo ""
 
-    REPORT_LINES="${REPORT_LINES}${CLASS}  ${BASENAME}  reason=${REASON}  hash=${RESP_HASH:-—}\n"
+    REPORT_LINES="${REPORT_LINES}${CLASS}  ${BASENAME}  decision=${BATCH_DECISION}  reason=${REASON}  hash=${RESP_HASH:-—}\n"
   done
 
   N_TOTAL=${#FILES[@]}
@@ -369,9 +457,10 @@ if [[ "$MODE" == "batch" ]]; then
   printf "  %-20s %d\n" "Malformed:"        "$N_MALFORMED"
   printf "  %-20s %d\n" "Unverifiable:"     "$N_UNVERIFIABLE"
   printf "  %-20s %d\n" "Duplicate:"        "$N_DUPLICATE"
+  echo "  Decision records: $REPORTS_DIR"
   echo ""
 
-  # Write report file if requested
+  # Write combined report file if requested
   if [[ -n "$REPORT_FILE" ]]; then
     {
       echo "PostCAD Intake Triage Report"

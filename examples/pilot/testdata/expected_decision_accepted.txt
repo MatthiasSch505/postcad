@@ -1,0 +1,4 @@
+run_id: 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+artifact: response_a.json
+verification_result: verified_for_current_run
+operator_decision: accepted

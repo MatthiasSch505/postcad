@@ -1,0 +1,5 @@
+run_id: unknown
+artifact: response_c.json
+verification_result: malformed
+operator_decision: rejected
+reason: malformed

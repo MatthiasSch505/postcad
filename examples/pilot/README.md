@@ -262,6 +262,81 @@ Generated bundles are excluded from version control via `.gitignore`.
 
 ---
 
+## Pilot Operator Workflow
+
+End-to-end sequence from outbound bundle to finalized decision record.
+
+**Step 1 — Export a run bundle**
+
+```bash
+./examples/pilot/package_run.sh
+```
+
+**Step 2 — Simulate a lab response**
+
+```bash
+./examples/pilot/lab_simulator.sh pilot_bundle inbound/response_a.json
+```
+
+**Step 3 — Verify inbound response and generate decision artifact**
+
+```bash
+./examples/pilot/verify.sh --inbound inbound/response_a.json --bundle pilot_bundle
+```
+
+Expected output (success):
+
+```
+  response verified for current run
+
+  Receipt hash : 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+  Case ID      : f1000001-0000-0000-0000-000000000001
+
+  Operator decision: ACCEPTED
+  Decision record:   examples/pilot/reports/decision_response_a.txt
+```
+
+Expected output (mismatch):
+
+```
+  response belongs to different run
+
+  Receipt hash mismatch:
+    bundle   : 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+    response : 0000000000000000000000000000000000000000000000000000000000000000
+
+  Operator decision: REJECTED
+  Reason:            run_mismatch
+  Decision record:   examples/pilot/reports/decision_response_b.txt
+```
+
+**Step 4 — Inspect decision record**
+
+```bash
+cat examples/pilot/reports/decision_response_a.txt
+```
+
+```
+run_id: 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+artifact: response_a.json
+verification_result: verified_for_current_run
+operator_decision: accepted
+timestamp: 2026-03-14T10:00:00Z
+```
+
+### Decision mapping
+
+| Verification result | Operator decision | Reason |
+|---|---|---|
+| `verified_for_current_run` | `accepted` | — |
+| `belongs_to_different_run` | `rejected` | `run_mismatch` |
+| `malformed` | `rejected` | `malformed` |
+| `unverifiable` | `rejected` | `unverifiable` |
+
+Decision artifacts are written to `examples/pilot/reports/` and excluded from version control.
+
+---
+
 ## Inbound Lab Response Verification
 
 After exporting a run bundle, operators can simulate a lab response and verify

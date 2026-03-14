@@ -448,6 +448,76 @@ async fn reviewer_shell_verify_artifact_note_present() {
     );
 }
 
+// ── Integrity badge tests ──────────────────────────────────────────────────────
+
+/// Reviewer shell HTML must contain the integrity badge CSS classes and the three
+/// badge label strings so artifact panels can display verification state visually.
+#[tokio::test]
+async fn reviewer_shell_integrity_badge_labels_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("UNVERIFIED"),
+        "UNVERIFIED integrity badge label must be present in JS"
+    );
+    assert!(
+        html.contains("VERIFIED"),
+        "VERIFIED integrity badge label must be present in JS"
+    );
+    assert!(
+        html.contains("FAILED"),
+        "FAILED integrity badge label must be present in JS"
+    );
+}
+
+/// Reviewer shell HTML must contain the integrity badge CSS classes for all
+/// three states so badges are rendered with correct visual cues.
+#[tokio::test]
+async fn reviewer_shell_integrity_badge_css_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("integrity-badge"), "integrity-badge CSS class must be present");
+    assert!(html.contains("ib-unverified"),   "ib-unverified CSS class must be present");
+    assert!(html.contains("ib-verified"),     "ib-verified CSS class must be present");
+    assert!(html.contains("ib-failed"),       "ib-failed CSS class must be present");
+}
+
+/// Reviewer shell HTML must contain badge anchor elements on all four artifact
+/// panel titles so JS can update them as verification state changes.
+#[tokio::test]
+async fn reviewer_shell_integrity_badge_ids_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("route-result-badge"),   "route-result-badge id must be present");
+    assert!(html.contains("receipt-json-badge"),   "receipt-json-badge id must be present");
+    assert!(html.contains("verify-result-badge"),  "verify-result-badge id must be present");
+    assert!(html.contains("dispatch-result-badge"),"dispatch-result-badge id must be present");
+}
+
+/// Reviewer shell HTML must contain the updateIntegrityBadges and setBadge JS
+/// functions that drive badge state from the operator state machine.
+#[tokio::test]
+async fn reviewer_shell_integrity_badge_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateIntegrityBadges"),
+        "updateIntegrityBadges JS function must be present"
+    );
+    assert!(
+        html.contains("setBadge"),
+        "setBadge JS function must be present"
+    );
+}
+
 // ── Artifact export/discovery tests ──────────────────────────────────────────
 
 /// Reviewer shell HTML must contain the artifact guide panel with all four

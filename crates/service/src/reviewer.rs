@@ -254,6 +254,13 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .guidance-note-err{font-size:.71rem;color:#f85149;background:#3d1f1f44;
                    border:1px solid #f8514933;border-radius:4px;
                    padding:.35rem .6rem;margin-top:.35rem;line-height:1.5}
+/* ── integrity badges ── */
+.integrity-badge{display:inline-flex;align-items:center;font-size:.52rem;font-weight:700;
+                 border-radius:2px;padding:.03rem .28rem;text-transform:uppercase;
+                 letter-spacing:.05em;margin-left:.4rem;vertical-align:middle}
+.ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
+.ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
+.ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
 </style>
 </head>
 <body>
@@ -499,7 +506,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 
       <!-- B. Artifact summary (shown after route) -->
       <div id="route-result" class="hidden">
-        <div class="card-title">Routing decision — audit record</div>
+        <div class="card-title">Routing decision — audit record<span id="route-result-badge" class="integrity-badge hidden"></span></div>
 
         <div class="artifacts">
           <div class="artifact-row">
@@ -550,6 +557,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
         <div class="section-title">
           Receipt JSON
           <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— verification source of truth · inspect before dispatch</span>
+          <span id="receipt-json-badge" class="integrity-badge hidden"></span>
         </div>
         <pre class="result result-ok" id="route-receipt-json"></pre>
         <div id="receipt-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem;margin-bottom:.35rem">
@@ -615,6 +623,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
           <div id="dispatch-export-result" class="hidden" style="margin-top:.55rem">
             <div class="section-title">Export packet — deterministic dispatch record
               <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> · ready for handoff</span>
+              <span id="dispatch-result-badge" class="integrity-badge hidden"></span>
             </div>
             <pre class="result result-info" id="dispatch-export-json"></pre>
             <div id="dispatch-export-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.4rem;padding-top:.35rem;border-top:1px solid #21262d">
@@ -644,7 +653,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
       <!-- F. Verify result (normal) -->
       <div id="verify-result" class="hidden">
         <div class="verify-section">
-          <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span></div>
+          <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span><span id="verify-result-badge" class="integrity-badge hidden"></span></div>
           <div id="verify-banner"></div>
           <pre class="result" id="verify-json"></pre>
           <div id="verify-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
@@ -1230,6 +1239,7 @@ async function exportDispatch(btn) {
     const data = await r.json();
     if (r.ok) {
       lastExportPacket = data;
+      updateIntegrityBadges();
       document.getElementById('art-dispatch-status').innerHTML =
         `<span class="pill pill-ok">${esc(data.status)}</span>`;
       document.getElementById('dispatch-export-json').textContent = fmt(data);
@@ -1291,6 +1301,32 @@ function copyArtHashVal(btn) {
   setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
 }
 
+// ── Integrity badges ───────────────────────────────────────────────────────
+function setBadge(id, state) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!state) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden', 'ib-unverified', 'ib-verified', 'ib-failed');
+  if      (state === 'verified')   { el.textContent = 'VERIFIED';   el.classList.add('ib-verified'); }
+  else if (state === 'failed')     { el.textContent = 'FAILED';     el.classList.add('ib-failed'); }
+  else                             { el.textContent = 'UNVERIFIED'; el.classList.add('ib-unverified'); }
+}
+function updateIntegrityBadges() {
+  // Receipt panels: hidden before routing; reflects verify state once routed
+  const receiptState = opRouting !== 'available' ? null
+    : opVerify === 'verified' ? 'verified'
+    : opVerify === 'failed'   ? 'failed'
+    : 'unverified';
+  setBadge('route-result-badge', receiptState);
+  setBadge('receipt-json-badge', receiptState);
+  // Verification result: shown only after verify has run
+  const verifyState = opVerify === 'verified' ? 'verified'
+    : opVerify === 'failed' ? 'failed' : null;
+  setBadge('verify-result-badge', verifyState);
+  // Dispatch export: verified — server re-verifies before creating the record
+  setBadge('dispatch-result-badge', lastExportPacket ? 'verified' : null);
+}
+
 // ── Artifact panel copy ────────────────────────────────────────────────────
 function copyReceiptJson(btn) {
   if (!lastReceipt) return;
@@ -1345,6 +1381,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
     !(opRouting === 'available' && opVerify === 'not-run'));
   const dbn = document.getElementById('dispatch-blocked-note');
   if (dbn) dbn.classList.toggle('hidden', opVerify !== 'failed');
+  updateIntegrityBadges();
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

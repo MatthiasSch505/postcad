@@ -127,6 +127,18 @@ A four-column status block is always visible at the top of the results panel:
 
 States derive from real kernel responses only — no synthetic signals.
 
+## Integrity badges
+
+Each artifact panel (routing decision, receipt JSON, verification result, export packet) displays a small integrity badge derived from the current verification state:
+
+| Badge | Meaning |
+|---|---|
+| `UNVERIFIED` | Artifact exists but verification has not been run (neutral) |
+| `VERIFIED` | Verification passed — receipt replay matched (green) |
+| `FAILED` | Verification failed — do not dispatch (red) |
+
+Badges update automatically as the operator progresses through the workflow. The dispatch export panel always shows `VERIFIED` because the server independently re-verifies the receipt before creating the dispatch record. Artifacts can be copied to the clipboard using the **Copy artifact** button below each panel.
+
 ## Artifact missing messages
 
 - If a receipt has not been generated: _"Artifact not yet generated. Run route to create."_

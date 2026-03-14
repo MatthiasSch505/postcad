@@ -1350,6 +1350,124 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Dispatch handoff dossier tests ────────────────────────────────────────────
+
+/// Reviewer shell must contain the dispatch handoff dossier so the operator has
+/// a single checkpoint that shows whether the active run is ready for handoff.
+#[tokio::test]
+async fn reviewer_shell_dispatch_handoff_dossier_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"dhd\""),            "dhd container must be present");
+    assert!(html.contains("id=\"dhd-verdict\""),    "dhd-verdict must be present");
+    assert!(html.contains("id=\"dhd-meaning\""),    "dhd-meaning must be present");
+    assert!(html.contains("id=\"dhd-checklist\""),  "dhd-checklist must be present");
+    assert!(html.contains("id=\"dhd-next-text\""),  "dhd-next-text must be present");
+    assert!(html.contains("Dispatch handoff dossier"), "dossier label must be present");
+}
+
+/// Dossier must default to the no-current-dispatch-packet state on initial load
+/// so a fresh session never shows a misleading ready or exported verdict.
+#[tokio::test]
+async fn reviewer_shell_dispatch_handoff_dossier_initial_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("No current dispatch packet"),
+        "initial verdict must be 'No current dispatch packet'"
+    );
+    assert!(
+        html.contains("No route has been generated yet for the current session."),
+        "initial meaning must indicate no route yet"
+    );
+    assert!(
+        html.contains("Generate a route first."),
+        "initial next-step must say 'Generate a route first.'"
+    );
+}
+
+/// All five dossier verdict CSS classes and their corresponding verdict text
+/// must be present so every operational state renders with a distinct signal.
+#[tokio::test]
+async fn reviewer_shell_dispatch_handoff_dossier_verdict_states() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("dhd-verdict-none"),      "dhd-verdict-none CSS class must be defined");
+    assert!(html.contains("dhd-verdict-not-ready"), "dhd-verdict-not-ready CSS class must be defined");
+    assert!(html.contains("dhd-verdict-ready"),     "dhd-verdict-ready CSS class must be defined");
+    assert!(html.contains("dhd-verdict-exported"),  "dhd-verdict-exported CSS class must be defined");
+    assert!(html.contains("dhd-verdict-attention"), "dhd-verdict-attention CSS class must be defined");
+    assert!(html.contains("Current route ready for dispatch export"),
+        "'ready' verdict text must be present in JS");
+    assert!(html.contains("Current dispatch packet exported"),
+        "'exported' verdict text must be present in JS");
+    assert!(html.contains("Current dispatch packet requires attention"),
+        "'attention' verdict text must be present in JS");
+}
+
+/// Dossier checklist must contain all five lineage-aware items so the operator
+/// can scan route, receipt, verification, and dispatch status in one place.
+#[tokio::test]
+async fn reviewer_shell_dispatch_handoff_dossier_checklist_items() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Route available"),                        "route checklist item must be present");
+    assert!(html.contains("Receipt available"),                      "receipt checklist item must be present");
+    assert!(html.contains("Verification executed for current run"),  "verify-exec checklist item must be present");
+    assert!(html.contains("Verification passed"),                    "verify-pass checklist item must be present");
+    assert!(html.contains("Dispatch packet exported for current run"), "dispatch checklist item must be present");
+    assert!(html.contains("Verification executed — previous run only"),
+        "previous-run verify label must be present for reroute state");
+    assert!(html.contains("Dispatch exported — previous run only"),
+        "previous-run dispatch label must be present for reroute state");
+}
+
+/// Dossier meaning block must contain operator-facing text explaining export
+/// semantics and reroute invalidation for the ready and attention states.
+#[tokio::test]
+async fn reviewer_shell_dispatch_handoff_dossier_meaning_block() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("Rerouting will require a new export."),
+        "ready-state reroute meaning must be present"
+    );
+    assert!(
+        html.contains("Rerouting will invalidate this export"),
+        "exported-state reroute meaning must be present"
+    );
+    assert!(
+        html.contains("Reroute detected — re-export required for the current route."),
+        "attention-state next-step must be present"
+    );
+}
+
+/// updateDossier must be wired into updateOpState and exportDispatch success
+/// so the dossier re-evaluates on every state transition including reroute.
+#[tokio::test]
+async fn reviewer_shell_dispatch_handoff_dossier_wired_to_state() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateDossier()"),
+        "updateDossier() call must appear in state machine wiring"
+    );
+    assert!(html.contains("dhdVerdictKey"),  "dhdVerdictKey function must be present");
+    assert!(html.contains("dhdNextStep"),    "dhdNextStep function must be present");
+}
+
 // ── Run identity + artifact lineage tests ─────────────────────────────────────
 
 /// Reviewer shell must contain the run identity block so the operator always

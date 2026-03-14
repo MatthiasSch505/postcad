@@ -545,6 +545,29 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           background:#1c180055;border:1px solid #d2992244;border-radius:4px;
           padding:.3rem .55rem;margin-top:.35rem;margin-bottom:.3rem}
 .lin-note-hint{font-size:.62rem;color:#8b949e;margin-top:.1rem}
+/* ── dispatch handoff dossier ── */
+.dhd{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.55rem .8rem;margin-top:.5rem}
+.dhd-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.28rem}
+.dhd-verdict{font-size:.85rem;font-weight:700;margin-bottom:.18rem}
+.dhd-verdict-none       {color:#484f58}
+.dhd-verdict-not-ready  {color:#484f58}
+.dhd-verdict-ready      {color:#d29922}
+.dhd-verdict-exported   {color:#3fb950}
+.dhd-verdict-attention  {color:#f85149}
+.dhd-meaning{font-size:.67rem;color:#8b949e;line-height:1.5;margin-bottom:.28rem;
+             padding-bottom:.25rem;border-bottom:1px solid #21262d}
+.dhd-checklist{display:grid;gap:.08rem;margin-bottom:.25rem}
+.dhd-row{font-size:.68rem;display:flex;align-items:baseline;gap:.38rem;
+         line-height:1.4;padding:.04rem 0}
+.dhd-ok  {color:#3fb950;flex-shrink:0;width:.85rem}
+.dhd-no  {color:#484f58;flex-shrink:0;width:.85rem}
+.dhd-warn{color:#d29922;flex-shrink:0;width:.85rem}
+.dhd-next{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
+          border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
+.dhd-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+                letter-spacing:.07em;display:block;margin-bottom:.06rem}
 </style>
 </head>
 <body>
@@ -1134,6 +1157,18 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
           <div id="handoff-note" class="handoff-note">
             <div class="hn-label">Handoff</div>
             <div id="hn-body"><span style="color:#484f58;font-style:italic">No export for current route. Handoff not yet applicable.</span></div>
+          </div>
+
+          <!-- Dispatch handoff dossier — final operator checkpoint for active run -->
+          <div id="dhd" class="dhd">
+            <div class="dhd-label">Dispatch handoff dossier</div>
+            <div id="dhd-verdict" class="dhd-verdict dhd-verdict-none">No current dispatch packet</div>
+            <div id="dhd-meaning" class="dhd-meaning">No route has been generated yet for the current session.</div>
+            <div id="dhd-checklist" class="dhd-checklist"></div>
+            <div class="dhd-next">
+              <span class="dhd-next-label">Next step</span>
+              <span id="dhd-next-text">Generate a route first.</span>
+            </div>
           </div>
 
           <div id="dispatch-success" class="hidden success-note" style="margin-top:.4rem"></div>
@@ -1798,6 +1833,7 @@ async function exportDispatch(btn) {
       updateRunIdentityBlock();
       updateLineageBadges();
       updateLineageNotes();
+      updateDossier();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -2018,6 +2054,87 @@ function dblNavigate(target) {
 }
 
 // ── Operator state block ───────────────────────────────────────────────────
+// ── Dispatch handoff dossier ───────────────────────────────────────────────
+function dhdVerdictKey() {
+  if (runSerial === 0)               return 'none';
+  const dlin = dispatchLineage();
+  if (dlin === 'current')            return 'exported';
+  if (dlin === 'prev')               return 'attention';
+  const vlin = verifyLineage();
+  if (vlin === 'current' && opVerify === 'verified') return 'ready';
+  return 'not-ready';
+}
+const DHD_VERDICTS = {
+  'none':      {cls:'dhd-verdict-none',      text:'No current dispatch packet'},
+  'not-ready': {cls:'dhd-verdict-not-ready', text:'Current route not ready for dispatch'},
+  'ready':     {cls:'dhd-verdict-ready',     text:'Current route ready for dispatch export'},
+  'exported':  {cls:'dhd-verdict-exported',  text:'Current dispatch packet exported'},
+  'attention': {cls:'dhd-verdict-attention', text:'Current dispatch packet requires attention'},
+};
+const DHD_MEANINGS = {
+  'none':      'No route has been generated yet for the current session.',
+  'not-ready': 'A route exists for the current run but prerequisites are not complete. Verification must pass before dispatch can be exported.',
+  'ready':     'The current route is verified. Exporting the dispatch packet creates the handoff record bound to this route and run. Rerouting will require a new export.',
+  'exported':  'The dispatch export packet exists for the current route. This run is complete. Rerouting will invalidate this export — a new export will be required for the new route.',
+  'attention': 'A dispatch export exists but it belongs to a previous route. The current run has been rerouted. A new export is required to represent the active route.',
+};
+function dhdNextStep(key) {
+  if (key === 'none')      return 'Generate a route first.';
+  if (key === 'exported')  return 'Dispatch packet already exported for the current route.';
+  if (key === 'attention') return 'Reroute detected — re-export required for the current route.';
+  if (key === 'ready')     return 'Export the dispatch packet for the current route.';
+  if (opRouting !== 'available') return 'Run routing to begin the current run.';
+  if (verifyLineage() === 'idle') return 'Run verification for the current route.';
+  if (opVerify === 'failed')      return 'Resolve failed verification before handoff.';
+  return 'Run verification for the current route.';
+}
+function dhdRow(icon, cls, label) {
+  return '<div class="dhd-row"><span class="' + cls + '">' + icon + '</span><span>' + esc(label) + '</span></div>';
+}
+function updateDossier() {
+  const vkey = dhdVerdictKey();
+  const conf = DHD_VERDICTS[vkey];
+  const verdict   = document.getElementById('dhd-verdict');
+  const meaning   = document.getElementById('dhd-meaning');
+  const checklist = document.getElementById('dhd-checklist');
+  const nextText  = document.getElementById('dhd-next-text');
+  if (!verdict) return;
+  verdict.className   = 'dhd-verdict ' + conf.cls;
+  verdict.textContent = conf.text;
+  if (meaning)  meaning.textContent  = DHD_MEANINGS[vkey];
+  if (nextText) nextText.textContent = dhdNextStep(vkey);
+  if (checklist) {
+    const vlin = verifyLineage();
+    const dlin = dispatchLineage();
+    const routeOk    = opRouting === 'available';
+    const receiptOk  = opReceipt === 'available';
+    const verifyExec = vlin !== 'idle';
+    const verifyPass = vlin === 'current' && opVerify === 'verified';
+    const dispatchOk = dlin === 'current';
+    let h = '';
+    h += dhdRow(routeOk   ? '✓' : '◻', routeOk   ? 'dhd-ok' : 'dhd-no', 'Route available');
+    h += dhdRow(receiptOk ? '✓' : '◻', receiptOk ? 'dhd-ok' : 'dhd-no', 'Receipt available');
+    if (vlin === 'prev') {
+      h += dhdRow('⚠', 'dhd-warn', 'Verification executed — previous run only');
+    } else {
+      h += dhdRow(verifyExec ? '✓' : '◻', verifyExec ? 'dhd-ok' : 'dhd-no',
+                  'Verification executed for current run');
+    }
+    if (vlin === 'current' && opVerify === 'failed') {
+      h += dhdRow('⚠', 'dhd-warn', 'Verification failed — not passed');
+    } else {
+      h += dhdRow(verifyPass ? '✓' : '◻', verifyPass ? 'dhd-ok' : 'dhd-no', 'Verification passed');
+    }
+    if (dlin === 'prev') {
+      h += dhdRow('⚠', 'dhd-warn', 'Dispatch exported — previous run only');
+    } else {
+      h += dhdRow(dispatchOk ? '✓' : '◻', dispatchOk ? 'dhd-ok' : 'dhd-no',
+                  'Dispatch packet exported for current run');
+    }
+    checklist.innerHTML = h;
+  }
+}
+
 // ── Run identity + artifact lineage ───────────────────────────────────────
 function verifyLineage() {
   if (runSerial === 0)                              return 'idle';
@@ -2121,6 +2238,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateRunIdentityBlock();
   updateLineageBadges();
   updateLineageNotes();
+  updateDossier();
 }
 
 // ── Active run context ────────────────────────────────────────────────────

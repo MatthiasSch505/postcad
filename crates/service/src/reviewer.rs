@@ -275,6 +275,28 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
 .ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
 .ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
 .ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
+/* ── current-run checklist card ── */
+.crc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
+     padding:.5rem .75rem;margin-bottom:.5rem}
+.crc-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
+           letter-spacing:.08em;margin-bottom:.3rem}
+.crc-row{font-size:.7rem;display:flex;align-items:baseline;gap:.4rem;
+         padding:.1rem 0;line-height:1.45}
+.crc-icon-done   {color:#3fb950;flex-shrink:0;width:.85rem}
+.crc-icon-pending{color:#484f58;flex-shrink:0;width:.85rem}
+.crc-icon-blocked{color:#d29922;flex-shrink:0;width:.85rem}
+.crc-text-done   {color:#c9d1d9}
+.crc-text-pending{color:#484f58}
+.crc-text-blocked{color:#6e7681}
+.crc-anchor{font-size:.62rem;color:#58a6ff;background:none;border:none;
+            font-family:inherit;padding:0;cursor:pointer;
+            text-decoration:underline;text-underline-offset:2px;margin-left:.35rem}
+.crc-anchor:hover{color:#79c0ff}
+.crc-footer{font-size:.67rem;margin-top:.28rem;padding-top:.28rem;
+            border-top:1px solid #21262d;line-height:1.4}
+.crc-footer-incomplete{color:#484f58}
+.crc-footer-ready     {color:#d29922}
+.crc-footer-complete  {color:#3fb950}
 /* ── dispatch blocker list ── */
 .dbl{background:#0d1117;border:1px solid #21262d;border-radius:6px;
      padding:.45rem .75rem;margin-top:.4rem;margin-bottom:.5rem}
@@ -670,6 +692,13 @@ pre.result.collapsed{max-height:120px;overflow:hidden}
         <div id="orb-headline" class="orb-headline">No current run started</div>
         <div id="orb-detail" class="orb-detail">Start routing to generate current-run artifacts.</div>
         <button id="orb-link" class="orb-link hidden" onclick="orbNavigate()"></button>
+      </div>
+
+      <!-- Current-run completion checklist — always visible -->
+      <div id="crc" class="crc">
+        <div class="crc-label">Current run checklist</div>
+        <div id="crc-rows"></div>
+        <div id="crc-footer" class="crc-footer crc-footer-incomplete">Current run incomplete</div>
       </div>
 
       <!-- Operator workflow status — always visible -->
@@ -1555,6 +1584,7 @@ async function exportDispatch(btn) {
       updateRunTimeline();
       updateOab();
       updateOutcomeBanner();
+      updateCompletionChecklist();
       const _dsn = document.getElementById('dispatch-stale-note');
       if (_dsn) _dsn.classList.add('hidden');
       updateActiveRunContext();
@@ -1810,6 +1840,7 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updateRunTimeline();
   updateOab();
   updateOutcomeBanner();
+  updateCompletionChecklist();
 }
 
 // ── Active run context ────────────────────────────────────────────────────
@@ -2050,6 +2081,61 @@ function updateOutcomeBanner() {
 function orbNavigate() {
   const target = ORB_STATES[orbStateKey()]?.link?.target;
   if (!target) return;
+  const el = document.getElementById(target);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  if (typeof el.focus === 'function') el.focus({preventScroll:true});
+}
+
+// ── Current-run completion checklist ─────────────────────────────────────
+const CRC_ITEMS = [
+  {id:'crc-route',    label:'Route generated',       doneFn: () => opRouting === 'available',
+   pendingAnchor:{label:'Go to routing', target:'norm-input-section'}},
+  {id:'crc-receipt',  label:'Receipt available',     doneFn: () => opReceipt === 'available',
+   pendingAnchor:{label:'Go to routing', target:'norm-input-section'}},
+  {id:'crc-verify',   label:'Verification completed',doneFn: () => opVerify === 'verified',
+   pendingAnchor:{label:'Go to verification', target:'btn-verify'}},
+  {id:'crc-dispatch', label:'Dispatch exported',     doneFn: () => !!lastExportPacket,
+   pendingAnchor:{label:'Go to dispatch', target:'btn-dispatch-export'}},
+];
+function crcRowState(item, idx) {
+  if (item.doneFn()) return 'done';
+  // blocked if any prior item is not done
+  for (let i = 0; i < idx; i++) {
+    if (!CRC_ITEMS[i].doneFn()) return 'blocked';
+  }
+  return 'pending';
+}
+function updateCompletionChecklist() {
+  const rows   = document.getElementById('crc-rows');
+  const footer = document.getElementById('crc-footer');
+  if (!rows || !footer) return;
+  rows.innerHTML = CRC_ITEMS.map((item, idx) => {
+    const state = crcRowState(item, idx);
+    const icon  = state === 'done' ? '✓' : state === 'blocked' ? '◈' : '◻';
+    const anchor = (state === 'pending' || state === 'blocked') && item.pendingAnchor
+      ? ' <button class="crc-anchor" onclick="crcNavigate(' + JSON.stringify(item.pendingAnchor.target) + ')">'
+        + esc(item.pendingAnchor.label) + '</button>'
+      : '';
+    return '<div class="crc-row">'
+      + '<span class="crc-icon-' + state + '">' + icon + '</span>'
+      + '<span class="crc-text-' + state + '">' + esc(item.label) + anchor + '</span>'
+      + '</div>';
+  }).join('');
+  const allDone = CRC_ITEMS.every(item => item.doneFn());
+  const readyForExport = opVerify === 'verified' && !lastExportPacket;
+  if (allDone) {
+    footer.textContent = 'Current run complete';
+    footer.className   = 'crc-footer crc-footer-complete';
+  } else if (readyForExport) {
+    footer.textContent = 'Current run ready for dispatch export';
+    footer.className   = 'crc-footer crc-footer-ready';
+  } else {
+    footer.textContent = 'Current run incomplete';
+    footer.className   = 'crc-footer crc-footer-incomplete';
+  }
+}
+function crcNavigate(target) {
   const el = document.getElementById(target);
   if (!el) return;
   el.scrollIntoView({behavior:'smooth', block:'nearest'});

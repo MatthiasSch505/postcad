@@ -1350,6 +1350,94 @@ async fn reviewer_shell_oab_wired_to_state_machine() {
     assert!(html.contains("oab-action-complete"), "oab-action-complete CSS class must be defined");
 }
 
+// ── Current-run completion checklist tests ────────────────────────────────────
+
+/// Reviewer shell must contain the completion checklist card with its container
+/// and footer so the operator can see current-run completion state in one place.
+#[tokio::test]
+async fn reviewer_shell_completion_checklist_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("id=\"crc\""),        "crc container id must be present");
+    assert!(html.contains("id=\"crc-rows\""),   "crc-rows id must be present");
+    assert!(html.contains("id=\"crc-footer\""), "crc-footer id must be present");
+    assert!(html.contains("Current run checklist"), "checklist label must be present");
+}
+
+/// Checklist must include all four ordered milestone labels so the operator
+/// sees the complete workflow sequence in one card.
+#[tokio::test]
+async fn reviewer_shell_completion_checklist_all_milestones() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Route generated"),        "Route generated milestone must be present");
+    assert!(html.contains("Receipt available"),      "Receipt available milestone must be present");
+    assert!(html.contains("Verification completed"), "Verification completed milestone must be present");
+    assert!(html.contains("Dispatch exported"),      "Dispatch exported milestone must be present");
+}
+
+/// Footer summary strings for all three states must be present in the JS source
+/// so the checklist always resolves to a deterministic one-line conclusion.
+#[tokio::test]
+async fn reviewer_shell_completion_checklist_footer_strings() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("Current run incomplete"),
+        "'Current run incomplete' footer string must be present");
+    assert!(html.contains("Current run ready for dispatch export"),
+        "'Current run ready for dispatch export' footer string must be present");
+    assert!(html.contains("Current run complete"),
+        "'Current run complete' footer string must be present");
+}
+
+/// CSS classes for all checklist row states must be defined.
+#[tokio::test]
+async fn reviewer_shell_completion_checklist_css_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("crc-icon-done"),    "crc-icon-done CSS class must be defined");
+    assert!(html.contains("crc-icon-pending"), "crc-icon-pending CSS class must be defined");
+    assert!(html.contains("crc-icon-blocked"), "crc-icon-blocked CSS class must be defined");
+    assert!(html.contains("crc-footer-complete"),   "crc-footer-complete CSS class must be defined");
+    assert!(html.contains("crc-footer-ready"),      "crc-footer-ready CSS class must be defined");
+    assert!(html.contains("crc-footer-incomplete"), "crc-footer-incomplete CSS class must be defined");
+}
+
+/// Checklist JS functions must be present so state is derived only from
+/// existing reviewer signals without new persisted state.
+#[tokio::test]
+async fn reviewer_shell_completion_checklist_js_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("CRC_ITEMS"),                "CRC_ITEMS constant must be present");
+    assert!(html.contains("updateCompletionChecklist"), "updateCompletionChecklist JS function must be present");
+    assert!(html.contains("crcNavigate"),               "crcNavigate JS function must be present");
+}
+
+/// updateCompletionChecklist must be wired into updateOpState so the checklist
+/// resets on reroute and completes when dispatch export succeeds.
+#[tokio::test]
+async fn reviewer_shell_completion_checklist_wired_to_state_machine() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(
+        html.contains("updateCompletionChecklist()"),
+        "updateCompletionChecklist() call must appear in updateOpState and exportDispatch"
+    );
+}
+
 // ── Dispatch blocker list tests ───────────────────────────────────────────────
 
 /// Reviewer shell must contain the dispatch blocker list panel so an operator

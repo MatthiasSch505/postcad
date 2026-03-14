@@ -224,7 +224,31 @@ Override source and output directories:
 
 The script is idempotent: running it twice produces the same output. It exits non-zero with a clear message if any required artifact is missing.
 
-### Inspecting a bundle
+### Validating a bundle
+
+```bash
+./examples/pilot/validate_bundle.sh
+```
+
+Checks that all required files are present, non-empty, and valid JSON. Exits non-zero with a clear per-file error if any check fails. Accepts an optional path argument:
+
+```bash
+./examples/pilot/validate_bundle.sh <bundle_dir>
+```
+
+### Replaying a run
+
+```bash
+./examples/pilot/replay_run.sh
+```
+
+Reads `route.json`, `receipt.json`, and `verification.json` from the bundle and prints a concise human-readable run summary. Performs a cross-artifact consistency check to confirm all artifacts belong to the same run (receipt hash match, outcome/verification agreement). Exits non-zero if the check fails.
+
+```bash
+./examples/pilot/replay_run.sh <bundle_dir>
+```
+
+### Inspecting a bundle manually
 
 ```bash
 cat pilot_bundle/bundle_manifest.json   # artifact index + timestamp

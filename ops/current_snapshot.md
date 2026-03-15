@@ -3,35 +3,38 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sun Mar 15 13:41:38 CET 2026
+Sun Mar 15 13:51:45 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
 --------------------------------------
  M examples/pilot/README.md
  M examples/pilot/run_pilot.sh
+ M examples/pilot/verify.sh
  M ops/current_campaign.md
  M ops/current_snapshot.md
-?? crates/service/tests/pilot_trace_view_tests.rs
+?? crates/service/tests/pilot_inbound_default_path_tests.rs
 
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-ed216a8 pilot: add inbound reply simulator for demo workflow
+4155816 pilot: add workflow trace view for pilot runs
 
 --------------------------------------
 CHANGED FILES
 --------------------------------------
 examples/pilot/README.md
 examples/pilot/run_pilot.sh
+examples/pilot/verify.sh
 ops/current_campaign.md
 ops/current_snapshot.md
 
 --------------------------------------
 DIFF STAT
 --------------------------------------
- examples/pilot/README.md    | 12 +++++++
- examples/pilot/run_pilot.sh | 76 +++++++++++++++++++++++++++++++++++++++++++++
- ops/current_campaign.md     | 73 ++++++++++++++++++++-----------------------
- ops/current_snapshot.md     | 12 ++-----
- 4 files changed, 125 insertions(+), 48 deletions(-)
+ examples/pilot/README.md    | 35 +++++++++++++++++++++
+ examples/pilot/run_pilot.sh | 67 +++++++++++++++++++++++++++++++++------
+ examples/pilot/verify.sh    | 42 +++++++++++++++++++++++++
+ ops/current_campaign.md     | 76 +++++++++++++++++++++++++--------------------
+ ops/current_snapshot.md     | 13 +++-----
+ 5 files changed, 181 insertions(+), 52 deletions(-)

@@ -79,6 +79,7 @@ JSON_FLAG=""
 INBOUND_FILE=""
 BATCH_DIR=""
 BUNDLE_DIR="$SCRIPT_DIR"
+BUNDLE_EXPLICIT=false
 REPORT_FILE=""
 REPORTS_DIR="${SCRIPT_DIR}/reports"
 
@@ -96,6 +97,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --bundle)
       BUNDLE_DIR="${2:?--bundle requires a directory argument}"
+      BUNDLE_EXPLICIT=true
       shift 2
       ;;
     --report)
@@ -116,6 +118,46 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# ── Auto-resolve inbound when --bundle given without --inbound ────────────────
+
+if [[ "$MODE" == "receipt" && "$BUNDLE_EXPLICIT" == "true" ]]; then
+  if [[ -f "$BUNDLE_DIR/receipt.json" ]]; then
+    _VR_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('$BUNDLE_DIR/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    _VR_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "$BUNDLE_DIR/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _VR_RUN_ID="${_VR_CASE_ID:-${_VR_RECEIPT_HASH:0:12}}"
+    if [[ -n "$_VR_RUN_ID" ]]; then
+      _VR_CANDIDATE="$BUNDLE_DIR/inbound/lab_reply_${_VR_RUN_ID}.json"
+      if [[ -f "$_VR_CANDIDATE" ]]; then
+        MODE="inbound"
+        INBOUND_FILE="$_VR_CANDIDATE"
+        echo ""
+        echo "auto-resolved inbound reply: $INBOUND_FILE"
+        echo ""
+      else
+        echo ""
+        echo "INBOUND REPLY NOT FOUND"
+        echo ""
+        echo "  Current run : $_VR_RUN_ID"
+        echo "  Expected    : $_VR_CANDIDATE"
+        echo ""
+        echo "  Next step:"
+        echo "    generate simulated reply:"
+        echo "      ./examples/pilot/run_pilot.sh --simulate-inbound"
+        echo "    or provide the file explicitly:"
+        echo "      ./examples/pilot/verify.sh --inbound <file> --bundle $BUNDLE_DIR"
+        echo ""
+        exit 1
+      fi
+    fi
+  fi
+fi
 
 # ── Shared: resolve bundle receipt hash ───────────────────────────────────────
 

@@ -520,16 +520,63 @@ if [[ "${1:-}" == "--inspect-inbound-reply" ]]; then
   INBOUND_FILE="${2:-}"
 
   if [[ -z "$INBOUND_FILE" ]]; then
-    echo ""
-    echo "INSPECT INBOUND REPLY — USAGE"
-    echo ""
-    echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply <file>"
-    echo ""
-    echo "Example:"
-    echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
-    echo ""
-    echo "error: --inspect-inbound-reply requires a file argument" >&2
-    exit 1
+    # Try to auto-resolve from current run context
+    if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+      _AR_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+      _AR_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+      _AR_RUN_ID="${_AR_CASE_ID:-${_AR_RECEIPT_HASH:0:12}}"
+      if [[ -n "$_AR_RUN_ID" ]]; then
+        _AR_CANDIDATE="${SCRIPT_DIR}/inbound/lab_reply_${_AR_RUN_ID}.json"
+        if [[ -f "$_AR_CANDIDATE" ]]; then
+          INBOUND_FILE="$_AR_CANDIDATE"
+          echo ""
+          echo "auto-resolved inbound reply: $INBOUND_FILE"
+          echo ""
+        else
+          echo ""
+          echo "INBOUND REPLY NOT FOUND"
+          echo ""
+          echo "  Current run : $_AR_RUN_ID"
+          echo "  Expected    : $_AR_CANDIDATE"
+          echo ""
+          echo "  Next step:"
+          echo "    generate simulated reply:"
+          echo "      ./examples/pilot/run_pilot.sh --simulate-inbound"
+          echo "    or provide the file explicitly:"
+          echo "      ./examples/pilot/run_pilot.sh --inspect-inbound-reply <file>"
+          echo ""
+          exit 1
+        fi
+      else
+        echo ""
+        echo "INSPECT INBOUND REPLY — USAGE"
+        echo ""
+        echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply <file>"
+        echo ""
+        echo "Example:"
+        echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+        echo ""
+        echo "error: --inspect-inbound-reply requires a file argument" >&2
+        exit 1
+      fi
+    else
+      echo ""
+      echo "INSPECT INBOUND REPLY — USAGE"
+      echo ""
+      echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply <file>"
+      echo ""
+      echo "Example:"
+      echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+      echo ""
+      echo "error: --inspect-inbound-reply requires a file argument" >&2
+      exit 1
+    fi
   fi
 
   echo ""

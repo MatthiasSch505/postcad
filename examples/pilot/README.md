@@ -219,6 +219,41 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Default Inbound Path Resolution
+
+When `--inspect-inbound-reply` is called without a file argument, it tries to resolve the inbound reply automatically:
+
+```bash
+./examples/pilot/run_pilot.sh --inspect-inbound-reply
+```
+
+If `receipt.json` is present, the run ID is extracted from `case_id` (falling back to the first 12 characters of `receipt_hash`). The expected inbound reply path is then computed as `inbound/lab_reply_<run-id>.json`. If that file exists, inspection proceeds as if it had been provided explicitly.
+
+If the file does not yet exist, the command prints a structured error:
+
+```
+INBOUND REPLY NOT FOUND
+
+  Current run : <run-id>
+  Expected    : <path>/inbound/lab_reply_<run-id>.json
+
+  Next step:
+    generate simulated reply:
+      ./examples/pilot/run_pilot.sh --simulate-inbound
+    or provide the file explicitly:
+      ./examples/pilot/run_pilot.sh --inspect-inbound-reply <file>
+```
+
+When `verify.sh` is called with `--bundle` but without `--inbound`, the same resolution logic applies: the expected inbound reply path is computed from the bundle's `receipt.json` and used automatically if the file exists.
+
+```bash
+./examples/pilot/verify.sh --bundle examples/pilot
+```
+
+If the file is not yet present, the same `INBOUND REPLY NOT FOUND` message is shown with guidance to run `--simulate-inbound` first.
+
+---
+
 ## Trace View
 
 To see the workflow event trace for the current pilot run:

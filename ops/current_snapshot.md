@@ -3,7 +3,7 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sun Mar 15 13:06:02 CET 2026
+Sun Mar 15 13:09:25 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
@@ -12,12 +12,12 @@ GIT STATUS --SHORT
  M examples/pilot/run_pilot.sh
  M ops/current_campaign.md
  M ops/current_snapshot.md
-?? crates/service/tests/pilot_system_overview_tests.rs
+?? crates/service/tests/pilot_run_summary_tests.rs
 
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-5797de2 pilot: add consolidated help surface for operators
+66a5387 pilot: add system overview surface for external operators
 
 --------------------------------------
 CHANGED FILES
@@ -30,8 +30,8 @@ ops/current_snapshot.md
 --------------------------------------
 DIFF STAT
 --------------------------------------
- examples/pilot/README.md    | 12 +++++++++
- examples/pilot/run_pilot.sh | 51 +++++++++++++++++++++++++++++++++++++
- ops/current_campaign.md     | 62 ++++++++++++++++++++++-----------------------
- ops/current_snapshot.md     | 11 +++-----
- 4 files changed, 97 insertions(+), 39 deletions(-)
+ examples/pilot/README.md    |  12 +++++
+ examples/pilot/run_pilot.sh | 107 ++++++++++++++++++++++++++++++++++++++++++++
+ ops/current_campaign.md     |  64 +++++++++++++-------------
+ ops/current_snapshot.md     |  11 ++---
+ 4 files changed, 155 insertions(+), 39 deletions(-)

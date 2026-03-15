@@ -809,6 +809,113 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: run summary ────────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--run-summary" ]]; then
+
+  # Resolve run context from receipt.json if present
+  RS_RUN_ID="not detected"
+  RS_RECEIPT_HASH=""
+
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    RS_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    RS_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _RS_ID="${RS_CASE_ID:-${RS_RECEIPT_HASH:0:12}}"
+    [[ -n "$_RS_ID" ]] && RS_RUN_ID="$_RS_ID"
+  fi
+
+  # Detect inbound reply (any lab_reply_*.json in inbound/)
+  RS_INBOUND_FILE=""
+  if [[ -n "$(ls "${SCRIPT_DIR}/inbound/lab_reply_"*.json 2>/dev/null | head -1)" ]]; then
+    RS_INBOUND_FILE=$(ls "${SCRIPT_DIR}/inbound/lab_reply_"*.json 2>/dev/null | head -1)
+  fi
+
+  # Detect verification decision record
+  RS_DECISION_FILE=""
+  if [[ -n "$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1)" ]]; then
+    RS_DECISION_FILE=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1)
+  fi
+
+  echo ""
+  echo "PostCAD — Pilot Run Summary"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN CONTEXT"
+  echo ""
+  echo "  Run ID : $RS_RUN_ID"
+  echo ""
+
+  echo "ARTIFACT STATUS"
+  echo ""
+
+  # receipt.json
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    echo "  receipt.json          present    ${SCRIPT_DIR}/receipt.json"
+  else
+    echo "  receipt.json          missing    ${SCRIPT_DIR}/receipt.json"
+  fi
+
+  # inbound lab reply
+  if [[ -n "$RS_INBOUND_FILE" ]]; then
+    echo "  inbound lab reply     present    $RS_INBOUND_FILE"
+  elif [[ "$RS_RUN_ID" != "not detected" ]]; then
+    echo "  inbound lab reply     missing    ${SCRIPT_DIR}/inbound/lab_reply_${RS_RUN_ID}.json"
+  else
+    echo "  inbound lab reply     not yet generated"
+  fi
+
+  # verification result
+  if [[ -n "$RS_DECISION_FILE" ]]; then
+    echo "  verification result   present    $RS_DECISION_FILE"
+  else
+    echo "  verification result   not yet generated"
+  fi
+
+  # dispatch packet
+  if [[ -f "${SCRIPT_DIR}/export_packet.json" ]]; then
+    echo "  dispatch packet       present    ${SCRIPT_DIR}/export_packet.json"
+  else
+    echo "  dispatch packet       not yet generated"
+  fi
+
+  echo ""
+
+  echo "NEXT OPERATOR ACTION"
+  echo ""
+
+  if [[ ! -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    echo "  generate pilot bundle"
+    echo "    ./examples/pilot/run_pilot.sh"
+  elif [[ -z "$RS_INBOUND_FILE" ]]; then
+    echo "  inspect inbound lab reply"
+    echo "    ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+  elif [[ -z "$RS_DECISION_FILE" ]]; then
+    echo "  verify inbound reply"
+    echo "    ./examples/pilot/verify.sh --inbound $RS_INBOUND_FILE --bundle ${SCRIPT_DIR}"
+  else
+    echo "  export dispatch packet"
+    echo "    ./examples/pilot/run_pilot.sh --export-dispatch"
+  fi
+
+  echo ""
+
+  echo "OPERATOR COMMAND HINTS"
+  echo ""
+  echo "  --quickstart      quick reference for the most common commands"
+  echo "  --artifact-index  artifact map for the current run"
+  echo "  --walkthrough     full 4-step pilot workflow guide"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: system overview ─────────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--system-overview" ]]; then

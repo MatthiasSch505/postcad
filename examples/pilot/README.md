@@ -193,6 +193,18 @@ change unless the inputs change.
 
 ---
 
+## Run Summary
+
+To see the current pilot run state and recommended next step:
+
+```bash
+./examples/pilot/run_pilot.sh --run-summary
+```
+
+Prints the current run ID (if a receipt exists), the presence status of each key artifact, and the suggested next operator action. No commands are executed. No files are written.
+
+---
+
 ## System Overview
 
 To understand what the PostCAD pilot system is and how it works, run:

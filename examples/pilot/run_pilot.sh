@@ -809,6 +809,57 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: system overview ─────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--system-overview" ]]; then
+  echo ""
+  echo "POSTCAD PILOT SYSTEM OVERVIEW"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "PostCAD is a deterministic routing and verification layer for dental CAD"
+  echo "manufacturing workflows. Every routing decision is cryptographically"
+  echo "committed to a receipt that can be independently verified."
+  echo ""
+  echo "CORE IDEA"
+  echo ""
+  echo "  A dental CAD design produces a case."
+  echo "  PostCAD generates a routing decision — which manufacturer receives the case."
+  echo "  A receipt records the decision as a cryptographic commitment."
+  echo "  The lab returns a reply that can be verified against the receipt."
+  echo "  A dispatch packet commits the approved workflow for audit."
+  echo ""
+  echo "PILOT WORKFLOW"
+  echo ""
+  echo "  1. Generate pilot bundle   — route the case, write receipt.json"
+  echo "  2. Inspect inbound reply   — check required fields before verification"
+  echo "  3. Verify inbound reply    — bind the reply to the current run cryptographically"
+  echo "  4. Export dispatch packet  — confirm dispatch ready, record next action"
+  echo ""
+  echo "KEY ARTIFACTS"
+  echo ""
+  echo "  receipt.json          routing decision committed as a cryptographic receipt"
+  echo "  inbound lab reply     lab acknowledgement of the routing case"
+  echo "  verification result   operator decision record bound to the receipt"
+  echo "  dispatch packet       approved dispatch commitment (export_packet.json)"
+  echo ""
+  echo "OPERATOR TOOLS"
+  echo ""
+  echo "  --quickstart          minimum command sheet for the pilot workflow"
+  echo "  --walkthrough         full 4-step pilot workflow guide"
+  echo "  --artifact-index      artifact map — where every file lives"
+  echo "  --help-surface        consolidated overview of all operator modes"
+  echo ""
+  echo "PROPERTIES"
+  echo ""
+  echo "  - Deterministic routing: same case inputs always produce the same receipt."
+  echo "  - Verifiable inbound replies: lab replies are cryptographically bound to the run."
+  echo "  - Audit-ready dispatch packets: every decision carries a receipt hash and reason code."
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: consolidated help surface ──────────────────────────────────────────
 
 if [[ "${1:-}" == "--help-surface" ]]; then

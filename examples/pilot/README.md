@@ -193,6 +193,18 @@ change unless the inputs change.
 
 ---
 
+## System Overview
+
+To understand what the PostCAD pilot system is and how it works, run:
+
+```bash
+./examples/pilot/run_pilot.sh --system-overview
+```
+
+This prints a short, deterministic explanation of the system — what PostCAD does, the core idea, the pilot workflow, key artifacts, operator tools, and system properties. No commands are executed. No files are written.
+
+---
+
 ## Help Surface
 
 The best starting point for a first-time operator — shows every available pilot mode and when to use each one:

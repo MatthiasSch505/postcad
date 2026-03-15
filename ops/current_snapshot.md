@@ -3,22 +3,28 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sat Mar 14 17:42:32 CET 2026
+Sun Mar 15 09:59:34 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
 --------------------------------------
-?? ops/
+ M ops/current_campaign.md
+ M ops/current_snapshot.md
 
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-1f83d21 reviewer: add run identity and artifact lineage indicators
+4289eba pilot: add manual lab reply template for external trials
 
 --------------------------------------
 CHANGED FILES
 --------------------------------------
+ops/current_campaign.md
+ops/current_snapshot.md
 
 --------------------------------------
 DIFF STAT
 --------------------------------------
+ ops/current_campaign.md | 55 +++++++++++++++++++++++++++++++------------------
+ ops/current_snapshot.md |  9 +++++---
+ 2 files changed, 41 insertions(+), 23 deletions(-)

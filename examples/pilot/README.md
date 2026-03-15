@@ -219,6 +219,18 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Receipt Replay
+
+To understand how the current receipt functions as the replayable routing commitment for the pilot workflow:
+
+```bash
+./examples/pilot/run_pilot.sh --receipt-replay
+```
+
+Shows the run context (run ID and receipt path), what the receipt commits (selected candidate, deterministic outcome, receipt hash as verification source of truth), the replay idea, the commands to use it, and an engineer interpretation summary. If a receipt exists, confirms it is available for replay-oriented inspection. No commands are executed. No files are written.
+
+---
+
 ## Default Inbound Path Resolution
 
 When `--inspect-inbound-reply` is called without a file argument, it tries to resolve the inbound reply automatically:

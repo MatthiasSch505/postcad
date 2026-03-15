@@ -1055,6 +1055,69 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: receipt replay surface ─────────────────────────────────────────────
+
+if [[ "${1:-}" == "--receipt-replay" ]]; then
+
+  # Resolve run context from receipt.json if present
+  RR_RUN_ID="not detected"
+  RR_RECEIPT_STATUS="examples/pilot/receipt.json (not found)"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    RR_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    RR_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _RR_ID="${RR_CASE_ID:-${RR_RECEIPT_HASH:0:12}}"
+    [[ -n "$_RR_ID" ]] && RR_RUN_ID="$_RR_ID"
+    RR_RECEIPT_STATUS="examples/pilot/receipt.json"
+  fi
+
+  echo ""
+  echo "POSTCAD RECEIPT REPLAY"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN CONTEXT"
+  echo "  Run ID  : $RR_RUN_ID"
+  echo "  Receipt : $RR_RECEIPT_STATUS"
+  echo ""
+  echo "WHAT THE RECEIPT COMMITS"
+  echo "  - selected routing candidate for the case"
+  echo "  - deterministic routing outcome bound to the input set"
+  echo "  - receipt hash as the verification source of truth"
+  echo ""
+  echo "REPLAY IDEA"
+  echo "  The receipt represents the routing commitment for the case."
+  echo "  Replay verification checks that the stored routing result"
+  echo "  is consistent with the recorded receipt."
+  echo "  The receipt is the artifact an operator or engineer"
+  echo "  should inspect first."
+  echo ""
+  echo "HOW TO USE"
+  echo "  ./examples/pilot/run_pilot.sh"
+  echo "  ./examples/pilot/verify.sh"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo "  ./examples/pilot/run_pilot.sh --trace-view"
+  echo ""
+  echo "ENGINEER INTERPRETATION"
+  echo "  - deterministic"
+  echo "  - replayable"
+  echo "  - audit-ready"
+  echo ""
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    echo "  Current receipt detected for replay-oriented inspection."
+  else
+    echo "  Generate a pilot bundle first to create a receipt."
+  fi
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: simulate inbound reply ─────────────────────────────────────────────
 
 if [[ "${1:-}" == "--simulate-inbound" ]]; then

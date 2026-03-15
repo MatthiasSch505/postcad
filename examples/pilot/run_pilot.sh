@@ -809,6 +809,42 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: quickstart command sheet ───────────────────────────────────────────
+
+if [[ "${1:-}" == "--quickstart" ]]; then
+  echo ""
+  echo "PostCAD Pilot — Quickstart Command Sheet"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "Generate pilot bundle"
+  echo "  ./examples/pilot/run_pilot.sh"
+  echo "  Routes the dental case and writes a cryptographic receipt."
+  echo ""
+  echo "Inspect inbound lab reply"
+  echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+  echo "  Checks that all required fields are present before verification."
+  echo ""
+  echo "Verify inbound reply"
+  echo "  ./examples/pilot/verify.sh --inbound inbound/lab_reply_<run-id>.json --bundle examples/pilot"
+  echo "  Cryptographically binds the reply to the current run and records a decision."
+  echo ""
+  echo "Export dispatch packet"
+  echo "  ./examples/pilot/run_pilot.sh --export-dispatch"
+  echo "  Confirms the dispatch packet is ready and tells you the next action."
+  echo ""
+  echo "Show artifact index"
+  echo "  ./examples/pilot/run_pilot.sh --artifact-index"
+  echo "  Prints the artifact map for the current run — where every file lives."
+  echo ""
+  echo "Show walkthrough"
+  echo "  ./examples/pilot/run_pilot.sh --walkthrough"
+  echo "  Prints the full 4-step pilot workflow guide."
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: operator walkthrough ────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--walkthrough" ]]; then

@@ -3,7 +3,7 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sun Mar 15 12:55:04 CET 2026
+Sun Mar 15 12:57:52 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
@@ -12,12 +12,12 @@ GIT STATUS --SHORT
  M examples/pilot/run_pilot.sh
  M ops/current_campaign.md
  M ops/current_snapshot.md
-?? crates/service/tests/pilot_artifact_index_tests.rs
+?? crates/service/tests/pilot_quickstart_tests.rs
 
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-162b046 pilot: harden dispatch export operator verdict output
+4b1c944 pilot: add artifact index summary for operator workflow
 
 --------------------------------------
 CHANGED FILES
@@ -30,8 +30,8 @@ ops/current_snapshot.md
 --------------------------------------
 DIFF STAT
 --------------------------------------
- examples/pilot/README.md    | 51 +++++++++++++++++++++++++++
- examples/pilot/run_pilot.sh | 82 +++++++++++++++++++++++++++++++++++++++++++
- ops/current_campaign.md     | 85 +++++++++++++++++++++------------------------
- ops/current_snapshot.md     | 11 ++----
- 4 files changed, 175 insertions(+), 54 deletions(-)
+ examples/pilot/README.md    | 12 ++++++++
+ examples/pilot/run_pilot.sh | 36 +++++++++++++++++++++++
+ ops/current_campaign.md     | 71 ++++++++++++++++++++-------------------------
+ ops/current_snapshot.md     | 11 ++-----
+ 4 files changed, 83 insertions(+), 47 deletions(-)

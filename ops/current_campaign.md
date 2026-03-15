@@ -1,62 +1,55 @@
 campaign name
 
-pilot: add artifact index summary for operator workflow
+pilot: add quickstart command sheet for external operator
 
 objective
 
-Add a --artifact-index mode to run_pilot.sh so the operator can see the
-complete pilot artifact layout in one deterministic, offline, plain-text
-command. Includes current run context if receipt.json is present.
-Shell/docs/test layer only — no protocol or service code changed.
+Add a --quickstart mode to run_pilot.sh that prints the minimum command
+sheet for the pilot workflow. Six steps, each with a label, exact command,
+and one-line explanation. Deterministic, offline, plain text. Shell/docs/test
+layer only — no protocol or service code changed.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - added --artifact-index mode (before --walkthrough block)
-  - if receipt.json present: resolves run_id, shows specific paths
-  - if no receipt: shows generic patterns
-  - sections printed:
-      Current run (if known)
-      Pilot bundle: receipt.json, export_packet.json
-      Inbound replies: directory + current/pattern path
-      Outbound packages: directory + current/pattern path
-      Decision records: directory + ledger path
-      Verification: verify.sh command
-      Operator flow reminder: inspect → verify → export dispatch
-  - no timestamps, no colors, no network calls, exits 0
+  - added --quickstart mode (before --walkthrough block)
+  - prints "PostCAD Pilot — Quickstart Command Sheet" header
+  - six steps in order:
+      1. Generate pilot bundle      — run_pilot.sh (plain)
+      2. Inspect inbound lab reply  — --inspect-inbound-reply inbound/lab_reply_<run-id>.json
+      3. Verify inbound reply       — verify.sh --inbound ... --bundle examples/pilot
+      4. Export dispatch packet     — run_pilot.sh --export-dispatch
+      5. Show artifact index        — run_pilot.sh --artifact-index
+      6. Show walkthrough           — run_pilot.sh --walkthrough
+  - each step: label + exact command + one-line explanation
+  - no timestamps, no colors, exits 0
 
 examples/pilot/README.md
-  - added "## Artifact Index" section with:
-      --artifact-index command
-      explanation that no commands executed, no files written
-      full expected output example (with current run)
+  - added "## Quickstart" section (before ## Artifact Index) with:
+      --quickstart command
+      description as "fastest way for a new operator to understand the pilot commands"
+      note: no commands executed, no files written
 
-crates/service/tests/pilot_artifact_index_tests.rs
-  - 23 new tests covering:
-    - --artifact-index flag exists
-    - exits 0
-    - header "PostCAD — Pilot Artifact Index"
-    - Pilot bundle section: receipt.json, export_packet.json
-    - Inbound replies section + inbound/ directory
-    - Outbound packages section + outbound/ directory
-    - Decision records section + reports/ directory
-    - Verification section + verify.sh command reference
-    - Operator flow reminder: inspect/verify/export steps
-    - no $(date) in block (determinism check)
-    - README: section heading, command, expected output, no-files note
+crates/service/tests/pilot_quickstart_tests.rs
+  - 25 new tests covering:
+    - --quickstart flag exists, exits 0
+    - header "PostCAD Pilot — Quickstart Command Sheet"
+    - each of 6 steps: label present, exact command present, explanation present
+    - no $(date) in quickstart block
+    - README: section heading, --quickstart command, purpose description
 
 commands run
 
-cargo test --test pilot_artifact_index_tests
+cargo test --test pilot_quickstart_tests
 
 result
 
-All 23 tests pass. No protocol/core code changed.
+All 25 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_artifact_index_tests
+cd ~/projects/postcad && cargo test --test pilot_quickstart_tests
 
 commit message
 
-pilot: add artifact index summary for operator workflow
+pilot: add quickstart command sheet for external operator

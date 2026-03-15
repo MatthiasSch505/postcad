@@ -193,6 +193,18 @@ change unless the inputs change.
 
 ---
 
+## Quickstart
+
+The fastest way for a new operator to understand the pilot commands:
+
+```bash
+./examples/pilot/run_pilot.sh --quickstart
+```
+
+This prints the minimum command sheet for the complete pilot workflow — one exact command per step, one line of explanation each. No commands are executed. No files are written.
+
+---
+
 ## Artifact Index
 
 When you want to orient yourself in the pilot workflow — where are the files, what do I inspect next — run:

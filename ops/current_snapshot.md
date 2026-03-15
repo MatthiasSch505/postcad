@@ -3,7 +3,7 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sun Mar 15 10:07:25 CET 2026
+Sun Mar 15 10:14:56 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
@@ -14,7 +14,7 @@ GIT STATUS --SHORT
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-5118372 pilot: add sendable lab trial package export
+59f239d pilot: add first-contact lab message kit
 
 --------------------------------------
 CHANGED FILES
@@ -25,6 +25,6 @@ ops/current_snapshot.md
 --------------------------------------
 DIFF STAT
 --------------------------------------
- ops/current_campaign.md | 75 ++++++++++++++++++++++++++-----------------------
- ops/current_snapshot.md |  7 ++---
- 2 files changed, 42 insertions(+), 40 deletions(-)
+ ops/current_campaign.md | 65 +++++++++++++++++++++----------------------------
+ ops/current_snapshot.md |  7 ++----
+ 2 files changed, 30 insertions(+), 42 deletions(-)

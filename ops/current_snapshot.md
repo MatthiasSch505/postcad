@@ -3,7 +3,7 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sun Mar 15 13:25:17 CET 2026
+Sun Mar 15 13:33:10 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
@@ -12,12 +12,13 @@ GIT STATUS --SHORT
  M examples/pilot/run_pilot.sh
  M ops/current_campaign.md
  M ops/current_snapshot.md
-?? crates/service/tests/pilot_demo_surface_tests.rs
+?? crates/service/tests/pilot_inbound_simulator_tests.rs
+?? examples/pilot/testdata/lab_reply_simulated.json
 
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-c1f7087 pilot: add command safety guardrails for operator workflow
+699b798 pilot: add demo surface for external viewers
 
 --------------------------------------
 CHANGED FILES
@@ -30,8 +31,8 @@ ops/current_snapshot.md
 --------------------------------------
 DIFF STAT
 --------------------------------------
- examples/pilot/README.md    | 12 ++++++++
- examples/pilot/run_pilot.sh | 42 ++++++++++++++++++++++++++++
- ops/current_campaign.md     | 68 ++++++++++++++++++++++++---------------------
- ops/current_snapshot.md     | 11 ++------
- 4 files changed, 93 insertions(+), 40 deletions(-)
+ examples/pilot/README.md    | 16 ++++++++++
+ examples/pilot/run_pilot.sh | 51 ++++++++++++++++++++++++++++++
+ ops/current_campaign.md     | 75 +++++++++++++++++++++++----------------------
+ ops/current_snapshot.md     | 12 +++-----
+ 4 files changed, 110 insertions(+), 44 deletions(-)

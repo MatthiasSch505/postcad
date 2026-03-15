@@ -1,59 +1,62 @@
 campaign name
 
-pilot: add demo surface for external viewers
+pilot: add inbound reply simulator for demo workflow
 
 objective
 
-Add a --demo-surface mode to run_pilot.sh that gives any external viewer
-(lab, engineer, investor) a compact single-command narrative of what
-PostCAD is, the end-to-end flow, what the operator sees, why it matters,
-and the commands to explore further. Shell/docs/test layer only.
+Add a --simulate-inbound mode to run_pilot.sh that copies a deterministic
+template reply into the inbound directory, enabling end-to-end demo without
+a real external lab. Shell/testdata/docs/test layer only.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - added --demo-surface mode (before --system-overview block)
-  - prints "POSTCAD PILOT DEMO" header
-  - one-line PostCAD description
-  - END-TO-END FLOW: 4 steps (generate, inspect, verify, export)
-  - WHAT THE OPERATOR SEES: receipt.json, inbound lab reply,
-    verification outcome, dispatch packet
-  - WHY THIS MATTERS: deterministic routing, verifiable replies,
-    audit-ready dispatch workflow
-  - TRY IT: 4 exact commands (--system-overview, --quickstart,
-    --run-summary, --help-surface)
-  - no timestamps, no colors, exits 0
+  - added --simulate-inbound mode (before --demo-surface block)
+  - reads template from testdata/lab_reply_simulated.json (errors if missing)
+  - if receipt.json present: resolves run_id, writes inbound/lab_reply_<run-id>.json
+  - if no receipt: writes inbound/lab_reply_simulated.json
+  - prints SIMULATED LAB REPLY GENERATED with File and Next step labels
+  - next step shows both inspect and verify commands
+  - exits 0 on success, exits 1 if template missing
+
+examples/pilot/testdata/lab_reply_simulated.json (new)
+  - minimal valid reply with all required fields:
+    lab_response_schema, receipt_hash, dispatch_id, case_id,
+    lab_acknowledged_at, lab_id (lab-simulator-001), status (accepted)
+  - consistent with lab_reply_filled.json and lab_response_valid.json structure
 
 examples/pilot/README.md
-  - added "## Demo Surface" section (before ## System Overview) with:
-      --demo-surface command
-      description as "fastest single-command introduction to the pilot"
-      note: no commands executed, no files written
+  - added "## Inbound Reply Simulator" section (before ## Demo Surface) with:
+      --simulate-inbound command
+      naming behavior (run-id vs simulated fallback)
+      template reference
+      note on next steps
 
-crates/service/tests/pilot_demo_surface_tests.rs
-  - 27 new tests covering:
-    - --demo-surface flag exists, exits 0
-    - POSTCAD PILOT DEMO header, PostCAD description
-    - END-TO-END FLOW: all 4 steps
-    - WHAT THE OPERATOR SEES: all 4 artifacts
-    - WHY THIS MATTERS: deterministic routing, verifiable replies,
-      audit-ready dispatch
-    - TRY IT: all 4 exact commands
-    - no $(date) in block
-    - README: section, command, single-command-intro description
+crates/service/tests/pilot_inbound_simulator_tests.rs
+  - 22 new tests covering:
+    - --simulate-inbound flag exists, exits 0
+    - template referenced in script
+    - template fields: receipt_hash, lab_id, status, lab_acknowledged_at,
+      lab_response_schema; status is "accepted"; valid JSON structure
+    - output: SIMULATED LAB REPLY GENERATED, File label, Next step label,
+      inspect/verify mentions
+    - run-id named file when run exists, fallback filename without run
+    - error if template missing
+    - no $(date) in output block
+    - README: section, command, template mention
 
 commands run
 
-cargo test --test pilot_demo_surface_tests
+cargo test --test pilot_inbound_simulator_tests
 
 result
 
-All 27 tests pass. No protocol/core code changed.
+All 22 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_demo_surface_tests
+cd ~/projects/postcad && cargo test --test pilot_inbound_simulator_tests
 
 commit message
 
-pilot: add demo surface for external viewers
+pilot: add inbound reply simulator for demo workflow

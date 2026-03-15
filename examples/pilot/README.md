@@ -219,6 +219,22 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Inbound Reply Simulator
+
+To demonstrate the pilot workflow end-to-end without a real external lab:
+
+```bash
+./examples/pilot/run_pilot.sh --simulate-inbound
+```
+
+Creates a deterministic simulated lab reply in the inbound directory. If a current run exists (`receipt.json` present), the file is named `inbound/lab_reply_<run-id>.json`. Without a current run it writes `inbound/lab_reply_simulated.json`.
+
+The simulated reply is copied from `examples/pilot/testdata/lab_reply_simulated.json` — a minimal valid reply consistent with the pilot fixture structure.
+
+After generating, the next steps are shown: inspect and verify.
+
+---
+
 ## Demo Surface
 
 The fastest single-command introduction to the PostCAD pilot:

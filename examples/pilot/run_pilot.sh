@@ -932,6 +932,57 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: simulate inbound reply ─────────────────────────────────────────────
+
+if [[ "${1:-}" == "--simulate-inbound" ]]; then
+
+  TEMPLATE="${SCRIPT_DIR}/testdata/lab_reply_simulated.json"
+
+  if [[ ! -f "$TEMPLATE" ]]; then
+    echo ""
+    echo "error: simulator template not found: $TEMPLATE" >&2
+    exit 1
+  fi
+
+  # Resolve run_id from receipt.json if present
+  SIM_RUN_ID=""
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    SIM_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    SIM_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    SIM_RUN_ID="${SIM_CASE_ID:-${SIM_RECEIPT_HASH:0:12}}"
+  fi
+
+  mkdir -p "${SCRIPT_DIR}/inbound"
+
+  if [[ -n "$SIM_RUN_ID" ]]; then
+    DEST="${SCRIPT_DIR}/inbound/lab_reply_${SIM_RUN_ID}.json"
+  else
+    DEST="${SCRIPT_DIR}/inbound/lab_reply_simulated.json"
+  fi
+
+  cp "$TEMPLATE" "$DEST"
+
+  echo ""
+  echo "SIMULATED LAB REPLY GENERATED"
+  echo ""
+  echo "File:"
+  echo "  $DEST"
+  echo ""
+  echo "Next step:"
+  echo "  inspect inbound reply"
+  echo "    ./examples/pilot/run_pilot.sh --inspect-inbound-reply $DEST"
+  echo "  verify inbound reply"
+  echo "    ./examples/pilot/verify.sh --inbound $DEST --bundle ${SCRIPT_DIR}"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: demo surface ───────────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--demo-surface" ]]; then

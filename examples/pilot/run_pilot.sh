@@ -1055,6 +1055,84 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: protocol chain surface ─────────────────────────────────────────────
+
+if [[ "${1:-}" == "--protocol-chain" ]]; then
+
+  # Resolve run context
+  PC_RUN_ID="not detected"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    PC_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    PC_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _PC_ID="${PC_CASE_ID:-${PC_RECEIPT_HASH:0:12}}"
+    [[ -n "$_PC_ID" ]] && PC_RUN_ID="$_PC_ID"
+  fi
+
+  # Detect current state of each chain stage
+  PC_RECEIPT="not yet observed"
+  PC_INBOUND="not yet observed"
+  PC_VERIFICATION="not yet observed"
+  PC_DISPATCH="not yet observed"
+
+  [[ -f "${SCRIPT_DIR}/receipt.json" ]] && PC_RECEIPT="detected"
+  [[ -n "$(ls "${SCRIPT_DIR}/inbound/lab_reply_"*.json 2>/dev/null | head -1)" ]] && PC_INBOUND="detected"
+  [[ -n "$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1)" ]] && PC_VERIFICATION="detected"
+  [[ -f "${SCRIPT_DIR}/export_packet.json" ]] && PC_DISPATCH="detected"
+
+  echo ""
+  echo "POSTCAD PROTOCOL CHAIN"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN CONTEXT"
+  echo "  Run ID : $PC_RUN_ID"
+  echo ""
+  echo "CHAIN"
+  echo "  1  receipt"
+  echo "       routing commitment"
+  echo "       source of truth for the run"
+  echo ""
+  echo "  2  inbound reply"
+  echo "       lab response tied to the routed case"
+  echo ""
+  echo "  3  verification"
+  echo "       checks inbound reply against protocol expectations"
+  echo ""
+  echo "  4  dispatch packet"
+  echo "       execution-side handoff artifact after verified workflow state"
+  echo ""
+  echo "CURRENT STATE"
+  echo "  1  receipt              $PC_RECEIPT"
+  echo "  2  inbound reply        $PC_INBOUND"
+  echo "  3  verification         $PC_VERIFICATION"
+  echo "  4  dispatch packet      $PC_DISPATCH"
+  echo ""
+  echo "WHY THIS MATTERS"
+  echo "  - deterministic chain of workflow artifacts"
+  echo "  - verifiable transition from routing to execution"
+  echo "  - audit-ready protocol path"
+  echo ""
+  echo "HOW TO USE"
+  echo "  ./examples/pilot/run_pilot.sh --receipt-replay"
+  echo "  ./examples/pilot/run_pilot.sh --dispatch-packet"
+  echo "  ./examples/pilot/run_pilot.sh --trace-view"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo ""
+  echo "ENGINEER INTERPRETATION"
+  echo "  - deterministic"
+  echo "  - chained"
+  echo "  - audit-ready"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: dispatch packet surface ────────────────────────────────────────────
 
 if [[ "${1:-}" == "--dispatch-packet" ]]; then

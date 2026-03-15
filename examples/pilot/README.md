@@ -219,6 +219,18 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Protocol Chain
+
+To see the ordered chain of protocol artifacts in the pilot workflow:
+
+```bash
+./examples/pilot/run_pilot.sh --protocol-chain
+```
+
+Shows the run context, the four-stage artifact chain (receipt → inbound reply → verification → dispatch packet), the current detection state of each stage, why the chain matters, and the commands to inspect each artifact further. No commands are executed. No files are written.
+
+---
+
 ## Dispatch Packet
 
 To understand how the dispatch packet functions as the execution-side artifact of the pilot workflow:

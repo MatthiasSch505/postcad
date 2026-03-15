@@ -1,63 +1,67 @@
 campaign name
 
-pilot: add dispatch packet surface for protocol inspect
+pilot: add protocol chain surface for workflow artifacts
 
 objective
 
-Add a --dispatch-packet mode to run_pilot.sh that prints a deterministic
-plain-text explanation of the dispatch packet as the execution-side protocol
-artifact of the pilot workflow. Shell/docs/test layer only.
+Add a --protocol-chain mode to run_pilot.sh that prints a deterministic
+plain-text explanation of the ordered chain of protocol artifacts across
+the pilot workflow: receipt → inbound reply → verification → dispatch packet.
+Shell/docs/test layer only.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - added --dispatch-packet mode (before --receipt-replay block)
-  - resolves run context from receipt.json (DP_RUN_ID)
-  - detects dispatch artifact: export_packet.json → path, else "not yet generated"
-  - prints 5 sections:
-      POSTCAD DISPATCH PACKET header
-      RUN CONTEXT             — Run ID
-      DISPATCH ARTIFACT       — execution-side handoff, verified state, artifact path
-      WHY IT MATTERS          — verified workflow state, audit-ready, execution checkpoint
-      HOW TO USE              — --export-dispatch, --run-summary, --trace-view, --artifact-index
-      ENGINEER INTERPRETATION — deterministic / exportable / audit-ready
-  - dispatch absent: "Export dispatch packet after verification to generate the artifact."
+  - added --protocol-chain mode (before --dispatch-packet block)
+  - resolves run context from receipt.json (PC_RUN_ID)
+  - detects current state of each stage from filesystem artifacts:
+      PC_RECEIPT      → receipt.json
+      PC_INBOUND      → inbound/lab_reply_*.json
+      PC_VERIFICATION → reports/decision_*.txt
+      PC_DISPATCH     → export_packet.json
+  - prints 6 sections:
+      POSTCAD PROTOCOL CHAIN header
+      RUN CONTEXT      — Run ID
+      CHAIN            — 4 stages with short description each
+      CURRENT STATE    — detected / not yet observed per stage
+      WHY THIS MATTERS — deterministic chain, verifiable transition, audit-ready path
+      HOW TO USE       — --receipt-replay, --dispatch-packet, --trace-view, --run-summary
+      ENGINEER INTERPRETATION — deterministic / chained / audit-ready
   - no timestamps, no colors, exits 0
 
 examples/pilot/README.md
-  - added "## Dispatch Packet" section (before ## Receipt Replay):
-      --dispatch-packet command
-      description: shows dispatch packet as execution-side artifact
+  - added "## Protocol Chain" section (before ## Dispatch Packet):
+      --protocol-chain command
+      description: shows ordered four-stage artifact chain
       note: no commands executed, no files written
 
-crates/service/tests/pilot_dispatch_packet_surface_tests.rs
-  - 27 new tests covering:
-    - --dispatch-packet flag exists, exits 0
-    - POSTCAD DISPATCH PACKET header
+crates/service/tests/pilot_protocol_chain_surface_tests.rs
+  - 34 new tests covering:
+    - --protocol-chain flag exists, exits 0
+    - POSTCAD PROTOCOL CHAIN header
     - RUN CONTEXT section, Run ID label
-    - DISPATCH ARTIFACT: execution-side handoff, verified workflow state,
-      export_packet.json path, "not yet generated" fallback
-    - WHY IT MATTERS: verified workflow state, audit-ready, execution checkpoint
-    - HOW TO USE: section, --export-dispatch, --run-summary, --trace-view, --artifact-index
-    - ENGINEER INTERPRETATION: deterministic, exportable, audit-ready
-    - absent-artifact export guidance message
+    - CHAIN: section, all 4 stage labels
+    - stage descriptions: routing commitment, source of truth, execution-side handoff
+    - CURRENT STATE: section, detected/not yet observed labels
+    - PC_RECEIPT, PC_INBOUND, PC_VERIFICATION, PC_DISPATCH variables
+    - WHY THIS MATTERS: section, deterministic chain, verifiable transition, audit-ready path
+    - HOW TO USE: section, --receipt-replay, --dispatch-packet, --trace-view, --run-summary
+    - ENGINEER INTERPRETATION: section, chained
     - no $(date) in block
     - README: section, command
-  - fixed char-boundary issue in ENGINEER INTERPRETATION tests:
-    uses two-stage find() instead of fixed byte offsets
 
 commands run
 
-cargo test --test pilot_dispatch_packet_surface_tests
+cargo test --test pilot_protocol_chain_surface_tests
 
 result
 
-All 27 tests pass. No protocol/core code changed.
+All 34 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_dispatch_packet_surface_tests
+cd ~/projects/postcad && cargo test --test pilot_protocol_chain_surface_tests
 
 commit message
 
-pilot: add dispatch packet surface for protocol inspect
+pilot: add protocol chain surface for workflow artifacts

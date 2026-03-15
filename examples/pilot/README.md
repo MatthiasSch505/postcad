@@ -457,6 +457,105 @@ Generated handoff packs are excluded from version control via `.gitignore`.
 
 ---
 
+## Real Manual External Trial
+
+For trials with a real external lab (no simulator), use the manual reply template workflow. The handoff pack now includes a pre-filled `lab_reply_template.json` the lab can edit and return directly.
+
+### Step 1 — Route and generate handoff pack
+
+```bash
+./examples/pilot/run_pilot.sh
+./examples/pilot/lab_simulator.sh --handoff-pack handoff/ --bundle examples/pilot
+```
+
+### Step 2 — Send pack to real lab
+
+Send `handoff/<run-id>/` to the external lab. The lab receives:
+
+| File | Purpose |
+|---|---|
+| `lab_reply_template.json` | Pre-filled JSON — lab fills in `lab_acknowledged_at` and `lab_id` |
+| `lab_response_instructions.txt` | Instructions for completing and returning the reply |
+| `artifacts/receipt.json` | Routing receipt for reference |
+| `manifest.txt` | Index of included files |
+
+### Step 3 — Prepare reply template locally (optional)
+
+To copy the template into the inbound directory as a starting point:
+
+```bash
+./examples/pilot/run_pilot.sh --prepare-manual-reply
+```
+
+Expected output:
+
+```
+  Reply template prepared for manual completion:
+    examples/pilot/inbound/lab_reply_<run-id>.json
+
+  Run ID      : <run-id>
+  Receipt hash: <hash>
+
+  The lab must fill in:
+    lab_acknowledged_at  — ISO 8601 timestamp
+    lab_id               — lab identifier
+
+  Fields that must not be changed:
+    lab_response_schema, receipt_hash, dispatch_id, case_id, status
+```
+
+### Step 4 — Lab fills and returns the template
+
+The lab opens `lab_reply_template.json`, fills in two fields, and returns the file:
+
+```json
+{
+  "lab_response_schema": "1",
+  "receipt_hash": "<unchanged — pre-filled>",
+  "dispatch_id": "<unchanged — pre-filled>",
+  "case_id": "<unchanged — pre-filled>",
+  "lab_acknowledged_at": "2026-03-15T14:00:00Z",
+  "lab_id": "dental-lab-berlin-001",
+  "status": "accepted"
+}
+```
+
+`receipt_hash`, `dispatch_id`, and `case_id` must not be changed. The response will be rejected if `receipt_hash` does not match.
+
+### Step 5 — Place returned file into inbound directory
+
+```bash
+cp lab_response_returned.json examples/pilot/inbound/lab_reply_<run-id>.json
+```
+
+### Step 6 — Verify and generate decision record
+
+```bash
+./examples/pilot/verify.sh \
+  --inbound examples/pilot/inbound/lab_reply_<run-id>.json \
+  --bundle  examples/pilot
+```
+
+Expected output (success):
+
+```
+  response verified for current run
+
+  Operator decision: ACCEPTED
+  Decision record:   examples/pilot/reports/decision_lab_reply_<run-id>.txt
+```
+
+Expected output (malformed or wrong run):
+
+```
+  response missing required artifact/field
+
+  Operator decision: REJECTED
+  Reason:            malformed
+```
+
+---
+
 ## Pilot Operator Workflow
 
 End-to-end sequence from outbound bundle to finalized decision record.

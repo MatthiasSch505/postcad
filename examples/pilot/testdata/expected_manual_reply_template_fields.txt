@@ -1,0 +1,8 @@
+lab_response_schema
+receipt_hash
+dispatch_id
+case_id
+lab_acknowledged_at
+FILL_IN
+lab_id
+status

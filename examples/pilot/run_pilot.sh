@@ -137,6 +137,70 @@ except: print('')
   fi
 fi
 
+# ── Mode: prepare manual reply template ───────────────────────────────────────
+
+if [[ "${1:-}" == "--prepare-manual-reply" ]]; then
+
+  RECEIPT="${SCRIPT_DIR}/receipt.json"
+
+  if [[ ! -f "$RECEIPT" ]]; then
+    echo "error: receipt.json not found — run run_pilot.sh first" >&2
+    exit 1
+  fi
+
+  # Compute run_id (same logic as routing modes)
+  PR_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${RECEIPT}').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+  PR_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "$RECEIPT" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  PR_RUN_ID="${PR_CASE_ID:-${PR_RECEIPT_HASH:0:12}}"
+
+  if [[ -z "$PR_RUN_ID" ]]; then
+    echo "error: could not determine run_id from receipt.json" >&2
+    exit 1
+  fi
+
+  TEMPLATE_SRC="${SCRIPT_DIR}/handoff/${PR_RUN_ID}/lab_reply_template.json"
+
+  if [[ ! -f "$TEMPLATE_SRC" ]]; then
+    echo "error: handoff pack not found for run: $PR_RUN_ID" >&2
+    echo "  expected: $TEMPLATE_SRC" >&2
+    echo "  generate it first:" >&2
+    echo "    ./examples/pilot/lab_simulator.sh --handoff-pack handoff/ --bundle examples/pilot" >&2
+    exit 1
+  fi
+
+  mkdir -p "${SCRIPT_DIR}/inbound"
+  DEST="${SCRIPT_DIR}/inbound/lab_reply_${PR_RUN_ID}.json"
+  cp "$TEMPLATE_SRC" "$DEST"
+
+  echo ""
+  echo "PostCAD — Manual Reply Template"
+  echo "  ────────────────────────────────────────"
+  echo ""
+  echo "  Reply template prepared for manual completion:"
+  echo "    $DEST"
+  echo ""
+  echo "  Run ID      : $PR_RUN_ID"
+  echo "  Receipt hash: $PR_RECEIPT_HASH"
+  echo ""
+  echo "  The lab must fill in:"
+  echo "    lab_acknowledged_at  — ISO 8601 timestamp"
+  echo "    lab_id               — lab identifier"
+  echo ""
+  echo "  Fields that must not be changed:"
+  echo "    lab_response_schema, receipt_hash, dispatch_id, case_id, status"
+  echo ""
+  echo "  After the lab returns the filled file, verify it:"
+  echo "    ./examples/pilot/verify.sh --inbound $DEST --bundle ${SCRIPT_DIR}"
+  echo ""
+  exit 0
+fi
+
 echo "PostCAD Protocol v1 — Pilot Workflow"
 echo "======================================"
 echo ""

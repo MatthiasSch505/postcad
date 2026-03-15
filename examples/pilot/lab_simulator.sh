@@ -189,6 +189,7 @@ if [[ "$MODE" == "handoff" ]]; then
   ARTIFACT_LIST="${ARTIFACT_LIST}  manifest.txt\n"
   ARTIFACT_LIST="${ARTIFACT_LIST}  operator_instructions.txt\n"
   ARTIFACT_LIST="${ARTIFACT_LIST}  lab_response_instructions.txt\n"
+  ARTIFACT_LIST="${ARTIFACT_LIST}  lab_reply_template.json\n"
 
   # ── Write manifest.txt ──────────────────────────────────────────────────────
 
@@ -217,8 +218,10 @@ if [[ "$MODE" == "handoff" ]]; then
     echo "This pack contains the routing receipt and dispatch packet for the above run."
     echo "Send the complete handoff pack directory to the external lab."
     echo ""
-    echo "The lab must return a lab_response.json artifact acknowledging the run."
+    echo "The lab must return a completed lab_reply_template.json artifact acknowledging the run."
     echo "See lab_response_instructions.txt for the expected response format."
+    echo "The lab_reply_template.json file is pre-filled with the run identifiers."
+    echo "The lab must fill in: lab_acknowledged_at and lab_id."
     echo ""
     echo "After receiving the lab response:"
     echo ""
@@ -269,6 +272,24 @@ if [[ "$MODE" == "handoff" ]]; then
     echo ""
     echo "The response will be rejected if receipt_hash does not match."
   } > "$PACK_DIR/lab_response_instructions.txt"
+
+  # ── Write lab_reply_template.json ────────────────────────────────────────────
+  #
+  # A pre-filled JSON file the lab can edit and return.
+  # Fields receipt_hash / dispatch_id / case_id are pre-filled — do not change.
+  # Fields lab_acknowledged_at and lab_id must be filled in by the lab.
+
+  {
+    echo "{"
+    echo "  \"lab_response_schema\": \"1\","
+    echo "  \"receipt_hash\": \"$RECEIPT_HASH\","
+    echo "  \"dispatch_id\": \"${DISPATCH_ID:-}\","
+    echo "  \"case_id\": \"${CASE_ID:-}\","
+    echo "  \"lab_acknowledged_at\": \"FILL_IN: ISO 8601 timestamp e.g. $(date -u +"%Y-%m-%d")T00:00:00Z\","
+    echo "  \"lab_id\": \"FILL_IN: your lab identifier\","
+    echo "  \"status\": \"accepted\""
+    echo "}"
+  } > "$PACK_DIR/lab_reply_template.json"
 
   # ── Append ledger entry ──────────────────────────────────────────────────────
 

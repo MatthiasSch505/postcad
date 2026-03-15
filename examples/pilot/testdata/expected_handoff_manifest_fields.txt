@@ -7,3 +7,4 @@ files:
   manifest.txt
   operator_instructions.txt
   lab_response_instructions.txt
+  lab_reply_template.json

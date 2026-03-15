@@ -193,6 +193,56 @@ change unless the inputs change.
 
 ---
 
+## Dispatch Export Outcomes
+
+After the dispatch packet has been approved via the reviewer shell, the operator
+can check export readiness and get a structured summary:
+
+```bash
+./examples/pilot/run_pilot.sh --export-dispatch
+```
+
+### DISPATCH EXPORT READY
+
+```
+  ════════════════════════════════════════
+  DISPATCH EXPORT READY
+  ════════════════════════════════════════
+  Run ID  : <run-id>
+  File    : examples/pilot/export_packet.json
+  Result  : dispatch packet exported
+  Next    : send packet to manufacturer / lab contact
+  ════════════════════════════════════════
+```
+
+Meaning: `export_packet.json` is present and bound to the current run. The operator may send the dispatch packet to the manufacturer or lab contact.
+
+### DISPATCH EXPORT FAILED
+
+```
+  ════════════════════════════════════════
+  DISPATCH EXPORT FAILED
+  ════════════════════════════════════════
+  Result  : dispatch export failed
+  Reason  : <reason>
+  Next    : <operator guidance>
+  ════════════════════════════════════════
+```
+
+### Failure guidance
+
+| Failure cause | Reason shown | Next action |
+|---|---|---|
+| No `receipt.json` | no current pilot run found | generate or load a current pilot run before exporting |
+| No `export_packet.json` | dispatch packet not present | verify the current route, then approve dispatch via reviewer shell |
+| Other precondition | export precondition not met | confirm the pilot bundle and current artifacts are present |
+
+The dispatch packet (`export_packet.json`) is created by the reviewer shell after
+human approval of the routing decision. Run `cargo run -p postcad-service` and open
+`http://localhost:8080/reviewer` to create and approve a dispatch commitment.
+
+---
+
 ## Pilot Walkthrough
 
 A new operator can see the complete pilot workflow in one command:

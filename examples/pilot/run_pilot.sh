@@ -637,6 +637,96 @@ except: print('')
   fi
 fi
 
+# ── Mode: export dispatch ─────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--export-dispatch" ]]; then
+
+  RECEIPT="${SCRIPT_DIR}/receipt.json"
+  DISPATCH_PKT="${SCRIPT_DIR}/export_packet.json"
+
+  # Resolve run_id and receipt_hash from current receipt if available
+  ED_RUN_ID=""
+  ED_RECEIPT_HASH=""
+  ED_DISPATCH_ID=""
+
+  if [[ -f "$RECEIPT" ]]; then
+    ED_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${RECEIPT}').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    ED_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "$RECEIPT" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    ED_RUN_ID="${ED_CASE_ID:-${ED_RECEIPT_HASH:0:12}}"
+  fi
+
+  if [[ -f "$DISPATCH_PKT" && -s "$DISPATCH_PKT" ]]; then
+    ED_DISPATCH_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${DISPATCH_PKT}').read())
+    print(d.get('dispatch_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+  fi
+
+  # Determine failure reason
+  ED_FAIL_REASON=""
+  if [[ ! -f "$RECEIPT" ]]; then
+    ED_FAIL_REASON="no_receipt"
+  elif [[ ! -f "$DISPATCH_PKT" || ! -s "$DISPATCH_PKT" ]]; then
+    ED_FAIL_REASON="no_dispatch_packet"
+  fi
+
+  echo ""
+  echo "PostCAD — Dispatch Export"
+  echo "  ────────────────────────────────────────"
+  echo ""
+
+  if [[ -z "$ED_FAIL_REASON" ]]; then
+    [[ -n "$ED_RUN_ID"      ]] && echo "  Run ID      : $ED_RUN_ID"
+    [[ -n "$ED_DISPATCH_ID" ]] && echo "  Dispatch ID : $ED_DISPATCH_ID"
+    echo "  File        : $DISPATCH_PKT"
+    echo ""
+    echo "  ════════════════════════════════════════"
+    echo "  DISPATCH EXPORT READY"
+    echo "  ════════════════════════════════════════"
+    [[ -n "$ED_RUN_ID" ]] && echo "  Run ID  : $ED_RUN_ID"
+    echo "  File    : $DISPATCH_PKT"
+    echo "  Result  : dispatch packet exported"
+    echo "  Next    : send packet to manufacturer / lab contact"
+    echo "  ════════════════════════════════════════"
+    echo ""
+    exit 0
+  else
+    echo "  ════════════════════════════════════════"
+    echo "  DISPATCH EXPORT FAILED"
+    echo "  ════════════════════════════════════════"
+    echo "  Result  : dispatch export failed"
+    case "$ED_FAIL_REASON" in
+      no_receipt)
+        echo "  Reason  : no current pilot run found"
+        echo "  Next    : generate or load a current pilot run before exporting"
+        ;;
+      no_dispatch_packet)
+        echo "  Reason  : dispatch packet not present"
+        echo "  Next    : verify the current route before exporting dispatch"
+        echo "            approve dispatch via reviewer shell first:"
+        echo "              cargo run -p postcad-service"
+        echo "              # then open http://localhost:8080/reviewer"
+        ;;
+      *)
+        echo "  Reason  : export precondition not met"
+        echo "  Next    : confirm the pilot bundle and current artifacts are present"
+        ;;
+    esac
+    echo "  ════════════════════════════════════════"
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Mode: operator walkthrough ────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--walkthrough" ]]; then

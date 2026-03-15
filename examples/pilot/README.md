@@ -219,6 +219,18 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Dispatch Packet
+
+To understand how the dispatch packet functions as the execution-side artifact of the pilot workflow:
+
+```bash
+./examples/pilot/run_pilot.sh --dispatch-packet
+```
+
+Shows the run context, what the dispatch packet represents (execution-side handoff artifact, follows verified workflow state), why it matters, the commands to use it, and an engineer interpretation summary. If no dispatch artifact is present yet, shows guidance to run `--export-dispatch` first. No commands are executed. No files are written.
+
+---
+
 ## Receipt Replay
 
 To understand how the current receipt functions as the replayable routing commitment for the pilot workflow:

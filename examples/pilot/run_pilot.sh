@@ -1055,6 +1055,70 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: dispatch packet surface ────────────────────────────────────────────
+
+if [[ "${1:-}" == "--dispatch-packet" ]]; then
+
+  # Resolve run context from receipt.json if present
+  DP_RUN_ID="not detected"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    DP_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    DP_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _DP_ID="${DP_CASE_ID:-${DP_RECEIPT_HASH:0:12}}"
+    [[ -n "$_DP_ID" ]] && DP_RUN_ID="$_DP_ID"
+  fi
+
+  # Detect dispatch artifact
+  DP_ARTIFACT_LINE="  not yet generated"
+  if [[ -f "${SCRIPT_DIR}/export_packet.json" ]]; then
+    DP_ARTIFACT_LINE="  examples/pilot/export_packet.json"
+  fi
+
+  echo ""
+  echo "POSTCAD DISPATCH PACKET"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN CONTEXT"
+  echo "  Run ID : $DP_RUN_ID"
+  echo ""
+  echo "DISPATCH ARTIFACT"
+  echo "  The dispatch packet represents the execution-side handoff artifact."
+  echo "  It follows verified workflow state."
+  echo "  It is what the operator exports when the run is ready."
+  echo ""
+  echo "  Dispatch packet : $DP_ARTIFACT_LINE"
+  echo ""
+  echo "WHY IT MATTERS"
+  echo "  - binds execution to verified workflow state"
+  echo "  - audit-ready handoff artifact"
+  echo "  - operator-facing execution checkpoint"
+  echo ""
+  echo "HOW TO USE"
+  echo "  ./examples/pilot/run_pilot.sh --export-dispatch"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo "  ./examples/pilot/run_pilot.sh --trace-view"
+  echo "  ./examples/pilot/run_pilot.sh --artifact-index"
+  echo ""
+  echo "ENGINEER INTERPRETATION"
+  echo "  - deterministic"
+  echo "  - exportable"
+  echo "  - audit-ready"
+  echo ""
+  if [[ ! -f "${SCRIPT_DIR}/export_packet.json" ]]; then
+    echo "  Export dispatch packet after verification to generate the artifact."
+  fi
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: receipt replay surface ─────────────────────────────────────────────
 
 if [[ "${1:-}" == "--receipt-replay" ]]; then

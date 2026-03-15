@@ -1,51 +1,54 @@
 campaign name
 
-pilot: add receipt replay surface for protocol inspect
+pilot: add dispatch packet surface for protocol inspect
 
 objective
 
-Add a --receipt-replay mode to run_pilot.sh that prints a deterministic
-plain-text explanation of the receipt replay concept for the current pilot run.
-Shell/docs/test layer only.
+Add a --dispatch-packet mode to run_pilot.sh that prints a deterministic
+plain-text explanation of the dispatch packet as the execution-side protocol
+artifact of the pilot workflow. Shell/docs/test layer only.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - added --receipt-replay mode (before --simulate-inbound block)
-  - resolves run context from receipt.json (RR_RUN_ID, RR_RECEIPT_STATUS)
+  - added --dispatch-packet mode (before --receipt-replay block)
+  - resolves run context from receipt.json (DP_RUN_ID)
+  - detects dispatch artifact: export_packet.json → path, else "not yet generated"
   - prints 5 sections:
-      POSTCAD RECEIPT REPLAY header
-      RUN CONTEXT             — Run ID, Receipt path (or "(not found)")
-      WHAT THE RECEIPT COMMITS — candidate, deterministic outcome, receipt hash
-      REPLAY IDEA             — routing commitment, replay verification concept
-      HOW TO USE              — 4 exact pilot commands
-      ENGINEER INTERPRETATION — deterministic / replayable / audit-ready
-  - receipt present: "Current receipt detected for replay-oriented inspection."
-  - receipt absent:  "Generate a pilot bundle first to create a receipt."
+      POSTCAD DISPATCH PACKET header
+      RUN CONTEXT             — Run ID
+      DISPATCH ARTIFACT       — execution-side handoff, verified state, artifact path
+      WHY IT MATTERS          — verified workflow state, audit-ready, execution checkpoint
+      HOW TO USE              — --export-dispatch, --run-summary, --trace-view, --artifact-index
+      ENGINEER INTERPRETATION — deterministic / exportable / audit-ready
+  - dispatch absent: "Export dispatch packet after verification to generate the artifact."
   - no timestamps, no colors, exits 0
 
 examples/pilot/README.md
-  - added "## Receipt Replay" section (before ## Default Inbound Path Resolution):
-      --receipt-replay command
-      description: shows receipt as replayable routing commitment
+  - added "## Dispatch Packet" section (before ## Receipt Replay):
+      --dispatch-packet command
+      description: shows dispatch packet as execution-side artifact
       note: no commands executed, no files written
 
-crates/service/tests/pilot_receipt_replay_surface_tests.rs
+crates/service/tests/pilot_dispatch_packet_surface_tests.rs
   - 27 new tests covering:
-    - --receipt-replay flag exists, exits 0
-    - POSTCAD RECEIPT REPLAY header
-    - RUN CONTEXT section, Run ID / Receipt labels, (not found) fallback
-    - WHAT THE RECEIPT COMMITS: routing candidate, deterministic outcome, receipt hash
-    - REPLAY IDEA section, routing commitment phrasing
-    - HOW TO USE: section, run_pilot.sh, verify.sh, --run-summary, --trace-view
-    - ENGINEER INTERPRETATION: deterministic, replayable, audit-ready
-    - receipt-present / receipt-absent conditional messages
+    - --dispatch-packet flag exists, exits 0
+    - POSTCAD DISPATCH PACKET header
+    - RUN CONTEXT section, Run ID label
+    - DISPATCH ARTIFACT: execution-side handoff, verified workflow state,
+      export_packet.json path, "not yet generated" fallback
+    - WHY IT MATTERS: verified workflow state, audit-ready, execution checkpoint
+    - HOW TO USE: section, --export-dispatch, --run-summary, --trace-view, --artifact-index
+    - ENGINEER INTERPRETATION: deterministic, exportable, audit-ready
+    - absent-artifact export guidance message
     - no $(date) in block
     - README: section, command
+  - fixed char-boundary issue in ENGINEER INTERPRETATION tests:
+    uses two-stage find() instead of fixed byte offsets
 
 commands run
 
-cargo test --test pilot_receipt_replay_surface_tests
+cargo test --test pilot_dispatch_packet_surface_tests
 
 result
 
@@ -53,8 +56,8 @@ All 27 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_receipt_replay_surface_tests
+cd ~/projects/postcad && cargo test --test pilot_dispatch_packet_surface_tests
 
 commit message
 
-pilot: add receipt replay surface for protocol inspect
+pilot: add dispatch packet surface for protocol inspect

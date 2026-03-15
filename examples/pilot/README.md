@@ -457,6 +457,47 @@ Generated handoff packs are excluded from version control via `.gitignore`.
 
 ---
 
+## First-Contact Send Flow
+
+The sendable lab trial package includes a ready-to-use message kit. The operator does not need to write any message — everything is pre-generated.
+
+### Generate the package (includes message kit)
+
+```bash
+./examples/pilot/run_pilot.sh --export-lab-trial-package
+```
+
+The package at `outbound/lab_trial_<run-id>/` now includes:
+
+| File | Purpose |
+|---|---|
+| `email_to_lab.txt` | Draft email to paste and send |
+| `short_message_to_lab.txt` | Short WhatsApp/Signal/LinkedIn message |
+| `operator_send_note.txt` | Operator checklist: zip → send → receive → verify |
+
+### Send using the email draft
+
+Open `email_to_lab.txt`, copy the content, paste into your email client, attach the zip, and send.
+
+### Send using the short message
+
+Open `short_message_to_lab.txt`, copy the one-paragraph message, send via WhatsApp, Signal, or LinkedIn.
+
+### After the lab returns the reply
+
+Follow `operator_send_note.txt` step by step:
+
+```
+[ ] 1. Zip the package
+[ ] 2. Send to lab with email_to_lab.txt or short_message_to_lab.txt
+[ ] 3. Wait for lab_reply_<run-id>.json
+[ ] 4. Place in inbound/
+[ ] 5. Run verification and decision
+[ ] 6. Inspect decision record
+```
+
+---
+
 ## Sendable Lab Trial Package
 
 The quickest way to prepare a real external trial. Generates one directory with all files the lab needs to complete and return a reply.

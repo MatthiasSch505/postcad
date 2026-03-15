@@ -8,3 +8,6 @@ files:
   lab_instructions.txt
   lab_reply_template.json
   receipt.json
+  email_to_lab.txt
+  short_message_to_lab.txt
+  operator_send_note.txt

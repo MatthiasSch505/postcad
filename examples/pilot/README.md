@@ -193,6 +193,57 @@ change unless the inputs change.
 
 ---
 
+## Artifact Index
+
+When you want to orient yourself in the pilot workflow — where are the files, what do I inspect next — run:
+
+```bash
+./examples/pilot/run_pilot.sh --artifact-index
+```
+
+This prints a compact, deterministic map of every artifact location in the current pilot workflow. No commands are executed. No files are written.
+
+If `receipt.json` is present, the current run ID is shown and the inbound/outbound/ledger paths are resolved to the specific run. If no receipt exists, generic patterns are shown instead.
+
+Expected output (with a current run):
+
+```
+PostCAD — Pilot Artifact Index
+════════════════════════════════════════════════════════════
+
+Current run : f1000001-0000-0000-0000-000000000001
+
+Pilot bundle
+  receipt.json       examples/pilot/receipt.json
+  export_packet.json examples/pilot/export_packet.json
+
+Inbound replies
+  directory  examples/pilot/inbound/
+  current    examples/pilot/inbound/lab_reply_f1000001-0000-0000-0000-000000000001.json
+
+Outbound packages
+  directory  examples/pilot/outbound/
+  current    examples/pilot/outbound/lab_trial_f1000001-0000-0000-0000-000000000001/
+
+Decision records
+  directory  examples/pilot/reports/
+  ledger     examples/pilot/reports/ledger_f1000001-0000-0000-0000-000000000001.txt
+
+Verification
+  command    ./examples/pilot/verify.sh --inbound .../inbound/lab_reply_<run-id>.json --bundle examples/pilot
+
+────────────────────────────────────────
+Operator flow reminder
+
+  1. inspect inbound reply  — ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json
+  2. verify inbound reply   — ./examples/pilot/verify.sh --inbound inbound/lab_reply_<run-id>.json --bundle examples/pilot
+  3. export dispatch packet — ./examples/pilot/run_pilot.sh --export-dispatch
+
+════════════════════════════════════════════════════════════
+```
+
+---
+
 ## Dispatch Export Outcomes
 
 After the dispatch packet has been approved via the reviewer shell, the operator

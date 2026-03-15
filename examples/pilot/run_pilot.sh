@@ -727,6 +727,88 @@ except: print('')
   fi
 fi
 
+# ── Mode: artifact index ──────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--artifact-index" ]]; then
+
+  # Resolve current run context from receipt.json if present
+  AI_RUN_ID=""
+  AI_RECEIPT_HASH=""
+
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    AI_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    AI_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    AI_RUN_ID="${AI_CASE_ID:-${AI_RECEIPT_HASH:0:12}}"
+  fi
+
+  echo ""
+  echo "PostCAD — Pilot Artifact Index"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+
+  if [[ -n "$AI_RUN_ID" ]]; then
+    echo "Current run : $AI_RUN_ID"
+    echo ""
+  fi
+
+  echo "Pilot bundle"
+  echo "  receipt.json       ${SCRIPT_DIR}/receipt.json"
+  echo "  export_packet.json ${SCRIPT_DIR}/export_packet.json"
+  echo ""
+
+  echo "Inbound replies"
+  echo "  directory  ${SCRIPT_DIR}/inbound/"
+  if [[ -n "$AI_RUN_ID" ]]; then
+    echo "  current    ${SCRIPT_DIR}/inbound/lab_reply_${AI_RUN_ID}.json"
+  else
+    echo "  pattern    ${SCRIPT_DIR}/inbound/lab_reply_<run-id>.json"
+  fi
+  echo ""
+
+  echo "Outbound packages"
+  echo "  directory  ${SCRIPT_DIR}/outbound/"
+  if [[ -n "$AI_RUN_ID" ]]; then
+    echo "  current    ${SCRIPT_DIR}/outbound/lab_trial_${AI_RUN_ID}/"
+  else
+    echo "  pattern    ${SCRIPT_DIR}/outbound/lab_trial_<run-id>/"
+  fi
+  echo ""
+
+  echo "Decision records"
+  echo "  directory  ${SCRIPT_DIR}/reports/"
+  if [[ -n "$AI_RUN_ID" ]]; then
+    echo "  ledger     ${SCRIPT_DIR}/reports/ledger_${AI_RUN_ID}.txt"
+  else
+    echo "  pattern    ${SCRIPT_DIR}/reports/ledger_<run-id>.txt"
+  fi
+  echo ""
+
+  echo "Verification"
+  if [[ -n "$AI_RUN_ID" ]]; then
+    echo "  command    ./examples/pilot/verify.sh --inbound ${SCRIPT_DIR}/inbound/lab_reply_${AI_RUN_ID}.json --bundle ${SCRIPT_DIR}"
+  else
+    echo "  command    ./examples/pilot/verify.sh --inbound inbound/lab_reply_<run-id>.json --bundle examples/pilot"
+  fi
+  echo ""
+
+  echo "────────────────────────────────────────"
+  echo "Operator flow reminder"
+  echo ""
+  echo "  1. inspect inbound reply  — ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+  echo "  2. verify inbound reply   — ./examples/pilot/verify.sh --inbound inbound/lab_reply_<run-id>.json --bundle examples/pilot"
+  echo "  3. export dispatch packet — ./examples/pilot/run_pilot.sh --export-dispatch"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: operator walkthrough ────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--walkthrough" ]]; then

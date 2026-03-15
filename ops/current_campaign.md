@@ -1,69 +1,62 @@
 campaign name
 
-pilot: harden dispatch export operator verdict output
+pilot: add artifact index summary for operator workflow
 
 objective
 
-Add a new --export-dispatch mode to run_pilot.sh with a hardened operator
-verdict block, mirroring the verification verdict hardening pattern. The
-operator gets a clear DISPATCH EXPORT READY / DISPATCH EXPORT FAILED summary
-with actionable next-step guidance. Documentation and shell-layer only —
-no protocol or service code changed.
+Add a --artifact-index mode to run_pilot.sh so the operator can see the
+complete pilot artifact layout in one deterministic, offline, plain-text
+command. Includes current run context if receipt.json is present.
+Shell/docs/test layer only — no protocol or service code changed.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - added --export-dispatch mode (before --walkthrough block)
-  - checks: receipt.json present, export_packet.json present and non-empty
-  - resolves run_id, receipt_hash, dispatch_id from current artifacts
-  - success verdict block:
-      DISPATCH EXPORT READY
-      ════════════════════════════════════════
-      Run ID  : <run-id>
-      File    : examples/pilot/export_packet.json
-      Result  : dispatch packet exported
-      Next    : send packet to manufacturer / lab contact
-      ════════════════════════════════════════
-  - failure verdict block:
-      DISPATCH EXPORT FAILED with Result, Reason, Next guidance
-  - failure branches:
-      no_receipt          → "generate or load a current pilot run before exporting"
-      no_dispatch_packet  → "verify the current route before exporting dispatch"
-                            + "approve dispatch via reviewer shell first"
-      default             → "confirm the pilot bundle and current artifacts are present"
-  - exits 0 on ready, exits 1 on failure
+  - added --artifact-index mode (before --walkthrough block)
+  - if receipt.json present: resolves run_id, shows specific paths
+  - if no receipt: shows generic patterns
+  - sections printed:
+      Current run (if known)
+      Pilot bundle: receipt.json, export_packet.json
+      Inbound replies: directory + current/pattern path
+      Outbound packages: directory + current/pattern path
+      Decision records: directory + ledger path
+      Verification: verify.sh command
+      Operator flow reminder: inspect → verify → export dispatch
+  - no timestamps, no colors, no network calls, exits 0
 
 examples/pilot/README.md
-  - added "## Dispatch Export Outcomes" section with:
-      --export-dispatch command
-      DISPATCH EXPORT READY example block
-      DISPATCH EXPORT FAILED example block
-      failure guidance table (3 failure causes + next actions)
-      note on reviewer shell for dispatch packet creation
+  - added "## Artifact Index" section with:
+      --artifact-index command
+      explanation that no commands executed, no files written
+      full expected output example (with current run)
 
-crates/service/tests/pilot_dispatch_operator_output_tests.rs
-  - 20 new tests covering:
-    - --export-dispatch flag exists
-    - DISPATCH EXPORT READY / DISPATCH EXPORT FAILED wording
-    - separator, Result field, Next field
-    - success: File field, Run ID field, next action guidance
-    - failure: no receipt guidance, no dispatch packet guidance + reviewer mention
-    - generic fallback guidance
-    - exit 0 on success, exit 1 on failure
-    - README section, command, example outputs, guidance table
+crates/service/tests/pilot_artifact_index_tests.rs
+  - 23 new tests covering:
+    - --artifact-index flag exists
+    - exits 0
+    - header "PostCAD — Pilot Artifact Index"
+    - Pilot bundle section: receipt.json, export_packet.json
+    - Inbound replies section + inbound/ directory
+    - Outbound packages section + outbound/ directory
+    - Decision records section + reports/ directory
+    - Verification section + verify.sh command reference
+    - Operator flow reminder: inspect/verify/export steps
+    - no $(date) in block (determinism check)
+    - README: section heading, command, expected output, no-files note
 
 commands run
 
-cargo test --test pilot_dispatch_operator_output_tests
+cargo test --test pilot_artifact_index_tests
 
 result
 
-All 20 tests pass. No protocol/core code changed.
+All 23 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_dispatch_operator_output_tests
+cd ~/projects/postcad && cargo test --test pilot_artifact_index_tests
 
 commit message
 
-pilot: harden dispatch export operator verdict output
+pilot: add artifact index summary for operator workflow

@@ -193,6 +193,18 @@ change unless the inputs change.
 
 ---
 
+## Help Surface
+
+The best starting point for a first-time operator — shows every available pilot mode and when to use each one:
+
+```bash
+./examples/pilot/run_pilot.sh --help-surface
+```
+
+Prints a consolidated, deterministic overview of all pilot operator modes, their purpose, and a recommended order for the normal workflow. No commands are executed. No files are written.
+
+---
+
 ## Quickstart
 
 The fastest way for a new operator to understand the pilot commands:

@@ -809,6 +809,58 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: consolidated help surface ──────────────────────────────────────────
+
+if [[ "${1:-}" == "--help-surface" ]]; then
+  echo ""
+  echo "PostCAD Pilot — Operator Mode Reference"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "Available modes"
+  echo ""
+  echo "(default)"
+  echo "  ./examples/pilot/run_pilot.sh"
+  echo "  Purpose : Generate a pilot bundle — route the dental case and write receipt.json."
+  echo "  Use when: starting a new pilot run."
+  echo ""
+  echo "--inspect-inbound-reply <file>"
+  echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+  echo "  Purpose : Check that all required fields are present in a returned lab reply."
+  echo "  Use when: you have received a lab reply and want to inspect it before verification."
+  echo ""
+  echo "--export-dispatch"
+  echo "  ./examples/pilot/run_pilot.sh --export-dispatch"
+  echo "  Purpose : Confirm the dispatch packet is ready and show the next action."
+  echo "  Use when: the routing receipt is ready and you want to check dispatch status."
+  echo ""
+  echo "--walkthrough"
+  echo "  ./examples/pilot/run_pilot.sh --walkthrough"
+  echo "  Purpose : Print the full 4-step pilot workflow guide."
+  echo "  Use when: learning the pilot flow for the first time."
+  echo ""
+  echo "--artifact-index"
+  echo "  ./examples/pilot/run_pilot.sh --artifact-index"
+  echo "  Purpose : Print the artifact map for the current run — where every file lives."
+  echo "  Use when: you want to see all artifact locations for the current run."
+  echo ""
+  echo "--quickstart"
+  echo "  ./examples/pilot/run_pilot.sh --quickstart"
+  echo "  Purpose : Print the minimum command sheet for the pilot workflow."
+  echo "  Use when: you need a quick reference to the most common commands."
+  echo ""
+  echo "────────────────────────────────────────"
+  echo "Recommended order"
+  echo ""
+  echo "  1. generate pilot bundle   ./examples/pilot/run_pilot.sh"
+  echo "  2. inspect inbound reply   ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+  echo "  3. verify inbound reply    ./examples/pilot/verify.sh --inbound inbound/lab_reply_<run-id>.json --bundle examples/pilot"
+  echo "  4. export dispatch packet  ./examples/pilot/run_pilot.sh --export-dispatch"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: quickstart command sheet ───────────────────────────────────────────
 
 if [[ "${1:-}" == "--quickstart" ]]; then

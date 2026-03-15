@@ -1,55 +1,58 @@
 campaign name
 
-pilot: add quickstart command sheet for external operator
+pilot: add consolidated help surface for operators
 
 objective
 
-Add a --quickstart mode to run_pilot.sh that prints the minimum command
-sheet for the pilot workflow. Six steps, each with a label, exact command,
-and one-line explanation. Deterministic, offline, plain text. Shell/docs/test
-layer only — no protocol or service code changed.
+Add a --help-surface mode to run_pilot.sh that prints a consolidated
+overview of all pilot operator modes, their purpose, when to use them,
+and a recommended operator order. Best starting point for first-time
+operators. Shell/docs/test layer only — no protocol or service code changed.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - added --quickstart mode (before --walkthrough block)
-  - prints "PostCAD Pilot — Quickstart Command Sheet" header
-  - six steps in order:
-      1. Generate pilot bundle      — run_pilot.sh (plain)
-      2. Inspect inbound lab reply  — --inspect-inbound-reply inbound/lab_reply_<run-id>.json
-      3. Verify inbound reply       — verify.sh --inbound ... --bundle examples/pilot
-      4. Export dispatch packet     — run_pilot.sh --export-dispatch
-      5. Show artifact index        — run_pilot.sh --artifact-index
-      6. Show walkthrough           — run_pilot.sh --walkthrough
-  - each step: label + exact command + one-line explanation
+  - added --help-surface mode (before --quickstart block)
+  - prints "PostCAD Pilot — Operator Mode Reference" header
+  - documents 6 modes, each with Purpose and Use when fields:
+      (default) — generate pilot bundle
+      --inspect-inbound-reply — check reply fields before verification
+      --export-dispatch — confirm dispatch packet ready
+      --walkthrough — full 4-step guide
+      --artifact-index — artifact map for current run
+      --quickstart — minimum command sheet
+  - "Recommended order" section: 4 steps including verify.sh reference
   - no timestamps, no colors, exits 0
 
 examples/pilot/README.md
-  - added "## Quickstart" section (before ## Artifact Index) with:
-      --quickstart command
-      description as "fastest way for a new operator to understand the pilot commands"
+  - added "## Help Surface" section (before ## Quickstart) with:
+      --help-surface command
+      description as "best starting point for a first-time operator"
       note: no commands executed, no files written
 
-crates/service/tests/pilot_quickstart_tests.rs
-  - 25 new tests covering:
-    - --quickstart flag exists, exits 0
-    - header "PostCAD Pilot — Quickstart Command Sheet"
-    - each of 6 steps: label present, exact command present, explanation present
-    - no $(date) in quickstart block
-    - README: section heading, --quickstart command, purpose description
+crates/service/tests/pilot_help_surface_tests.rs
+  - 21 new tests covering:
+    - --help-surface flag exists, exits 0
+    - header "PostCAD Pilot — Operator Mode Reference"
+    - all 6 modes documented: default, --inspect-inbound-reply,
+      --export-dispatch, --walkthrough, --artifact-index, --quickstart
+    - Purpose and Use when fields present
+    - Recommended order: all 4 steps + verify.sh reference
+    - no $(date) in block
+    - README: section heading, command, first-time operator description
 
 commands run
 
-cargo test --test pilot_quickstart_tests
+cargo test --test pilot_help_surface_tests
 
 result
 
-All 25 tests pass. No protocol/core code changed.
+All 21 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_quickstart_tests
+cd ~/projects/postcad && cargo test --test pilot_help_surface_tests
 
 commit message
 
-pilot: add quickstart command sheet for external operator
+pilot: add consolidated help surface for operators

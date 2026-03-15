@@ -637,6 +637,48 @@ except: print('')
   fi
 fi
 
+# ── Mode: operator walkthrough ────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--walkthrough" ]]; then
+  echo ""
+  echo "POSTCAD PILOT WALKTHROUGH"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "Step 1 — Generate pilot bundle"
+  echo "  Command : ./examples/pilot/run_pilot.sh"
+  echo "  Creates : examples/pilot/receipt.json"
+  echo "  What    : Routes the dental case against the manufacturer registry."
+  echo "            A cryptographic receipt is written and self-verified."
+  echo "            The receipt hash is the verification source of truth for this run."
+  echo ""
+  echo "Step 2 — Inspect inbound lab reply"
+  echo "  Command : ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+  echo "  Reads   : inbound/lab_reply_<run-id>.json"
+  echo "  What    : Checks that all required fields are present in the returned reply"
+  echo "            before running full cryptographic verification."
+  echo "            Prints: reply structurally readable / reply missing required field(s)"
+  echo ""
+  echo "Step 3 — Verify inbound reply"
+  echo "  Command : ./examples/pilot/verify.sh --inbound inbound/lab_reply_<run-id>.json --bundle examples/pilot"
+  echo "  Reads   : inbound/lab_reply_<run-id>.json + examples/pilot/receipt.json"
+  echo "  What    : Cryptographically binds the inbound reply to the current run."
+  echo "            Writes a decision record to examples/pilot/reports/."
+  echo "            Prints: VERIFICATION PASSED / VERIFICATION FAILED"
+  echo ""
+  echo "Step 4 — Export dispatch packet"
+  echo "  Command : ./examples/pilot/run_pilot.sh --export-lab-trial-package"
+  echo "  Creates : examples/pilot/outbound/lab_trial_<run-id>/"
+  echo "  What    : Packages the routing receipt and lab reply template"
+  echo "            into a sendable directory for the external lab."
+  echo "            Includes operator instructions, message kit, and receipt."
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo "Run this walkthrough at any time:"
+  echo "  ./examples/pilot/run_pilot.sh --walkthrough"
+  echo ""
+  exit 0
+fi
+
 echo "PostCAD Protocol v1 — Pilot Workflow"
 echo "======================================"
 echo ""

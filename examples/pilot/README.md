@@ -193,6 +193,57 @@ change unless the inputs change.
 
 ---
 
+## Pilot Walkthrough
+
+A new operator can see the complete pilot workflow in one command:
+
+```bash
+./examples/pilot/run_pilot.sh --walkthrough
+```
+
+This prints a 4-step guide — no commands are executed, no files are written.
+
+Expected output:
+
+```
+POSTCAD PILOT WALKTHROUGH
+════════════════════════════════════════════════════════════
+
+Step 1 — Generate pilot bundle
+  Command : ./examples/pilot/run_pilot.sh
+  Creates : examples/pilot/receipt.json
+  What    : Routes the dental case against the manufacturer registry.
+            A cryptographic receipt is written and self-verified.
+            The receipt hash is the verification source of truth for this run.
+
+Step 2 — Inspect inbound lab reply
+  Command : ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json
+  Reads   : inbound/lab_reply_<run-id>.json
+  What    : Checks that all required fields are present in the returned reply
+            before running full cryptographic verification.
+            Prints: reply structurally readable / reply missing required field(s)
+
+Step 3 — Verify inbound reply
+  Command : ./examples/pilot/verify.sh --inbound inbound/lab_reply_<run-id>.json --bundle examples/pilot
+  Reads   : inbound/lab_reply_<run-id>.json + examples/pilot/receipt.json
+  What    : Cryptographically binds the inbound reply to the current run.
+            Writes a decision record to examples/pilot/reports/.
+            Prints: VERIFICATION PASSED / VERIFICATION FAILED
+
+Step 4 — Export dispatch packet
+  Command : ./examples/pilot/run_pilot.sh --export-lab-trial-package
+  Creates : examples/pilot/outbound/lab_trial_<run-id>/
+  What    : Packages the routing receipt and lab reply template
+            into a sendable directory for the external lab.
+            Includes operator instructions, message kit, and receipt.
+
+════════════════════════════════════════════════════════════
+Run this walkthrough at any time:
+  ./examples/pilot/run_pilot.sh --walkthrough
+```
+
+---
+
 ## Pilot Run Bundle
 
 A pilot run bundle is the complete, shareable artifact set produced by a single PostCAD run. It contains every artifact needed for external review or lab handoff:

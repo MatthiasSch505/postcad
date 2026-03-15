@@ -1,66 +1,54 @@
 campaign name
 
-pilot: harden verification operator verdict output
+pilot: add operator walkthrough mode for pilot workflow
 
 objective
 
-Add a deterministic operator verdict block to verify.sh so the operator
-gets an unambiguous VERIFICATION PASSED / VERIFICATION FAILED summary with
-actionable next-step guidance after every verification run. Human inspection
-layer only — no change to verification logic or exit codes.
+Add a guided walkthrough mode to the pilot script so an external operator
+can see the complete 4-step pilot workflow with one command. Documentation
+and shell-layer usability only — no protocol or service code changed.
 
 files changed
 
-examples/pilot/verify.sh
-  - added verdict block to --inbound mode (after operator decision print):
-      ════════════════════════════════════════
-      VERIFICATION PASSED / VERIFICATION FAILED
-      ════════════════════════════════════════
-      Inbound : <file>
-      Bundle  : <dir>
-      Result  : verification passed / failed
-      Next    : <guidance>
-      ════════════════════════════════════════
-  - failure guidance branches:
-      unverifiable + not found       → "check inbound reply file path and rerun"
-      unverifiable + not valid JSON  → "inspect inbound reply before verifying"
-      unverifiable + bundle directory→ "confirm the pilot bundle path is correct"
-      malformed                      → "ask the lab to resend a complete reply if fields are unreadable"
-      run_mismatch                   → "confirm the lab returned the reply for the current run"
-  - added verdict block to receipt verification mode (bottom of file):
-      VERIFICATION PASSED / VERIFICATION FAILED block with Receipt path,
-      Result, Next, and next-step instructions for reviewer shell
+examples/pilot/run_pilot.sh
+  - added --walkthrough mode (before default echo block)
+  - prints POSTCAD PILOT WALKTHROUGH header with separator
+  - Step 1: Generate pilot bundle — run_pilot.sh, creates receipt.json
+  - Step 2: Inspect inbound lab reply — --inspect-inbound-reply command
+  - Step 3: Verify inbound reply — verify.sh --inbound, mentions PASSED/FAILED
+  - Step 4: Export dispatch packet — --export-lab-trial-package
+  - exits 0 after printing; no commands executed
 
 examples/pilot/README.md
-  - added "## Verification Verdict Output" section with:
-      PASSED example output
-      FAILED example output
-      failure guidance table
+  - added "## Pilot Walkthrough" section with:
+      --walkthrough command
+      full expected output (all 4 steps)
+      clarification that no commands are executed, no files written
 
-crates/service/tests/pilot_verify_operator_output_tests.rs
-  - 20 new tests covering:
-    - VERIFICATION PASSED / VERIFICATION FAILED wording
-    - separator line presence
-    - Result and Next field presence
-    - inbound verdict Inbound/Bundle path fields
-    - pass next action ("operator may export dispatch packet")
-    - failure guidance: missing file, invalid JSON, missing bundle, malformed, run_mismatch
-    - receipt verdict Receipt path field
-    - receipt verdict fail guidance
-    - README section coverage
+crates/service/tests/pilot_walkthrough_tests.rs
+  - 22 new tests covering:
+    - --walkthrough flag exists
+    - exits 0 after printing
+    - POSTCAD PILOT WALKTHROUGH header
+    - Step 1 title, command, artifact
+    - Step 2 title, --inspect-inbound-reply command
+    - Step 3 title, verify.sh --inbound command, VERIFICATION PASSED/FAILED mention
+    - Step 4 title, --export-lab-trial-package command
+    - walkthrough block does not invoke cargo
+    - README section: heading, command, all 4 steps, no-commands explanation
 
 commands run
 
-cargo test --test pilot_verify_operator_output_tests
+cargo test --test pilot_walkthrough_tests
 
 result
 
-All 20 tests pass. No protocol/core code changed.
+All 22 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_verify_operator_output_tests
+cd ~/projects/postcad && cargo test --test pilot_walkthrough_tests
 
 commit message
 
-pilot: harden verification operator verdict output
+pilot: add operator walkthrough mode for pilot workflow

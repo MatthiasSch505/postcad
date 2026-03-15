@@ -219,6 +219,18 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Demo Surface
+
+The fastest single-command introduction to the PostCAD pilot:
+
+```bash
+./examples/pilot/run_pilot.sh --demo-surface
+```
+
+Prints a compact end-to-end narrative — what PostCAD is, the end-to-end flow, what the operator sees, why it matters, and the commands to explore further. No commands are executed. No files are written.
+
+---
+
 ## System Overview
 
 To understand what the PostCAD pilot system is and how it works, run:

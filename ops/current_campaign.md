@@ -1,55 +1,59 @@
 campaign name
 
-pilot: add command safety guardrails for operator workflow
+pilot: add demo surface for external viewers
 
 objective
 
-Harden run_pilot.sh with structured guardrail blocks for three failure
-paths: missing file argument for --inspect-inbound-reply, missing run
-context for --export-dispatch, and unknown flags. All guardrail messages
-are deterministic, plain text, non-interactive, exit non-zero. All existing
-tests continue to pass.
+Add a --demo-surface mode to run_pilot.sh that gives any external viewer
+(lab, engineer, investor) a compact single-command narrative of what
+PostCAD is, the end-to-end flow, what the operator sees, why it matters,
+and the commands to explore further. Shell/docs/test layer only.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - --inspect-inbound-reply missing arg: replaced minimal error with
-    INSPECT INBOUND REPLY — USAGE block (command form + example), then
-    existing error line preserved (keeps old tests passing)
-  - --export-dispatch no_receipt branch: added DISPATCH EXPORT — PRECONDITION
-    NOT MET block with "A valid pilot run was not detected." and 3-step
-    recommended steps after existing Reason/Next lines
-  - added unknown argument handler before default block:
-      if $1 non-empty → prints UNKNOWN COMMAND + --help-surface pointer + exit 1
+  - added --demo-surface mode (before --system-overview block)
+  - prints "POSTCAD PILOT DEMO" header
+  - one-line PostCAD description
+  - END-TO-END FLOW: 4 steps (generate, inspect, verify, export)
+  - WHAT THE OPERATOR SEES: receipt.json, inbound lab reply,
+    verification outcome, dispatch packet
+  - WHY THIS MATTERS: deterministic routing, verifiable replies,
+    audit-ready dispatch workflow
+  - TRY IT: 4 exact commands (--system-overview, --quickstart,
+    --run-summary, --help-surface)
+  - no timestamps, no colors, exits 0
 
 examples/pilot/README.md
-  - added "## Command Guardrails" section (before ## Run Summary) with:
-      table of 3 guardrail situations and outputs
-      note: exits non-zero so scripts can detect failure
+  - added "## Demo Surface" section (before ## System Overview) with:
+      --demo-surface command
+      description as "fastest single-command introduction to the pilot"
+      note: no commands executed, no files written
 
-crates/service/tests/pilot_command_guardrails_tests.rs
-  - 18 new tests covering:
-    - inspect usage header, command form, example, exit 1
-    - dispatch precondition header, "A valid pilot run was not detected.",
-      Recommended steps, steps 1/2/3
-    - unknown command header, --help-surface pointer, exit 1
-    - guardrail messages contain no ANSI color codes
-    - README: section, inspect usage mention, dispatch precondition mention,
-      unknown command mention
+crates/service/tests/pilot_demo_surface_tests.rs
+  - 27 new tests covering:
+    - --demo-surface flag exists, exits 0
+    - POSTCAD PILOT DEMO header, PostCAD description
+    - END-TO-END FLOW: all 4 steps
+    - WHAT THE OPERATOR SEES: all 4 artifacts
+    - WHY THIS MATTERS: deterministic routing, verifiable replies,
+      audit-ready dispatch
+    - TRY IT: all 4 exact commands
+    - no $(date) in block
+    - README: section, command, single-command-intro description
 
 commands run
 
-cargo test --test pilot_command_guardrails_tests
-cargo test --all (all pass)
+cargo test --test pilot_demo_surface_tests
 
 result
 
-18 new tests pass. All existing tests pass. No protocol/core code changed.
+All 27 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --test pilot_command_guardrails_tests
+cd ~/projects/postcad && cargo test --test pilot_demo_surface_tests
 
 commit message
 
-pilot: add command safety guardrails for operator workflow
+pilot: add demo surface for external viewers

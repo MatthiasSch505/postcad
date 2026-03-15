@@ -932,6 +932,48 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: demo surface ───────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--demo-surface" ]]; then
+  echo ""
+  echo "POSTCAD PILOT DEMO"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "PostCAD is a deterministic routing and verification layer for dental CAD"
+  echo "manufacturing workflows."
+  echo ""
+  echo "END-TO-END FLOW"
+  echo ""
+  echo "  1. generate pilot bundle    route the dental case, write receipt.json"
+  echo "  2. inspect inbound reply    check required fields before verification"
+  echo "  3. verify inbound reply     bind the reply to the current run cryptographically"
+  echo "  4. export dispatch packet   confirm dispatch ready, record next action"
+  echo ""
+  echo "WHAT THE OPERATOR SEES"
+  echo ""
+  echo "  receipt.json          cryptographic commitment to the routing decision"
+  echo "  inbound lab reply     lab acknowledgement returned for the routed case"
+  echo "  verification outcome  operator decision record bound to the receipt"
+  echo "  dispatch packet       approved dispatch commitment (export_packet.json)"
+  echo ""
+  echo "WHY THIS MATTERS"
+  echo ""
+  echo "  - Deterministic routing: same case inputs always produce the same receipt."
+  echo "  - Verifiable inbound replies: lab replies are cryptographically bound to the run."
+  echo "  - Audit-ready dispatch workflow: every decision carries a receipt hash."
+  echo ""
+  echo "TRY IT"
+  echo ""
+  echo "  ./examples/pilot/run_pilot.sh --system-overview"
+  echo "  ./examples/pilot/run_pilot.sh --quickstart"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo "  ./examples/pilot/run_pilot.sh --help-surface"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: system overview ─────────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--system-overview" ]]; then

@@ -1055,6 +1055,164 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: run fingerprint ────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--run-fingerprint" ]]; then
+
+  # Resolve run context
+  RF_RUN_ID="not detected"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    RF_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    RF_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _RF_ID="${RF_CASE_ID:-${RF_RECEIPT_HASH:0:12}}"
+    [[ -n "$_RF_ID" ]] && RF_RUN_ID="$_RF_ID"
+  fi
+
+  # Collect artifact files that exist
+  RF_RECEIPT_FILE="${SCRIPT_DIR}/receipt.json"
+  RF_INBOUND_FILE=""
+  RF_VERIFICATION_FILE=""
+  RF_DISPATCH_FILE="${SCRIPT_DIR}/export_packet.json"
+
+  if [[ "$RF_RUN_ID" != "not detected" ]]; then
+    _RF_INBOUND="${SCRIPT_DIR}/inbound/lab_reply_${RF_RUN_ID}.json"
+    [[ -f "$_RF_INBOUND" ]] && RF_INBOUND_FILE="$_RF_INBOUND"
+    _RF_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
+    [[ -n "$_RF_VERIFY" ]] && RF_VERIFICATION_FILE="$_RF_VERIFY"
+  fi
+
+  # Compute fingerprint from available artifact files
+  RF_FINGERPRINT=""
+  if [[ -f "$RF_RECEIPT_FILE" ]]; then
+    RF_FINGERPRINT=$(python3 -c "
+import hashlib, os
+files = [
+    '${RF_RECEIPT_FILE}',
+    '${RF_INBOUND_FILE}',
+    '${RF_VERIFICATION_FILE}',
+    '${RF_DISPATCH_FILE}',
+]
+h = hashlib.sha256()
+for f in files:
+    if f and os.path.isfile(f):
+        h.update(open(f, 'rb').read())
+print(h.hexdigest())
+" 2>/dev/null || echo "")
+  fi
+
+  echo ""
+  echo "POSTCAD RUN FINGERPRINT"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN CONTEXT"
+  if [[ -f "$RF_RECEIPT_FILE" ]]; then
+    echo "  Run ID       : $RF_RUN_ID"
+    echo "  Receipt path : examples/pilot/receipt.json"
+  else
+    echo "  Run ID       : not detected"
+  fi
+  echo ""
+  echo "FINGERPRINT COMPONENTS"
+  if [[ -f "$RF_RECEIPT_FILE" ]];           then echo "  receipt.json                  included"; else echo "  receipt.json                  not present"; fi
+  if [[ -n "$RF_INBOUND_FILE" ]];           then echo "  inbound reply                 included"; else echo "  inbound reply                 not present"; fi
+  if [[ -n "$RF_VERIFICATION_FILE" ]];      then echo "  verification decision         included"; else echo "  verification decision         not present"; fi
+  if [[ -f "$RF_DISPATCH_FILE" ]];          then echo "  dispatch packet               included"; else echo "  dispatch packet               not present"; fi
+  echo ""
+  if [[ -n "$RF_FINGERPRINT" ]]; then
+    echo "FINGERPRINT"
+    echo "  Run fingerprint : $RF_FINGERPRINT"
+  else
+    echo "FINGERPRINT"
+    echo "  Run fingerprint : not available — generate a pilot bundle first"
+  fi
+  echo ""
+  echo "WHY THIS MATTERS"
+  echo "  - stable identifier for the workflow run"
+  echo "  - derived from protocol artifacts"
+  echo "  - useful for logs, tracing, and audits"
+  echo ""
+  echo "HOW TO USE"
+  echo "  ./examples/pilot/run_pilot.sh --trace-view"
+  echo "  ./examples/pilot/run_pilot.sh --protocol-chain"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
+# ── Mode: lab entrypoint ─────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--lab-entrypoint" ]]; then
+
+  # Resolve run context
+  LE_RUN_ID="not detected"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    LE_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    LE_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _LE_ID="${LE_CASE_ID:-${LE_RECEIPT_HASH:0:12}}"
+    [[ -n "$_LE_ID" ]] && LE_RUN_ID="$_LE_ID"
+  fi
+
+  echo ""
+  echo "POSTCAD LAB ENTRYPOINT"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "WHAT THE LAB RECEIVES"
+  echo "  - routed case context"
+  echo "  - routing receipt"
+  echo "  - inbound reply expectation"
+  echo "  - dispatch-ready handoff artifact"
+  echo ""
+  echo "WHAT THE LAB IS EXPECTED TO DO"
+  echo "  - review the routed case"
+  echo "  - return a structured inbound reply"
+  echo "  - participate in a verifiable workflow"
+  echo "  - rely on dispatch packet after verified state"
+  echo ""
+  echo "WHY THIS MATTERS TO A LAB"
+  echo "  - clearer case handoff"
+  echo "  - fewer ambiguous workflow states"
+  echo "  - verifiable reply path"
+  echo "  - audit-ready execution handoff"
+  echo ""
+  echo "WHAT TO LOOK AT FIRST"
+  echo "  ./examples/pilot/run_pilot.sh --demo-surface"
+  echo "  ./examples/pilot/run_pilot.sh --artifact-index"
+  echo "  ./examples/pilot/run_pilot.sh --trace-view"
+  echo "  ./examples/pilot/run_pilot.sh --dispatch-packet"
+  echo ""
+  echo "WHAT EACH COMMAND SHOWS"
+  echo "  --demo-surface     end-to-end pilot narrative and what the operator sees"
+  echo "  --artifact-index   map of every artifact location in the current workflow"
+  echo "  --trace-view       detection status of each workflow event artifact"
+  echo "  --dispatch-packet  dispatch packet as execution-side protocol artifact"
+  echo ""
+  echo "CURRENT RUN CONTEXT"
+  echo "  Run ID : $LE_RUN_ID"
+  echo ""
+  echo "LAB INTERPRETATION"
+  echo "  - structured handoff"
+  echo "  - verifiable reply"
+  echo "  - execution-ready dispatch"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: business entrypoint ────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--business-entrypoint" ]]; then

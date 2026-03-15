@@ -3,7 +3,7 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sun Mar 15 14:26:37 CET 2026
+Sun Mar 15 14:53:38 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
@@ -12,12 +12,13 @@ GIT STATUS --SHORT
  M examples/pilot/run_pilot.sh
  M ops/current_campaign.md
  M ops/current_snapshot.md
-?? crates/service/tests/pilot_business_entrypoint_surface_tests.rs
+?? crates/service/tests/pilot_lab_entrypoint_surface_tests.rs
+?? crates/service/tests/pilot_run_fingerprint_surface_tests.rs
 
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-bfb064f pilot: add engineer entrypoint surface for protocol inspection
+bee26c5 pilot: add business entrypoint surface for external viewers
 
 --------------------------------------
 CHANGED FILES
@@ -30,8 +31,8 @@ ops/current_snapshot.md
 --------------------------------------
 DIFF STAT
 --------------------------------------
- examples/pilot/README.md    | 12 +++++++++
- examples/pilot/run_pilot.sh | 60 ++++++++++++++++++++++++++++++++++++++++++++
- ops/current_campaign.md     | 61 ++++++++++++++++++++++++---------------------
- ops/current_snapshot.md     | 11 +++-----
- 4 files changed, 107 insertions(+), 37 deletions(-)
+ examples/pilot/README.md    |  24 +++++++
+ examples/pilot/run_pilot.sh | 158 ++++++++++++++++++++++++++++++++++++++++++++
+ ops/current_campaign.md     |  72 ++++++++++----------
+ ops/current_snapshot.md     |  12 ++--
+ 4 files changed, 224 insertions(+), 42 deletions(-)

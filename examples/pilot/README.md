@@ -219,6 +219,30 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Run Fingerprint
+
+To print a deterministic identifier derived from the protocol artifacts of the current run:
+
+```bash
+./examples/pilot/run_pilot.sh --run-fingerprint
+```
+
+Shows the run context, the artifact files contributing to the fingerprint (receipt, inbound reply, verification decision, dispatch packet), and the computed SHA-256 fingerprint. The fingerprint is stable as long as artifact content is unchanged and grows as more artifacts are added to the run. No commands are executed. No files are written.
+
+---
+
+## Lab Entrypoint
+
+The fastest introduction for a lab or manufacturer evaluating the production-side workflow of the pilot:
+
+```bash
+./examples/pilot/run_pilot.sh --lab-entrypoint
+```
+
+Shows what the lab receives, what they are expected to do, why the workflow matters to a lab, the four commands to explore first, a one-line explanation per command, and the current run context. No commands are executed. No files are written.
+
+---
+
 ## Business Entrypoint
 
 The fastest introduction for non-technical external viewers evaluating the workflow and business meaning of the pilot:

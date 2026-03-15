@@ -201,6 +201,154 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: export sendable lab trial package ───────────────────────────────────
+
+if [[ "${1:-}" == "--export-lab-trial-package" ]]; then
+
+  RECEIPT="${SCRIPT_DIR}/receipt.json"
+
+  if [[ ! -f "$RECEIPT" ]]; then
+    echo "error: receipt.json not found — run run_pilot.sh first" >&2
+    exit 1
+  fi
+
+  # Compute run_id
+  EXP_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${RECEIPT}').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+  EXP_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "$RECEIPT" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  EXP_RUN_ID="${EXP_CASE_ID:-${EXP_RECEIPT_HASH:0:12}}"
+
+  if [[ -z "$EXP_RUN_ID" ]]; then
+    echo "error: could not determine run_id from receipt.json" >&2
+    exit 1
+  fi
+
+  EXP_DISPATCH_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/export_packet.json').read())
+    print(d.get('dispatch_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  PACKAGE_DIR="${SCRIPT_DIR}/outbound/lab_trial_${EXP_RUN_ID}"
+  mkdir -p "$PACKAGE_DIR"
+
+  # ── Copy receipt ────────────────────────────────────────────────────────────
+  cp "$RECEIPT" "$PACKAGE_DIR/receipt.json"
+
+  # ── Copy export_packet if present ───────────────────────────────────────────
+  if [[ -f "${SCRIPT_DIR}/export_packet.json" && -s "${SCRIPT_DIR}/export_packet.json" ]]; then
+    cp "${SCRIPT_DIR}/export_packet.json" "$PACKAGE_DIR/export_packet.json"
+  fi
+
+  # ── Write lab_reply_template.json ───────────────────────────────────────────
+  {
+    echo "{"
+    echo "  \"lab_response_schema\": \"1\","
+    echo "  \"receipt_hash\": \"$EXP_RECEIPT_HASH\","
+    echo "  \"dispatch_id\": \"${EXP_DISPATCH_ID:-}\","
+    echo "  \"case_id\": \"${EXP_CASE_ID:-}\","
+    echo "  \"lab_acknowledged_at\": \"FILL_IN: ISO 8601 timestamp e.g. $(date -u +"%Y-%m-%d")T00:00:00Z\","
+    echo "  \"lab_id\": \"FILL_IN: your lab identifier\","
+    echo "  \"status\": \"accepted\""
+    echo "}"
+  } > "$PACKAGE_DIR/lab_reply_template.json"
+
+  # ── Write manifest.txt ───────────────────────────────────────────────────────
+  MANIFEST_FILES="  manifest.txt\n  operator_instructions.txt\n  lab_instructions.txt\n  lab_reply_template.json\n  receipt.json"
+  [[ -f "$PACKAGE_DIR/export_packet.json" ]] && MANIFEST_FILES="${MANIFEST_FILES}\n  export_packet.json"
+
+  {
+    echo "PostCAD Lab Trial Package"
+    echo "run_id: $EXP_RUN_ID"
+    echo "receipt_hash: $EXP_RECEIPT_HASH"
+    echo "generated_at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo ""
+    echo "files:"
+    printf "%b\n" "$MANIFEST_FILES"
+  } > "$PACKAGE_DIR/manifest.txt"
+
+  # ── Write operator_instructions.txt ─────────────────────────────────────────
+  {
+    echo "PostCAD Lab Trial Package — Operator Instructions"
+    echo "=================================================="
+    echo ""
+    echo "Run ID:       $EXP_RUN_ID"
+    echo "Receipt hash: $EXP_RECEIPT_HASH"
+    echo ""
+    echo "This folder is a sendable lab trial package for a real external PostCAD routing trial."
+    echo ""
+    echo "Send the following files to the external lab:"
+    echo "  lab_reply_template.json"
+    echo "  lab_instructions.txt"
+    echo "  receipt.json"
+    echo ""
+    echo "The lab must return the completed template named:"
+    echo "  lab_reply_${EXP_RUN_ID}.json"
+    echo ""
+    echo "After receiving the lab reply, place it in your inbound directory and verify:"
+    echo "  ./examples/pilot/verify.sh --inbound inbound/lab_reply_${EXP_RUN_ID}.json \\"
+    echo "                             --bundle examples/pilot"
+  } > "$PACKAGE_DIR/operator_instructions.txt"
+
+  # ── Write lab_instructions.txt ───────────────────────────────────────────────
+  {
+    echo "PostCAD Lab Trial Package — Lab Instructions"
+    echo "============================================="
+    echo ""
+    echo "Run ID:       $EXP_RUN_ID"
+    echo "Receipt hash: $EXP_RECEIPT_HASH"
+    echo ""
+    echo "You have received a PostCAD routing case for a dental manufacturing trial."
+    echo "The routing receipt is in receipt.json."
+    echo ""
+    echo "To acknowledge receipt of this case, fill in lab_reply_template.json:"
+    echo ""
+    echo "  Fields to fill in:"
+    echo "    lab_acknowledged_at  — ISO 8601 timestamp when you received this case"
+    echo "    lab_id               — your lab identifier"
+    echo ""
+    echo "  Fields that must not be changed:"
+    echo "    lab_response_schema, receipt_hash, dispatch_id, case_id, status"
+    echo ""
+    echo "Return the completed file named:"
+    echo "  lab_reply_${EXP_RUN_ID}.json"
+    echo ""
+    echo "The reply will be rejected if receipt_hash does not match exactly:"
+    echo "  $EXP_RECEIPT_HASH"
+  } > "$PACKAGE_DIR/lab_instructions.txt"
+
+  # ── Print result ─────────────────────────────────────────────────────────────
+  echo ""
+  echo -e "${BOLD}PostCAD — Lab Trial Package${RESET}"
+  echo "  ────────────────────────────────────────"
+  echo ""
+  echo -e "  ${GREEN}Package written: $PACKAGE_DIR${RESET}"
+  echo ""
+  echo "  Run ID      : $EXP_RUN_ID"
+  echo "  Receipt hash: $EXP_RECEIPT_HASH"
+  echo ""
+  echo "  Contents:"
+  printf "%b\n" "$MANIFEST_FILES" | sed 's/^/  /'
+  echo ""
+  echo "  Next steps:"
+  echo "    1. Send $PACKAGE_DIR to the external lab."
+  echo "    2. The lab fills lab_reply_template.json and returns it."
+  echo "    3. Place the reply in your inbound directory:"
+  echo "         cp lab_reply_returned.json ${SCRIPT_DIR}/inbound/lab_reply_${EXP_RUN_ID}.json"
+  echo "    4. Verify:"
+  echo "       ./examples/pilot/verify.sh --inbound ${SCRIPT_DIR}/inbound/lab_reply_${EXP_RUN_ID}.json \\"
+  echo "                                  --bundle ${SCRIPT_DIR}"
+  echo ""
+  exit 0
+fi
+
 echo "PostCAD Protocol v1 — Pilot Workflow"
 echo "======================================"
 echo ""

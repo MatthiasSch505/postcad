@@ -457,6 +457,81 @@ Generated handoff packs are excluded from version control via `.gitignore`.
 
 ---
 
+## Sendable Lab Trial Package
+
+The quickest way to prepare a real external trial. Generates one directory with all files the lab needs to complete and return a reply.
+
+### Generate the package
+
+Run the pilot flow first, then:
+
+```bash
+./examples/pilot/run_pilot.sh --export-lab-trial-package
+```
+
+Expected output:
+
+```
+  Package written: examples/pilot/outbound/lab_trial_<run-id>
+
+  Run ID      : <run-id>
+  Receipt hash: <hash>
+
+  Contents:
+    manifest.txt
+    operator_instructions.txt
+    lab_instructions.txt
+    lab_reply_template.json
+    receipt.json
+```
+
+### Package structure
+
+```
+outbound/lab_trial_<run-id>/
+  manifest.txt                  index of included files + run identifiers
+  operator_instructions.txt     what to send, what to expect back, how to verify
+  lab_instructions.txt          what the lab must fill in and return
+  lab_reply_template.json       pre-filled template — lab fills 2 fields and returns
+  receipt.json                  routing receipt (source of truth)
+  export_packet.json            dispatch packet (if present)
+```
+
+### Zip and send to real lab
+
+```bash
+zip -r lab_trial_<run-id>.zip outbound/lab_trial_<run-id>/
+```
+
+Send the zip to the external lab. The lab reads `lab_instructions.txt` and returns the completed `lab_reply_template.json`.
+
+### Receive completed reply
+
+When the lab returns the filled template:
+
+```bash
+# Place it in your inbound directory
+cp lab_reply_returned.json examples/pilot/inbound/lab_reply_<run-id>.json
+
+# Verify and generate decision record
+./examples/pilot/verify.sh \
+  --inbound examples/pilot/inbound/lab_reply_<run-id>.json \
+  --bundle  examples/pilot
+```
+
+Expected output (success):
+
+```
+  response verified for current run
+
+  Operator decision: ACCEPTED
+  Decision record:   examples/pilot/reports/decision_lab_reply_<run-id>.txt
+```
+
+Generated packages are excluded from version control via `.gitignore`.
+
+---
+
 ## Real Manual External Trial
 
 For trials with a real external lab (no simulator), use the manual reply template workflow. The handoff pack now includes a pre-filled `lab_reply_template.json` the lab can edit and return directly.

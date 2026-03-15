@@ -10,3 +10,6 @@ handoff/
 
 # Generated inbound lab responses from trial runs — do not commit
 inbound/
+
+# Generated sendable lab trial packages — do not commit
+outbound/

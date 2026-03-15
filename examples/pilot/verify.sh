@@ -318,6 +318,47 @@ if [[ "$MODE" == "inbound" ]]; then
   echo "  Ledger:           $LEDGER_FILE"
   echo ""
 
+  # ── Operator verdict block ───────────────────────────────────────────────────
+  echo "  ════════════════════════════════════════"
+  if [[ "$DECISION" == "accepted" ]]; then
+    echo "  VERIFICATION PASSED"
+  else
+    echo "  VERIFICATION FAILED"
+  fi
+  echo "  ════════════════════════════════════════"
+  echo "  Inbound : $INBOUND_FILE"
+  echo "  Bundle  : $BUNDLE_DIR"
+  if [[ "$DECISION" == "accepted" ]]; then
+    echo "  Result  : verification passed"
+    echo "  Next    : operator may export dispatch packet"
+  else
+    echo "  Result  : verification failed"
+    case "$RESULT" in
+      unverifiable)
+        if [[ "$RESULT_DETAIL" == *"not found"* ]]; then
+          echo "  Next    : check inbound reply file path and rerun"
+        elif [[ "$RESULT_DETAIL" == *"not valid JSON"* ]]; then
+          echo "  Next    : inspect inbound reply before verifying"
+        elif [[ "$RESULT_DETAIL" == *"bundle directory"* ]]; then
+          echo "  Next    : confirm the pilot bundle path is correct"
+        else
+          echo "  Next    : check inbound file and bundle path and rerun"
+        fi
+        ;;
+      malformed)
+        echo "  Next    : ask the lab to resend a complete reply if fields are unreadable"
+        ;;
+      run_mismatch)
+        echo "  Next    : confirm the lab returned the reply for the current run"
+        ;;
+      *)
+        echo "  Next    : check inbound file and bundle path and rerun"
+        ;;
+    esac
+  fi
+  echo "  ════════════════════════════════════════"
+  echo ""
+
   if [[ "$DECISION" == "accepted" ]]; then
     exit 0
   else
@@ -553,15 +594,34 @@ echo "PostCAD Protocol v1 — Pilot Receipt Verification"
 echo "=================================================="
 echo ""
 
+RECEIPT_VERIFY_EXIT=0
 "$BIN" verify-receipt $JSON_FLAG \
   --receipt    "${SCRIPT_DIR}/receipt.json" \
   --case       "${SCRIPT_DIR}/case.json" \
   --policy     "${SCRIPT_DIR}/derived_policy.json" \
-  --candidates "${SCRIPT_DIR}/candidates.json"
+  --candidates "${SCRIPT_DIR}/candidates.json" || RECEIPT_VERIFY_EXIT=$?
 
 echo ""
-echo "Verification complete — receipt is authentic, dispatch is safe to proceed."
-echo ""
-echo "Next step: open the reviewer shell to create and approve a dispatch commitment."
-echo "  cargo run -p postcad-service"
-echo "  # then open http://localhost:8080/reviewer"
+
+# ── Operator verdict block ─────────────────────────────────────────────────────
+echo "════════════════════════════════════════"
+if [[ $RECEIPT_VERIFY_EXIT -eq 0 ]]; then
+  echo "VERIFICATION PASSED"
+  echo "════════════════════════════════════════"
+  echo "Receipt : ${SCRIPT_DIR}/receipt.json"
+  echo "Result  : verification passed"
+  echo "Next    : operator may export dispatch packet"
+  echo "Verification complete — receipt is authentic, dispatch is safe to proceed."
+  echo ""
+  echo "Next step: open the reviewer shell to create and approve a dispatch commitment."
+  echo "  cargo run -p postcad-service"
+  echo "  # then open http://localhost:8080/reviewer"
+else
+  echo "VERIFICATION FAILED"
+  echo "════════════════════════════════════════"
+  echo "Receipt : ${SCRIPT_DIR}/receipt.json"
+  echo "Result  : verification failed"
+  echo "Next    : check receipt.json and input files, then rerun"
+  exit $RECEIPT_VERIFY_EXIT
+fi
+echo "════════════════════════════════════════"

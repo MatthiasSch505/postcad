@@ -457,6 +457,52 @@ Generated handoff packs are excluded from version control via `.gitignore`.
 
 ---
 
+## Verification Verdict Output
+
+Every `verify.sh` run ends with a structured operator verdict block.
+
+### VERIFICATION PASSED
+
+```
+  ════════════════════════════════════════
+  VERIFICATION PASSED
+  ════════════════════════════════════════
+  Inbound : inbound/lab_reply_<run-id>.json
+  Bundle  : examples/pilot
+  Result  : verification passed
+  Next    : operator may export dispatch packet
+  ════════════════════════════════════════
+```
+
+Meaning: the inbound reply is cryptographically bound to the current run. The operator may proceed to export the dispatch packet.
+
+### VERIFICATION FAILED
+
+```
+  ════════════════════════════════════════
+  VERIFICATION FAILED
+  ════════════════════════════════════════
+  Inbound : inbound/lab_reply_<run-id>.json
+  Bundle  : examples/pilot
+  Result  : verification failed
+  Next    : <operator guidance>
+  ════════════════════════════════════════
+```
+
+Meaning: the inbound reply could not be verified against the current run. The `Next` line tells the operator what to do.
+
+### Failure guidance
+
+| Failure cause | Next action shown |
+|---|---|
+| Inbound file not found | check inbound reply file path and rerun |
+| Inbound file not valid JSON | inspect inbound reply before verifying |
+| Bundle directory missing receipt | confirm the pilot bundle path is correct |
+| Reply missing required field | ask the lab to resend a complete reply if fields are unreadable |
+| Receipt hash mismatch | confirm the lab returned the reply for the current run |
+
+---
+
 ## Inbound Reply Inspection
 
 Before running full verification, inspect a returned lab reply to confirm it is structurally complete.

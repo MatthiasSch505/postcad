@@ -1,61 +1,66 @@
 campaign name
 
-pilot: add package self-check for real lab send readiness
+pilot: harden verification operator verdict output
 
 objective
 
-Add a deterministic lab trial package self-check so the operator can verify,
-before sending, that the exported package is complete and ready for a real external
-lab trial.
+Add a deterministic operator verdict block to verify.sh so the operator
+gets an unambiguous VERIFICATION PASSED / VERIFICATION FAILED summary with
+actionable next-step guidance after every verification run. Human inspection
+layer only — no change to verification logic or exit codes.
 
 files changed
 
-examples/pilot/run_pilot.sh
-  - added --check-lab-trial-package mode
-  - reads current run_id from receipt.json
-  - locates outbound/lab_trial_<run-id>/
-  - checks presence of all 8 required files:
-      manifest.txt, operator_instructions.txt, lab_instructions.txt,
-      lab_reply_template.json, email_to_lab.txt, short_message_to_lab.txt,
-      operator_send_note.txt, receipt.json
-  - prints per-file "present" / "missing" checklist
-  - prints "package ready for external lab send" on pass (exit 0)
-  - prints "package check failed" on fail (exit 1)
-  - on fail: suggests --export-lab-trial-package to regenerate
-  - on pass: suggests zip-and-send steps and references operator_send_note.txt
+examples/pilot/verify.sh
+  - added verdict block to --inbound mode (after operator decision print):
+      ════════════════════════════════════════
+      VERIFICATION PASSED / VERIFICATION FAILED
+      ════════════════════════════════════════
+      Inbound : <file>
+      Bundle  : <dir>
+      Result  : verification passed / failed
+      Next    : <guidance>
+      ════════════════════════════════════════
+  - failure guidance branches:
+      unverifiable + not found       → "check inbound reply file path and rerun"
+      unverifiable + not valid JSON  → "inspect inbound reply before verifying"
+      unverifiable + bundle directory→ "confirm the pilot bundle path is correct"
+      malformed                      → "ask the lab to resend a complete reply if fields are unreadable"
+      run_mismatch                   → "confirm the lab returned the reply for the current run"
+  - added verdict block to receipt verification mode (bottom of file):
+      VERIFICATION PASSED / VERIFICATION FAILED block with Receipt path,
+      Result, Next, and next-step instructions for reviewer shell
 
 examples/pilot/README.md
-  - added "## Package Self-Check" section with:
-      3-step workflow: export → check → zip/send or regenerate
-      expected ready output
-      expected failed output
+  - added "## Verification Verdict Output" section with:
+      PASSED example output
+      FAILED example output
+      failure guidance table
 
-crates/service/tests/pilot_package_check_tests.rs
-  - 26 new tests covering:
-    - flag exists
-    - error if receipt.json missing
-    - package directory lookup uses run_id
-    - error if package directory missing + suggests export command
-    - all 8 required files are checked
-    - "present" / "missing" per-file output wording
-    - "package ready for external lab send" on pass
-    - "package check failed" on fail
-    - success guidance includes zip-and-send and operator_send_note.txt
+crates/service/tests/pilot_verify_operator_output_tests.rs
+  - 20 new tests covering:
+    - VERIFICATION PASSED / VERIFICATION FAILED wording
+    - separator line presence
+    - Result and Next field presence
+    - inbound verdict Inbound/Bundle path fields
+    - pass next action ("operator may export dispatch packet")
+    - failure guidance: missing file, invalid JSON, missing bundle, malformed, run_mismatch
+    - receipt verdict Receipt path field
+    - receipt verdict fail guidance
     - README section coverage
 
 commands run
 
-cargo test --all
+cargo test --test pilot_verify_operator_output_tests
 
 result
 
-All tests pass. 26 new tests in pilot_package_check_tests.rs.
-No protocol/core code changed.
+All 20 tests pass. No protocol/core code changed.
 
 test command
 
-cd ~/projects/postcad && cargo test --all
+cd ~/projects/postcad && cargo test --test pilot_verify_operator_output_tests
 
 commit message
 
-pilot: add lab trial package self-check
+pilot: harden verification operator verdict output

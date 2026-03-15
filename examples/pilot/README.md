@@ -219,6 +219,18 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Trace View
+
+To see the workflow event trace for the current pilot run:
+
+```bash
+./examples/pilot/run_pilot.sh --trace-view
+```
+
+Shows the current run ID and the detection status of each workflow event — whether each artifact has been observed or is not yet present. Events are inferred from existing filesystem artifacts only. No commands are executed. No files are written.
+
+---
+
 ## Inbound Reply Simulator
 
 To demonstrate the pilot workflow end-to-end without a real external lab:

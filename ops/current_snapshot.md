@@ -3,7 +3,7 @@ POSTCAD SNAPSHOT
 ======================================
 
 DATE
-Sun Mar 15 13:33:10 CET 2026
+Sun Mar 15 13:41:38 CET 2026
 
 --------------------------------------
 GIT STATUS --SHORT
@@ -12,13 +12,12 @@ GIT STATUS --SHORT
  M examples/pilot/run_pilot.sh
  M ops/current_campaign.md
  M ops/current_snapshot.md
-?? crates/service/tests/pilot_inbound_simulator_tests.rs
-?? examples/pilot/testdata/lab_reply_simulated.json
+?? crates/service/tests/pilot_trace_view_tests.rs
 
 --------------------------------------
 LATEST COMMIT
 --------------------------------------
-699b798 pilot: add demo surface for external viewers
+ed216a8 pilot: add inbound reply simulator for demo workflow
 
 --------------------------------------
 CHANGED FILES
@@ -31,8 +30,8 @@ ops/current_snapshot.md
 --------------------------------------
 DIFF STAT
 --------------------------------------
- examples/pilot/README.md    | 16 ++++++++++
- examples/pilot/run_pilot.sh | 51 ++++++++++++++++++++++++++++++
- ops/current_campaign.md     | 75 +++++++++++++++++++++++----------------------
- ops/current_snapshot.md     | 12 +++-----
- 4 files changed, 110 insertions(+), 44 deletions(-)
+ examples/pilot/README.md    | 12 +++++++
+ examples/pilot/run_pilot.sh | 76 +++++++++++++++++++++++++++++++++++++++++++++
+ ops/current_campaign.md     | 73 ++++++++++++++++++++-----------------------
+ ops/current_snapshot.md     | 12 ++-----
+ 4 files changed, 125 insertions(+), 48 deletions(-)

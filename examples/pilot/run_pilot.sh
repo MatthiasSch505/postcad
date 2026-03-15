@@ -932,6 +932,82 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: trace view ─────────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--trace-view" ]]; then
+
+  # Resolve run_id from receipt.json if present
+  TV_RUN_ID="not detected"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    TV_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    TV_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _TV_ID="${TV_CASE_ID:-${TV_RECEIPT_HASH:0:12}}"
+    [[ -n "$_TV_ID" ]] && TV_RUN_ID="$_TV_ID"
+  fi
+
+  # Detect events from filesystem artifacts
+  TV_RECEIPT=""
+  TV_INBOUND=""
+  TV_VERIFICATION=""
+  TV_DISPATCH=""
+
+  [[ -f "${SCRIPT_DIR}/receipt.json" ]] && TV_RECEIPT="detected"
+
+  if [[ "$TV_RUN_ID" != "not detected" ]]; then
+    [[ -n "$(ls "${SCRIPT_DIR}/inbound/lab_reply_"*.json 2>/dev/null | head -1)" ]] && TV_INBOUND="detected"
+  else
+    [[ -n "$(ls "${SCRIPT_DIR}/inbound/lab_reply_"*.json 2>/dev/null | head -1)" ]] && TV_INBOUND="detected"
+  fi
+
+  [[ -n "$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1)" ]] && TV_VERIFICATION="detected"
+
+  [[ -f "${SCRIPT_DIR}/export_packet.json" && -s "${SCRIPT_DIR}/export_packet.json" ]] && TV_DISPATCH="detected"
+
+  echo ""
+  echo "PostCAD — Pilot Trace View"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "Run ID : $TV_RUN_ID"
+  echo ""
+
+  if [[ -n "$TV_RECEIPT" ]]; then
+    echo "  1  route decision generated       detected"
+    echo "  2  receipt recorded               detected"
+  else
+    echo "  1  route decision generated       not yet observed"
+    echo "  2  receipt recorded               not yet observed"
+  fi
+
+  if [[ -n "$TV_INBOUND" ]]; then
+    echo "  3  inbound lab reply detected      detected"
+  else
+    echo "  3  inbound lab reply detected      not yet observed"
+  fi
+
+  if [[ -n "$TV_VERIFICATION" ]]; then
+    echo "  4  verification step available     detected"
+  else
+    echo "  4  verification step available     not yet observed"
+  fi
+
+  if [[ -n "$TV_DISPATCH" ]]; then
+    echo "  5  dispatch export available       detected"
+  else
+    echo "  5  dispatch export available       not yet observed"
+  fi
+
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: simulate inbound reply ─────────────────────────────────────────────
 
 if [[ "${1:-}" == "--simulate-inbound" ]]; then

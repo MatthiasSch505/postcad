@@ -520,8 +520,15 @@ if [[ "${1:-}" == "--inspect-inbound-reply" ]]; then
   INBOUND_FILE="${2:-}"
 
   if [[ -z "$INBOUND_FILE" ]]; then
+    echo ""
+    echo "INSPECT INBOUND REPLY — USAGE"
+    echo ""
+    echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply <file>"
+    echo ""
+    echo "Example:"
+    echo "  ./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json"
+    echo ""
     echo "error: --inspect-inbound-reply requires a file argument" >&2
-    echo "  usage: ./examples/pilot/run_pilot.sh --inspect-inbound-reply <reply_file>" >&2
     exit 1
   fi
 
@@ -708,6 +715,15 @@ except: print('')
       no_receipt)
         echo "  Reason  : no current pilot run found"
         echo "  Next    : generate or load a current pilot run before exporting"
+        echo ""
+        echo "DISPATCH EXPORT — PRECONDITION NOT MET"
+        echo ""
+        echo "A valid pilot run was not detected."
+        echo ""
+        echo "Recommended steps:"
+        echo "  1  generate pilot bundle"
+        echo "  2  verify inbound reply"
+        echo "  3  export dispatch packet"
         ;;
       no_dispatch_packet)
         echo "  Reason  : dispatch packet not present"
@@ -1095,6 +1111,18 @@ if [[ "${1:-}" == "--walkthrough" ]]; then
   echo "  ./examples/pilot/run_pilot.sh --walkthrough"
   echo ""
   exit 0
+fi
+
+# ── Unknown argument handler ──────────────────────────────────────────────────
+
+if [[ -n "${1:-}" ]]; then
+  echo ""
+  echo "UNKNOWN COMMAND"
+  echo ""
+  echo "Use:"
+  echo "  ./examples/pilot/run_pilot.sh --help-surface"
+  echo ""
+  exit 1
 fi
 
 echo "PostCAD Protocol v1 — Pilot Workflow"

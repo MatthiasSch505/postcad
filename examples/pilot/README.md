@@ -193,6 +193,20 @@ change unless the inputs change.
 
 ---
 
+## Command Guardrails
+
+Pilot commands validate their arguments and print structured guidance when used incorrectly.
+
+| Situation | Output |
+|---|---|
+| `--inspect-inbound-reply` called without a file | `INSPECT INBOUND REPLY — USAGE` block with example |
+| `--export-dispatch` called with no current pilot run | `DISPATCH EXPORT — PRECONDITION NOT MET` block with recommended steps |
+| Unknown or unrecognised flag | `UNKNOWN COMMAND` block directing to `--help-surface` |
+
+All guardrail messages are plain text, deterministic, and non-interactive. They exit non-zero so scripts can detect the failure.
+
+---
+
 ## Run Summary
 
 To see the current pilot run state and recommended next step:

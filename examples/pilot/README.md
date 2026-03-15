@@ -219,6 +219,18 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Business Entrypoint
+
+The fastest introduction for non-technical external viewers evaluating the workflow and business meaning of the pilot:
+
+```bash
+./examples/pilot/run_pilot.sh --business-entrypoint
+```
+
+Shows what the pilot does in plain language, why it matters operationally, the four commands to explore first, a one-line explanation per command, and the current run context. Use this as the starting point for investors, operators, commercial partners, or lab owners. No commands are executed. No files are written.
+
+---
+
 ## Engineer Entrypoint
 
 The fastest technical introduction for engineers evaluating the protocol and workflow surfaces:

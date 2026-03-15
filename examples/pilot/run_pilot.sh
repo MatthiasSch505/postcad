@@ -1055,6 +1055,66 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: business entrypoint ────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--business-entrypoint" ]]; then
+
+  # Resolve run context
+  BE_RUN_ID="not detected"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    BE_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    BE_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _BE_ID="${BE_CASE_ID:-${BE_RECEIPT_HASH:0:12}}"
+    [[ -n "$_BE_ID" ]] && BE_RUN_ID="$_BE_ID"
+  fi
+
+  echo ""
+  echo "POSTCAD BUSINESS ENTRYPOINT"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "WHAT THIS PILOT DOES"
+  echo "  - routes a dental manufacturing case deterministically"
+  echo "  - records a receipt for the routing decision"
+  echo "  - accepts and verifies a lab reply"
+  echo "  - exports a dispatch packet for execution handoff"
+  echo ""
+  echo "WHY IT MATTERS"
+  echo "  - fewer workflow ambiguities"
+  echo "  - verifiable handoff between clinic and lab"
+  echo "  - audit-ready process"
+  echo "  - clearer operational accountability"
+  echo ""
+  echo "WHAT TO LOOK AT FIRST"
+  echo "  ./examples/pilot/run_pilot.sh --demo-surface"
+  echo "  ./examples/pilot/run_pilot.sh --system-overview"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo "  ./examples/pilot/run_pilot.sh --help-surface"
+  echo ""
+  echo "WHAT EACH COMMAND SHOWS"
+  echo "  --demo-surface      end-to-end pilot narrative and what the operator sees"
+  echo "  --system-overview   what PostCAD does and how the workflow fits together"
+  echo "  --run-summary       current run state and recommended next operator action"
+  echo "  --help-surface      all available pilot commands and when to use each"
+  echo ""
+  echo "CURRENT RUN CONTEXT"
+  echo "  Run ID : $BE_RUN_ID"
+  echo ""
+  echo "WHY THIS IS STRATEGIC"
+  echo "  - workflow infrastructure, not just software"
+  echo "  - traceable handoff layer"
+  echo "  - foundation for trusted routing between clinics and manufacturers"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: engineer entrypoint ────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--engineer-entrypoint" ]]; then

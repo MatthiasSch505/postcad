@@ -1,42 +1,46 @@
 campaign name
 
-pilot: add first-contact lab message kit
+pilot: add package self-check for real lab send readiness
 
 objective
 
-Reduce first-contact friction with real external labs by adding a deterministic
-message kit to the sendable lab trial package. The operator no longer needs to
-improvise any wording when sending the package to a real lab.
+Add a deterministic lab trial package self-check so the operator can verify,
+before sending, that the exported package is complete and ready for a real external
+lab trial.
 
 files changed
 
 examples/pilot/run_pilot.sh
-  - extended --export-lab-trial-package to write three message kit files:
-      email_to_lab.txt: boring first-contact email draft with run id, what to fill,
-                        what to return, no-integration statement, return filename
-      short_message_to_lab.txt: one-paragraph WhatsApp/Signal/LinkedIn message
-                                with run id and reply template reference
-      operator_send_note.txt: 6-step operator checklist — zip → send → wait →
-                              place in inbound → verify → inspect decision record
-  - updated MANIFEST_FILES to include all three new files
+  - added --check-lab-trial-package mode
+  - reads current run_id from receipt.json
+  - locates outbound/lab_trial_<run-id>/
+  - checks presence of all 8 required files:
+      manifest.txt, operator_instructions.txt, lab_instructions.txt,
+      lab_reply_template.json, email_to_lab.txt, short_message_to_lab.txt,
+      operator_send_note.txt, receipt.json
+  - prints per-file "present" / "missing" checklist
+  - prints "package ready for external lab send" on pass (exit 0)
+  - prints "package check failed" on fail (exit 1)
+  - on fail: suggests --export-lab-trial-package to regenerate
+  - on pass: suggests zip-and-send steps and references operator_send_note.txt
 
 examples/pilot/README.md
-  - added "## First-Contact Send Flow" section with:
-      message kit file table
-      how to use email or short message
-      operator checklist display
+  - added "## Package Self-Check" section with:
+      3-step workflow: export → check → zip/send or regenerate
+      expected ready output
+      expected failed output
 
-examples/pilot/testdata/expected_lab_trial_package_manifest_fields.txt
-  - added email_to_lab.txt, short_message_to_lab.txt, operator_send_note.txt
-
-crates/service/tests/pilot_message_kit_tests.rs
-  - 28 new tests covering:
-    - manifest fixture lists all three message kit files
-    - export command writes all three files
-    - email_to_lab.txt: run id, external trial wording, fill-in fields,
-      no-integration statement, return filename
-    - short_message_to_lab.txt: run id, reply template reference, no-integration
-    - operator_send_note.txt: checklist header, run id, all 6 steps
+crates/service/tests/pilot_package_check_tests.rs
+  - 26 new tests covering:
+    - flag exists
+    - error if receipt.json missing
+    - package directory lookup uses run_id
+    - error if package directory missing + suggests export command
+    - all 8 required files are checked
+    - "present" / "missing" per-file output wording
+    - "package ready for external lab send" on pass
+    - "package check failed" on fail
+    - success guidance includes zip-and-send and operator_send_note.txt
     - README section coverage
 
 commands run
@@ -45,7 +49,7 @@ cargo test --all
 
 result
 
-All tests pass. 28 new tests in pilot_message_kit_tests.rs.
+All tests pass. 26 new tests in pilot_package_check_tests.rs.
 No protocol/core code changed.
 
 test command
@@ -54,4 +58,4 @@ cd ~/projects/postcad && cargo test --all
 
 commit message
 
-pilot: add first-contact lab message kit
+pilot: add lab trial package self-check

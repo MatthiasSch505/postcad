@@ -421,6 +421,98 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: lab trial package self-check ────────────────────────────────────────
+
+if [[ "${1:-}" == "--check-lab-trial-package" ]]; then
+
+  RECEIPT="${SCRIPT_DIR}/receipt.json"
+
+  if [[ ! -f "$RECEIPT" ]]; then
+    echo "error: receipt.json not found — run run_pilot.sh first" >&2
+    exit 1
+  fi
+
+  # Compute run_id
+  CHK_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${RECEIPT}').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+  CHK_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "$RECEIPT" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  CHK_RUN_ID="${CHK_CASE_ID:-${CHK_RECEIPT_HASH:0:12}}"
+
+  if [[ -z "$CHK_RUN_ID" ]]; then
+    echo "error: could not determine run_id from receipt.json" >&2
+    exit 1
+  fi
+
+  PACKAGE_DIR="${SCRIPT_DIR}/outbound/lab_trial_${CHK_RUN_ID}"
+
+  echo ""
+  echo -e "${BOLD}PostCAD — Lab Trial Package Self-Check${RESET}"
+  echo "  ────────────────────────────────────────"
+  echo ""
+  echo "  Run ID  : $CHK_RUN_ID"
+  echo "  Package : $PACKAGE_DIR"
+  echo ""
+
+  if [[ ! -d "$PACKAGE_DIR" ]]; then
+    echo -e "  ${RED}package check failed${RESET}"
+    echo "  Reason: package directory not found"
+    echo "  Generate it first:"
+    echo "    ./examples/pilot/run_pilot.sh --export-lab-trial-package"
+    echo ""
+    exit 1
+  fi
+
+  # Required files
+  REQUIRED_FILES=(
+    "manifest.txt"
+    "operator_instructions.txt"
+    "lab_instructions.txt"
+    "lab_reply_template.json"
+    "email_to_lab.txt"
+    "short_message_to_lab.txt"
+    "operator_send_note.txt"
+    "receipt.json"
+  )
+
+  CHK_PASS=true
+
+  echo "  File check:"
+  echo ""
+  for f in "${REQUIRED_FILES[@]}"; do
+    if [[ -f "$PACKAGE_DIR/$f" && -s "$PACKAGE_DIR/$f" ]]; then
+      echo -e "  ${GREEN}present${RESET}  $f"
+    else
+      echo -e "  ${RED}missing${RESET}  $f"
+      CHK_PASS=false
+    fi
+  done
+
+  echo ""
+
+  if [[ "$CHK_PASS" == "true" ]]; then
+    echo -e "  ${GREEN}package ready for external lab send${RESET}"
+    echo ""
+    echo "  Next steps:"
+    echo "    1. Zip and send:"
+    echo "         zip -r lab_trial_${CHK_RUN_ID}.zip $PACKAGE_DIR"
+    echo "    2. Use email_to_lab.txt or short_message_to_lab.txt as your message."
+    echo "    3. Follow operator_send_note.txt for the full send checklist."
+    echo ""
+    exit 0
+  else
+    echo -e "  ${RED}package check failed${RESET}"
+    echo "  Regenerate the package:"
+    echo "    ./examples/pilot/run_pilot.sh --export-lab-trial-package"
+    echo ""
+    exit 1
+  fi
+fi
+
 echo "PostCAD Protocol v1 — Pilot Workflow"
 echo "======================================"
 echo ""

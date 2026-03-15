@@ -457,6 +457,57 @@ Generated handoff packs are excluded from version control via `.gitignore`.
 
 ---
 
+## Package Self-Check
+
+Before sending the lab trial package, run the self-check to confirm it is complete.
+
+### Workflow
+
+```bash
+# 1. Export the package
+./examples/pilot/run_pilot.sh --export-lab-trial-package
+
+# 2. Run the self-check
+./examples/pilot/run_pilot.sh --check-lab-trial-package
+
+# 3a. If ready — zip and send
+zip -r lab_trial_<run-id>.zip outbound/lab_trial_<run-id>/
+
+# 3b. If failed — regenerate
+./examples/pilot/run_pilot.sh --export-lab-trial-package
+```
+
+### Expected output (ready)
+
+```
+  File check:
+
+  present  manifest.txt
+  present  operator_instructions.txt
+  present  lab_instructions.txt
+  present  lab_reply_template.json
+  present  email_to_lab.txt
+  present  short_message_to_lab.txt
+  present  operator_send_note.txt
+  present  receipt.json
+
+  package ready for external lab send
+```
+
+### Expected output (failed)
+
+```
+  present  manifest.txt
+  missing  lab_reply_template.json
+  ...
+
+  package check failed
+  Regenerate the package:
+    ./examples/pilot/run_pilot.sh --export-lab-trial-package
+```
+
+---
+
 ## First-Contact Send Flow
 
 The sendable lab trial package includes a ready-to-use message kit. The operator does not need to write any message — everything is pre-generated.

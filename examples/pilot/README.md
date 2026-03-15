@@ -219,6 +219,18 @@ Prints the current run ID (if a receipt exists), the presence status of each key
 
 ---
 
+## Engineer Entrypoint
+
+The fastest technical introduction for engineers evaluating the protocol and workflow surfaces:
+
+```bash
+./examples/pilot/run_pilot.sh --engineer-entrypoint
+```
+
+Shows what to look at first, the recommended command order, one-line explanations for each command, and the current run context. Use this as the starting point before exploring receipts, dispatch packets, or the protocol chain. No commands are executed. No files are written.
+
+---
+
 ## Protocol Chain
 
 To see the ordered chain of protocol artifacts in the pilot workflow:

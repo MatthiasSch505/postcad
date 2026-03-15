@@ -1055,6 +1055,64 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: engineer entrypoint ────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--engineer-entrypoint" ]]; then
+
+  # Resolve run context
+  EE_RUN_ID="not detected"
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    EE_CASE_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    EE_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    _EE_ID="${EE_CASE_ID:-${EE_RECEIPT_HASH:0:12}}"
+    [[ -n "$_EE_ID" ]] && EE_RUN_ID="$_EE_ID"
+  fi
+
+  echo ""
+  echo "POSTCAD ENGINEER ENTRYPOINT"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "WHAT TO LOOK AT FIRST"
+  echo "  system overview  — what PostCAD is and how the workflow fits together"
+  echo "  trace view       — live event trace for the current run"
+  echo "  receipt replay   — receipt as the replayable routing commitment"
+  echo "  dispatch packet  — execution-side handoff artifact"
+  echo "  protocol chain   — ordered artifact chain from routing to execution"
+  echo ""
+  echo "RECOMMENDED ORDER"
+  echo "  ./examples/pilot/run_pilot.sh --system-overview"
+  echo "  ./examples/pilot/run_pilot.sh --trace-view"
+  echo "  ./examples/pilot/run_pilot.sh --receipt-replay"
+  echo "  ./examples/pilot/run_pilot.sh --dispatch-packet"
+  echo "  ./examples/pilot/run_pilot.sh --protocol-chain"
+  echo ""
+  echo "WHAT EACH COMMAND SHOWS"
+  echo "  --system-overview   PostCAD components, workflow, and system properties"
+  echo "  --trace-view        detection status of each workflow event artifact"
+  echo "  --receipt-replay    receipt as routing commitment and source of truth"
+  echo "  --dispatch-packet   dispatch packet as execution-side protocol artifact"
+  echo "  --protocol-chain    four-stage artifact chain with current state"
+  echo ""
+  echo "CURRENT RUN CONTEXT"
+  echo "  Run ID : $EE_RUN_ID"
+  echo ""
+  echo "WHY THIS IS TECHNICALLY INTERESTING"
+  echo "  - deterministic routing artifacts"
+  echo "  - replayable receipt"
+  echo "  - verifiable workflow chain"
+  echo "  - audit-ready execution handoff"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: protocol chain surface ─────────────────────────────────────────────
 
 if [[ "${1:-}" == "--protocol-chain" ]]; then

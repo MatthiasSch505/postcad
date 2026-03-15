@@ -457,6 +457,58 @@ Generated handoff packs are excluded from version control via `.gitignore`.
 
 ---
 
+## Inbound Reply Inspection
+
+Before running full verification, inspect a returned lab reply to confirm it is structurally complete.
+
+### Inspect the reply
+
+```bash
+./examples/pilot/run_pilot.sh --inspect-inbound-reply inbound/lab_reply_<run-id>.json
+```
+
+### Expected output (structurally readable)
+
+```
+  Artifact : lab_reply_<run-id>.json
+
+  Case ID          : f1000001-0000-0000-0000-000000000001
+  Receipt hash     : 0db54077cff0fbc45d22eff7323f5d49497fcac1a74d2d3955c00f0a9044bcfb
+  Lab ID           : dental-lab-berlin-001
+  Status           : accepted
+  Acknowledged at  : 2026-03-15T10:00:00Z
+  Notes            : not present
+
+  Required fields:
+    present  receipt_hash
+    present  lab_id
+    present  status
+    present  lab_acknowledged_at
+
+  reply structurally readable
+```
+
+### Expected output (missing required field)
+
+```
+  Required fields:
+    MISSING  receipt_hash
+    present  lab_id
+    ...
+
+  reply missing required field(s): receipt_hash
+```
+
+### After inspection — run verification and decision
+
+```bash
+./examples/pilot/verify.sh \
+  --inbound inbound/lab_reply_<run-id>.json \
+  --bundle  examples/pilot
+```
+
+---
+
 ## Package Self-Check
 
 Before sending the lab trial package, run the self-check to confirm it is complete.

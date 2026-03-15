@@ -513,6 +513,130 @@ except: print('')
   fi
 fi
 
+# ── Mode: inbound reply inspection summary ────────────────────────────────────
+
+if [[ "${1:-}" == "--inspect-inbound-reply" ]]; then
+
+  INBOUND_FILE="${2:-}"
+
+  if [[ -z "$INBOUND_FILE" ]]; then
+    echo "error: --inspect-inbound-reply requires a file argument" >&2
+    echo "  usage: ./examples/pilot/run_pilot.sh --inspect-inbound-reply <reply_file>" >&2
+    exit 1
+  fi
+
+  echo ""
+  echo -e "${BOLD}PostCAD — Inbound Reply Inspection${RESET}"
+  echo "  ────────────────────────────────────────"
+  echo ""
+
+  ARTIFACT_NAME=$(basename "$INBOUND_FILE")
+  echo "  Artifact : $ARTIFACT_NAME"
+  echo ""
+
+  # Check file exists
+  if [[ ! -f "$INBOUND_FILE" ]]; then
+    echo -e "  ${RED}reply not readable${RESET}"
+    echo "  Reason: file not found: $INBOUND_FILE"
+    echo ""
+    exit 1
+  fi
+
+  # Check valid JSON
+  if ! python3 -c "import json; json.load(open('$INBOUND_FILE'))" 2>/dev/null; then
+    echo -e "  ${RED}reply not readable${RESET}"
+    echo "  Reason: not valid JSON: $INBOUND_FILE"
+    echo ""
+    exit 1
+  fi
+
+  # Extract fields
+  INS_RECEIPT_HASH=$(python3 -c "
+import json
+try:
+    d = json.load(open('$INBOUND_FILE'))
+    print(d.get('receipt_hash', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  INS_CASE_ID=$(python3 -c "
+import json
+try:
+    d = json.load(open('$INBOUND_FILE'))
+    print(d.get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  INS_LAB_ID=$(python3 -c "
+import json
+try:
+    d = json.load(open('$INBOUND_FILE'))
+    print(d.get('lab_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  INS_STATUS=$(python3 -c "
+import json
+try:
+    d = json.load(open('$INBOUND_FILE'))
+    print(d.get('status', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  INS_ACK_AT=$(python3 -c "
+import json
+try:
+    d = json.load(open('$INBOUND_FILE'))
+    print(d.get('lab_acknowledged_at', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  INS_NOTES=$(python3 -c "
+import json
+try:
+    d = json.load(open('$INBOUND_FILE'))
+    print(d.get('notes', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  # Print field summary
+  [[ -n "$INS_CASE_ID"      ]] && echo "  Case ID          : $INS_CASE_ID"      || echo "  Case ID          : not present"
+  [[ -n "$INS_RECEIPT_HASH" ]] && echo "  Receipt hash     : $INS_RECEIPT_HASH" || echo "  Receipt hash     : not present"
+  [[ -n "$INS_LAB_ID"       ]] && echo "  Lab ID           : $INS_LAB_ID"       || echo "  Lab ID           : not present"
+  [[ -n "$INS_STATUS"       ]] && echo "  Status           : $INS_STATUS"       || echo "  Status           : not present"
+  [[ -n "$INS_ACK_AT"       ]] && echo "  Acknowledged at  : $INS_ACK_AT"       || echo "  Acknowledged at  : not present"
+  [[ -n "$INS_NOTES"        ]] && echo "  Notes            : $INS_NOTES"        || echo "  Notes            : not present"
+  echo ""
+
+  # Required field checklist
+  echo "  Required fields:"
+  [[ -n "$INS_RECEIPT_HASH" ]] && echo -e "    ${GREEN}present${RESET}  receipt_hash"        || echo -e "    ${RED}MISSING${RESET}  receipt_hash"
+  [[ -n "$INS_LAB_ID"       ]] && echo -e "    ${GREEN}present${RESET}  lab_id"              || echo -e "    ${RED}MISSING${RESET}  lab_id"
+  [[ -n "$INS_STATUS"       ]] && echo -e "    ${GREEN}present${RESET}  status"              || echo -e "    ${RED}MISSING${RESET}  status"
+  [[ -n "$INS_ACK_AT"       ]] && echo -e "    ${GREEN}present${RESET}  lab_acknowledged_at" || echo -e "    ${RED}MISSING${RESET}  lab_acknowledged_at"
+  echo ""
+
+  # Determine overall result
+  MISSING_FIELDS=""
+  [[ -z "$INS_RECEIPT_HASH" ]] && MISSING_FIELDS="${MISSING_FIELDS} receipt_hash"
+  [[ -z "$INS_LAB_ID"       ]] && MISSING_FIELDS="${MISSING_FIELDS} lab_id"
+  [[ -z "$INS_STATUS"       ]] && MISSING_FIELDS="${MISSING_FIELDS} status"
+  [[ -z "$INS_ACK_AT"       ]] && MISSING_FIELDS="${MISSING_FIELDS} lab_acknowledged_at"
+
+  if [[ -z "$MISSING_FIELDS" ]]; then
+    echo -e "  ${GREEN}reply structurally readable${RESET}"
+    echo ""
+    echo "  Next step — verify and generate decision record:"
+    echo "    ./examples/pilot/verify.sh --inbound $INBOUND_FILE --bundle ${SCRIPT_DIR}"
+    echo ""
+    exit 0
+  else
+    echo -e "  ${RED}reply missing required field(s):${RESET}${MISSING_FIELDS}"
+    echo ""
+    exit 1
+  fi
+fi
+
 echo "PostCAD Protocol v1 — Pilot Workflow"
 echo "======================================"
 echo ""

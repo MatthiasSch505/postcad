@@ -1461,3 +1461,35 @@ cargo test -p postcad-service --test pilot_bundle_smoke_test
 
 The test routes using the pilot fixtures, compares the receipt to `expected_routed.json`
 value-for-value, then verifies and compares to `expected_verify.json`.
+
+---
+
+## Campaign Queue Runner
+
+The campaign queue runner executes lane-1 campaigns sequentially in unattended mode.
+
+```bash
+# Preview the queue without executing anything
+bash ops/run_campaign_queue.sh --dry-run
+
+# Run all queued campaigns
+bash ops/run_campaign_queue.sh
+
+# Run at most 3 campaigns
+bash ops/run_campaign_queue.sh --max 3
+```
+
+Campaign files are placed in `ops/campaign_queue/` as numbered markdown files
+(e.g. `001_my_campaign.md`). They are processed in lexicographic order.
+
+The runner enforces lane-1 safety before executing any campaign:
+- Kernel crates (`crates/core`, `crates/routing`, `crates/compliance`, `crates/audit`,
+  `crates/registry`) are forbidden — the campaign is rejected before execution.
+- All file paths must fall within `examples/pilot/`, `docs/`, `ops/`, or
+  `crates/service/tests/*surface_tests.rs`.
+
+On success the campaign file is moved to `ops/campaign_queue/done/`. On failure after
+one repair retry, the runner stops and writes a blocker report to `ops/last_result.md`.
+Per-campaign logs are written to `ops/campaign_queue/logs/`.
+
+Status entries are appended to `ops/queue_status.log` with ISO timestamps.

@@ -1428,6 +1428,125 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: operator inbox ──────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--operator-inbox" ]]; then
+
+  # Resolve run context from receipt.json if present
+  OI_RUN_ID=""
+  OI_CASE_ID=""
+  OI_LAB=""
+
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    OI_CASE_ID=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    OI_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    OI_RUN_ID="${OI_CASE_ID:-${OI_RECEIPT_HASH:0:12}}"
+    OI_LAB=$(grep -o '"selected_candidate_id": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  fi
+
+  # Artifact presence checks — read-only, no side effects
+  OI_RECEIPT_PRESENT=false
+  [[ -f "${SCRIPT_DIR}/receipt.json" ]] && OI_RECEIPT_PRESENT=true
+
+  OI_DISPATCH_PRESENT=false
+  [[ -f "${SCRIPT_DIR}/export_packet.json" ]] && OI_DISPATCH_PRESENT=true
+
+  OI_OUTBOUND_PRESENT=false
+  OI_SEND_NOTE_PRESENT=false
+  if [[ -n "$OI_RUN_ID" ]]; then
+    OI_OUTBOUND_DIR="${SCRIPT_DIR}/outbound/lab_trial_${OI_RUN_ID}"
+    [[ -d "$OI_OUTBOUND_DIR" ]] && OI_OUTBOUND_PRESENT=true
+    [[ -f "$OI_OUTBOUND_DIR/operator_send_note.txt" ]] && OI_SEND_NOTE_PRESENT=true
+  fi
+
+  OI_INBOUND_PRESENT=false
+  OI_INBOUND_FILE=""
+  if [[ -n "$OI_RUN_ID" ]]; then
+    _OI_INBOUND="${SCRIPT_DIR}/inbound/lab_reply_${OI_RUN_ID}.json"
+    if [[ -f "$_OI_INBOUND" ]]; then
+      OI_INBOUND_PRESENT=true
+      OI_INBOUND_FILE="$_OI_INBOUND"
+    fi
+  fi
+
+  OI_VERIFY_PRESENT=false
+  _OI_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
+  [[ -n "$_OI_VERIFY" ]] && OI_VERIFY_PRESENT=true
+
+  echo ""
+  echo "POSTCAD OPERATOR INBOX"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN CONTEXT"
+  echo "  Run ID     : ${OI_RUN_ID:-not detected}"
+  echo "  Case ID    : ${OI_CASE_ID:-not available}"
+  echo "  Target lab : ${OI_LAB:-not available}"
+  echo ""
+  echo "ARTIFACT STATUS"
+  if [[ "$OI_RECEIPT_PRESENT" == true ]]; then
+    echo "  [DONE]    receipt.json          routing receipt"
+  else
+    echo "  [PENDING] receipt.json          not yet generated"
+  fi
+  if [[ "$OI_DISPATCH_PRESENT" == true ]]; then
+    echo "  [DONE]    export_packet.json    dispatch packet"
+  else
+    echo "  [PENDING] export_packet.json    not yet generated"
+  fi
+  if [[ "$OI_OUTBOUND_PRESENT" == true ]]; then
+    echo "  [DONE]    outbound package      lab trial package ready"
+  else
+    echo "  [PENDING] outbound package      not yet generated"
+  fi
+  if [[ "$OI_SEND_NOTE_PRESENT" == true ]]; then
+    echo "  [DONE]    send note             operator send checklist present"
+  else
+    echo "  [PENDING] send note             not yet generated"
+  fi
+  if [[ "$OI_INBOUND_PRESENT" == true ]]; then
+    echo "  [DONE]    lab reply             inbound reply received"
+  else
+    echo "  [PENDING] lab reply             awaiting response from lab"
+  fi
+  if [[ "$OI_VERIFY_PRESENT" == true ]]; then
+    echo "  [DONE]    verification record   verification complete"
+  else
+    echo "  [PENDING] verification record   not yet run"
+  fi
+  echo ""
+  if [[ "$OI_RECEIPT_PRESENT" == true \
+     && "$OI_DISPATCH_PRESENT" == true \
+     && "$OI_OUTBOUND_PRESENT" == true \
+     && "$OI_INBOUND_PRESENT" == true \
+     && "$OI_VERIFY_PRESENT" == true ]]; then
+    echo "INBOX RESULT"
+    echo "  workflow complete — no unresolved operator items"
+  else
+    echo "NEXT UNRESOLVED ITEM"
+    if [[ "$OI_RECEIPT_PRESENT" == false ]]; then
+      echo "  generate routing receipt — run ./examples/pilot/run_pilot.sh"
+    elif [[ "$OI_DISPATCH_PRESENT" == false ]]; then
+      echo "  export dispatch packet — run ./examples/pilot/run_pilot.sh --export-dispatch"
+    elif [[ "$OI_OUTBOUND_PRESENT" == false ]]; then
+      echo "  export outbound package — run ./examples/pilot/run_pilot.sh --export-lab-trial-package"
+    elif [[ "$OI_INBOUND_PRESENT" == false ]]; then
+      echo "  awaiting lab reply — place inbound/lab_reply_${OI_RUN_ID}.json when received"
+    else
+      echo "  run verification — run ./examples/pilot/verify.sh --inbound $OI_INBOUND_FILE --bundle ${SCRIPT_DIR}"
+    fi
+  fi
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: lab entrypoint ─────────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--lab-entrypoint" ]]; then

@@ -239,6 +239,18 @@ Prints five sections: `RUN` (run id and case id), `CURRENT STATE` (routing outco
 
 ---
 
+## Operator Inbox
+
+To see a compact summary of which workflow artifacts still require operator attention:
+
+```bash
+./examples/pilot/run_pilot.sh --operator-inbox
+```
+
+Prints four sections: `RUN CONTEXT` (run id, case id, target lab), `ARTIFACT STATUS` (one `[DONE]` or `[PENDING]` line per artifact: receipt, dispatch packet, outbound package, send note, lab reply, verification record), and either `NEXT UNRESOLVED ITEM` (the first step still outstanding) or `INBOX RESULT` stating `workflow complete — no unresolved operator items` when all artifacts are present. Read-only. No files written. No timestamps. Safe to run at any stage of the workflow.
+
+---
+
 ## Run Fingerprint
 
 To print a deterministic identifier derived from the protocol artifacts of the current run:

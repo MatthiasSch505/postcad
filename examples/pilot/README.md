@@ -251,6 +251,44 @@ Prints four sections: `RUN CONTEXT` (run id, case id, target lab), `ARTIFACT STA
 
 ---
 
+## Timeline
+
+To see a compact end-to-end timeline of workflow stages evidenced by current artifacts:
+
+```bash
+./examples/pilot/run_pilot.sh --timeline
+```
+
+Prints three sections: `RUN CONTEXT` (run id, case id, target lab), `TIMELINE` (one `[DONE]` or `[PENDING]` line per stage: routing receipt, outbound package, send log, lab reply, verification, dispatch packet), and either `TIMELINE RESULT` stating `workflow complete — all stages evidenced by artifacts` when all stages are present, or `CURRENT STAGE` and `NEXT MISSING STAGE` showing where the run currently stands and what is outstanding. Read-only. No files written. No timestamps. Safe to run at any stage of the workflow.
+
+---
+
+## Pilot Demo
+
+To run a read-only visual walkthrough of the end-to-end protocol state for operators or external viewers:
+
+```bash
+./examples/pilot/run_pilot.sh --pilot-demo
+```
+
+Prints a titled header (`POSTCAD PILOT DEMO`), `RUN CONTEXT` (run id, case id, target lab), and a `STAGE FLOW` section listing eight protocol stages in order — CAD case available, routing decision recorded, compliance/eligibility evidenced, outbound package created, send log recorded, lab reply received, verification artifact present, audit receipt present — each marked `[DONE]` or `[PENDING]` based on real filesystem artifacts. Ends with either `Demo complete: end-to-end protocol evidence present` or `Demo in progress — next stage: <name>`. Read-only. No files written. No timestamps. Safe to run at any stage of the workflow.
+
+---
+
+## Command Map
+
+To print a static, deterministic map of all available pilot inspection surfaces:
+
+```bash
+./examples/pilot/run_pilot.sh --command-map
+```
+
+Prints four sections: `PURPOSE` (one-paragraph description of what PostCAD does), `FLOW` (five ordered stages: case intake, compliance, routing, dispatch, audit), `COMMANDS` (one line per inspection surface with command name and purpose), and `START HERE` (three short recommendation paths: first-time demo, operator review, artifact review). Does not require any pilot artifacts to exist. Read-only. No files written. No timestamps.
+
+Useful when onboarding a new operator, preparing for a demo, or orienting a lab contact who wants to know where to start.
+
+---
+
 ## Run Fingerprint
 
 To print a deterministic identifier derived from the protocol artifacts of the current run:

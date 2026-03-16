@@ -796,6 +796,7 @@ if [[ "${1:-}" == "--artifact-index" ]]; then
 
   # Resolve current run context from receipt.json if present
   AI_RUN_ID=""
+  AI_CASE_ID=""
   AI_RECEIPT_HASH=""
 
   if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
@@ -810,9 +811,83 @@ except: print('')
     AI_RUN_ID="${AI_CASE_ID:-${AI_RECEIPT_HASH:0:12}}"
   fi
 
+  # Fail cleanly if no pilot run artifacts exist
+  if [[ ! -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    echo "ERROR: no pilot run artifacts found." >&2
+    echo "Run the pilot first: ./examples/pilot/run_pilot.sh" >&2
+    exit 1
+  fi
+
+  # Artifact existence checks — read-only, no side effects
+  AI_CASE_FILE_PRESENT=false
+  if [[ -f "${SCRIPT_DIR}/case.json" ]]; then AI_CASE_FILE_PRESENT=true; fi
+
+  AI_REGISTRY_PRESENT=false
+  if [[ -f "${SCRIPT_DIR}/registry_snapshot.json" ]]; then AI_REGISTRY_PRESENT=true; fi
+
+  AI_RECEIPT_PRESENT=true   # verified above
+
+  AI_DISPATCH_PRESENT=false
+  if [[ -f "${SCRIPT_DIR}/export_packet.json" ]]; then AI_DISPATCH_PRESENT=true; fi
+
+  AI_OUTBOUND_PRESENT=false
+  if [[ -n "$AI_RUN_ID" ]]; then
+    if [[ -d "${SCRIPT_DIR}/outbound/lab_trial_${AI_RUN_ID}" ]]; then AI_OUTBOUND_PRESENT=true; fi
+  fi
+
+  AI_INBOUND_PRESENT=false
+  if [[ -n "$AI_RUN_ID" ]]; then
+    if [[ -f "${SCRIPT_DIR}/inbound/lab_reply_${AI_RUN_ID}.json" ]]; then AI_INBOUND_PRESENT=true; fi
+  fi
+
+  AI_VERIFY_PRESENT=false
+  _AI_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
+  if [[ -n "$_AI_VERIFY" ]]; then AI_VERIFY_PRESENT=true; fi
+
+  # Helper: [exists] or [missing]
+  _ai_mark() { if [[ "$1" == true ]]; then echo "[exists] "; else echo "[missing]"; fi; }
+
   echo ""
   echo "PostCAD — Pilot Artifact Index"
   echo "════════════════════════════════════════════════════════════"
+  echo ""
+
+  echo "RUN"
+  echo "  Run ID   : ${AI_RUN_ID:-not detected}"
+  echo "  Case ID  : ${AI_CASE_ID:-not available}"
+  echo "  Root dir : examples/pilot/"
+  echo ""
+
+  echo "ARTIFACTS"
+  echo "  $(_ai_mark $AI_CASE_FILE_PRESENT)  input case           examples/pilot/case.json"
+  echo "  $(_ai_mark $AI_REGISTRY_PRESENT)  registry snapshot    examples/pilot/registry_snapshot.json"
+  echo "  $(_ai_mark $AI_RECEIPT_PRESENT)  routing decision     examples/pilot/receipt.json"
+  echo "  $(_ai_mark $AI_DISPATCH_PRESENT)  dispatch artifact    examples/pilot/export_packet.json"
+  if [[ -n "$AI_RUN_ID" ]]; then
+    echo "  $(_ai_mark $AI_OUTBOUND_PRESENT)  outbound package     examples/pilot/outbound/lab_trial_${AI_RUN_ID}/"
+    echo "  $(_ai_mark $AI_INBOUND_PRESENT)  lab reply            examples/pilot/inbound/lab_reply_${AI_RUN_ID}.json"
+  else
+    echo "  $(_ai_mark $AI_OUTBOUND_PRESENT)  outbound package     examples/pilot/outbound/lab_trial_<run-id>/"
+    echo "  $(_ai_mark $AI_INBOUND_PRESENT)  lab reply            examples/pilot/inbound/lab_reply_<run-id>.json"
+  fi
+  echo "  $(_ai_mark $AI_VERIFY_PRESENT)  audit receipt        examples/pilot/reports/decision_<run-id>.txt"
+  echo ""
+
+  echo "MISSING"
+  AI_MISSING_COUNT=0
+  if [[ "$AI_CASE_FILE_PRESENT" == false ]];    then echo "  case.json";              AI_MISSING_COUNT=$((AI_MISSING_COUNT + 1)); fi
+  if [[ "$AI_REGISTRY_PRESENT" == false ]];     then echo "  registry_snapshot.json"; AI_MISSING_COUNT=$((AI_MISSING_COUNT + 1)); fi
+  if [[ "$AI_DISPATCH_PRESENT" == false ]];     then echo "  export_packet.json";     AI_MISSING_COUNT=$((AI_MISSING_COUNT + 1)); fi
+  if [[ "$AI_OUTBOUND_PRESENT" == false ]];     then echo "  outbound package";       AI_MISSING_COUNT=$((AI_MISSING_COUNT + 1)); fi
+  if [[ "$AI_INBOUND_PRESENT" == false ]];      then echo "  lab reply";              AI_MISSING_COUNT=$((AI_MISSING_COUNT + 1)); fi
+  if [[ "$AI_VERIFY_PRESENT" == false ]];       then echo "  audit receipt";          AI_MISSING_COUNT=$((AI_MISSING_COUNT + 1)); fi
+  if [[ $AI_MISSING_COUNT -eq 0 ]]; then echo "  none"; fi
+  echo ""
+
+  echo "NEXT"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo "  ./examples/pilot/run_pilot.sh --operator-inbox"
+  echo "  ./examples/pilot/run_pilot.sh --timeline"
   echo ""
 
   if [[ -n "$AI_RUN_ID" ]]; then
@@ -1547,6 +1622,303 @@ except: print('')
   exit 0
 fi
 
+# ── Mode: timeline ────────────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--timeline" ]]; then
+
+  # Resolve run context from receipt.json if present
+  TL_RUN_ID=""
+  TL_CASE_ID=""
+  TL_LAB=""
+
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    TL_CASE_ID=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    TL_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    TL_RUN_ID="${TL_CASE_ID:-${TL_RECEIPT_HASH:0:12}}"
+    TL_LAB=$(grep -o '"selected_candidate_id": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  fi
+
+  # Artifact presence checks — read-only, no side effects
+  TL_RECEIPT_PRESENT=false
+  [[ -f "${SCRIPT_DIR}/receipt.json" ]] && TL_RECEIPT_PRESENT=true
+
+  TL_OUTBOUND_PRESENT=false
+  TL_SEND_NOTE_PRESENT=false
+  if [[ -n "$TL_RUN_ID" ]]; then
+    TL_OUTBOUND_DIR="${SCRIPT_DIR}/outbound/lab_trial_${TL_RUN_ID}"
+    [[ -d "$TL_OUTBOUND_DIR" ]] && TL_OUTBOUND_PRESENT=true
+    [[ -f "$TL_OUTBOUND_DIR/operator_send_note.txt" ]] && TL_SEND_NOTE_PRESENT=true
+  fi
+
+  TL_INBOUND_PRESENT=false
+  TL_INBOUND_FILE=""
+  if [[ -n "$TL_RUN_ID" ]]; then
+    _TL_INBOUND="${SCRIPT_DIR}/inbound/lab_reply_${TL_RUN_ID}.json"
+    if [[ -f "$_TL_INBOUND" ]]; then
+      TL_INBOUND_PRESENT=true
+      TL_INBOUND_FILE="$_TL_INBOUND"
+    fi
+  fi
+
+  TL_VERIFY_PRESENT=false
+  _TL_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
+  [[ -n "$_TL_VERIFY" ]] && TL_VERIFY_PRESENT=true
+
+  TL_DISPATCH_PRESENT=false
+  [[ -f "${SCRIPT_DIR}/export_packet.json" ]] && TL_DISPATCH_PRESENT=true
+
+  # Determine current stage and next missing stage
+  TL_CURRENT_STAGE="none"
+  TL_NEXT_STAGE="routing receipt"
+  if [[ "$TL_RECEIPT_PRESENT" == true ]]; then
+    TL_CURRENT_STAGE="routing receipt"
+    TL_NEXT_STAGE="outbound package"
+  fi
+  if [[ "$TL_OUTBOUND_PRESENT" == true ]]; then
+    TL_CURRENT_STAGE="outbound package"
+    TL_NEXT_STAGE="send log"
+  fi
+  if [[ "$TL_SEND_NOTE_PRESENT" == true ]]; then
+    TL_CURRENT_STAGE="send log"
+    TL_NEXT_STAGE="lab reply"
+  fi
+  if [[ "$TL_INBOUND_PRESENT" == true ]]; then
+    TL_CURRENT_STAGE="lab reply"
+    TL_NEXT_STAGE="verification"
+  fi
+  if [[ "$TL_VERIFY_PRESENT" == true ]]; then
+    TL_CURRENT_STAGE="verification"
+    TL_NEXT_STAGE="dispatch packet"
+  fi
+  if [[ "$TL_DISPATCH_PRESENT" == true ]]; then
+    TL_CURRENT_STAGE="dispatch packet"
+    TL_NEXT_STAGE="none"
+  fi
+
+  echo ""
+  echo "POSTCAD WORKFLOW TIMELINE"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN CONTEXT"
+  echo "  Run ID     : ${TL_RUN_ID:-not detected}"
+  echo "  Case ID    : ${TL_CASE_ID:-not available}"
+  echo "  Target lab : ${TL_LAB:-not available}"
+  echo ""
+  echo "TIMELINE"
+  if [[ "$TL_RECEIPT_PRESENT" == true ]]; then
+    echo "  [DONE]    1  routing receipt          receipt.json present"
+  else
+    echo "  [PENDING] 1  routing receipt          not yet generated"
+  fi
+  if [[ "$TL_OUTBOUND_PRESENT" == true ]]; then
+    echo "  [DONE]    2  outbound package         lab trial package ready"
+  else
+    echo "  [PENDING] 2  outbound package         not yet created"
+  fi
+  if [[ "$TL_SEND_NOTE_PRESENT" == true ]]; then
+    echo "  [DONE]    3  send log                 operator send note present"
+  else
+    echo "  [PENDING] 3  send log                 not yet recorded"
+  fi
+  if [[ "$TL_INBOUND_PRESENT" == true ]]; then
+    echo "  [DONE]    4  lab reply                inbound reply received"
+  else
+    echo "  [PENDING] 4  lab reply                awaiting lab reply"
+  fi
+  if [[ "$TL_VERIFY_PRESENT" == true ]]; then
+    echo "  [DONE]    5  verification             verification artifact present"
+  else
+    echo "  [PENDING] 5  verification             not yet run"
+  fi
+  if [[ "$TL_DISPATCH_PRESENT" == true ]]; then
+    echo "  [DONE]    6  dispatch packet          export_packet.json present"
+  else
+    echo "  [PENDING] 6  dispatch packet          not yet exported"
+  fi
+  echo ""
+  if [[ "$TL_NEXT_STAGE" == "none" ]]; then
+    echo "TIMELINE RESULT"
+    echo "  workflow complete — all stages evidenced by artifacts"
+  else
+    echo "CURRENT STAGE"
+    echo "  ${TL_CURRENT_STAGE:-none}"
+    echo ""
+    echo "NEXT MISSING STAGE"
+    echo "  ${TL_NEXT_STAGE}"
+  fi
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
+# ── Mode: pilot demo ──────────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--pilot-demo" ]]; then
+
+  # Resolve run context from receipt.json if present
+  PD_RUN_ID=""
+  PD_CASE_ID=""
+  PD_LAB=""
+
+  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    PD_CASE_ID=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+    PD_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    PD_RUN_ID="${PD_CASE_ID:-${PD_RECEIPT_HASH:0:12}}"
+    PD_LAB=$(grep -o '"selected_candidate_id": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+  fi
+
+  # Artifact presence checks — read-only, no side effects
+  PD_RECEIPT_PRESENT=false
+  [[ -f "${SCRIPT_DIR}/receipt.json" ]] && PD_RECEIPT_PRESENT=true
+
+  PD_OUTBOUND_PRESENT=false
+  PD_SEND_NOTE_PRESENT=false
+  if [[ -n "$PD_RUN_ID" ]]; then
+    PD_OUTBOUND_DIR="${SCRIPT_DIR}/outbound/lab_trial_${PD_RUN_ID}"
+    [[ -d "$PD_OUTBOUND_DIR" ]] && PD_OUTBOUND_PRESENT=true
+    [[ -f "$PD_OUTBOUND_DIR/operator_send_note.txt" ]] && PD_SEND_NOTE_PRESENT=true
+  fi
+
+  PD_INBOUND_PRESENT=false
+  if [[ -n "$PD_RUN_ID" ]]; then
+    _PD_INBOUND="${SCRIPT_DIR}/inbound/lab_reply_${PD_RUN_ID}.json"
+    [[ -f "$_PD_INBOUND" ]] && PD_INBOUND_PRESENT=true
+  fi
+
+  PD_VERIFY_PRESENT=false
+  _PD_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
+  [[ -n "$_PD_VERIFY" ]] && PD_VERIFY_PRESENT=true
+
+  PD_DISPATCH_PRESENT=false
+  [[ -f "${SCRIPT_DIR}/export_packet.json" ]] && PD_DISPATCH_PRESENT=true
+
+  # Determine next missing stage label
+  PD_NEXT_MISSING="CAD case available"
+  if [[ "$PD_RECEIPT_PRESENT" == true ]];   then PD_NEXT_MISSING="outbound package created"; fi
+  if [[ "$PD_OUTBOUND_PRESENT" == true ]];  then PD_NEXT_MISSING="send log recorded"; fi
+  if [[ "$PD_SEND_NOTE_PRESENT" == true ]]; then PD_NEXT_MISSING="lab reply received"; fi
+  if [[ "$PD_INBOUND_PRESENT" == true ]];   then PD_NEXT_MISSING="verification artifact"; fi
+  if [[ "$PD_VERIFY_PRESENT" == true ]];    then PD_NEXT_MISSING="audit receipt"; fi
+  if [[ "$PD_DISPATCH_PRESENT" == true ]];  then PD_NEXT_MISSING="none"; fi
+
+  echo ""
+  echo "============================================================"
+  echo "  POSTCAD PILOT DEMO"
+  echo "============================================================"
+  echo ""
+  echo "RUN CONTEXT"
+  echo "  Run ID     : ${PD_RUN_ID:-not detected}"
+  echo "  Case ID    : ${PD_CASE_ID:-not available}"
+  echo "  Target lab : ${PD_LAB:-not available}"
+  echo ""
+  echo "STAGE FLOW"
+  echo ""
+  if [[ "$PD_RECEIPT_PRESENT" == true ]]; then
+    echo "  [DONE]    1.  CAD case available"
+    echo "  [DONE]    2.  routing decision recorded"
+    echo "  [DONE]    3.  compliance/eligibility evidenced"
+  else
+    echo "  [PENDING] 1.  CAD case available"
+    echo "  [PENDING] 2.  routing decision recorded"
+    echo "  [PENDING] 3.  compliance/eligibility evidenced"
+  fi
+  if [[ "$PD_OUTBOUND_PRESENT" == true ]]; then
+    echo "  [DONE]    4.  outbound package created"
+  else
+    echo "  [PENDING] 4.  outbound package created"
+  fi
+  if [[ "$PD_SEND_NOTE_PRESENT" == true ]]; then
+    echo "  [DONE]    5.  send log recorded"
+  else
+    echo "  [PENDING] 5.  send log recorded"
+  fi
+  if [[ "$PD_INBOUND_PRESENT" == true ]]; then
+    echo "  [DONE]    6.  lab reply received"
+  else
+    echo "  [PENDING] 6.  lab reply received"
+  fi
+  if [[ "$PD_VERIFY_PRESENT" == true ]]; then
+    echo "  [DONE]    7.  verification artifact present"
+  else
+    echo "  [PENDING] 7.  verification artifact present"
+  fi
+  if [[ "$PD_DISPATCH_PRESENT" == true ]]; then
+    echo "  [DONE]    8.  audit receipt present"
+  else
+    echo "  [PENDING] 8.  audit receipt present"
+  fi
+  echo ""
+  echo "------------------------------------------------------------"
+  if [[ "$PD_NEXT_MISSING" == "none" ]]; then
+    echo "  Demo complete: end-to-end protocol evidence present"
+  else
+    echo "  Demo in progress — next stage: $PD_NEXT_MISSING"
+  fi
+  echo "------------------------------------------------------------"
+  echo ""
+  exit 0
+fi
+
+# ── Mode: command map ─────────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--command-map" ]]; then
+
+  echo ""
+  echo "============================================================"
+  echo "  POSTCAD PILOT COMMAND MAP"
+  echo "============================================================"
+  echo ""
+  echo "PURPOSE"
+  echo "  PostCAD routes dental CAD cases through a deterministic"
+  echo "  compliance and routing protocol. All decisions are rule-based"
+  echo "  and carry a reason code. This map lists the pilot shell"
+  echo "  inspection surfaces available for demos, review, and handoff."
+  echo ""
+  echo "FLOW"
+  echo "  1. case intake      input case and registry loaded"
+  echo "  2. compliance       eligibility rules evaluated per jurisdiction"
+  echo "  3. routing          manufacturer selected deterministically"
+  echo "  4. dispatch         outbound package prepared and sent to lab"
+  echo "  5. audit            receipt and verification artifact recorded"
+  echo ""
+  echo "COMMANDS"
+  echo "  --protocol-chain        ordered chain of protocol artifacts"
+  echo "  --engineer-entrypoint   technical introduction to the protocol"
+  echo "  --business-entrypoint   non-technical introduction for stakeholders"
+  echo "  --lab-entrypoint        lab-side introduction to the workflow"
+  echo "  --audit-receipt-view    audit receipt as final protocol artifact"
+  echo "  --run-summary           current run state and recommended next action"
+  echo "  --next-step             focused operator handoff for a specific run"
+  echo "  --operator-inbox        compact summary of unresolved workflow items"
+  echo "  --timeline              ordered timeline of workflow stages"
+  echo "  --pilot-demo            visual end-to-end demo for live presentation"
+  echo "  --artifact-index        deterministic map of every artifact location"
+  echo "  --trace-view            detection status of each workflow event"
+  echo "  --run-fingerprint       SHA-256 fingerprint derived from artifacts"
+  echo ""
+  echo "START HERE"
+  echo "  First-time demo   : --pilot-demo"
+  echo "  Operator review   : --operator-inbox  then  --next-step --run-id <id>"
+  echo "  Artifact review   : --artifact-index  then  --protocol-chain"
+  echo ""
+  echo "============================================================"
+  echo ""
+  exit 0
+fi
+
 # ── Mode: lab entrypoint ─────────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--lab-entrypoint" ]]; then
@@ -2113,6 +2485,11 @@ if [[ "${1:-}" == "--help-surface" ]]; then
   echo "  ./examples/pilot/run_pilot.sh --artifact-index"
   echo "  Purpose : Print the artifact map for the current run — where every file lives."
   echo "  Use when: you want to see all artifact locations for the current run."
+  echo ""
+  echo "--command-map"
+  echo "  ./examples/pilot/run_pilot.sh --command-map"
+  echo "  Purpose : Print a static map of all inspection commands and when to use each."
+  echo "  Use when: orienting a new operator, preparing a demo, or navigating the shell."
   echo ""
   echo "--quickstart"
   echo "  ./examples/pilot/run_pilot.sh --quickstart"

@@ -1429,6 +1429,18 @@ With a written report:
 
 ---
 
+## Verification View
+
+To inspect the current verification decision artifact as a clean, read-only operator-facing view:
+
+```bash
+./examples/pilot/run_pilot.sh --verification-view
+```
+
+Prints a read-only operator-facing view of the current verification artifact — status (detected or not detected), artifact path, and a summary of the verification outcome (run ID, decision, manufacturer ID, jurisdiction, reason/notes). No files are written. If no verification artifact is present, a clear fallback is shown and the command exits 0.
+
+---
+
 ## Audit Receipt View
 
 To inspect the current audit receipt as a clean, read-only operator-facing view:

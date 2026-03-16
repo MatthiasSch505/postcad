@@ -1847,6 +1847,85 @@ except: print('(not present)')
   exit 0
 fi
 
+# ── Mode: verification view ───────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--verification-view" ]]; then
+
+  VV_DECISION_FILE=""
+  if [[ -n "$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1)" ]]; then
+    VV_DECISION_FILE=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1)
+  fi
+
+  echo ""
+  echo "POSTCAD VERIFICATION VIEW"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "VERIFICATION STATUS"
+  if [[ -n "$VV_DECISION_FILE" ]]; then
+    echo "  - verification detected"
+    echo "  - verification path : $VV_DECISION_FILE"
+    echo ""
+
+    VV_RUN_ID=$(grep "^run_id:" "$VV_DECISION_FILE" | head -1 | sed 's/^run_id: *//')
+    [[ -z "$VV_RUN_ID" ]] && VV_RUN_ID="not available"
+
+    VV_OPERATOR_DECISION=$(grep "^operator_decision:" "$VV_DECISION_FILE" | head -1 | sed 's/^operator_decision: *//')
+    [[ -z "$VV_OPERATOR_DECISION" ]] && VV_OPERATOR_DECISION="not available"
+
+    VV_VERIFICATION_RESULT=$(grep "^verification_result:" "$VV_DECISION_FILE" | head -1 | sed 's/^verification_result: *//')
+    [[ -z "$VV_VERIFICATION_RESULT" ]] && VV_VERIFICATION_RESULT="not available"
+
+    VV_REASON=$(grep "^reason:" "$VV_DECISION_FILE" | head -1 | sed 's/^reason: *//')
+    [[ -z "$VV_REASON" ]] && VV_REASON="not available"
+
+    # Resolve manufacturer id and jurisdiction from receipt.json if present
+    VV_MFR_ID="not available"
+    VV_JURISDICTION="not available"
+    if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
+      VV_MFR_ID=$(grep -o '"selected_candidate_id": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+      [[ -z "$VV_MFR_ID" ]] && VV_MFR_ID="not available"
+      VV_JURISDICTION=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('jurisdiction', ''))
+except: print('')
+" 2>/dev/null || echo "")
+      [[ -z "$VV_JURISDICTION" ]] && VV_JURISDICTION="not available"
+    fi
+
+    echo "VERIFICATION SUMMARY"
+    echo "  - run id          : $VV_RUN_ID"
+    echo "  - decision        : $VV_OPERATOR_DECISION"
+    echo "  - manufacturer id : $VV_MFR_ID"
+    echo "  - jurisdiction    : $VV_JURISDICTION"
+    echo "  - reason / notes  : $VV_REASON"
+    echo ""
+  else
+    echo "  - no verification detected"
+    echo "  - verification path : examples/pilot/reports/decision_<run-id>.txt (not present)"
+    echo ""
+    echo "VERIFICATION SUMMARY"
+    echo "  No verification artifact available."
+    echo "  Run verify.sh after an inbound reply is present to generate one."
+    echo ""
+  fi
+
+  echo "WHY THIS MATTERS"
+  echo "  - lets operator inspect the verification outcome directly"
+  echo "  - read-only artifact surface"
+  echo "  - useful for review / handoff / audit trace"
+  echo ""
+  echo "HOW TO USE"
+  echo "  ./examples/pilot/run_pilot.sh --audit-receipt-view"
+  echo "  ./examples/pilot/run_pilot.sh --run-fingerprint"
+  echo "  ./examples/pilot/run_pilot.sh --protocol-chain"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 if [[ "${1:-}" == "--walkthrough" ]]; then
   echo ""
   echo "POSTCAD PILOT WALKTHROUGH"

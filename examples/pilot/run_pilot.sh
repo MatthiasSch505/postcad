@@ -1770,6 +1770,83 @@ fi
 
 # ── Mode: operator walkthrough ────────────────────────────────────────────────
 
+# ── Mode: audit receipt view ──────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--audit-receipt-view" ]]; then
+
+  ARV_RECEIPT="${SCRIPT_DIR}/receipt.json"
+
+  echo ""
+  echo "POSTCAD AUDIT RECEIPT VIEW"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RECEIPT STATUS"
+  if [[ -f "$ARV_RECEIPT" ]]; then
+    echo "  - receipt detected"
+    echo "  - receipt path : examples/pilot/receipt.json"
+    echo ""
+
+    ARV_RUN_ID=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${ARV_RECEIPT}').read())
+    print(d.get('routing_input', {}).get('case_id', '(not present)'))
+except: print('(not present)')
+" 2>/dev/null || echo "(not present)")
+
+    ARV_DECISION=$(grep -o '"outcome": *"[^"]*"' "$ARV_RECEIPT" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    [[ -z "$ARV_DECISION" ]] && ARV_DECISION="(not present)"
+
+    ARV_JURISDICTION=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${ARV_RECEIPT}').read())
+    print(d.get('routing_input', {}).get('jurisdiction', '(not present)'))
+except: print('(not present)')
+" 2>/dev/null || echo "(not present)")
+
+    ARV_MFR_ID=$(grep -o '"selected_candidate_id": *"[^"]*"' "$ARV_RECEIPT" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    [[ -z "$ARV_MFR_ID" ]] && ARV_MFR_ID="(not present)"
+
+    ARV_PROFILE=$(python3 -c "
+import json, sys
+try:
+    d = json.loads(open('${ARV_RECEIPT}').read())
+    print(d.get('routing_input', {}).get('routing_policy', '(not present)'))
+except: print('(not present)')
+" 2>/dev/null || echo "(not present)")
+
+    echo "RECEIPT SUMMARY"
+    echo "  - run id          : $ARV_RUN_ID"
+    echo "  - decision        : $ARV_DECISION"
+    echo "  - jurisdiction    : $ARV_JURISDICTION"
+    echo "  - manufacturer id : $ARV_MFR_ID"
+    echo "  - profile         : $ARV_PROFILE"
+    echo ""
+  else
+    echo "  - no receipt detected"
+    echo "  - receipt path : examples/pilot/receipt.json (not present)"
+    echo ""
+    echo "RECEIPT SUMMARY"
+    echo "  No receipt available. Run ./examples/pilot/run_pilot.sh to generate one."
+    echo ""
+  fi
+
+  echo "WHY THIS MATTERS"
+  echo "  - operator can inspect the canonical audit receipt"
+  echo "  - read-only surface"
+  echo "  - useful for handoff / review / audit trace"
+  echo ""
+  echo "HOW TO USE"
+  echo "  ./examples/pilot/run_pilot.sh --run-fingerprint"
+  echo "  ./examples/pilot/run_pilot.sh --protocol-chain"
+  echo "  ./examples/pilot/run_pilot.sh --lab-entrypoint"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
 if [[ "${1:-}" == "--walkthrough" ]]; then
   echo ""
   echo "POSTCAD PILOT WALKTHROUGH"

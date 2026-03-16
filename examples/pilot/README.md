@@ -1429,6 +1429,18 @@ With a written report:
 
 ---
 
+## Audit Receipt View
+
+To inspect the current audit receipt as a clean, read-only operator-facing view:
+
+```bash
+./examples/pilot/run_pilot.sh --audit-receipt-view
+```
+
+Prints the receipt status (detected or not detected), the receipt path, the receipt summary (run ID, decision, jurisdiction, manufacturer ID, profile), why the receipt matters for audit and handoff, and the commands to use next. No commands are executed. No files are written. If `receipt.json` is not present, a clear fallback is shown and the command still exits 0.
+
+---
+
 ## Smoke Test
 
 ```bash

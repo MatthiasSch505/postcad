@@ -24,7 +24,7 @@ COUNT_BLOCKED=0
 LAST_SUCCESS=""
 BLOCKED_CAMPAIGN=""
 LATEST_LOG=""
-QUEUE_START_TIME=""
+QUEUE_START_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 QUEUE_FINAL_STATUS="NOT_RUN"
 
 # ── argument parsing ────────────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ write_summary() {
     done < <(find "$QUEUE_DIR" -maxdepth 1 -name "*.md" | sort)
 
     {
-        echo "# PostCAD Queue Summary"
+        echo "# Last Queue Result"
         echo ""
         echo "Status               : $status"
         echo "Start time           : ${QUEUE_START_TIME:-—}"
@@ -227,6 +227,9 @@ mapfile -t CAMPAIGN_FILES < <(
 COUNT_DISCOVERED=${#CAMPAIGN_FILES[@]}
 
 if [[ $COUNT_DISCOVERED -eq 0 ]]; then
+    QUEUE_FINAL_STATUS="NO_WORK"
+    write_summary "NO_WORK"
+    echo "[QUEUE-NO_WORK] queue $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$STATUS_LOG"
     echo "Queue is empty. No campaigns to process."
     exit 0
 fi
@@ -281,7 +284,6 @@ fi
 
 # ── live queue execution ────────────────────────────────────────────────────────
 
-QUEUE_START_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 QUEUE_FINAL_STATUS="RUNNING"
 
 # Write RUNNING status before first campaign so the file is always current
@@ -313,6 +315,7 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
         COUNT_BLOCKED=$((COUNT_BLOCKED + 1))
         QUEUE_FINAL_STATUS="BLOCKED"
         write_summary "BLOCKED"
+        echo "[QUEUE-BLOCKED] queue $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$STATUS_LOG"
         fire_hook "POSTCAD_QUEUE_ON_BLOCKED"
         echo "Queue stopped. Guard rejected $campaign_basename."
         exit 1
@@ -359,6 +362,7 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
         COUNT_BLOCKED=$((COUNT_BLOCKED + 1))
         QUEUE_FINAL_STATUS="BLOCKED"
         write_summary "BLOCKED"
+        echo "[QUEUE-BLOCKED] queue $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$STATUS_LOG"
         fire_hook "POSTCAD_QUEUE_ON_BLOCKED"
         echo "BLOCKED   : $campaign_basename"
         echo "Blocker log: $log_file"
@@ -378,6 +382,7 @@ else
 fi
 
 write_summary "$QUEUE_FINAL_STATUS"
+echo "[QUEUE-$QUEUE_FINAL_STATUS] queue $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$STATUS_LOG"
 
 if [[ "$QUEUE_FINAL_STATUS" == "PARTIAL" ]]; then
     fire_hook "POSTCAD_QUEUE_ON_PARTIAL"

@@ -1,10 +1,12 @@
 //! Queue runner surface tests.
 //!
-//! Verifies that ops/run_campaign_queue.sh implements the required
-//! lane-1 guard, dry-run, retry, blocked, max-count, summary, and
-//! alert-hook behaviors by inspecting the script source.
+//! Verifies that ops/run_campaign_queue.sh and ops/queue_ctl.sh implement
+//! the required lane-1 guard, dry-run, retry, blocked, max-count, summary,
+//! alert-hook, and phone-first control behaviors by inspecting script source.
 
 const QUEUE_RUNNER: &str = include_str!("../../../ops/run_campaign_queue.sh");
+const QUEUE_CTL: &str = include_str!("../../../ops/queue_ctl.sh");
+const README: &str = include_str!("../../../examples/pilot/README.md");
 
 // ── script exists ──────────────────────────────────────────────────────────────
 
@@ -711,5 +713,365 @@ fn queue_runner_hook_logs_hook_fail() {
     assert!(
         QUEUE_RUNNER.contains("HOOK-FAIL"),
         "fire_hook must log HOOK-FAIL on failed hook execution"
+    );
+}
+
+// ── morning summary title ──────────────────────────────────────────────────────
+
+#[test]
+fn summary_title_is_last_queue_result() {
+    assert!(
+        QUEUE_RUNNER.contains("# Last Queue Result"),
+        "write_summary must use '# Last Queue Result' as the file title"
+    );
+}
+
+// ── no-work summary ────────────────────────────────────────────────────────────
+
+#[test]
+fn queue_runner_has_no_work_status() {
+    assert!(
+        QUEUE_RUNNER.contains("NO_WORK"),
+        "must define NO_WORK status for empty-queue invocations"
+    );
+}
+
+#[test]
+fn queue_runner_writes_summary_for_empty_queue() {
+    // write_summary must be called before exit 0 in the empty-queue branch
+    let no_work_pos = QUEUE_RUNNER
+        .find("NO_WORK")
+        .expect("NO_WORK must exist");
+    let after_no_work = &QUEUE_RUNNER[no_work_pos..];
+    assert!(
+        after_no_work.contains("write_summary"),
+        "write_summary must be called in the NO_WORK (empty queue) branch"
+    );
+}
+
+#[test]
+fn queue_runner_logs_no_work_to_status_log() {
+    assert!(
+        QUEUE_RUNNER.contains("QUEUE-NO_WORK"),
+        "must append [QUEUE-NO_WORK] to queue_status.log when queue is empty"
+    );
+}
+
+// ── terminal-state log entries ─────────────────────────────────────────────────
+
+#[test]
+fn queue_runner_logs_queue_blocked_to_status_log() {
+    assert!(
+        QUEUE_RUNNER.contains("QUEUE-BLOCKED"),
+        "must append [QUEUE-BLOCKED] to queue_status.log on blocked terminal state"
+    );
+}
+
+#[test]
+fn queue_runner_logs_queue_final_status_to_status_log() {
+    // QUEUE-$QUEUE_FINAL_STATUS covers PASSED and PARTIAL at terminal state
+    assert!(
+        QUEUE_RUNNER.contains("QUEUE-$QUEUE_FINAL_STATUS"),
+        "must append [QUEUE-<STATUS>] to queue_status.log at the PASSED/PARTIAL terminal state"
+    );
+}
+
+#[test]
+fn queue_runner_terminal_log_uses_status_log_var() {
+    // All QUEUE-* log lines must write to $STATUS_LOG
+    let blocked_log = QUEUE_RUNNER
+        .find("QUEUE-BLOCKED")
+        .expect("QUEUE-BLOCKED must exist");
+    let after = &QUEUE_RUNNER[blocked_log..blocked_log + 120];
+    assert!(
+        after.contains("STATUS_LOG"),
+        "[QUEUE-BLOCKED] line must write to STATUS_LOG"
+    );
+}
+
+// ── latest log field in summary ────────────────────────────────────────────────
+
+#[test]
+fn summary_has_latest_log_field() {
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("write_summary()")
+        .expect("write_summary() must exist")..];
+    assert!(
+        after.contains("Latest log"),
+        "write_summary must emit 'Latest log' field"
+    );
+}
+
+// ── start time set early ───────────────────────────────────────────────────────
+
+#[test]
+fn queue_start_time_set_before_empty_check() {
+    // QUEUE_START_TIME must be assigned before the empty-queue (NO_WORK) branch
+    let start_time_assign = QUEUE_RUNNER
+        .find("QUEUE_START_TIME=\"$(date")
+        .expect("QUEUE_START_TIME assignment must exist");
+    let no_work_branch = QUEUE_RUNNER
+        .find("NO_WORK")
+        .expect("NO_WORK must exist");
+    assert!(
+        start_time_assign < no_work_branch,
+        "QUEUE_START_TIME must be initialised before the NO_WORK empty-queue branch"
+    );
+}
+
+// ── queue_ctl.sh: script exists ────────────────────────────────────────────────
+
+#[test]
+fn queue_ctl_script_exists() {
+    assert!(!QUEUE_CTL.is_empty(), "ops/queue_ctl.sh must not be empty");
+}
+
+#[test]
+fn queue_ctl_uses_set_euo_pipefail() {
+    assert!(
+        QUEUE_CTL.contains("set -euo pipefail"),
+        "queue_ctl.sh must use 'set -euo pipefail' for safe unattended execution"
+    );
+}
+
+#[test]
+fn queue_ctl_is_noninteractive() {
+    assert!(
+        !QUEUE_CTL.contains("read -p"),
+        "queue_ctl.sh must not prompt for input"
+    );
+}
+
+// ── start command ──────────────────────────────────────────────────────────────
+
+#[test]
+fn queue_ctl_supports_start_command() {
+    assert!(
+        QUEUE_CTL.contains("start"),
+        "queue_ctl.sh must support 'start' command"
+    );
+}
+
+#[test]
+fn queue_ctl_start_delegates_to_queue_runner() {
+    assert!(
+        QUEUE_CTL.contains("QUEUE_RUNNER"),
+        "queue_ctl.sh start must delegate to QUEUE_RUNNER (run_campaign_queue.sh)"
+    );
+}
+
+#[test]
+fn queue_ctl_start_references_run_campaign_queue_sh() {
+    assert!(
+        QUEUE_CTL.contains("run_campaign_queue.sh"),
+        "queue_ctl.sh must reference run_campaign_queue.sh as the queue runner"
+    );
+}
+
+#[test]
+fn queue_ctl_start_max_passes_max_flag() {
+    // start delegates with "$@" so --max N is passed through transparently
+    assert!(
+        QUEUE_CTL.contains("\"$@\""),
+        "queue_ctl.sh start must pass arguments through via \"$@\" to support --max N"
+    );
+}
+
+// ── status command ─────────────────────────────────────────────────────────────
+
+#[test]
+fn queue_ctl_supports_status_command() {
+    assert!(
+        QUEUE_CTL.contains("status"),
+        "queue_ctl.sh must support 'status' command"
+    );
+}
+
+#[test]
+fn queue_ctl_status_reads_last_result() {
+    assert!(
+        QUEUE_CTL.contains("LAST_RESULT"),
+        "queue_ctl.sh status must read from LAST_RESULT (last_result.md)"
+    );
+}
+
+#[test]
+fn queue_ctl_status_shows_queue_state() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("status)")
+        .expect("status) case must exist")..];
+    assert!(
+        after.contains("State"),
+        "status command must print queue State"
+    );
+}
+
+#[test]
+fn queue_ctl_status_shows_executed_count() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("status)")
+        .expect("status) case must exist")..];
+    assert!(
+        after.contains("Executed"),
+        "status command must print Executed count"
+    );
+}
+
+#[test]
+fn queue_ctl_status_shows_blocked_count() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("status)")
+        .expect("status) case must exist")..];
+    assert!(
+        after.contains("Blocked"),
+        "status command must print Blocked count"
+    );
+}
+
+#[test]
+fn queue_ctl_status_shows_last_successful() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("status)")
+        .expect("status) case must exist")..];
+    assert!(
+        after.contains("Last ok") || after.contains("Last successful"),
+        "status command must print last successful campaign"
+    );
+}
+
+#[test]
+fn queue_ctl_status_shows_pending_count() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("status)")
+        .expect("status) case must exist")..];
+    assert!(
+        after.contains("Pending"),
+        "status command must print Pending count"
+    );
+}
+
+#[test]
+fn queue_ctl_status_handles_missing_summary_file() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("status)")
+        .expect("status) case must exist")..];
+    assert!(
+        after.contains("NOT_RUN") || after.contains("No summary"),
+        "status command must handle missing last_result.md gracefully"
+    );
+}
+
+// ── tail command ───────────────────────────────────────────────────────────────
+
+#[test]
+fn queue_ctl_supports_tail_command() {
+    assert!(
+        QUEUE_CTL.contains("tail)") || QUEUE_CTL.contains("tail\n") || QUEUE_CTL.contains("tail -"),
+        "queue_ctl.sh must support 'tail' command"
+    );
+}
+
+#[test]
+fn queue_ctl_tail_reads_status_log() {
+    assert!(
+        QUEUE_CTL.contains("STATUS_LOG"),
+        "queue_ctl.sh tail must read from STATUS_LOG (queue_status.log)"
+    );
+}
+
+#[test]
+fn queue_ctl_tail_limits_output_volume() {
+    // tail must use a line limit (e.g. tail -20) to avoid phone-hostile output
+    assert!(
+        QUEUE_CTL.contains("tail -"),
+        "queue_ctl.sh tail must limit output volume via 'tail -N'"
+    );
+}
+
+#[test]
+fn queue_ctl_tail_handles_missing_log() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("STATUS_LOG")
+        .expect("STATUS_LOG must exist")..];
+    assert!(
+        after.contains("No status log") || after.contains("not found"),
+        "tail command must handle missing queue_status.log gracefully"
+    );
+}
+
+// ── pending command ────────────────────────────────────────────────────────────
+
+#[test]
+fn queue_ctl_supports_pending_command() {
+    assert!(
+        QUEUE_CTL.contains("pending"),
+        "queue_ctl.sh must support 'pending' command"
+    );
+}
+
+#[test]
+fn queue_ctl_pending_lists_in_sorted_order() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("pending)")
+        .expect("pending) case must exist")..];
+    assert!(
+        after.contains("sort"),
+        "pending command must list campaign files in sorted (deterministic) order"
+    );
+}
+
+#[test]
+fn queue_ctl_pending_handles_empty_queue() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("pending)")
+        .expect("pending) case must exist")..];
+    assert!(
+        after.contains("No pending"),
+        "pending command must handle empty queue gracefully"
+    );
+}
+
+#[test]
+fn queue_ctl_pending_reads_from_queue_dir() {
+    let after = &QUEUE_CTL[QUEUE_CTL
+        .find("pending)")
+        .expect("pending) case must exist")..];
+    assert!(
+        after.contains("QUEUE_DIR"),
+        "pending command must read campaign files from QUEUE_DIR"
+    );
+}
+
+// ── README phone workflow ──────────────────────────────────────────────────────
+
+#[test]
+fn readme_has_phone_workflow_section() {
+    assert!(
+        README.contains("Phone Workflow") || README.contains("phone workflow"),
+        "README must have a 'Phone Workflow' section"
+    );
+}
+
+#[test]
+fn readme_phone_workflow_shows_status_command() {
+    assert!(
+        README.contains("queue_ctl.sh status"),
+        "README phone workflow must show 'queue_ctl.sh status' command"
+    );
+}
+
+#[test]
+fn readme_phone_workflow_shows_pending_command() {
+    assert!(
+        README.contains("queue_ctl.sh pending"),
+        "README phone workflow must show 'queue_ctl.sh pending' command"
+    );
+}
+
+#[test]
+fn readme_phone_workflow_shows_start_command() {
+    assert!(
+        README.contains("queue_ctl.sh start"),
+        "README phone workflow must show 'queue_ctl.sh start' command"
     );
 }

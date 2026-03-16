@@ -217,6 +217,26 @@ To see the current pilot run state and recommended next step:
 
 Prints the current run ID (if a receipt exists), the presence status of each key artifact, and the suggested next operator action. No commands are executed. No files are written.
 
+To get a full one-screen operator overview for a specific run id:
+
+```bash
+./examples/pilot/run_pilot.sh --run-summary --run-id <run_id>
+```
+
+Prints a compact, read-only summary with five sections: `RUN` (run id and fingerprint), `BUSINESS` (case id, material, procedure, jurisdiction), `ROUTING` (target lab and decision), `ARTIFACTS` (paths to all generated protocol files), and `NEXT INSPECTION COMMANDS` (the five protocol inspection commands for this run). Exits nonzero with a clear error if required artifacts are missing. No files are written.
+
+---
+
+## Next Step
+
+To get a focused operator handoff view for a specific run — showing current state, recommended action, files to review, and follow-on commands:
+
+```bash
+./examples/pilot/run_pilot.sh --next-step --run-id <run_id>
+```
+
+Prints five sections: `RUN` (run id and case id), `CURRENT STATE` (routing outcome: awaiting lab reply, awaiting verification, routing refused, or complete), `RECOMMENDED HUMAN ACTION` (one-line guidance for the operator), `FILES TO REVIEW` (paths to all relevant protocol artifacts), and `COMMANDS` (the five follow-on inspection commands for this run). Exits nonzero with a clear error if the receipt artifact is missing or `--run-id` is omitted. No files are written.
+
 ---
 
 ## Run Fingerprint
@@ -1479,42 +1499,48 @@ bash ops/run_campaign_queue.sh
 bash ops/run_campaign_queue.sh --max 3
 ```
 
-Campaign files are placed in `ops/campaign_queue/` as numbered markdown files
+Place campaign files in `ops/campaign_queue/` as numbered markdown files
 (e.g. `001_my_campaign.md`). They are processed in lexicographic order.
 
-The runner enforces lane-1 safety before executing any campaign:
-- Kernel crates (`crates/core`, `crates/routing`, `crates/compliance`, `crates/audit`,
-  `crates/registry`) are forbidden — the campaign is rejected before execution.
-- All file paths must fall within `examples/pilot/`, `docs/`, `ops/`, or
-  `crates/service/tests/*surface_tests.rs`.
+The runner enforces lane-1 safety before executing any campaign. Kernel crates
+(`crates/core`, `crates/routing`, `crates/compliance`, `crates/audit`,
+`crates/registry`) are forbidden and cause immediate rejection. All file paths
+must fall within `examples/pilot/`, `docs/`, `ops/`, or
+`crates/service/tests/*surface_tests.rs`.
 
-On success the campaign file is moved to `ops/campaign_queue/done/`. On failure after
-one repair retry, the runner stops and writes a blocker report to `ops/last_result.md`.
-Per-campaign logs are written to `ops/campaign_queue/logs/`.
+Successful campaign files are moved to `ops/campaign_queue/done/`. Per-campaign
+logs are written to `ops/campaign_queue/logs/`. Each campaign gets one repair retry
+before the queue stops. Terminal-state entries are appended to `ops/queue_status.log`.
 
-Status entries are appended to `ops/queue_status.log` with ISO timestamps.
+### ops/last_result.md — the morning summary
 
-### Reading ops/last_result.md
+`ops/last_result.md` is the single file to read after any queue run. It is written
+at queue start (status `RUNNING`, with discovered campaigns listed) and rewritten at
+every terminal state. After a completed run it contains:
 
-`ops/last_result.md` is the single-file morning report. It is written before the first
-campaign starts (status `RUNNING`) and updated at every terminal state. After a run it
-contains:
-
-- **Status** — `NOT_RUN` / `RUNNING` / `PASSED` / `BLOCKED` / `PARTIAL`
-- Start and end times (ISO 8601 UTC)
+- Status, start time, end time
 - Campaigns discovered, executed, passed, passed-on-retry, blocked
-- Last successful campaign name and blocked campaign name (if any)
+- Last successful campaign filename and blocked campaign filename (if any)
 - Latest commit hash and latest per-campaign log path
-- Ordered list of campaigns still pending in the queue
+- Campaigns still pending in the queue, in deterministic lexicographic order
+
+#### Terminal states
+
+| Status | Meaning |
+|---|---|
+| `NO_WORK` | Queue was invoked with no pending campaign files |
+| `RUNNING` | Queue is currently executing (written at start) |
+| `PASSED` | All discovered campaigns completed successfully |
+| `PARTIAL` | `--max N` stopped the queue before all campaigns were processed |
+| `BLOCKED` | A campaign failed both attempts; queue stopped |
 
 ### Alert hooks
 
 Set environment variables before invoking the runner to receive a shell callback at
-each terminal state. Hooks are optional, best-effort, and non-fatal — a hook failure
-is logged but never changes the queue exit code.
+each terminal state. Hooks are optional, best-effort, and non-fatal.
 
 ```bash
-# Example: log queue completion to a local file
+# Example: log queue outcome to a local file
 export POSTCAD_QUEUE_ON_SUCCESS="echo '[postcad] queue passed' >> /tmp/postcad_alerts.log"
 export POSTCAD_QUEUE_ON_BLOCKED="echo '[postcad] BLOCKED: $POSTCAD_QUEUE_LAST_CAMPAIGN' >> /tmp/postcad_alerts.log"
 export POSTCAD_QUEUE_ON_PARTIAL="echo '[postcad] partial run: $POSTCAD_QUEUE_EXECUTED executed' >> /tmp/postcad_alerts.log"
@@ -1522,13 +1548,32 @@ export POSTCAD_QUEUE_ON_PARTIAL="echo '[postcad] partial run: $POSTCAD_QUEUE_EXE
 bash ops/run_campaign_queue.sh
 ```
 
-The following variables are exported into the hook's environment:
+Available hook variables: `POSTCAD_QUEUE_STATUS`, `POSTCAD_QUEUE_EXECUTED`,
+`POSTCAD_QUEUE_PASSED`, `POSTCAD_QUEUE_BLOCKED`, `POSTCAD_QUEUE_LAST_CAMPAIGN`,
+`POSTCAD_QUEUE_LOG_PATH`.
 
-| Variable | Description |
-|---|---|
-| `POSTCAD_QUEUE_STATUS` | Terminal status string |
-| `POSTCAD_QUEUE_EXECUTED` | Number of campaigns executed |
-| `POSTCAD_QUEUE_PASSED` | Number of campaigns passed |
-| `POSTCAD_QUEUE_BLOCKED` | Number of campaigns blocked |
-| `POSTCAD_QUEUE_LAST_CAMPAIGN` | Name of last successful campaign |
-| `POSTCAD_QUEUE_LOG_PATH` | Path to latest per-campaign log |
+### Phone Workflow
+
+To operate the queue remotely from a phone over SSH, use `ops/queue_ctl.sh`:
+
+```bash
+# Check queue state (reads ops/last_result.md)
+bash ops/queue_ctl.sh status
+
+# List campaigns waiting to run
+bash ops/queue_ctl.sh pending
+
+# Start the queue
+bash ops/queue_ctl.sh start
+
+# Start with a limit
+bash ops/queue_ctl.sh start --max 3
+
+# Check recent log entries
+bash ops/queue_ctl.sh tail
+```
+
+`status` prints a compact five-line summary: state, executed count, blocked count,
+last successful campaign, and pending count. `pending` lists queue files in
+deterministic order. `tail` shows the most recent log entries without dumping the
+full log. All commands are non-interactive and safe for unattended use.

@@ -1,0 +1,59 @@
+campaign name
+
+pilot: add deterministic operator cheatsheet surface
+
+files allowed to change
+
+examples/pilot/README.md
+examples/pilot/run_pilot.sh
+crates/service/tests/pilot_operator_cheatsheet_surface_tests.rs
+
+Claude prompt
+
+Implement a new lane-1-safe pilot observability surface called `--operator-cheatsheet` inside `examples/pilot/run_pilot.sh`.
+
+Goal:
+Create a compact deterministic one-screen operator reference for the pilot shell. This is a static navigation surface for humans, not a workflow change.
+
+Constraints:
+
+* Do not modify any kernel crates or protocol semantics.
+* Stay strictly inside:
+
+  * `examples/pilot/README.md`
+  * `examples/pilot/run_pilot.sh`
+  * `crates/service/tests/pilot_operator_cheatsheet_surface_tests.rs`
+* No network calls.
+* No wall-clock timestamps.
+* Output must be deterministic.
+* No artifact dependency checks.
+* Do not change existing command behavior.
+
+Required behavior:
+
+1. Add `--operator-cheatsheet` to CLI help/usage output.
+2. Implement `--operator-cheatsheet` as a static read-only surface with sections:
+
+   * `WHAT THIS SHELL DOES`
+   * `CORE COMMANDS`
+   * `WHEN TO USE THEM`
+   * `SAFE REVIEW PATH`
+3. `CORE COMMANDS` must include existing commands only, each with one-line purpose.
+4. `SAFE REVIEW PATH` should recommend a deterministic sequence for a first operator pass.
+5. Command must work even if no pilot artifacts exist.
+6. Add README documentation with a short example.
+7. Add focused tests covering help text, sections, static behavior, expected command names, and README mention.
+
+Definition of done:
+
+* `--operator-cheatsheet` works as a deterministic static navigation surface
+* README mentions it
+* tests pass
+
+test command
+
+cd ~/projects/postcad && cargo test -p service pilot_operator_cheatsheet_surface_tests -- --nocapture
+
+commit message
+
+pilot: add deterministic operator cheatsheet surface

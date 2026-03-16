@@ -1,2 +1,20 @@
 # PostCAD campaign queue status log
 [QUEUE-NO_WORK] queue 2026-03-16T20:31:02Z
+[QUEUE-NO_WORK] queue 2026-03-16T22:20:08Z
+[STARTED] pilot_case_summary_surface.md 2026-03-16T22:25:02Z
+[BLOCKED] pilot_case_summary_surface.md 2026-03-16T22:25:07Z
+[QUEUE-BLOCKED] queue 2026-03-16T22:25:07Z
+[STARTED] pilot_case_summary_surface.md 2026-03-16T22:26:16Z
+[PASSED] pilot_case_summary_surface.md 2026-03-16T22:29:50Z
+[STARTED] pilot_compliance_view_surface.md 2026-03-16T22:29:50Z
+[PASSED] pilot_compliance_view_surface.md 2026-03-16T22:34:45Z
+[STARTED] pilot_routing_rationale_surface.md 2026-03-16T22:34:45Z
+[PASSED] pilot_routing_rationale_surface.md 2026-03-16T22:44:12Z
+[QUEUE-PASSED] queue 2026-03-16T22:44:12Z
+[STARTED] 001_pilot_operator_cheatsheet.md 2026-03-16T22:45:14Z
+[PASSED] 001_pilot_operator_cheatsheet.md 2026-03-16T22:49:19Z
+[STARTED] 002_pilot_artifact_paths.md 2026-03-16T22:49:19Z
+[PASSED] 002_pilot_artifact_paths.md 2026-03-16T22:53:00Z
+[STARTED] 003_pilot_flow_explainer.md 2026-03-16T22:53:00Z
+[PASSED] 003_pilot_flow_explainer.md 2026-03-16T22:59:25Z
+[STARTED] 004_pilot_demo_script.md 2026-03-16T22:59:25Z

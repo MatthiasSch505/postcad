@@ -1,0 +1,111 @@
+======================================
+POSTCAD BATCHED CAMPAIGN RUNNER
+======================================
+
+Repo: /home/matthias/projects/postcad
+
+Campaign file:
+--------------------------------------
+campaign name
+
+pilot: add case summary surface
+
+objective
+
+Add --case-summary to run_pilot.sh — a read-only inspection surface that
+reads case.json and receipt.json and prints a human-readable summary of the
+case being processed: case ID, material, procedure type, destination country,
+and routing outcome. Falls back gracefully when files are absent.
+Shell/docs/test only.
+
+files allowed to change
+
+examples/pilot/run_pilot.sh
+examples/pilot/README.md
+crates/service/tests/pilot_case_summary_surface_tests.rs
+
+Claude prompt
+
+Add --case-summary to examples/pilot/run_pilot.sh and document it in
+examples/pilot/README.md, then write source-inspection tests in
+crates/service/tests/pilot_case_summary_surface_tests.rs.
+
+The --case-summary block must:
+
+1. Check for case.json. If absent, print an error to stderr ("no case.json
+   found — expected at examples/pilot/case.json") and exit 1.
+
+2. Resolve fields from case.json using python3 (CS_ prefix vars):
+     CS_CASE_ID    — case_id (or "not found")
+     CS_MATERIAL   — material (or "not found")
+     CS_PROCEDURE  — procedure_type (or "not found")
+     CS_COUNTRY    — destination_country (or "not found")
+   All vars default to "not found" on parse failure.
+
+3. Also read receipt.json for routing context (optional — do not exit 1 if
+   receipt is absent, use "not available" as default):
+     CS_MFR_ID     — routing_decision.manufacturer_id
+     CS_OUTCOME    — routing_decision.outcome
+
+4. Print the following sections in order:
+
+   CASE SUMMARY
+   ------------
+   CASE
+     Case ID    : <CS_CASE_ID>
+     Material   : <CS_MATERIAL>
+     Procedure  : <CS_PROCEDURE>
+     Country    : <CS_COUNTRY>
+
+   ROUTING
+     Manufacturer : <CS_MFR_ID>
+     Outcome      : <CS_OUTCOME>
+
+   SOURCE
+     case.json            : <relative path shown>
+     registry_snapshot.json : <relative path shown>
+
+5. Exit 0 after printing.
+
+6. The block must not write any files, must not invoke $(date, must not
+   perform filesystem checks beyond the initial case.json guard and the
+   optional receipt.json check.
+
+7. Add --case-summary to the --help-surface listing.
+
+README: add ## Case Summary section (after ## Routing Rationale, before
+## Command Map) with the command, a description of the three sections, and a
+note that the surface reads case.json directly and does not require a pilot run.
+
+Tests (crates/service/tests/pilot_case_summary_surface_tests.rs):
+Use a case_summary_block() helper anchored on "--case-summary\""
+and ending at "exit 0\nfi\n" (ASCII-safe, same pattern as other surface tests).
+Write at least 35 tests covering:
+  - flag present in script
+  - flag appears in --help-surface
+  - block exits 0
+  - clean failure when case.json missing (exit 1, stderr, case.json mention)
+  - CASE SUMMARY header
+  - CASE section: Case ID, Material, Procedure, Country fields
+  - ROUTING section: Manufacturer, Outcome fields
+  - SOURCE section: case.json and registry_snapshot.json both referenced
+  - receipt.json is optional (no exit 1 path for missing receipt)
+  - stable section ordering: CASE before ROUTING before SOURCE
+  - no filesystem writes (> "${SCRIPT_DIR})
+  - no date command ($(date)
+  - README: ## Case Summary section, --case-summary command,
+    does-not-require-pilot-run note
+
+test command
+
+cd ~/projects/postcad && cargo test -p service pilot_case_summary_surface_tests -- --nocapture
+
+commit message
+
+pilot: add case summary surface
+
+--------------------------------------
+
+It looks like write permissions need to be granted. The tool is prompting for permission to write to files but isn't getting approval. Could you please approve the file write operations? The Edit/Write tools need permission to modify `run_pilot.sh`, `README.md`, and create the test file.
+
+If you're running in a restricted permission mode, you may need to approve write operations or switch to a less restrictive mode (e.g., via the permission settings). Once approved, I'll complete all three file changes and run the tests.

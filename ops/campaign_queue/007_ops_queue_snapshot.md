@@ -1,0 +1,60 @@
+campaign name
+
+ops: add queue snapshot script
+
+files allowed to change
+
+ops/README.md
+ops/queue_snapshot.sh
+crates/service/tests/queue_snapshot_surface_tests.rs
+
+Claude prompt
+
+Implement a new lane-1-safe ops utility script called `ops/queue_snapshot.sh`.
+
+Goal:
+Create a deterministic one-command snapshot of the current queue state for quick inspection.
+
+Constraints:
+
+* Do not modify any kernel crates or protocol semantics.
+* Stay strictly inside:
+
+  * `ops/README.md`
+  * `ops/queue_snapshot.sh`
+  * `crates/service/tests/queue_snapshot_surface_tests.rs`
+* No tmux management.
+* No auto-start.
+* No file writes.
+* No network calls.
+* Script must be deterministic and read-only.
+* Use `set -euo pipefail`.
+
+Required behavior:
+
+1. Add new script `ops/queue_snapshot.sh`.
+2. Script must refuse cleanly if not run inside the PostCAD repo.
+3. Script must print sections:
+
+   * `QUEUE DIR`
+   * `PENDING FILES`
+   * `LAST RESULT`
+   * `RECENT STATUS`
+4. Pending files must be listed in deterministic sorted order.
+5. `LAST RESULT` and `RECENT STATUS` should show short bounded tails if files exist, otherwise a clear missing marker.
+6. Add README documentation with example usage.
+7. Add focused tests covering repo refusal, pending-file ordering, missing-file handling, deterministic output, and README mention.
+
+Definition of done:
+
+* `ops/queue_snapshot.sh` is deterministic and read-only
+* README mentions it
+* tests pass
+
+test command
+
+cd ~/projects/postcad && cargo test -p service queue_snapshot_surface_tests -- --nocapture
+
+commit message
+
+ops: add queue snapshot script

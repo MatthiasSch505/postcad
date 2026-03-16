@@ -1,3 +1,11 @@
+======================================
+POSTCAD BATCHED CAMPAIGN RUNNER
+======================================
+
+Repo: /home/matthias/projects/postcad
+
+Campaign file:
+--------------------------------------
 campaign name
 
 pilot: add deterministic demo script surface
@@ -57,3 +65,6 @@ cd ~/projects/postcad && cargo test -p service pilot_demo_script_surface_tests -
 commit message
 
 pilot: add deterministic demo script surface
+
+--------------------------------------
+

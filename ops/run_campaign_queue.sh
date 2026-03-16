@@ -214,6 +214,16 @@ fire_hook() {
     return 0
 }
 
+# ── notification helper ──────────────────────────────────────────────────────────
+# Calls ops/notify.sh in a subshell with error suppression — completely non-fatal.
+# Usage: notify_event <event> <campaign> <message>
+notify_event() {
+    local event="$1"
+    local campaign="${2:-}"
+    local message="${3:-}"
+    bash "$ROOT/ops/notify.sh" "$event" "$campaign" "$message" 2>/dev/null || true
+}
+
 # ── ensure directories exist ────────────────────────────────────────────────────
 
 mkdir -p "$DONE_DIR" "$LOGS_DIR"
@@ -316,6 +326,7 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
         QUEUE_FINAL_STATUS="BLOCKED"
         write_summary "BLOCKED"
         echo "[QUEUE-BLOCKED] queue $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$STATUS_LOG"
+        notify_event "guard-blocked" "$campaign_name" "$guard_reason"
         fire_hook "POSTCAD_QUEUE_ON_BLOCKED"
         echo "Queue stopped. Guard rejected $campaign_basename."
         exit 1
@@ -363,6 +374,7 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
         QUEUE_FINAL_STATUS="BLOCKED"
         write_summary "BLOCKED"
         echo "[QUEUE-BLOCKED] queue $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$STATUS_LOG"
+        notify_event "campaign-failed" "$campaign_name" "failed after 2 attempts — see $log_file"
         fire_hook "POSTCAD_QUEUE_ON_BLOCKED"
         echo "BLOCKED   : $campaign_basename"
         echo "Blocker log: $log_file"
@@ -383,6 +395,7 @@ fi
 
 write_summary "$QUEUE_FINAL_STATUS"
 echo "[QUEUE-$QUEUE_FINAL_STATUS] queue $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$STATUS_LOG"
+notify_event "queue-finished" "queue" "$QUEUE_FINAL_STATUS — $COUNT_PASSED passed, $COUNT_BLOCKED blocked"
 
 if [[ "$QUEUE_FINAL_STATUS" == "PARTIAL" ]]; then
     fire_hook "POSTCAD_QUEUE_ON_PARTIAL"

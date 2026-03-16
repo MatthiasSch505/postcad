@@ -14,6 +14,19 @@ DRY_RUN=false
 MAX_COUNT=0
 PROCESSED=0
 
+# ── run counters ────────────────────────────────────────────────────────────────
+
+COUNT_DISCOVERED=0
+COUNT_EXECUTED=0
+COUNT_PASSED=0
+COUNT_RETRY=0
+COUNT_BLOCKED=0
+LAST_SUCCESS=""
+BLOCKED_CAMPAIGN=""
+LATEST_LOG=""
+QUEUE_START_TIME=""
+QUEUE_FINAL_STATUS="NOT_RUN"
+
 # ── argument parsing ────────────────────────────────────────────────────────────
 
 while [[ $# -gt 0 ]]; do
@@ -134,18 +147,71 @@ log_status() {
     echo "[$tag] $campaign_basename $timestamp" >> "$STATUS_LOG"
 }
 
-write_last_result() {
-    local campaign_name="$1"
-    local status="$2"
-    local detail="${3:-}"
+# Writes the full queue summary to ops/last_result.md.
+# Usage: write_summary <STATUS>
+write_summary() {
+    local status="$1"
+    local end_time_display="—"
+    [[ "$status" != "RUNNING" ]] && end_time_display="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    # Collect pending campaigns remaining in queue dir, in deterministic order
+    local pending_lines=""
+    while IFS= read -r f; do
+        pending_lines+="  $(basename "$f")"$'\n'
+    done < <(find "$QUEUE_DIR" -maxdepth 1 -name "*.md" | sort)
+
     {
-        echo "# Last Queue Result"
+        echo "# PostCAD Queue Summary"
         echo ""
-        echo "Campaign : $campaign_name"
-        echo "Status   : $status"
-        echo "Time     : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        [[ -n "$detail" ]] && echo "Detail   : $detail"
+        echo "Status               : $status"
+        echo "Start time           : ${QUEUE_START_TIME:-—}"
+        echo "End time             : $end_time_display"
+        echo "Campaigns discovered : $COUNT_DISCOVERED"
+        echo "Campaigns executed   : $COUNT_EXECUTED"
+        echo "Campaigns passed     : $COUNT_PASSED"
+        echo "Campaigns passed (retry) : $COUNT_RETRY"
+        echo "Campaigns blocked    : $COUNT_BLOCKED"
+        echo "Last successful      : ${LAST_SUCCESS:-—}"
+        echo "Blocked campaign     : ${BLOCKED_CAMPAIGN:-—}"
+        echo "Latest commit        : $(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+        echo "Latest log           : ${LATEST_LOG:-—}"
+        echo ""
+        echo "Pending campaigns:"
+        if [[ -n "$pending_lines" ]]; then
+            printf '%s' "$pending_lines"
+        else
+            echo "  (none)"
+        fi
     } > "$LAST_RESULT"
+}
+
+# Fires an optional alert hook defined by an environment variable. Non-fatal.
+# Exports payload variables so the hook command can inspect queue state.
+# Usage: fire_hook <ENV_VAR_NAME>
+fire_hook() {
+    local hook_var="$1"
+    local hook_cmd="${!hook_var:-}"
+    [[ -z "$hook_cmd" ]] && return 0
+
+    local timestamp
+    timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    # Export payload variables for hook consumption
+    export POSTCAD_QUEUE_STATUS="$QUEUE_FINAL_STATUS"
+    export POSTCAD_QUEUE_EXECUTED="$COUNT_EXECUTED"
+    export POSTCAD_QUEUE_PASSED="$COUNT_PASSED"
+    export POSTCAD_QUEUE_BLOCKED="$COUNT_BLOCKED"
+    export POSTCAD_QUEUE_LAST_CAMPAIGN="${LAST_SUCCESS:-}"
+    export POSTCAD_QUEUE_LOG_PATH="${LATEST_LOG:-}"
+
+    echo "[HOOK] $hook_var invoking: $hook_cmd" >> "$STATUS_LOG"
+    if eval "$hook_cmd" >> "$STATUS_LOG" 2>&1; then
+        echo "[HOOK-OK] $hook_var $timestamp" >> "$STATUS_LOG"
+    else
+        # Hook failure is non-fatal — log and continue
+        echo "[HOOK-FAIL] $hook_var $timestamp (non-fatal)" >> "$STATUS_LOG"
+    fi
+    return 0
 }
 
 # ── ensure directories exist ────────────────────────────────────────────────────
@@ -158,7 +224,9 @@ mapfile -t CAMPAIGN_FILES < <(
     find "$QUEUE_DIR" -maxdepth 1 -name "*.md" | sort
 )
 
-if [[ ${#CAMPAIGN_FILES[@]} -eq 0 ]]; then
+COUNT_DISCOVERED=${#CAMPAIGN_FILES[@]}
+
+if [[ $COUNT_DISCOVERED -eq 0 ]]; then
     echo "Queue is empty. No campaigns to process."
     exit 0
 fi
@@ -171,7 +239,7 @@ if $DRY_RUN; then
     echo "======================================"
     echo ""
     echo "Queue directory : $QUEUE_DIR"
-    echo "Campaigns found : ${#CAMPAIGN_FILES[@]}"
+    echo "Campaigns found : $COUNT_DISCOVERED"
     [[ $MAX_COUNT -gt 0 ]] && echo "Max count       : $MAX_COUNT"
     echo ""
 
@@ -213,6 +281,12 @@ fi
 
 # ── live queue execution ────────────────────────────────────────────────────────
 
+QUEUE_START_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+QUEUE_FINAL_STATUS="RUNNING"
+
+# Write RUNNING status before first campaign so the file is always current
+write_summary "RUNNING"
+
 for campaign_file in "${CAMPAIGN_FILES[@]}"; do
     if [[ $MAX_COUNT -gt 0 && $PROCESSED -ge $MAX_COUNT ]]; then
         echo "Max count ($MAX_COUNT) reached. Stopping queue."
@@ -222,6 +296,7 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
     campaign_basename="$(basename "$campaign_file")"
     campaign_name="$(extract_campaign_name "$campaign_file")"
     log_file="$LOGS_DIR/${campaign_basename%.md}_$(date -u +%Y%m%dT%H%M%SZ).log"
+    LATEST_LOG="$log_file"
 
     echo "======================================"
     echo "CAMPAIGN  : $campaign_basename"
@@ -234,13 +309,18 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
     if ! $guard_pass; then
         echo "REJECTED  : $guard_reason"
         log_status "REJECTED" "$campaign_basename"
-        write_last_result "$campaign_name" "REJECTED" "$guard_reason"
+        BLOCKED_CAMPAIGN="$campaign_name"
+        COUNT_BLOCKED=$((COUNT_BLOCKED + 1))
+        QUEUE_FINAL_STATUS="BLOCKED"
+        write_summary "BLOCKED"
+        fire_hook "POSTCAD_QUEUE_ON_BLOCKED"
         echo "Queue stopped. Guard rejected $campaign_basename."
         exit 1
     fi
 
     echo "Guard     : PASS"
     log_status "STARTED" "$campaign_basename"
+    COUNT_EXECUTED=$((COUNT_EXECUTED + 1))
 
     cp "$campaign_file" "$CURRENT_CAMPAIGN"
 
@@ -266,15 +346,20 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
     fi
 
     if $attempt_passed; then
-        commit_hash="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
         log_status "$attempt_tag" "$campaign_basename"
-        write_last_result "$campaign_name" "$attempt_tag" "commit=$commit_hash log=$(basename "$log_file")"
         mv "$campaign_file" "$DONE_DIR/"
+        LAST_SUCCESS="$campaign_name"
+        COUNT_PASSED=$((COUNT_PASSED + 1))
+        [[ "$attempt_tag" == "PASSED-RETRY" ]] && COUNT_RETRY=$((COUNT_RETRY + 1))
         echo "$attempt_tag : $campaign_basename"
         PROCESSED=$((PROCESSED + 1))
     else
         log_status "BLOCKED" "$campaign_basename"
-        write_last_result "$campaign_name" "BLOCKED" "log=$(basename "$log_file")"
+        BLOCKED_CAMPAIGN="$campaign_name"
+        COUNT_BLOCKED=$((COUNT_BLOCKED + 1))
+        QUEUE_FINAL_STATUS="BLOCKED"
+        write_summary "BLOCKED"
+        fire_hook "POSTCAD_QUEUE_ON_BLOCKED"
         echo "BLOCKED   : $campaign_basename"
         echo "Blocker log: $log_file"
         echo "Queue stopped. Inspect the log above."
@@ -282,6 +367,24 @@ for campaign_file in "${CAMPAIGN_FILES[@]}"; do
     fi
 done
 
+# ── terminal state ──────────────────────────────────────────────────────────────
+
+# PARTIAL: --max was set and campaigns remain unprocessed in the queue
+remaining_count="$(find "$QUEUE_DIR" -maxdepth 1 -name "*.md" | wc -l | tr -d '[:space:]')"
+if [[ $MAX_COUNT -gt 0 && "$remaining_count" -gt 0 && $PROCESSED -gt 0 ]]; then
+    QUEUE_FINAL_STATUS="PARTIAL"
+else
+    QUEUE_FINAL_STATUS="PASSED"
+fi
+
+write_summary "$QUEUE_FINAL_STATUS"
+
+if [[ "$QUEUE_FINAL_STATUS" == "PARTIAL" ]]; then
+    fire_hook "POSTCAD_QUEUE_ON_PARTIAL"
+else
+    fire_hook "POSTCAD_QUEUE_ON_SUCCESS"
+fi
+
 echo "======================================"
-echo "Queue complete. Processed: $PROCESSED campaign(s)."
+echo "Queue complete. Status: $QUEUE_FINAL_STATUS. Processed: $PROCESSED campaign(s)."
 echo "======================================"

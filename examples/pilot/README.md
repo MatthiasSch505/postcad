@@ -1493,3 +1493,42 @@ one repair retry, the runner stops and writes a blocker report to `ops/last_resu
 Per-campaign logs are written to `ops/campaign_queue/logs/`.
 
 Status entries are appended to `ops/queue_status.log` with ISO timestamps.
+
+### Reading ops/last_result.md
+
+`ops/last_result.md` is the single-file morning report. It is written before the first
+campaign starts (status `RUNNING`) and updated at every terminal state. After a run it
+contains:
+
+- **Status** — `NOT_RUN` / `RUNNING` / `PASSED` / `BLOCKED` / `PARTIAL`
+- Start and end times (ISO 8601 UTC)
+- Campaigns discovered, executed, passed, passed-on-retry, blocked
+- Last successful campaign name and blocked campaign name (if any)
+- Latest commit hash and latest per-campaign log path
+- Ordered list of campaigns still pending in the queue
+
+### Alert hooks
+
+Set environment variables before invoking the runner to receive a shell callback at
+each terminal state. Hooks are optional, best-effort, and non-fatal — a hook failure
+is logged but never changes the queue exit code.
+
+```bash
+# Example: log queue completion to a local file
+export POSTCAD_QUEUE_ON_SUCCESS="echo '[postcad] queue passed' >> /tmp/postcad_alerts.log"
+export POSTCAD_QUEUE_ON_BLOCKED="echo '[postcad] BLOCKED: $POSTCAD_QUEUE_LAST_CAMPAIGN' >> /tmp/postcad_alerts.log"
+export POSTCAD_QUEUE_ON_PARTIAL="echo '[postcad] partial run: $POSTCAD_QUEUE_EXECUTED executed' >> /tmp/postcad_alerts.log"
+
+bash ops/run_campaign_queue.sh
+```
+
+The following variables are exported into the hook's environment:
+
+| Variable | Description |
+|---|---|
+| `POSTCAD_QUEUE_STATUS` | Terminal status string |
+| `POSTCAD_QUEUE_EXECUTED` | Number of campaigns executed |
+| `POSTCAD_QUEUE_PASSED` | Number of campaigns passed |
+| `POSTCAD_QUEUE_BLOCKED` | Number of campaigns blocked |
+| `POSTCAD_QUEUE_LAST_CAMPAIGN` | Name of last successful campaign |
+| `POSTCAD_QUEUE_LOG_PATH` | Path to latest per-campaign log |

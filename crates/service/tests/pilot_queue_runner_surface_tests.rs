@@ -1,8 +1,8 @@
 //! Queue runner surface tests.
 //!
 //! Verifies that ops/run_campaign_queue.sh implements the required
-//! lane-1 guard, dry-run, retry, blocked, and max-count behaviors
-//! by inspecting the script source.
+//! lane-1 guard, dry-run, retry, blocked, max-count, summary, and
+//! alert-hook behaviors by inspecting the script source.
 
 const QUEUE_RUNNER: &str = include_str!("../../../ops/run_campaign_queue.sh");
 
@@ -269,18 +269,18 @@ fn queue_runner_logs_passed_on_success() {
 }
 
 #[test]
-fn queue_runner_writes_last_result_on_success() {
+fn queue_runner_writes_summary_on_success() {
     assert!(
-        QUEUE_RUNNER.contains("write_last_result"),
-        "must call write_last_result() to update last_result.md"
+        QUEUE_RUNNER.contains("write_summary"),
+        "must call write_summary() to update last_result.md"
     );
 }
 
 #[test]
 fn queue_runner_records_commit_hash_on_success() {
     assert!(
-        QUEUE_RUNNER.contains("commit_hash"),
-        "must record commit hash in last result on success"
+        QUEUE_RUNNER.contains("rev-parse --short HEAD"),
+        "must record commit hash in summary via git rev-parse --short HEAD"
     );
 }
 
@@ -387,5 +387,329 @@ fn queue_runner_uses_set_euo_pipefail() {
     assert!(
         QUEUE_RUNNER.contains("set -euo pipefail"),
         "must use 'set -euo pipefail' for safe unattended execution"
+    );
+}
+
+// ── summary initialization ─────────────────────────────────────────────────────
+
+#[test]
+fn queue_runner_defines_write_summary_function() {
+    assert!(
+        QUEUE_RUNNER.contains("write_summary()"),
+        "must define write_summary() to write last_result.md"
+    );
+}
+
+#[test]
+fn queue_runner_initializes_running_status_before_first_campaign() {
+    // write_summary "RUNNING" must appear before the campaign loop body
+    let running_call = QUEUE_RUNNER
+        .find("write_summary \"RUNNING\"")
+        .expect("write_summary \"RUNNING\" must exist");
+    let loop_body = QUEUE_RUNNER
+        .find("live queue execution")
+        .expect("live queue execution section must exist");
+    assert!(
+        running_call > loop_body,
+        "write_summary \"RUNNING\" must be called inside the live execution section, before the loop body"
+    );
+}
+
+#[test]
+fn queue_runner_summary_has_status_field() {
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("write_summary()")
+        .expect("write_summary() must exist")..];
+    assert!(
+        after.contains("Status               :"),
+        "write_summary must emit 'Status               :' field"
+    );
+}
+
+#[test]
+fn queue_runner_summary_has_start_time_field() {
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("write_summary()")
+        .expect("write_summary() must exist")..];
+    assert!(
+        after.contains("Start time"),
+        "write_summary must emit 'Start time' field"
+    );
+}
+
+#[test]
+fn queue_runner_summary_has_end_time_field() {
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("write_summary()")
+        .expect("write_summary() must exist")..];
+    assert!(
+        after.contains("End time"),
+        "write_summary must emit 'End time' field"
+    );
+}
+
+#[test]
+fn queue_runner_summary_tracks_discovered() {
+    assert!(
+        QUEUE_RUNNER.contains("COUNT_DISCOVERED"),
+        "must track COUNT_DISCOVERED"
+    );
+}
+
+#[test]
+fn queue_runner_summary_tracks_executed() {
+    assert!(
+        QUEUE_RUNNER.contains("COUNT_EXECUTED"),
+        "must track COUNT_EXECUTED"
+    );
+}
+
+#[test]
+fn queue_runner_summary_tracks_passed() {
+    assert!(
+        QUEUE_RUNNER.contains("COUNT_PASSED"),
+        "must track COUNT_PASSED"
+    );
+}
+
+#[test]
+fn queue_runner_summary_tracks_retry() {
+    assert!(
+        QUEUE_RUNNER.contains("COUNT_RETRY"),
+        "must track COUNT_RETRY for repair-pass successes"
+    );
+}
+
+#[test]
+fn queue_runner_summary_tracks_blocked() {
+    assert!(
+        QUEUE_RUNNER.contains("COUNT_BLOCKED"),
+        "must track COUNT_BLOCKED"
+    );
+}
+
+#[test]
+fn queue_runner_summary_tracks_last_successful_campaign() {
+    assert!(
+        QUEUE_RUNNER.contains("LAST_SUCCESS"),
+        "must track LAST_SUCCESS campaign name"
+    );
+}
+
+#[test]
+fn queue_runner_summary_tracks_blocked_campaign_name() {
+    assert!(
+        QUEUE_RUNNER.contains("BLOCKED_CAMPAIGN"),
+        "must track BLOCKED_CAMPAIGN name"
+    );
+}
+
+#[test]
+fn queue_runner_summary_lists_pending_campaigns() {
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("write_summary()")
+        .expect("write_summary() must exist")..];
+    assert!(
+        after.contains("Pending campaigns"),
+        "write_summary must list 'Pending campaigns' in deterministic order"
+    );
+}
+
+#[test]
+fn queue_runner_summary_pending_list_is_sorted() {
+    // pending campaigns are built from `find ... | sort`
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("Pending campaigns")
+        .expect("Pending campaigns section must exist")..];
+    assert!(
+        after.contains("sort"),
+        "pending campaign list must be produced by a sorted find"
+    );
+}
+
+#[test]
+fn queue_runner_writes_passed_summary() {
+    assert!(
+        QUEUE_RUNNER.contains("write_summary \"$QUEUE_FINAL_STATUS\""),
+        "must call write_summary with final status at queue completion"
+    );
+}
+
+#[test]
+fn queue_runner_writes_blocked_summary() {
+    assert!(
+        QUEUE_RUNNER.contains("write_summary \"BLOCKED\""),
+        "must call write_summary \"BLOCKED\" when queue is blocked"
+    );
+}
+
+#[test]
+fn queue_runner_partial_status_on_max_with_remaining() {
+    assert!(
+        QUEUE_RUNNER.contains("PARTIAL"),
+        "must set PARTIAL status when --max stops the queue with campaigns remaining"
+    );
+}
+
+// ── alert hooks ────────────────────────────────────────────────────────────────
+
+#[test]
+fn queue_runner_defines_fire_hook_function() {
+    assert!(
+        QUEUE_RUNNER.contains("fire_hook()"),
+        "must define fire_hook() function for optional alert hooks"
+    );
+}
+
+#[test]
+fn queue_runner_supports_on_success_hook_var() {
+    assert!(
+        QUEUE_RUNNER.contains("POSTCAD_QUEUE_ON_SUCCESS"),
+        "must support POSTCAD_QUEUE_ON_SUCCESS environment variable hook"
+    );
+}
+
+#[test]
+fn queue_runner_supports_on_blocked_hook_var() {
+    assert!(
+        QUEUE_RUNNER.contains("POSTCAD_QUEUE_ON_BLOCKED"),
+        "must support POSTCAD_QUEUE_ON_BLOCKED environment variable hook"
+    );
+}
+
+#[test]
+fn queue_runner_supports_on_partial_hook_var() {
+    assert!(
+        QUEUE_RUNNER.contains("POSTCAD_QUEUE_ON_PARTIAL"),
+        "must support POSTCAD_QUEUE_ON_PARTIAL environment variable hook"
+    );
+}
+
+#[test]
+fn queue_runner_fires_hook_on_success() {
+    // fire_hook must be called after the PASSED/PARTIAL terminal state
+    let terminal = QUEUE_RUNNER
+        .find("terminal state")
+        .expect("terminal state section must exist");
+    let after = &QUEUE_RUNNER[terminal..];
+    assert!(
+        after.contains("fire_hook"),
+        "fire_hook must be called in the terminal state section"
+    );
+}
+
+#[test]
+fn queue_runner_fires_hook_on_blocked() {
+    // fire_hook "POSTCAD_QUEUE_ON_BLOCKED" must appear in blocked paths
+    assert!(
+        QUEUE_RUNNER.contains("fire_hook \"POSTCAD_QUEUE_ON_BLOCKED\""),
+        "must call fire_hook \"POSTCAD_QUEUE_ON_BLOCKED\" when campaign is blocked"
+    );
+}
+
+#[test]
+fn queue_runner_fires_hook_on_partial() {
+    assert!(
+        QUEUE_RUNNER.contains("fire_hook \"POSTCAD_QUEUE_ON_PARTIAL\""),
+        "must call fire_hook \"POSTCAD_QUEUE_ON_PARTIAL\" when queue stops at max"
+    );
+}
+
+#[test]
+fn queue_runner_hook_is_nonfatal() {
+    // hook failure must be caught and logged, not propagated
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("fire_hook()")
+        .expect("fire_hook() must exist")..];
+    assert!(
+        after.contains("non-fatal"),
+        "fire_hook must treat hook execution failure as non-fatal"
+    );
+}
+
+#[test]
+fn queue_runner_hook_does_not_change_exit_code() {
+    // fire_hook must end with `return 0` so it can never fail the caller
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("fire_hook()")
+        .expect("fire_hook() must exist")..];
+    assert!(
+        after.contains("return 0"),
+        "fire_hook must return 0 so hook failure never affects queue exit code"
+    );
+}
+
+#[test]
+fn queue_runner_hook_exports_status_var() {
+    assert!(
+        QUEUE_RUNNER.contains("export POSTCAD_QUEUE_STATUS"),
+        "fire_hook must export POSTCAD_QUEUE_STATUS for hook commands"
+    );
+}
+
+#[test]
+fn queue_runner_hook_exports_executed_var() {
+    assert!(
+        QUEUE_RUNNER.contains("export POSTCAD_QUEUE_EXECUTED"),
+        "fire_hook must export POSTCAD_QUEUE_EXECUTED for hook commands"
+    );
+}
+
+#[test]
+fn queue_runner_hook_exports_passed_var() {
+    assert!(
+        QUEUE_RUNNER.contains("export POSTCAD_QUEUE_PASSED"),
+        "fire_hook must export POSTCAD_QUEUE_PASSED for hook commands"
+    );
+}
+
+#[test]
+fn queue_runner_hook_exports_blocked_var() {
+    assert!(
+        QUEUE_RUNNER.contains("export POSTCAD_QUEUE_BLOCKED"),
+        "fire_hook must export POSTCAD_QUEUE_BLOCKED for hook commands"
+    );
+}
+
+#[test]
+fn queue_runner_hook_exports_last_campaign_var() {
+    assert!(
+        QUEUE_RUNNER.contains("export POSTCAD_QUEUE_LAST_CAMPAIGN"),
+        "fire_hook must export POSTCAD_QUEUE_LAST_CAMPAIGN for hook commands"
+    );
+}
+
+#[test]
+fn queue_runner_hook_exports_log_path_var() {
+    assert!(
+        QUEUE_RUNNER.contains("export POSTCAD_QUEUE_LOG_PATH"),
+        "fire_hook must export POSTCAD_QUEUE_LOG_PATH for hook commands"
+    );
+}
+
+#[test]
+fn queue_runner_hook_logs_invocation_to_status_log() {
+    let after = &QUEUE_RUNNER[QUEUE_RUNNER
+        .find("fire_hook()")
+        .expect("fire_hook() must exist")..];
+    assert!(
+        after.contains("STATUS_LOG"),
+        "fire_hook must log hook invocation to STATUS_LOG"
+    );
+}
+
+#[test]
+fn queue_runner_hook_logs_hook_ok() {
+    assert!(
+        QUEUE_RUNNER.contains("HOOK-OK"),
+        "fire_hook must log HOOK-OK on successful hook execution"
+    );
+}
+
+#[test]
+fn queue_runner_hook_logs_hook_fail() {
+    assert!(
+        QUEUE_RUNNER.contains("HOOK-FAIL"),
+        "fire_hook must log HOOK-FAIL on failed hook execution"
     );
 }

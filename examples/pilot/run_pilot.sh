@@ -876,6 +876,166 @@ fi
 
 if [[ "${1:-}" == "--run-summary" ]]; then
 
+  # ── Variant: --run-summary --run-id <id> ─────────────────────────────────────
+  # Read-only operator overview for a specific run id.
+  if [[ "${2:-}" == "--run-id" ]]; then
+
+    RSI_RUN_ID="${3:-}"
+    if [[ -z "$RSI_RUN_ID" ]]; then
+      echo "ERROR: --run-id requires a run id value" >&2
+      echo "Usage: ./examples/pilot/run_pilot.sh --run-summary --run-id <run_id>" >&2
+      exit 1
+    fi
+
+    # Validate that the required receipt artifact exists
+    if [[ ! -f "${SCRIPT_DIR}/receipt.json" ]]; then
+      echo "ERROR: no receipt.json found — run id '$RSI_RUN_ID' cannot be resolved" >&2
+      exit 1
+    fi
+
+    # Read existing artifacts — no recomputation, no side effects
+    RSI_CASE_ID=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+    RSI_JURISDICTION=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('jurisdiction', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+    RSI_MATERIAL=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('material', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+    RSI_PROCEDURE=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('procedure', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+    RSI_LAB=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('selected_candidate_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+    RSI_OUTCOME=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('outcome', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+    RSI_REFUSAL=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    v = d.get('refusal_code')
+    print(v if v else '')
+except: print('')
+" 2>/dev/null || echo "")
+
+    # Locate existing artifact paths
+    RSI_RECEIPT_FILE="${SCRIPT_DIR}/receipt.json"
+    RSI_DISPATCH_FILE="${SCRIPT_DIR}/export_packet.json"
+    RSI_INBOUND_FILE=""
+    RSI_VERIFY_FILE=""
+    _RSI_INBOUND="${SCRIPT_DIR}/inbound/lab_reply_${RSI_RUN_ID}.json"
+    [[ -f "$_RSI_INBOUND" ]] && RSI_INBOUND_FILE="$_RSI_INBOUND"
+    _RSI_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
+    [[ -n "$_RSI_VERIFY" ]] && RSI_VERIFY_FILE="$_RSI_VERIFY"
+
+    # Compute run fingerprint from available artifacts (read-only)
+    RSI_FINGERPRINT=$(python3 -c "
+import hashlib, os
+files = [
+    '${RSI_RECEIPT_FILE}',
+    '${RSI_INBOUND_FILE}',
+    '${RSI_VERIFY_FILE}',
+    '${RSI_DISPATCH_FILE}',
+]
+h = hashlib.sha256()
+for f in files:
+    if f and os.path.isfile(f):
+        h.update(open(f, 'rb').read())
+print(h.hexdigest())
+" 2>/dev/null || echo "")
+
+    echo ""
+    echo "POSTCAD RUN SUMMARY"
+    echo "════════════════════════════════════════════════════════════"
+    echo ""
+    echo "RUN"
+    echo "  Run ID      : $RSI_RUN_ID"
+    if [[ -n "$RSI_FINGERPRINT" ]]; then
+      echo "  Fingerprint : $RSI_FINGERPRINT"
+    else
+      echo "  Fingerprint : not available"
+    fi
+    echo ""
+    echo "BUSINESS"
+    echo "  Case ID     : ${RSI_CASE_ID:-not available}"
+    echo "  Material    : ${RSI_MATERIAL:-not available}"
+    echo "  Procedure   : ${RSI_PROCEDURE:-not available}"
+    echo "  Jurisdiction: ${RSI_JURISDICTION:-not available}"
+    echo ""
+    echo "ROUTING"
+    echo "  Target lab  : ${RSI_LAB:-not available}"
+    if [[ -n "$RSI_REFUSAL" ]]; then
+      echo "  Decision    : refused ($RSI_REFUSAL)"
+    elif [[ "$RSI_OUTCOME" == "routed" ]]; then
+      echo "  Decision    : accepted — routed to $RSI_LAB"
+    else
+      echo "  Decision    : ${RSI_OUTCOME:-not available}"
+    fi
+    echo ""
+    echo "ARTIFACTS"
+    echo "  receipt.json        : $RSI_RECEIPT_FILE"
+    if [[ -n "$RSI_INBOUND_FILE" ]]; then
+      echo "  inbound reply       : $RSI_INBOUND_FILE"
+    else
+      echo "  inbound reply       : not yet generated"
+    fi
+    if [[ -n "$RSI_VERIFY_FILE" ]]; then
+      echo "  verification record : $RSI_VERIFY_FILE"
+    else
+      echo "  verification record : not yet generated"
+    fi
+    if [[ -f "$RSI_DISPATCH_FILE" ]]; then
+      echo "  dispatch packet     : $RSI_DISPATCH_FILE"
+    else
+      echo "  dispatch packet     : not yet generated"
+    fi
+    echo ""
+    echo "NEXT INSPECTION COMMANDS"
+    echo "  ./examples/pilot/run_pilot.sh --protocol-chain"
+    echo "  ./examples/pilot/run_pilot.sh --engineer-entrypoint"
+    echo "  ./examples/pilot/run_pilot.sh --business-entrypoint"
+    echo "  ./examples/pilot/run_pilot.sh --lab-entrypoint"
+    echo "  ./examples/pilot/run_pilot.sh --audit-receipt-view"
+    echo ""
+    echo "════════════════════════════════════════════════════════════"
+    echo ""
+    exit 0
+  fi
+
+  # ── Existing run-summary (no --run-id) ───────────────────────────────────────
   # Resolve run context from receipt.json if present
   RS_RUN_ID="not detected"
   RS_RECEIPT_HASH=""
@@ -1141,6 +1301,127 @@ print(h.hexdigest())
   echo "  ./examples/pilot/run_pilot.sh --trace-view"
   echo "  ./examples/pilot/run_pilot.sh --protocol-chain"
   echo "  ./examples/pilot/run_pilot.sh --run-summary"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
+
+# ── Mode: next step ───────────────────────────────────────────────────────────
+
+if [[ "${1:-}" == "--next-step" ]]; then
+
+  if [[ "${2:-}" != "--run-id" ]] || [[ -z "${3:-}" ]]; then
+    echo "ERROR: --next-step requires --run-id <run_id>" >&2
+    echo "Usage: ./examples/pilot/run_pilot.sh --next-step --run-id <run_id>" >&2
+    exit 1
+  fi
+
+  NS_RUN_ID="${3}"
+
+  if [[ ! -f "${SCRIPT_DIR}/receipt.json" ]]; then
+    echo "ERROR: no receipt.json found — run id '$NS_RUN_ID' cannot be resolved" >&2
+    exit 1
+  fi
+
+  NS_CASE_ID=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('routing_input', {}).get('case_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  NS_LAB=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    print(d.get('selected_candidate_id', ''))
+except: print('')
+" 2>/dev/null || echo "")
+
+  NS_REFUSAL=$(python3 -c "
+import json
+try:
+    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
+    v = d.get('refusal_code')
+    print(v if v else '')
+except: print('')
+" 2>/dev/null || echo "")
+
+  NS_RECEIPT_FILE="${SCRIPT_DIR}/receipt.json"
+  NS_DISPATCH_FILE="${SCRIPT_DIR}/export_packet.json"
+  NS_INBOUND_FILE=""
+  _NS_INBOUND="${SCRIPT_DIR}/inbound/lab_reply_${NS_RUN_ID}.json"
+  [[ -f "$_NS_INBOUND" ]] && NS_INBOUND_FILE="$_NS_INBOUND"
+  NS_VERIFY_FILE=""
+  _NS_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
+  [[ -n "$_NS_VERIFY" ]] && NS_VERIFY_FILE="$_NS_VERIFY"
+
+  echo ""
+  echo "POSTCAD NEXT STEP"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo "RUN"
+  echo "  Run ID      : $NS_RUN_ID"
+  echo "  Case ID     : ${NS_CASE_ID:-not available}"
+  echo ""
+  echo "CURRENT STATE"
+  if [[ -n "$NS_REFUSAL" ]]; then
+    echo "  State       : routing refused"
+    echo "  Refusal     : $NS_REFUSAL"
+  elif [[ -z "$NS_INBOUND_FILE" ]]; then
+    echo "  State       : awaiting lab reply"
+    if [[ -n "$NS_LAB" ]]; then
+      echo "  Routed to   : $NS_LAB"
+    fi
+  elif [[ -z "$NS_VERIFY_FILE" ]]; then
+    echo "  State       : awaiting verification"
+    if [[ -n "$NS_LAB" ]]; then
+      echo "  Routed to   : $NS_LAB"
+    fi
+  else
+    echo "  State       : complete"
+    if [[ -n "$NS_LAB" ]]; then
+      echo "  Routed to   : $NS_LAB"
+    fi
+  fi
+  echo ""
+  echo "RECOMMENDED HUMAN ACTION"
+  if [[ -n "$NS_REFUSAL" ]]; then
+    echo "  Review the refusal code and determine whether to re-route or close the case."
+  elif [[ -z "$NS_INBOUND_FILE" ]]; then
+    echo "  Wait for the lab to return the inbound reply, then run --lab-entrypoint to process it."
+  elif [[ -z "$NS_VERIFY_FILE" ]]; then
+    echo "  Run the verification step to generate a decision record."
+  else
+    echo "  All artifacts present. Review the audit receipt and archive the run."
+  fi
+  echo ""
+  echo "FILES TO REVIEW"
+  echo "  receipt.json        : $NS_RECEIPT_FILE"
+  if [[ -n "$NS_INBOUND_FILE" ]]; then
+    echo "  inbound reply       : $NS_INBOUND_FILE"
+  else
+    echo "  inbound reply       : not yet present"
+  fi
+  if [[ -n "$NS_VERIFY_FILE" ]]; then
+    echo "  verification record : $NS_VERIFY_FILE"
+  else
+    echo "  verification record : not yet present"
+  fi
+  if [[ -f "$NS_DISPATCH_FILE" ]]; then
+    echo "  dispatch packet     : $NS_DISPATCH_FILE"
+  else
+    echo "  dispatch packet     : not yet present"
+  fi
+  echo ""
+  echo "COMMANDS"
+  echo "  ./examples/pilot/run_pilot.sh --run-summary --run-id $NS_RUN_ID"
+  echo "  ./examples/pilot/run_pilot.sh --protocol-chain"
+  echo "  ./examples/pilot/run_pilot.sh --business-entrypoint"
+  echo "  ./examples/pilot/run_pilot.sh --lab-entrypoint"
+  echo "  ./examples/pilot/run_pilot.sh --audit-receipt-view"
   echo ""
   echo "════════════════════════════════════════════════════════════"
   echo ""

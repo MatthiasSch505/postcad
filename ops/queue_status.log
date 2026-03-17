@@ -18,3 +18,17 @@
 [STARTED] 003_pilot_flow_explainer.md 2026-03-16T22:53:00Z
 [PASSED] 003_pilot_flow_explainer.md 2026-03-16T22:59:25Z
 [STARTED] 004_pilot_demo_script.md 2026-03-16T22:59:25Z
+[PASSED] 004_pilot_demo_script.md 2026-03-16T23:05:47Z
+[STARTED] 005_pilot_review_checklist.md 2026-03-16T23:05:47Z
+[PASSED] 005_pilot_review_checklist.md 2026-03-16T23:12:03Z
+[STARTED] 006_ops_queue_doctor.md 2026-03-16T23:12:03Z
+[PASSED] 006_ops_queue_doctor.md 2026-03-16T23:14:16Z
+[STARTED] 007_ops_queue_snapshot.md 2026-03-16T23:14:16Z
+[PASSED] 007_ops_queue_snapshot.md 2026-03-16T23:16:36Z
+[STARTED] 008_ops_worker_entry_help.md 2026-03-16T23:16:36Z
+[PASSED] 008_ops_worker_entry_help.md 2026-03-16T23:20:48Z
+[STARTED] 009_ops_monitor_help.md 2026-03-16T23:20:48Z
+[PASSED] 009_ops_monitor_help.md 2026-03-16T23:22:37Z
+[STARTED] 010_pilot_surface_directory.md 2026-03-16T23:22:37Z
+[PASSED] 010_pilot_surface_directory.md 2026-03-16T23:24:40Z
+[QUEUE-PASSED] queue 2026-03-16T23:24:40Z

@@ -1,26 +1,17 @@
 # Last Queue Result
 
-Status               : RUNNING
+Status               : PASSED
 Start time           : 2026-03-16T22:45:14Z
-End time             : —
+End time             : 2026-03-16T23:24:40Z
 Campaigns discovered : 10
-Campaigns executed   : 0
-Campaigns passed     : 0
+Campaigns executed   : 10
+Campaigns passed     : 10
 Campaigns passed (retry) : 0
 Campaigns blocked    : 0
-Last successful      : —
+Last successful      : pilot: add deterministic surface directory
 Blocked campaign     : —
-Latest commit        : 0b7ef9c
-Latest log           : —
+Latest commit        : a6b6bc2
+Latest log           : /home/matthias/projects/postcad/ops/campaign_queue/logs/010_pilot_surface_directory_20260316T232237Z.log
 
 Pending campaigns:
-  001_pilot_operator_cheatsheet.md
-  002_pilot_artifact_paths.md
-  003_pilot_flow_explainer.md
-  004_pilot_demo_script.md
-  005_pilot_review_checklist.md
-  006_ops_queue_doctor.md
-  007_ops_queue_snapshot.md
-  008_ops_worker_entry_help.md
-  009_ops_monitor_help.md
-  010_pilot_surface_directory.md
+  (none)

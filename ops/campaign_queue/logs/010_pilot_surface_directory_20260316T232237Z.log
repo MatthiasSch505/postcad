@@ -1,3 +1,11 @@
+======================================
+POSTCAD BATCHED CAMPAIGN RUNNER
+======================================
+
+Repo: /home/matthias/projects/postcad
+
+Campaign file:
+--------------------------------------
 campaign name
 
 pilot: add deterministic surface directory
@@ -57,3 +65,7 @@ cd ~/projects/postcad && cargo test -p service pilot_surface_directory_surface_t
 commit message
 
 pilot: add deterministic surface directory
+
+--------------------------------------
+
+I need write access to the pilot files. Please approve the write permission to `examples/pilot/run_pilot.sh`, `examples/pilot/README.md`, and `crates/service/tests/pilot_surface_directory_surface_tests.rs`.

@@ -484,6 +484,55 @@ This prints the minimum command sheet for the complete pilot workflow — one ex
 
 ---
 
+## Operator Cheatsheet
+
+A compact, deterministic one-screen reference for the pilot shell — covering what the shell does, every core command with its purpose, when to use each, and a safe review sequence for a first operator pass:
+
+```bash
+./examples/pilot/run_pilot.sh --operator-cheatsheet
+```
+
+This is a static read-only navigation surface. No commands are executed. No files are written. No network calls. Output is fully deterministic — it contains no timestamps and does not depend on any pilot artifacts being present.
+
+The cheatsheet is organised into four sections:
+
+- **WHAT THIS SHELL DOES** — one-paragraph description of the pilot shell's role
+- **CORE COMMANDS** — every existing operator command with a one-line purpose
+- **WHEN TO USE THEM** — decision guide mapping operator situations to commands
+- **SAFE REVIEW PATH** — a deterministic six-step sequence recommended for a first operator pass
+
+Example output (excerpt):
+
+```
+PostCAD Pilot — Operator Cheatsheet
+════════════════════════════════════════════════════════════
+
+WHAT THIS SHELL DOES
+  run_pilot.sh is the deterministic pilot operator shell for PostCAD.
+  ...
+
+CORE COMMANDS
+  ./examples/pilot/run_pilot.sh
+    Generate pilot bundle — route case, write receipt.json.
+  ...
+
+WHEN TO USE THEM
+  Starting a new pilot run?          (default — no argument)
+  Lab reply arrived?                 --inspect-inbound-reply <file>
+  ...
+
+SAFE REVIEW PATH
+  Recommended deterministic sequence for a first operator pass:
+
+  1. Generate pilot bundle
+       ./examples/pilot/run_pilot.sh
+  ...
+```
+
+Use `--operator-cheatsheet` as a quick orientation reference any time — it works even if no pilot artifacts exist.
+
+---
+
 ## Artifact Index
 
 When you want to orient yourself in the pilot workflow — where are the files, what do I inspect next — run:

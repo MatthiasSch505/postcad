@@ -68,3 +68,10 @@ pilot: add deterministic demo script surface
 
 --------------------------------------
 
+The Edit and Write tools are blocked — it looks like you haven't granted write permissions yet. In the Claude Code UI you should see permission prompts asking to allow writes to:
+
+1. `examples/pilot/run_pilot.sh`
+2. `examples/pilot/README.md`
+3. `crates/service/tests/pilot_demo_script_surface_tests.rs`
+
+Please approve those prompts (or set the permission mode to allow writes), then I'll proceed with all three file changes and run the tests.

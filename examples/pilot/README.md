@@ -273,6 +273,12 @@ To run a read-only visual walkthrough of the end-to-end protocol state for opera
 
 Prints a titled header (`POSTCAD PILOT DEMO`), `RUN CONTEXT` (run id, case id, target lab), and a `STAGE FLOW` section listing eight protocol stages in order — CAD case available, routing decision recorded, compliance/eligibility evidenced, outbound package created, send log recorded, lab reply received, verification artifact present, audit receipt present — each marked `[DONE]` or `[PENDING]` based on real filesystem artifacts. Ends with either `Demo complete: end-to-end protocol evidence present` or `Demo in progress — next stage: <name>`. Read-only. No files written. No timestamps. Safe to run at any stage of the workflow.
 
+The output also includes a shareable plain-text copy block. Example:
+
+```
+bash examples/pilot/run_pilot.sh --pilot-demo
+```
+
 ---
 
 ## Command Map

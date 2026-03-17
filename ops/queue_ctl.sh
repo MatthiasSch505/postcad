@@ -70,6 +70,9 @@ case "$CMD" in
         echo "  status          print compact queue summary"
         echo "  tail            print recent queue log entries"
         echo "  pending         list pending campaign files"
+        echo ""
+        echo "Night mode (unattended):"
+        echo "  bash ops/start_night_queue.sh   start detached tmux session 'postcad-night'"
         exit 1
         ;;
 esac

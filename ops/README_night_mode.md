@@ -37,6 +37,17 @@ tail -f ops/logs/*.log
 tmux attach -t postcad-night
 ```
 
+**Check session and queue status**
+
+Run the compact status summary at any time (safe when the session is absent):
+
+```bash
+bash ops/night_status.sh
+```
+
+Prints session state (`RUNNING` / `STOPPED`), the last few lines of
+`ops/queue_status.log`, and the last few lines of `ops/last_result.md`.
+
 **Stop the session**
 
 ```bash

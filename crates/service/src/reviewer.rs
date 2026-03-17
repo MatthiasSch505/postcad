@@ -114,8 +114,20 @@ main{max-width:860px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
 }
 .step-card.step-done{border-left:3px solid var(--green)}
 .step-card.step-active{border-left:3px solid var(--blue);border-left-width:3px}
-.step-card.step-locked{opacity:.45}
-.step-card.step-locked .btn-primary{cursor:default}
+.step-card.step-locked{opacity:.35;pointer-events:none}
+.step-card.step-locked .step-body,
+.step-card.step-locked .btn-primary,
+.step-card.step-locked .btn-secondary,
+.step-card.step-locked .result-panel,
+.step-card.step-locked details.tech-drawer,
+.step-card.step-locked .dispatch-actions,
+.step-card.step-locked .loading-note,
+.step-card.step-locked .error-note,
+.step-card.step-locked .warn-note,
+.step-card.step-locked .success-note,
+.step-card.step-locked .verify-banner,
+.step-card.step-locked [id$="-result"],
+.step-card.step-locked [id$="-error"]{display:none!important}
 
 .step-header{
   display:flex;align-items:center;justify-content:space-between;
@@ -716,9 +728,7 @@ pre.collapsed{max-height:120px;overflow:hidden}
 
 <!-- ── util bar ── -->
 <div class="util-bar">
-  <span style="font-family:var(--mono)">
-    GET /pilot-fixtures · POST /pilot/route-normalized · POST /verify · POST /dispatch/create
-  </span>
+  <span style="font-size:.62rem;color:var(--text-3)">PostCAD Operator Demo</span>
   <div class="util-bar-actions">
     <button class="util-btn" id="btn-copy-snapshot" onclick="copyAuditSnapshot(this)">Copy snapshot</button>
     <button class="util-btn" onclick="downloadAuditSnapshot()">↓ Download</button>
@@ -894,8 +904,7 @@ let reproStatus = 'not-tested';
     document.getElementById('fix-config').textContent   = fmt(fixtures.routing_config);
     document.getElementById('fixtures-loading').classList.add('hidden');
     document.getElementById('btn-load-case').disabled = false;
-    document.getElementById('btn-route-norm').disabled = false;
-    document.getElementById('btn-route').disabled      = false;
+    // btn-route-norm stays disabled until user completes Step 1 (loadDemoCase)
   } catch(e) {
     document.getElementById('fixtures-loading').classList.add('hidden');
     const errEl = document.getElementById('fixtures-error');
@@ -929,8 +938,9 @@ function loadDemoCase() {
 
 // ── Step card unlock ───────────────────────────────────────────────────────
 function updateStepCards() {
-  // Step 2: unlocks when fixtures loaded
-  if (fixtures) {
+  // Step 2: unlocks only when Step 1 is done (user clicked Load Demo Case)
+  const step1Done = document.getElementById('step1-card').classList.contains('step-done');
+  if (step1Done) {
     const c2 = document.getElementById('step2-card');
     if (c2.classList.contains('step-locked')) {
       c2.classList.remove('step-locked');
@@ -941,6 +951,7 @@ function updateStepCards() {
       ch2.textContent = 'READY';
       ch2.className = 'status-chip chip-amber';
     }
+    document.getElementById('btn-route-norm').disabled = false;
   }
 
   // Step 2 status by routing state

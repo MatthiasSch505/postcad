@@ -23,56 +23,48 @@ pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
   }
   body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 20px 64px}
 
-  header{width:100%;max-width:480px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 0}
+  header{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 0}
   .brand{font-size:.85rem;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
   .brand span{color:var(--green)}
   .lang-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
   .lang-btn{padding:4px 10px;font-size:.75rem;font-weight:600;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:color .15s}
   .lang-btn.active{background:var(--surface2);color:var(--text)}
 
-  main{width:100%;max-width:480px}
+  main{width:100%;max-width:460px}
 
-  /* Hero */
-  .hero{padding:52px 0 44px;text-align:center}
+  .hero{padding:52px 0 40px;text-align:center}
   .hero h1{font-size:2rem;font-weight:900;line-height:1.2;margin-bottom:12px}
-  .hero-sub{font-size:.92rem;color:var(--muted);line-height:1.6;margin-bottom:32px;max-width:360px;margin-left:auto;margin-right:auto}
-  .cta-row{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .hero-sub{font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:30px;max-width:340px;margin-left:auto;margin-right:auto}
   .cta-primary{
     display:block;padding:14px 32px;border-radius:10px;
     background:var(--green);color:#fff;font-size:.95rem;font-weight:700;
-    text-decoration:none;letter-spacing:.01em;transition:opacity .15s;width:100%;text-align:center;
+    text-decoration:none;transition:opacity .15s;text-align:center;
   }
   .cta-primary:hover{opacity:.9}
-  .cta-secondary{font-size:.82rem;color:var(--muted);text-decoration:none;padding:6px 0;transition:color .15s}
-  .cta-secondary:hover{color:var(--text)}
 
-  /* Preview */
-  .preview-wrap{margin-bottom:44px}
+  .preview-wrap{margin-bottom:40px}
   .preview-card{
-    background:var(--surface);border:1.5px solid var(--border);border-radius:16px;
-    padding:24px 22px;position:relative;
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:20px;position:relative;
   }
-  .live-badge{position:absolute;top:18px;right:18px;display:flex;align-items:center;gap:5px;font-size:.65rem;font-weight:700;color:var(--green);letter-spacing:.06em;text-transform:uppercase}
-  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
-  .preview-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
-  .mini-scenario{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .live-badge{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:4px;font-size:.63rem;font-weight:700;color:var(--green);letter-spacing:.06em;text-transform:uppercase}
+  .live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .mini-scenario{display:flex;align-items:center;gap:10px;margin-bottom:14px}
   .mini-sc-icon{font-size:1.1rem}
-  .mini-sc-body{flex:1}
-  .mini-sc-title{font-size:.84rem;font-weight:700;margin-bottom:2px}
-  .mini-sc-desc{font-size:.73rem;color:var(--muted)}
-  .mini-result{border-top:1px solid var(--border);padding-top:16px;text-align:center}
-  .mini-verdict{font-size:1.5rem;font-weight:900;color:var(--green);letter-spacing:.04em;margin-bottom:3px}
-  .mini-sub{font-size:.76rem;color:var(--muted)}
-  .preview-link{display:block;text-align:center;font-size:.8rem;color:var(--muted);text-decoration:none;margin-top:12px;transition:color .15s}
+  .mini-sc-title{font-size:.82rem;font-weight:700;margin-bottom:1px}
+  .mini-sc-desc{font-size:.72rem;color:var(--muted)}
+  .mini-result{border-top:1px solid var(--border);padding-top:14px;text-align:center}
+  .mini-verdict{font-size:1.4rem;font-weight:900;color:var(--green);letter-spacing:.04em;margin-bottom:2px}
+  .mini-sub{font-size:.73rem;color:var(--muted)}
+  .preview-link{display:block;text-align:center;font-size:.78rem;color:var(--muted);text-decoration:none;margin-top:10px;transition:color .15s}
   .preview-link:hover{color:var(--text)}
 
-  /* Support rows */
   .supports{display:flex;flex-direction:column}
-  .support-row{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-top:1px solid var(--border)}
-  .support-icon{font-size:1rem;flex-shrink:0;margin-top:1px;color:var(--muted)}
-  .support-title{font-size:.85rem;font-weight:700;margin-bottom:2px}
-  .support-desc{font-size:.78rem;color:var(--muted);line-height:1.5}
+  .support-row{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-top:1px solid var(--border)}
+  .support-icon{font-size:.9rem;flex-shrink:0;margin-top:2px;color:var(--muted)}
+  .support-title{font-size:.84rem;font-weight:700;margin-bottom:2px}
+  .support-desc{font-size:.77rem;color:var(--muted);line-height:1.5}
 </style>
 </head>
 <body>
@@ -87,31 +79,25 @@ pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
 
 <main>
 
-  <!-- Hero -->
   <section class="hero">
     <h1 id="t-h1">Digitale Fälle sicher<br>weitergeben.</h1>
     <p class="hero-sub" id="t-sub">PostCAD prüft, ob ein Fall zulässig ist — bevor er in die Fertigung geht.</p>
-    <div class="cta-row">
-      <a class="cta-primary" href="/reviewer" id="t-cta-primary">Live-Demo starten</a>
-      <a class="cta-secondary" href="#" id="t-cta-secondary">Für Pilot vormerken</a>
-    </div>
+    <a class="cta-primary" href="/reviewer" id="t-cta">Live-Demo starten</a>
   </section>
 
-  <!-- Preview -->
   <div class="preview-wrap">
     <a href="/reviewer" style="text-decoration:none">
       <div class="preview-card">
         <div class="live-badge"><div class="live-dot"></div><span id="t-live">Live</span></div>
-        <div class="preview-label" id="t-preview-label">Fallprüfung</div>
         <div class="mini-scenario">
           <div class="mini-sc-icon">🦷</div>
-          <div class="mini-sc-body">
+          <div>
             <div class="mini-sc-title" id="t-mini-title">Standardfall</div>
             <div class="mini-sc-desc" id="t-mini-desc">Krone · Zirkon · Deutschland</div>
           </div>
         </div>
         <div class="mini-result">
-          <div class="mini-verdict" id="t-mini-verdict">✓ FREIGEGEBEN</div>
+          <div class="mini-verdict" id="t-mini-verdict">FREIGEGEBEN</div>
           <div class="mini-sub" id="t-mini-sub">Weitergabe möglich</div>
         </div>
       </div>
@@ -119,27 +105,26 @@ pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
     <a class="preview-link" href="/reviewer" id="t-preview-link">Demo öffnen →</a>
   </div>
 
-  <!-- Support rows -->
   <div class="supports">
     <div class="support-row">
       <div class="support-icon">✓</div>
       <div>
         <div class="support-title" id="t-b1-title">Prüft Regeln</div>
-        <div class="support-desc" id="t-b1-desc">CE-Kennzeichnung, FDA-Zulassung, ISO 13485 — automatisch und nachvollziehbar.</div>
+        <div class="support-desc" id="t-b1-desc">CE-Kennzeichnung, FDA-Zulassung, ISO 13485 — automatisch.</div>
       </div>
     </div>
     <div class="support-row">
       <div class="support-icon">✕</div>
       <div>
         <div class="support-title" id="t-b2-title">Blockiert Fehler</div>
-        <div class="support-desc" id="t-b2-desc">Unzulässige Jurisdiktionen und nicht verfügbare Materialien werden vor der Weitergabe gestoppt.</div>
+        <div class="support-desc" id="t-b2-desc">Unzulässige Jurisdiktionen und fehlende Materialeignung werden gestoppt.</div>
       </div>
     </div>
     <div class="support-row">
       <div class="support-icon">◎</div>
       <div>
         <div class="support-title" id="t-b3-title">Dokumentiert Entscheidung</div>
-        <div class="support-desc" id="t-b3-desc">Jede Freigabe und jede Ablehnung wird mit Begründung gespeichert.</div>
+        <div class="support-desc" id="t-b3-desc">Jede Freigabe und Ablehnung wird mit Begründung gespeichert.</div>
       </div>
     </div>
   </div>
@@ -151,29 +136,25 @@ const LP = {
   DE: {
     h1: 'Digitale Fälle sicher<br>weitergeben.',
     sub: 'PostCAD prüft, ob ein Fall zulässig ist — bevor er in die Fertigung geht.',
-    ctaPrimary: 'Live-Demo starten',
-    ctaSecondary: 'Für Pilot vormerken',
+    cta: 'Live-Demo starten',
     live: 'Live',
-    previewLabel: 'Fallprüfung',
     miniTitle: 'Standardfall', miniDesc: 'Krone · Zirkon · Deutschland',
-    miniVerdict: '\u2713 FREIGEGEBEN', miniSub: 'Weitergabe möglich',
+    miniVerdict: 'FREIGEGEBEN', miniSub: 'Weitergabe möglich',
     previewLink: 'Demo öffnen →',
-    b1Title: 'Prüft Regeln', b1Desc: 'CE-Kennzeichnung, FDA-Zulassung, ISO 13485 — automatisch und nachvollziehbar.',
-    b2Title: 'Blockiert Fehler', b2Desc: 'Unzulässige Jurisdiktionen und nicht verfügbare Materialien werden vor der Weitergabe gestoppt.',
-    b3Title: 'Dokumentiert Entscheidung', b3Desc: 'Jede Freigabe und jede Ablehnung wird mit Begründung gespeichert.',
+    b1Title: 'Prüft Regeln', b1Desc: 'CE-Kennzeichnung, FDA-Zulassung, ISO 13485 — automatisch.',
+    b2Title: 'Blockiert Fehler', b2Desc: 'Unzulässige Jurisdiktionen und fehlende Materialeignung werden gestoppt.',
+    b3Title: 'Dokumentiert Entscheidung', b3Desc: 'Jede Freigabe und Ablehnung wird mit Begründung gespeichert.',
   },
   EN: {
     h1: 'Pass digital cases<br>safely forward.',
     sub: 'PostCAD checks whether a case is allowed before it enters manufacturing.',
-    ctaPrimary: 'Start live demo',
-    ctaSecondary: 'Register for pilot',
+    cta: 'Start live demo',
     live: 'Live',
-    previewLabel: 'Case Review',
     miniTitle: 'Standard case', miniDesc: 'Crown · Zirconia · Germany',
-    miniVerdict: '\u2713 APPROVED', miniSub: 'Safe to proceed',
+    miniVerdict: 'APPROVED', miniSub: 'Safe to proceed',
     previewLink: 'Open demo →',
-    b1Title: 'Checks rules', b1Desc: 'CE marking, FDA clearance, ISO 13485 — automatically and traceably.',
-    b2Title: 'Blocks errors', b2Desc: 'Invalid jurisdictions and unavailable materials are stopped before handoff.',
+    b1Title: 'Checks rules', b1Desc: 'CE marking, FDA clearance, ISO 13485 — automatically.',
+    b2Title: 'Blocks errors', b2Desc: 'Invalid jurisdictions and missing material suitability are stopped.',
     b3Title: 'Documents decisions', b3Desc: 'Every approval and refusal is stored with its reason.',
   },
 };
@@ -187,10 +168,8 @@ function setLang(l) {
   const t = LP[l];
   document.getElementById('t-h1').innerHTML = t.h1;
   document.getElementById('t-sub').textContent = t.sub;
-  document.getElementById('t-cta-primary').textContent = t.ctaPrimary;
-  document.getElementById('t-cta-secondary').textContent = t.ctaSecondary;
+  document.getElementById('t-cta').textContent = t.cta;
   document.getElementById('t-live').textContent = t.live;
-  document.getElementById('t-preview-label').textContent = t.previewLabel;
   document.getElementById('t-mini-title').textContent = t.miniTitle;
   document.getElementById('t-mini-desc').textContent = t.miniDesc;
   document.getElementById('t-mini-verdict').textContent = t.miniVerdict;

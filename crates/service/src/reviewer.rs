@@ -18,7 +18,7 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
   }
   body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 20px 56px}
 
-  header{width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 32px}
+  header{width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 36px}
   .brand{font-size:.85rem;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
   .brand span{color:var(--green)}
   .lang-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
@@ -27,54 +27,52 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
 
   main{width:100%;max-width:440px}
 
-  /* ── SELECT ── */
-  h1{font-size:1.5rem;font-weight:800;line-height:1.25;margin-bottom:6px}
-  .subline{font-size:.88rem;color:var(--muted);margin-bottom:28px;line-height:1.5}
-  .scenario-label{font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
-  .scenario-cards{display:flex;flex-direction:column;gap:8px}
+  /* SELECT */
+  h1{font-size:1.4rem;font-weight:800;line-height:1.25;margin-bottom:6px}
+  .subline{font-size:.85rem;color:var(--muted);margin-bottom:28px;line-height:1.5}
+  .scenario-label{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+  .scenario-cards{display:flex;flex-direction:column;gap:2px}
   .scenario-card{
-    border:1px solid var(--border);border-radius:10px;
-    padding:14px 16px;cursor:pointer;
-    transition:border-color .15s;
+    border-radius:8px;padding:14px 14px;cursor:pointer;
+    transition:background .12s;
     display:flex;align-items:center;gap:12px;
   }
-  .scenario-card:hover{border-color:#3d4a5c}
-  .sc-icon{font-size:1.3rem;flex-shrink:0}
+  .scenario-card:hover{background:var(--surface)}
+  .sc-icon{font-size:1.2rem;flex-shrink:0}
   .sc-body{flex:1;min-width:0}
-  .sc-title{font-size:.92rem;font-weight:700;margin-bottom:2px}
-  .sc-desc{font-size:.78rem;color:var(--muted);line-height:1.4}
-  .sc-chip{flex-shrink:0;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.04em}
-  .chip-ok{color:#86efac}
-  .chip-block{color:#fca5a5}
+  .sc-title{font-size:.9rem;font-weight:700;margin-bottom:2px}
+  .sc-desc{font-size:.76rem;color:var(--muted);line-height:1.4}
+  .sc-chip{flex-shrink:0;font-size:.68rem;font-weight:700;letter-spacing:.04em}
+  .chip-ok{color:var(--green)}
+  .chip-block{color:var(--red)}
 
-  /* ── CHECK ── */
-  #phase-check{display:none;text-align:center;padding:56px 0}
-  .spinner{width:40px;height:40px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 28px}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .check-step{font-size:.95rem;font-weight:500;color:var(--muted);transition:opacity .25s;min-height:1.4em}
+  /* CHECK */
+  #phase-check{display:none;text-align:center;padding:72px 0}
+  .check-step{font-size:.9rem;color:var(--muted);transition:opacity .2s;min-height:1.4em}
   .check-step.fade{opacity:0}
 
-  /* ── RESULT ── */
-  #phase-result{display:none;animation:fadein .3s ease-out}
+  /* RESULT */
+  #phase-result{display:none;animation:fadein .25s ease-out}
   @keyframes fadein{from{opacity:0}to{opacity:1}}
-  .result-block{text-align:center;padding:40px 0 32px}
-  .result-icon{font-size:1.6rem;margin-bottom:8px;opacity:.7}
-  .result-verdict{font-size:3rem;font-weight:900;letter-spacing:.03em;line-height:1;margin-bottom:8px}
+  .result-block{text-align:center;padding:44px 0 32px}
+  .result-verdict{font-size:3.2rem;font-weight:900;letter-spacing:.03em;line-height:1;margin-bottom:8px}
   .result-ok .result-verdict{color:var(--green)}
   .result-blocked .result-verdict{color:var(--red)}
-  .result-sub{font-size:.9rem;color:var(--muted)}
+  .result-sub{font-size:.88rem;color:var(--muted)}
 
-  .result-sep{border:none;border-top:1px solid var(--border);margin:24px 0}
+  hr.sep{border:none;border-top:1px solid var(--border);margin:24px 0}
 
-  .grund-label{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
-  .grund-text{font-size:.95rem;color:var(--text);line-height:1.55;margin-bottom:20px}
+  .grund-label{font-size:.63rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+  .grund-text{font-size:.95rem;color:var(--text);line-height:1.5;margin-bottom:10px;font-weight:600}
+  .grund-impact{font-size:.82rem;color:var(--muted);line-height:1.5;font-style:italic;margin-bottom:20px}
 
-  .tech-toggle{background:none;border:none;color:var(--muted);font-size:.8rem;cursor:pointer;padding:0;margin-bottom:10px;text-decoration:underline;text-underline-offset:3px;display:block}
+  .tech-toggle{background:none;border:none;color:var(--border);font-size:.75rem;cursor:pointer;padding:0;margin-bottom:10px;text-decoration:underline;text-underline-offset:3px;display:block;transition:color .15s}
+  .tech-toggle:hover{color:var(--muted)}
   .tech-box{display:none;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px;overflow-x:auto}
   .tech-box.open{display:block}
-  .tech-box pre{font-size:.7rem;color:var(--muted);white-space:pre-wrap;word-break:break-all;font-family:'SF Mono','Fira Code',monospace}
+  .tech-box pre{font-size:.68rem;color:var(--muted);white-space:pre-wrap;word-break:break-all;font-family:'SF Mono','Fira Code',monospace}
 
-  .reset-btn{width:100%;padding:13px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;margin-top:4px}
+  .reset-btn{width:100%;padding:13px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
   .reset-btn:hover{border-color:#3d4a5c;color:var(--text)}
 
   #_legacy{display:none!important}
@@ -92,11 +90,9 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
 
 <main>
 
-<!-- PHASE: SELECT -->
 <div id="phase-select">
   <h1 id="t-h1">Fallprüfung<br>vor Fertigung</h1>
   <p class="subline" id="t-subline">Tippen Sie auf ein Szenario.</p>
-
   <div class="scenario-label" id="t-sc-label">Szenario wählen</div>
   <div class="scenario-cards">
     <div class="scenario-card" onclick="startFlow(0)">
@@ -126,29 +122,26 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
   </div>
 </div>
 
-<!-- PHASE: CHECK -->
 <div id="phase-check">
-  <div class="spinner"></div>
   <div class="check-step" id="check-step-text"></div>
 </div>
 
-<!-- PHASE: RESULT -->
 <div id="phase-result">
   <div class="result-block" id="result-block">
-    <div class="result-icon" id="result-icon"></div>
     <div class="result-verdict" id="result-verdict"></div>
     <div class="result-sub" id="result-sub"></div>
   </div>
 
-  <hr class="result-sep" id="result-sep">
+  <hr class="sep">
 
   <div id="result-reason">
     <div class="grund-label" id="t-grund-label">Grund</div>
     <div class="grund-text" id="grund-text"></div>
+    <div class="grund-impact" id="t-impact"></div>
   </div>
 
   <button class="tech-toggle" onclick="toggleTech()">
-    <span id="t-tech-toggle">Technische Details anzeigen</span>
+    <span id="t-tech-toggle">Technische Details</span>
   </button>
   <div class="tech-box" id="tech-box">
     <pre id="tech-content"></pre>
@@ -178,16 +171,17 @@ const T = {
     s0Title: 'Standardfall', s0Desc: 'Krone · Zirkon · Deutschland', s0Chip: 'Freigegeben',
     s1Title: 'Falsche Jurisdiktion', s1Desc: 'Krone · Zirkon · USA', s1Chip: 'Blockiert',
     s2Title: 'Kein passendes Labor', s2Desc: 'Brücke · E.max · Deutschland', s2Chip: 'Blockiert',
-    steps: ['Fall wird geprüft \u2026', 'Regeln werden geprüft \u2026', 'Labor wird abgeglichen \u2026', 'Nachvollziehbarkeit wird erstellt \u2026'],
+    checkStep: 'Prüfe Fall \u2026',
     verdictOk: 'FREIGEGEBEN', verdictBlock: 'BLOCKIERT',
     subOk: 'Weitergabe möglich', subBlock: 'Weitergabe nicht möglich',
     grundLabel: 'Grund',
+    impact: 'Dieser Fall wäre sonst in die Fertigung gegangen.',
     reasons: {
       no_jurisdiction_match: 'Jurisdiktion nicht zulässig',
       no_material_match: 'Kein passender Fertigungspartner',
       default: 'Eingabedaten unvollständig',
     },
-    techToggleShow: 'Technische Details anzeigen',
+    techToggle: 'Technische Details',
     techToggleHide: 'Technische Details ausblenden',
     reset: 'Anderen Fall prüfen',
   },
@@ -198,16 +192,17 @@ const T = {
     s0Title: 'Standard case', s0Desc: 'Crown · Zirconia · Germany', s0Chip: 'Approved',
     s1Title: 'Wrong jurisdiction', s1Desc: 'Crown · Zirconia · USA', s1Chip: 'Blocked',
     s2Title: 'No matching lab', s2Desc: 'Bridge · E.max · Germany', s2Chip: 'Blocked',
-    steps: ['Submitting case \u2026', 'Checking rules \u2026', 'Matching lab \u2026', 'Creating audit record \u2026'],
+    checkStep: 'Checking case \u2026',
     verdictOk: 'APPROVED', verdictBlock: 'BLOCKED',
     subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
     grundLabel: 'Reason',
+    impact: 'This case would otherwise have entered manufacturing.',
     reasons: {
       no_jurisdiction_match: 'Jurisdiction not allowed',
       no_material_match: 'No matching manufacturing partner',
       default: 'Input data incomplete',
     },
-    techToggleShow: 'Show technical details',
+    techToggle: 'Technical details',
     techToggleHide: 'Hide technical details',
     reset: 'Check another case',
   }
@@ -253,7 +248,8 @@ function applyLang() {
   document.getElementById('t-s2-desc').textContent = t.s2Desc;
   document.getElementById('t-s2-chip').textContent = t.s2Chip;
   document.getElementById('t-grund-label').textContent = t.grundLabel;
-  document.getElementById('t-tech-toggle').textContent = techOpen ? t.techToggleHide : t.techToggleShow;
+  document.getElementById('t-impact').textContent = t.impact;
+  document.getElementById('t-tech-toggle').textContent = techOpen ? t.techToggleHide : t.techToggle;
   document.getElementById('t-reset').textContent = t.reset;
 }
 
@@ -294,27 +290,24 @@ async function callAPIs(c) {
 }
 
 async function startFlow(i) {
-  const c = CASES[i];
   const t = T[lang];
-
-  const apiPromise = callAPIs(c);
+  const stepEl = document.getElementById('check-step-text');
+  stepEl.classList.remove('fade');
+  stepEl.textContent = t.checkStep;
 
   document.getElementById('phase-select').style.display = 'none';
   document.getElementById('phase-check').style.display = 'block';
   document.getElementById('phase-result').style.display = 'none';
 
-  const stepEl = document.getElementById('check-step-text');
-  for (let s = 0; s < t.steps.length; s++) {
-    stepEl.classList.remove('fade');
-    stepEl.textContent = t.steps[s];
-    await delay(220);
-    if (s < t.steps.length - 1) {
+  const [result] = await Promise.all([
+    callAPIs(CASES[i]),
+    (async () => {
+      await delay(700);
       stepEl.classList.add('fade');
-      await delay(80);
-    }
-  }
+      await delay(200);
+    })(),
+  ]);
 
-  const result = await apiPromise;
   showResult(result);
 }
 
@@ -326,35 +319,33 @@ function showResult(result) {
   const block = document.getElementById('result-block');
   if (result.ok) {
     block.className = 'result-block result-ok';
-    document.getElementById('result-icon').textContent = '\u2713';
     document.getElementById('result-verdict').textContent = t.verdictOk;
     document.getElementById('result-sub').textContent = t.subOk;
     document.getElementById('result-reason').style.display = 'none';
   } else {
     block.className = 'result-block result-blocked';
-    document.getElementById('result-icon').textContent = '\u2715';
     document.getElementById('result-verdict').textContent = t.verdictBlock;
     document.getElementById('result-sub').textContent = t.subBlock;
     const reasonKey = result.refusalCode in t.reasons ? result.refusalCode : 'default';
     document.getElementById('grund-text').textContent = t.reasons[reasonKey];
+    document.getElementById('t-impact').textContent = t.impact;
     document.getElementById('result-reason').style.display = 'block';
   }
 
   document.getElementById('tech-content').textContent = JSON.stringify(result.tech, null, 2);
   techOpen = false;
   document.getElementById('tech-box').classList.remove('open');
-  document.getElementById('t-tech-toggle').textContent = t.techToggleShow;
+  document.getElementById('t-tech-toggle').textContent = t.techToggle;
 }
 
 function toggleTech() {
   techOpen = !techOpen;
   document.getElementById('tech-box').classList.toggle('open', techOpen);
-  document.getElementById('t-tech-toggle').textContent = techOpen ? T[lang].techToggleHide : T[lang].techToggleShow;
+  document.getElementById('t-tech-toggle').textContent = techOpen ? T[lang].techToggleHide : T[lang].techToggle;
 }
 
 function reset() {
   techOpen = false;
-  document.getElementById('result-reason').style.display = 'block';
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-check').style.display = 'none';
   document.getElementById('phase-select').style.display = 'block';

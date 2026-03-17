@@ -1,0 +1,55 @@
+======================================
+POSTCAD BATCHED CAMPAIGN RUNNER
+======================================
+
+Repo: /home/matthias/projects/postcad
+
+Campaign file:
+--------------------------------------
+campaign name
+
+pilot: add --pilot-demo visualization flag
+
+files allowed to change
+
+examples/pilot/run_pilot.sh
+examples/pilot/README.md
+crates/service/tests/pilot_demo_flag_surface_tests.rs
+
+Claude prompt
+
+Add a `--pilot-demo` flag to examples/pilot/run_pilot.sh.
+
+Behavior:
+- When flag is passed, print a clean, deterministic pipeline visualization:
+  CAD
+  ↓
+  PostCAD routing
+  ↓
+  compliance verification
+  ↓
+  manufacturing dispatch
+  ↓
+  audit receipt
+- No side effects
+- No file writes
+- No network calls
+- Pure stdout only
+- Keep existing behavior unchanged if flag not used
+
+Add minimal README usage line.
+
+Add a surface test that checks:
+- script accepts --pilot-demo
+- output contains "PostCAD routing" and "audit receipt"
+
+test command
+
+cd ~/projects/postcad && bash examples/pilot/run_pilot.sh --pilot-demo | grep -E "PostCAD routing|audit receipt"
+
+commit message
+
+pilot: add --pilot-demo visualization flag
+
+--------------------------------------
+

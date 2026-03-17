@@ -17,55 +17,53 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
   --dim:#374151;
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 24px 64px}
-
-header{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 40px}
+header{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 44px}
 .brand{font-size:.78rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
 .brand span{color:var(--sub)}
 .lang-toggle{display:flex;gap:1px}
 .lang-btn{padding:3px 9px;font-size:.7rem;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:4px;transition:color .15s,border-color .15s}
 .lang-btn.active{color:var(--sub);border-color:var(--dim)}
-
 main{width:100%;max-width:560px}
 
-/* SELECT */
-.page-h1{font-size:1.6rem;font-weight:900;line-height:1.15;margin-bottom:8px;letter-spacing:-.01em}
-.page-sub{font-size:.85rem;color:var(--sub);margin-bottom:36px;line-height:1.55}
-.scenario-label{font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
-.scenario-rows{display:flex;flex-direction:column}
-.scenario-row{
-  display:flex;align-items:center;gap:16px;
-  padding:18px 0;border-top:1px solid var(--border);cursor:pointer;
-  transition:opacity .12s;
-}
-.scenario-row:last-child{border-bottom:1px solid var(--border)}
-.scenario-row:hover{opacity:.65}
-.sc-body{flex:1;min-width:0}
-.sc-title{font-size:.95rem;font-weight:700;margin-bottom:3px}
-.sc-desc{font-size:.78rem;color:var(--sub)}
-.sc-signal{font-size:.72rem;font-weight:700;flex-shrink:0}
-.sig-ok{color:var(--green)}
-.sig-block{color:var(--red)}
+/* Upload */
+.upload-zone{border:1px dashed var(--border);border-radius:8px;padding:40px 20px;text-align:center;cursor:pointer;display:block;transition:border-color .15s;margin-bottom:14px;text-decoration:none;color:inherit}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--sub)}
+.upload-icon{font-size:1.3rem;color:var(--dim);margin-bottom:10px}
+.upload-title{font-size:.9rem;font-weight:700;margin-bottom:4px}
+.upload-sub{font-size:.76rem;color:var(--sub)}
+.demo-files{display:flex;gap:8px;flex-wrap:wrap}
+.demo-file-btn{padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--sub);font-size:.75rem;font-family:'SF Mono','Fira Code',monospace;cursor:pointer;transition:border-color .15s,color .15s}
+.demo-file-btn:hover{border-color:var(--sub);color:var(--text)}
 
-/* CHECK */
-#phase-check{display:none;padding:72px 0;text-align:center}
-.check-text{font-size:.9rem;color:var(--sub);transition:opacity .2s}
-.check-text.fade{opacity:0}
+/* Processing */
+#phase-processing{display:none;padding:48px 0}
+.proc-filename{font-size:.73rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;margin-bottom:18px}
+.proc-step{font-size:.85rem;color:var(--sub);padding:4px 0;opacity:0;transition:opacity .15s}
+.proc-step.visible{opacity:1}
 
-/* RESULT */
-#phase-result{display:none;padding:48px 0 0;animation:fadein .28s ease-out}
+/* Result */
+#phase-result{display:none;animation:fadein .25s ease-out}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
-.result-verdict{font-size:3.6rem;font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:8px}
-.result-ok .result-verdict{color:var(--green)}
-.result-blocked .result-verdict{color:var(--red)}
-.result-sub{font-size:.88rem;color:var(--sub);margin-bottom:36px}
-.result-reason{margin-bottom:36px}
-.result-reason-text{font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:8px}
-.result-impact{font-size:.82rem;color:var(--sub);font-style:italic}
-.reset-btn{
-  background:none;border:1px solid var(--border);border-radius:8px;
-  color:var(--sub);font-size:.85rem;font-weight:600;
-  padding:12px 20px;cursor:pointer;transition:border-color .15s,color .15s;
-}
+.res-section{padding:20px 0;border-top:1px solid var(--border)}
+.res-label{font-size:.6rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:12px}
+.case-proc{font-size:.95rem;font-weight:700;margin-bottom:8px}
+.case-row{font-size:.82rem;color:var(--sub);margin-bottom:3px;display:flex;gap:6px}
+.case-row-lbl{color:var(--dim)}
+.result-verdict{font-size:3rem;font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:6px}
+.verdict-ok{color:var(--green)}
+.verdict-blocked{color:var(--red)}
+.result-sub{font-size:.85rem;color:var(--sub)}
+.check-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:.83rem}
+.check-row-lbl{color:var(--sub)}
+.chk-ok{color:var(--green);font-weight:700}
+.chk-fail{color:var(--red);font-weight:700}
+.check-ergebnis{font-size:.75rem;color:var(--dim);margin-top:10px}
+.lab-item{font-size:.83rem;color:var(--sub);padding:3px 0}
+.lab-item::before{content:'— ';color:var(--dim)}
+.audit-row{display:flex;font-size:.8rem;padding:3px 0;gap:12px}
+.audit-row-lbl{color:var(--dim);flex-shrink:0;min-width:72px}
+.audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.73rem}
+.reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);font-size:.85rem;font-weight:600;padding:12px 20px;cursor:pointer;transition:border-color .15s,color .15s}
 .reset-btn:hover{border-color:var(--sub);color:var(--text)}
 
 #_legacy{display:none!important}
@@ -83,50 +81,77 @@ main{width:100%;max-width:560px}
 
 <main>
 
-<div id="phase-select">
-  <h1 class="page-h1" id="t-h1">Fallprüfung<br>vor Fertigung</h1>
-  <p class="page-sub" id="t-sub">Tippen Sie auf ein Szenario.</p>
-  <div class="scenario-label" id="t-sc-label">Szenario wählen</div>
-  <div class="scenario-rows">
-    <div class="scenario-row" onclick="startFlow(0)">
-      <div class="sc-body">
-        <div class="sc-title" id="t-s0-title">Zulässig</div>
-        <div class="sc-desc" id="t-s0-desc">Krone · Zirkon · Deutschland</div>
-      </div>
-      <div class="sc-signal sig-ok" id="t-s0-chip">Freigegeben</div>
-    </div>
-    <div class="scenario-row" onclick="startFlow(1)">
-      <div class="sc-body">
-        <div class="sc-title" id="t-s1-title">Nicht zulässig</div>
-        <div class="sc-desc" id="t-s1-desc">Krone · Zirkon · USA</div>
-      </div>
-      <div class="sc-signal sig-block" id="t-s1-chip">Blockiert</div>
-    </div>
-    <div class="scenario-row" onclick="startFlow(2)">
-      <div class="sc-body">
-        <div class="sc-title" id="t-s2-title">Nicht erfüllbar</div>
-        <div class="sc-desc" id="t-s2-desc">Brücke · E.max · Deutschland</div>
-      </div>
-      <div class="sc-signal sig-block" id="t-s2-chip">Blockiert</div>
+  <div id="phase-upload">
+    <label class="upload-zone" id="upload-zone" for="file-input">
+      <div class="upload-icon">↑</div>
+      <div class="upload-title" id="t-upload-title">CAD-Datei hochladen</div>
+      <div class="upload-sub" id="t-upload-sub">Datei hier ablegen oder auswählen (STL, OBJ)</div>
+    </label>
+    <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
+    <div class="demo-files">
+      <button class="demo-file-btn" onclick="loadDemo('Krone_3-6_DE.stl')">Krone_3-6_DE.stl</button>
+      <button class="demo-file-btn" onclick="loadDemo('Bruecke_USA.stl')">Bruecke_USA.stl</button>
     </div>
   </div>
-</div>
 
-<div id="phase-check">
-  <div class="check-text" id="check-text"></div>
-</div>
+  <div id="phase-processing">
+    <div class="proc-filename" id="proc-filename"></div>
+    <div class="proc-step" id="pstep-0"></div>
+    <div class="proc-step" id="pstep-1"></div>
+    <div class="proc-step" id="pstep-2"></div>
+    <div class="proc-step" id="pstep-3"></div>
+  </div>
 
-<div id="phase-result">
-  <div id="result-block">
-    <div class="result-verdict" id="result-verdict"></div>
-    <div class="result-sub" id="result-sub"></div>
+  <div id="phase-result">
+
+    <div class="res-section">
+      <div class="res-label" id="t-case-label">Fall erkannt</div>
+      <div class="case-proc" id="res-proc"></div>
+      <div class="case-row"><span class="case-row-lbl" id="t-material-lbl">Material</span><span id="res-material"></span></div>
+      <div class="case-row"><span class="case-row-lbl" id="t-land-lbl">Land</span><span id="res-land"></span></div>
+      <div class="case-row"><span class="case-row-lbl" id="t-indication-lbl">Indikation</span><span id="res-indication"></span></div>
+    </div>
+
+    <div class="res-section">
+      <div class="res-label" id="t-decision-label">Entscheidung</div>
+      <div class="result-verdict" id="result-verdict"></div>
+      <div class="result-sub" id="result-sub"></div>
+    </div>
+
+    <div class="res-section">
+      <div class="res-label" id="t-pruefung-label">Prüfung</div>
+      <div class="check-row">
+        <span class="check-row-lbl" id="t-chk-material">Material zugelassen</span>
+        <span id="chk-material"></span>
+      </div>
+      <div class="check-row">
+        <span class="check-row-lbl" id="t-chk-jurisdiction">Jurisdiktion zulässig</span>
+        <span id="chk-jurisdiction"></span>
+      </div>
+      <div class="check-row">
+        <span class="check-row-lbl" id="t-chk-manufacturing">Fertigung verfügbar</span>
+        <span id="chk-manufacturing"></span>
+      </div>
+      <div class="check-ergebnis" id="check-ergebnis"></div>
+    </div>
+
+    <div class="res-section" id="labs-section" style="display:none">
+      <div class="res-label" id="t-fertigung-label">Mögliche Fertigung</div>
+      <div id="labs-list"></div>
+    </div>
+
+    <div class="res-section">
+      <div class="res-label" id="t-audit-label">Audit</div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-audit-id-lbl">Audit-ID</span><span class="audit-row-val" id="audit-id"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-audit-time-lbl">Zeitpunkt</span><span class="audit-row-val" id="audit-time"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-audit-status-lbl">Status</span><span class="audit-row-val" id="audit-status"></span></div>
+    </div>
+
+    <div class="res-section" style="border-top:none;padding-top:8px">
+      <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neue Datei hochladen</span></button>
+    </div>
+
   </div>
-  <div id="result-reason">
-    <div class="result-reason-text" id="grund-text"></div>
-    <div class="result-impact" id="t-impact"></div>
-  </div>
-  <button class="reset-btn" onclick="reset()"><span id="t-reset">Anderen Fall prüfen</span></button>
-</div>
 
 </main>
 
@@ -141,57 +166,62 @@ main{width:100%;max-width:560px}
 <script>
 const T = {
   DE: {
-    h1: 'Fallprüfung<br>vor Fertigung',
-    sub: 'Tippen Sie auf ein Szenario.',
-    scLabel: 'Szenario wählen',
-    s0Title: 'Zulässig', s0Desc: 'Krone · Zirkon · Deutschland', s0Chip: 'Freigegeben',
-    s1Title: 'Nicht zulässig', s1Desc: 'Krone · Zirkon · USA', s1Chip: 'Blockiert',
-    s2Title: 'Nicht erfüllbar', s2Desc: 'Brücke · E.max · Deutschland', s2Chip: 'Blockiert',
-    checkStep: 'Prüfe Fall \u2026',
+    uploadTitle: 'CAD-Datei hochladen',
+    uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
+    procSteps: ['Datei erkannt', 'Falldaten werden gelesen', 'Routing wird gepr\u00fcft', 'Entscheidung wird erstellt'],
+    caseLabel: 'Fall erkannt',
+    materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
+    decisionLabel: 'Entscheidung',
     verdictOk: 'FREIGEGEBEN', verdictBlock: 'BLOCKIERT',
-    subOk: 'Weitergabe möglich', subBlock: 'Weitergabe nicht möglich',
-    impact: 'Dieser Fall wäre sonst in die Fertigung gegangen.',
-    reasons: {
-      no_jurisdiction_match: 'Jurisdiktion nicht zulässig',
-      no_material_match: 'Kein passender Fertigungspartner',
-      default: 'Eingabedaten unvollständig',
-    },
-    reset: 'Anderen Fall prüfen',
+    subOk: 'Weitergabe m\u00f6glich', subBlock: 'Weitergabe nicht m\u00f6glich',
+    pruefungLabel: 'Pr\u00fcfung',
+    chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Fertigung verf\u00fcgbar',
+    ergebnisOk: 'Ergebnis: Freigegeben', ergebnisBlock: 'Ergebnis: Blockiert',
+    fertigungLabel: 'M\u00f6gliche Fertigung',
+    auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
+    reset: 'Neue Datei hochladen',
   },
   EN: {
-    h1: 'Pre-Manufacturing<br>Case Review',
-    sub: 'Tap a scenario to run it.',
-    scLabel: 'Choose a scenario',
-    s0Title: 'Permissible', s0Desc: 'Crown · Zirconia · Germany', s0Chip: 'Approved',
-    s1Title: 'Not permissible', s1Desc: 'Crown · Zirconia · USA', s1Chip: 'Blocked',
-    s2Title: 'Cannot be fulfilled', s2Desc: 'Bridge · E.max · Germany', s2Chip: 'Blocked',
-    checkStep: 'Checking case \u2026',
+    uploadTitle: 'Upload CAD file',
+    uploadSub: 'Drop file here or select (STL, OBJ)',
+    procSteps: ['File detected', 'Case data being read', 'Routing being checked', 'Decision being created'],
+    caseLabel: 'Case detected',
+    materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
+    decisionLabel: 'Decision',
     verdictOk: 'APPROVED', verdictBlock: 'BLOCKED',
     subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
-    impact: 'This case would otherwise have entered manufacturing.',
-    reasons: {
-      no_jurisdiction_match: 'Jurisdiction not allowed',
-      no_material_match: 'No matching manufacturing partner',
-      default: 'Input data incomplete',
-    },
-    reset: 'Check another case',
+    pruefungLabel: 'Checks',
+    chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
+    ergebnisOk: 'Result: Approved', ergebnisBlock: 'Result: Blocked',
+    fertigungLabel: 'Manufacturing options',
+    auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
+    reset: 'Upload new file',
   },
 };
 
-const CASES = [
-  {
-    pilot_case:{case_id:'f1000001',patient_ref:'P-001',procedure_type:'Crown',material:'Zirconia',file_type:'STL',source_country:'DE',destination_country:'DE'},
-    routing_config:{strategy:'HighestPriority',jurisdiction:'DE'},
+const FILE_CASES = {
+  'krone_3-6_de.stl': {
+    proc: 'Krone \u00b7 Zahn 3\u20136',
+    material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
+    ok: true,
+    checks: {material: true, jurisdiction: true, manufacturing: true},
+    labs: ['Labor Berlin', 'Labor M\u00fcnchen', 'Industriepool EU'],
   },
-  {
-    pilot_case:{case_id:'f1000002',patient_ref:'P-002',procedure_type:'Crown',material:'Zirconia',file_type:'STL',source_country:'US',destination_country:'US'},
-    routing_config:{strategy:'HighestPriority',jurisdiction:'US'},
+  'bruecke_usa.stl': {
+    proc: 'Br\u00fccke',
+    material: 'Zirkon', land: 'USA', indication: 'Standardversorgung',
+    ok: false,
+    checks: {material: true, jurisdiction: false, manufacturing: true},
+    labs: [],
   },
-  {
-    pilot_case:{case_id:'f1000003',patient_ref:'P-003',procedure_type:'Bridge',material:'Emax',file_type:'STL',source_country:'DE',destination_country:'DE'},
-    routing_config:{strategy:'HighestPriority',jurisdiction:'DE'},
-  },
-];
+};
+
+function getCaseData(filename) {
+  return FILE_CASES[filename.toLowerCase()] || {
+    proc: filename, material: '\u2014', land: '\u2014', indication: '\u2014',
+    ok: false, checks: {material: false, jurisdiction: false, manufacturing: false}, labs: [],
+  };
+}
 
 let lang = 'DE';
 
@@ -200,94 +230,117 @@ function setLang(l) {
   document.getElementById('btn-de').classList.toggle('active', l === 'DE');
   document.getElementById('btn-en').classList.toggle('active', l === 'EN');
   const t = T[l];
-  document.getElementById('t-h1').innerHTML = t.h1;
-  document.getElementById('t-sub').textContent = t.sub;
-  document.getElementById('t-sc-label').textContent = t.scLabel;
-  document.getElementById('t-s0-title').textContent = t.s0Title;
-  document.getElementById('t-s0-desc').textContent = t.s0Desc;
-  document.getElementById('t-s0-chip').textContent = t.s0Chip;
-  document.getElementById('t-s1-title').textContent = t.s1Title;
-  document.getElementById('t-s1-desc').textContent = t.s1Desc;
-  document.getElementById('t-s1-chip').textContent = t.s1Chip;
-  document.getElementById('t-s2-title').textContent = t.s2Title;
-  document.getElementById('t-s2-desc').textContent = t.s2Desc;
-  document.getElementById('t-s2-chip').textContent = t.s2Chip;
+  document.getElementById('t-upload-title').textContent = t.uploadTitle;
+  document.getElementById('t-upload-sub').textContent = t.uploadSub;
+  document.getElementById('t-case-label').textContent = t.caseLabel;
+  document.getElementById('t-material-lbl').textContent = t.materialLbl;
+  document.getElementById('t-land-lbl').textContent = t.landLbl;
+  document.getElementById('t-indication-lbl').textContent = t.indicationLbl;
+  document.getElementById('t-decision-label').textContent = t.decisionLabel;
+  document.getElementById('t-pruefung-label').textContent = t.pruefungLabel;
+  document.getElementById('t-chk-material').textContent = t.chkMaterial;
+  document.getElementById('t-chk-jurisdiction').textContent = t.chkJurisdiction;
+  document.getElementById('t-chk-manufacturing').textContent = t.chkManufacturing;
+  document.getElementById('t-fertigung-label').textContent = t.fertigungLabel;
+  document.getElementById('t-audit-label').textContent = t.auditLabel;
+  document.getElementById('t-audit-id-lbl').textContent = t.auditIdLbl;
+  document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
+  document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
   document.getElementById('t-reset').textContent = t.reset;
 }
 
-async function callAPIs(c) {
-  try {
-    const routeRes = await fetch('/pilot/route-normalized', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(c),
-    });
-    const routeData = await routeRes.json();
-    if (routeData.outcome !== 'routed') {
-      return {ok:false, refusalCode: routeData.refusal_code || 'default'};
-    }
-    const verifyRes = await fetch('/verify', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(routeData.receipt || routeData),
-    });
-    const verifyData = await verifyRes.json();
-    try {
-      await fetch('/dispatch/create', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({receipt_hash: verifyData.receipt_hash || verifyData.hash || 'unknown'}),
-      });
-    } catch(_) {}
-    return {ok:true, refusalCode:'ok'};
-  } catch(e) {
-    return {ok:false, refusalCode:'default'};
-  }
+function onFileInput(input) {
+  if (input.files[0]) { loadDemo(input.files[0].name); input.value = ''; }
 }
 
-async function startFlow(i) {
-  const t = T[lang];
-  const checkEl = document.getElementById('check-text');
-  checkEl.classList.remove('fade');
-  checkEl.textContent = t.checkStep;
+function loadDemo(filename) {
+  startProcessing(filename);
+}
 
-  document.getElementById('phase-select').style.display = 'none';
-  document.getElementById('phase-check').style.display = 'block';
+async function startProcessing(filename) {
+  const t = T[lang];
+  document.getElementById('proc-filename').textContent = filename;
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById('pstep-' + i);
+    el.textContent = t.procSteps[i];
+    el.classList.remove('visible');
+  }
+  document.getElementById('phase-upload').style.display = 'none';
+  document.getElementById('phase-processing').style.display = 'block';
   document.getElementById('phase-result').style.display = 'none';
 
-  const [result] = await Promise.all([
-    callAPIs(CASES[i]),
-    (async () => { await delay(700); checkEl.classList.add('fade'); await delay(200); })(),
-  ]);
-
-  showResult(result);
+  for (let i = 0; i < 4; i++) {
+    await delay(i === 0 ? 80 : 260);
+    document.getElementById('pstep-' + i).classList.add('visible');
+  }
+  await delay(220);
+  showResult(filename);
 }
 
-function showResult(result) {
+function showResult(filename) {
   const t = T[lang];
-  document.getElementById('phase-check').style.display = 'none';
-  document.getElementById('phase-result').style.display = 'block';
+  const c = getCaseData(filename);
 
-  const block = document.getElementById('result-block');
-  if (result.ok) {
-    block.className = 'result-ok';
-    document.getElementById('result-verdict').textContent = t.verdictOk;
+  document.getElementById('res-proc').textContent = c.proc;
+  document.getElementById('res-material').textContent = c.material;
+  document.getElementById('res-land').textContent = c.land;
+  document.getElementById('res-indication').textContent = c.indication;
+
+  const vEl = document.getElementById('result-verdict');
+  if (c.ok) {
+    vEl.className = 'result-verdict verdict-ok';
+    vEl.textContent = t.verdictOk;
     document.getElementById('result-sub').textContent = t.subOk;
-    document.getElementById('result-reason').style.display = 'none';
   } else {
-    block.className = 'result-blocked';
-    document.getElementById('result-verdict').textContent = t.verdictBlock;
+    vEl.className = 'result-verdict verdict-blocked';
+    vEl.textContent = t.verdictBlock;
     document.getElementById('result-sub').textContent = t.subBlock;
-    const key = result.refusalCode in t.reasons ? result.refusalCode : 'default';
-    document.getElementById('grund-text').textContent = t.reasons[key];
-    document.getElementById('t-impact').textContent = t.impact;
-    document.getElementById('result-reason').style.display = 'block';
   }
+
+  setCheck('chk-material', c.checks.material);
+  setCheck('chk-jurisdiction', c.checks.jurisdiction);
+  setCheck('chk-manufacturing', c.checks.manufacturing);
+  document.getElementById('check-ergebnis').textContent = c.ok ? t.ergebnisOk : t.ergebnisBlock;
+
+  const labsSec = document.getElementById('labs-section');
+  if (c.ok && c.labs.length > 0) {
+    labsSec.style.display = 'block';
+    document.getElementById('labs-list').innerHTML = c.labs.map(l => '<div class="lab-item">' + l + '</div>').join('');
+  } else {
+    labsSec.style.display = 'none';
+  }
+
+  document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
+  document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('audit-status').textContent = c.ok ? t.verdictOk : t.verdictBlock;
+
+  document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-result').style.display = 'block';
 }
 
-function reset() {
+function setCheck(id, pass) {
+  const el = document.getElementById(id);
+  el.textContent = pass ? '\u2713' : '\u2715';
+  el.className = pass ? 'chk-ok' : 'chk-fail';
+}
+
+function resetDemo() {
   document.getElementById('phase-result').style.display = 'none';
-  document.getElementById('phase-check').style.display = 'none';
-  document.getElementById('phase-select').style.display = 'block';
+  document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-upload').style.display = 'block';
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+(function() {
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over'); });
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) loadDemo(e.dataTransfer.files[0].name);
+  });
+})();
 
 function loadFixtures(){}
 function routeNormalized(){}

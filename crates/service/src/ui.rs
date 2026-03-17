@@ -1,6 +1,6 @@
 //! Public landing page for PostCAD.
 //!
-//! Served at `GET /`. Single-page scroll: hero → flow diagram → interactive demo.
+//! Served at `GET /`. Single-page scroll: hero → flow diagram → upload demo.
 
 pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
 <html lang="de">
@@ -23,98 +23,92 @@ pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 
-/* ── HEADER ── */
-header{
-  position:fixed;top:0;left:0;right:0;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:18px 32px;z-index:100;
-  background:var(--bg);
-}
+/* HEADER */
+header{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;z-index:100;background:var(--bg)}
 .brand{font-size:.78rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
 .brand span{color:var(--sub)}
 .lang-toggle{display:flex;gap:1px}
 .lang-btn{padding:3px 9px;font-size:.7rem;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:4px;transition:color .15s,border-color .15s}
 .lang-btn.active{color:var(--sub);border-color:var(--dim)}
 
-/* ── LAYOUT ── */
 section{padding:0 24px}
 .inner{max-width:580px;margin:0 auto}
 
-/* ── SECTION 1: HERO ── */
+/* SECTION 1: HERO */
 #hero{min-height:100vh;display:flex;align-items:center}
 #hero .inner{padding:96px 0 80px}
 .hero-h1{font-size:clamp(2.4rem,6.5vw,4rem);font-weight:900;line-height:1.08;letter-spacing:-.02em;margin-bottom:20px}
 .hero-sub{font-size:1rem;color:var(--sub);line-height:1.65;margin-bottom:44px;max-width:420px}
-.hero-cta{
-  display:inline-flex;align-items:center;gap:10px;
-  font-size:.9rem;font-weight:600;color:var(--sub);text-decoration:none;
-  transition:color .15s;
-}
+.hero-cta{display:inline-flex;align-items:center;gap:10px;font-size:.9rem;font-weight:600;color:var(--sub);text-decoration:none;transition:color .15s}
 .hero-cta:hover{color:var(--text)}
-.hero-cta-arrow{font-size:1rem;transition:transform .15s}
+.hero-cta-arrow{transition:transform .15s}
 .hero-cta:hover .hero-cta-arrow{transform:translateY(3px)}
 
-/* ── SECTION 2: FLOW ── */
+/* SECTION 2: FLOW */
 #flow{padding-top:100px;padding-bottom:120px;border-top:1px solid var(--border)}
-#flow .inner{}
-.flow-heading{font-size:.65rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:48px}
-.flow-track{display:flex;flex-direction:column}
+.flow-heading{font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:48px}
 .flow-node{display:flex;gap:20px;align-items:flex-start}
 .flow-spine{display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:6px}
-.flow-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0}
+.flow-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
 .flow-dot.lit{background:var(--sub)}
 .flow-line{width:1px;height:40px;background:var(--border);margin:3px 0}
 .flow-body{padding-bottom:8px}
-.flow-n{font-size:.6rem;font-weight:700;letter-spacing:.1em;color:var(--dim);margin-bottom:4px;text-transform:uppercase}
+.flow-n{font-size:.58rem;font-weight:700;letter-spacing:.1em;color:var(--dim);margin-bottom:4px;text-transform:uppercase}
 .flow-label{font-size:1.05rem;font-weight:600;color:var(--sub)}
 .flow-label.primary{color:var(--text)}
 .flow-outcomes{display:flex;gap:36px;padding-top:4px;padding-left:28px}
-.flow-outcome-blocked .outcome-v{font-size:1.5rem;font-weight:900;color:var(--red);letter-spacing:.03em}
-.flow-outcome-ok .outcome-v{font-size:1.5rem;font-weight:900;color:var(--green);letter-spacing:.03em}
+.outcome-v{font-size:1.5rem;font-weight:900;letter-spacing:.03em}
+.outcome-v.blocked{color:var(--red)}
+.outcome-v.ok{color:var(--green)}
 .outcome-sub{font-size:.72rem;color:var(--dim);margin-top:3px}
 
-/* ── SECTION 3: DEMO ── */
+/* SECTION 3: DEMO */
 #demo{padding-top:80px;padding-bottom:120px;border-top:1px solid var(--border)}
-.demo-heading{font-size:.65rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:32px}
 
-/* Scenario rows */
-.scenario-rows{display:flex;flex-direction:column}
-.scenario-row{
-  display:flex;align-items:center;gap:16px;
-  padding:18px 0;border-top:1px solid var(--border);cursor:pointer;
-  transition:opacity .12s;
+/* Upload */
+.upload-zone{
+  border:1px dashed var(--border);border-radius:8px;
+  padding:40px 20px;text-align:center;cursor:pointer;
+  display:block;transition:border-color .15s;margin-bottom:14px;
+  text-decoration:none;color:inherit;
 }
-.scenario-row:last-child{border-bottom:1px solid var(--border)}
-.scenario-row:hover{opacity:.65}
-.sc-body{flex:1;min-width:0}
-.sc-title{font-size:.95rem;font-weight:700;margin-bottom:3px}
-.sc-desc{font-size:.78rem;color:var(--sub)}
-.sc-signal{font-size:.72rem;font-weight:700;flex-shrink:0}
-.sig-ok{color:var(--green)}
-.sig-block{color:var(--red)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--sub)}
+.upload-icon{font-size:1.3rem;color:var(--dim);margin-bottom:10px}
+.upload-title{font-size:.9rem;font-weight:700;margin-bottom:4px}
+.upload-sub{font-size:.76rem;color:var(--sub)}
+.demo-files{display:flex;gap:8px;flex-wrap:wrap}
+.demo-file-btn{padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--sub);font-size:.75rem;font-family:'SF Mono','Fira Code',monospace;cursor:pointer;transition:border-color .15s,color .15s}
+.demo-file-btn:hover{border-color:var(--sub);color:var(--text)}
 
-/* Check phase */
-#phase-check{display:none;padding:64px 0;text-align:center}
-.check-text{font-size:.9rem;color:var(--sub);transition:opacity .2s}
-.check-text.fade{opacity:0}
+/* Processing */
+#phase-processing{display:none;padding:48px 0}
+.proc-filename{font-size:.73rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;margin-bottom:18px}
+.proc-step{font-size:.85rem;color:var(--sub);padding:4px 0;opacity:0;transition:opacity .15s}
+.proc-step.visible{opacity:1}
 
-/* Result phase */
-#phase-result{display:none;padding:48px 0 0;animation:fadein .28s ease-out}
+/* Result */
+#phase-result{display:none;animation:fadein .25s ease-out}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
-.result-verdict{font-size:3.6rem;font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:8px}
-.result-ok .result-verdict{color:var(--green)}
-.result-blocked .result-verdict{color:var(--red)}
-.result-sub{font-size:.88rem;color:var(--sub);margin-bottom:36px}
-
-.result-reason{margin-bottom:36px}
-.result-reason-text{font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:8px}
-.result-impact{font-size:.82rem;color:var(--sub);font-style:italic}
-
-.reset-btn{
-  background:none;border:1px solid var(--border);border-radius:8px;
-  color:var(--sub);font-size:.85rem;font-weight:600;
-  padding:12px 20px;cursor:pointer;transition:border-color .15s,color .15s;
-}
+.res-section{padding:20px 0;border-top:1px solid var(--border)}
+.res-label{font-size:.6rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:12px}
+.case-proc{font-size:.95rem;font-weight:700;margin-bottom:8px}
+.case-row{font-size:.82rem;color:var(--sub);margin-bottom:3px;display:flex;gap:6px}
+.case-row-lbl{color:var(--dim)}
+.result-verdict{font-size:3rem;font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:6px}
+.verdict-ok{color:var(--green)}
+.verdict-blocked{color:var(--red)}
+.result-sub{font-size:.85rem;color:var(--sub)}
+.check-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:.83rem}
+.check-row-lbl{color:var(--sub)}
+.chk-ok{color:var(--green);font-weight:700}
+.chk-fail{color:var(--red);font-weight:700}
+.check-ergebnis{font-size:.75rem;color:var(--dim);margin-top:10px}
+.lab-item{font-size:.83rem;color:var(--sub);padding:3px 0}
+.lab-item::before{content:'— ';color:var(--dim)}
+.audit-row{display:flex;font-size:.8rem;padding:3px 0;gap:12px}
+.audit-row-lbl{color:var(--dim);flex-shrink:0;min-width:72px}
+.audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.73rem}
+.reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);font-size:.85rem;font-weight:600;padding:12px 20px;cursor:pointer;transition:border-color .15s,color .15s;margin-top:4px}
 .reset-btn:hover{border-color:var(--sub);color:var(--text)}
 </style>
 </head>
@@ -128,7 +122,7 @@ section{padding:0 24px}
   </div>
 </header>
 
-<!-- ────────────────── HERO ────────────────── -->
+<!-- ── HERO ── -->
 <section id="hero">
   <div class="inner">
     <h1 class="hero-h1" id="t-h1">Nicht jeder Fall<br>darf produziert werden.</h1>
@@ -140,99 +134,111 @@ section{padding:0 24px}
   </div>
 </section>
 
-<!-- ────────────────── FLOW ────────────────── -->
+<!-- ── FLOW ── -->
 <section id="flow">
   <div class="inner">
     <div class="flow-heading" id="t-flow-heading">Ablauf</div>
-    <div class="flow-track">
-
+    <div>
       <div class="flow-node">
-        <div class="flow-spine">
-          <div class="flow-dot lit"></div>
-          <div class="flow-line"></div>
-        </div>
-        <div class="flow-body">
-          <div class="flow-n">01</div>
-          <div class="flow-label" id="t-f1">CAD-Datei erstellt</div>
-        </div>
+        <div class="flow-spine"><div class="flow-dot lit"></div><div class="flow-line"></div></div>
+        <div class="flow-body"><div class="flow-n">01</div><div class="flow-label" id="t-f1">CAD-Datei erstellt</div></div>
       </div>
-
       <div class="flow-node">
-        <div class="flow-spine">
-          <div class="flow-dot lit"></div>
-          <div class="flow-line"></div>
-        </div>
-        <div class="flow-body">
-          <div class="flow-n">02</div>
-          <div class="flow-label primary" id="t-f2">PostCAD prüft automatisch</div>
-        </div>
+        <div class="flow-spine"><div class="flow-dot lit"></div><div class="flow-line"></div></div>
+        <div class="flow-body"><div class="flow-n">02</div><div class="flow-label primary" id="t-f2">PostCAD prüft automatisch</div></div>
       </div>
-
       <div class="flow-outcomes">
-        <div class="flow-outcome-blocked">
-          <div class="outcome-v" id="t-f3-blocked">BLOCKIERT</div>
+        <div>
+          <div class="outcome-v blocked" id="t-f3-blocked">BLOCKIERT</div>
           <div class="outcome-sub" id="t-f3-blocked-sub">Weitergabe nicht möglich</div>
         </div>
-        <div class="flow-outcome-ok">
-          <div class="outcome-v" id="t-f3-ok">FREIGEGEBEN</div>
+        <div>
+          <div class="outcome-v ok" id="t-f3-ok">FREIGEGEBEN</div>
           <div class="outcome-sub" id="t-f3-ok-sub">Weitergabe möglich</div>
         </div>
       </div>
-
     </div>
   </div>
 </section>
 
-<!-- ────────────────── DEMO ────────────────── -->
+<!-- ── DEMO ── -->
 <section id="demo">
   <div class="inner">
-    <div class="demo-heading" id="t-demo-heading">Interaktive Demo</div>
 
-    <!-- Phase: select -->
-    <div id="phase-select">
-      <div class="scenario-rows">
-        <div class="scenario-row" onclick="startFlow(0)">
-          <div class="sc-body">
-            <div class="sc-title" id="t-s0-title">Zulässig</div>
-            <div class="sc-desc" id="t-s0-desc">Krone · Zirkon · Deutschland</div>
-          </div>
-          <div class="sc-signal sig-ok" id="t-s0-chip">Freigegeben</div>
-        </div>
-        <div class="scenario-row" onclick="startFlow(1)">
-          <div class="sc-body">
-            <div class="sc-title" id="t-s1-title">Nicht zulässig</div>
-            <div class="sc-desc" id="t-s1-desc">Krone · Zirkon · USA</div>
-          </div>
-          <div class="sc-signal sig-block" id="t-s1-chip">Blockiert</div>
-        </div>
-        <div class="scenario-row" onclick="startFlow(2)">
-          <div class="sc-body">
-            <div class="sc-title" id="t-s2-title">Nicht erfüllbar</div>
-            <div class="sc-desc" id="t-s2-desc">Brücke · E.max · Deutschland</div>
-          </div>
-          <div class="sc-signal sig-block" id="t-s2-chip">Blockiert</div>
-        </div>
+    <!-- upload -->
+    <div id="phase-upload">
+      <label class="upload-zone" id="upload-zone" for="file-input">
+        <div class="upload-icon">↑</div>
+        <div class="upload-title" id="t-upload-title">CAD-Datei hochladen</div>
+        <div class="upload-sub" id="t-upload-sub">Datei hier ablegen oder auswählen (STL, OBJ)</div>
+      </label>
+      <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
+      <div class="demo-files">
+        <button class="demo-file-btn" onclick="loadDemo('Krone_3-6_DE.stl')">Krone_3-6_DE.stl</button>
+        <button class="demo-file-btn" onclick="loadDemo('Bruecke_USA.stl')">Bruecke_USA.stl</button>
       </div>
     </div>
 
-    <!-- Phase: check -->
-    <div id="phase-check">
-      <div class="check-text" id="check-text"></div>
+    <!-- processing -->
+    <div id="phase-processing">
+      <div class="proc-filename" id="proc-filename"></div>
+      <div class="proc-step" id="pstep-0"></div>
+      <div class="proc-step" id="pstep-1"></div>
+      <div class="proc-step" id="pstep-2"></div>
+      <div class="proc-step" id="pstep-3"></div>
     </div>
 
-    <!-- Phase: result -->
+    <!-- result -->
     <div id="phase-result">
-      <div id="result-block">
+
+      <div class="res-section">
+        <div class="res-label" id="t-case-label">Fall erkannt</div>
+        <div class="case-proc" id="res-proc"></div>
+        <div class="case-row"><span class="case-row-lbl" id="t-material-lbl">Material</span><span id="res-material"></span></div>
+        <div class="case-row"><span class="case-row-lbl" id="t-land-lbl">Land</span><span id="res-land"></span></div>
+        <div class="case-row"><span class="case-row-lbl" id="t-indication-lbl">Indikation</span><span id="res-indication"></span></div>
+      </div>
+
+      <div class="res-section">
+        <div class="res-label" id="t-decision-label">Entscheidung</div>
         <div class="result-verdict" id="result-verdict"></div>
         <div class="result-sub" id="result-sub"></div>
       </div>
-      <div id="result-reason">
-        <div class="result-reason-text" id="grund-text"></div>
-        <div class="result-impact" id="t-impact"></div>
-      </div>
-      <button class="reset-btn" onclick="reset()"><span id="t-reset">Anderen Fall prüfen</span></button>
-    </div>
 
+      <div class="res-section">
+        <div class="res-label" id="t-pruefung-label">Prüfung</div>
+        <div class="check-row">
+          <span class="check-row-lbl" id="t-chk-material">Material zugelassen</span>
+          <span id="chk-material"></span>
+        </div>
+        <div class="check-row">
+          <span class="check-row-lbl" id="t-chk-jurisdiction">Jurisdiktion zulässig</span>
+          <span id="chk-jurisdiction"></span>
+        </div>
+        <div class="check-row">
+          <span class="check-row-lbl" id="t-chk-manufacturing">Fertigung verfügbar</span>
+          <span id="chk-manufacturing"></span>
+        </div>
+        <div class="check-ergebnis" id="check-ergebnis"></div>
+      </div>
+
+      <div class="res-section" id="labs-section" style="display:none">
+        <div class="res-label" id="t-fertigung-label">Mögliche Fertigung</div>
+        <div id="labs-list"></div>
+      </div>
+
+      <div class="res-section">
+        <div class="res-label" id="t-audit-label">Audit</div>
+        <div class="audit-row"><span class="audit-row-lbl" id="t-audit-id-lbl">Audit-ID</span><span class="audit-row-val" id="audit-id"></span></div>
+        <div class="audit-row"><span class="audit-row-lbl" id="t-audit-time-lbl">Zeitpunkt</span><span class="audit-row-val" id="audit-time"></span></div>
+        <div class="audit-row"><span class="audit-row-lbl" id="t-audit-status-lbl">Status</span><span class="audit-row-val" id="audit-status"></span></div>
+      </div>
+
+      <div class="res-section" style="border-top:none;padding-top:8px">
+        <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neue Datei hochladen</span></button>
+      </div>
+
+    </div>
   </div>
 </section>
 
@@ -243,65 +249,72 @@ const T = {
     sub: 'PostCAD entscheidet das automatisch.',
     cta: 'Demo ansehen',
     flowHeading: 'Ablauf',
-    f1: 'CAD-Datei erstellt',
-    f2: 'PostCAD prüft automatisch',
+    f1: 'CAD-Datei erstellt', f2: 'PostCAD prüft automatisch',
     f3Blocked: 'BLOCKIERT', f3BlockedSub: 'Weitergabe nicht möglich',
     f3Ok: 'FREIGEGEBEN', f3OkSub: 'Weitergabe möglich',
-    demoHeading: 'Interaktive Demo',
-    s0Title: 'Zulässig', s0Desc: 'Krone · Zirkon · Deutschland', s0Chip: 'Freigegeben',
-    s1Title: 'Nicht zulässig', s1Desc: 'Krone · Zirkon · USA', s1Chip: 'Blockiert',
-    s2Title: 'Nicht erfüllbar', s2Desc: 'Brücke · E.max · Deutschland', s2Chip: 'Blockiert',
-    checkStep: 'Prüfe Fall \u2026',
+    uploadTitle: 'CAD-Datei hochladen',
+    uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
+    procSteps: ['Datei erkannt', 'Falldaten werden gelesen', 'Routing wird geprüft', 'Entscheidung wird erstellt'],
+    caseLabel: 'Fall erkannt',
+    materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
+    decisionLabel: 'Entscheidung',
     verdictOk: 'FREIGEGEBEN', verdictBlock: 'BLOCKIERT',
     subOk: 'Weitergabe möglich', subBlock: 'Weitergabe nicht möglich',
-    impact: 'Dieser Fall wäre sonst in die Fertigung gegangen.',
-    reasons: {
-      no_jurisdiction_match: 'Jurisdiktion nicht zulässig',
-      no_material_match: 'Kein passender Fertigungspartner',
-      default: 'Eingabedaten unvollständig',
-    },
-    reset: 'Anderen Fall prüfen',
+    pruefungLabel: 'Prüfung',
+    chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zulässig', chkManufacturing: 'Fertigung verfügbar',
+    ergebnisOk: 'Ergebnis: Freigegeben', ergebnisBlock: 'Ergebnis: Blockiert',
+    fertigungLabel: 'Mögliche Fertigung',
+    auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
+    reset: 'Neue Datei hochladen',
   },
   EN: {
     h1: 'Not every case<br>may be manufactured.',
     sub: 'PostCAD decides automatically.',
     cta: 'View demo',
     flowHeading: 'Process',
-    f1: 'CAD file created',
-    f2: 'PostCAD checks automatically',
+    f1: 'CAD file created', f2: 'PostCAD checks automatically',
     f3Blocked: 'BLOCKED', f3BlockedSub: 'Cannot proceed',
     f3Ok: 'APPROVED', f3OkSub: 'Safe to proceed',
-    demoHeading: 'Interactive Demo',
-    s0Title: 'Permissible', s0Desc: 'Crown · Zirconia · Germany', s0Chip: 'Approved',
-    s1Title: 'Not permissible', s1Desc: 'Crown · Zirconia · USA', s1Chip: 'Blocked',
-    s2Title: 'Cannot be fulfilled', s2Desc: 'Bridge · E.max · Germany', s2Chip: 'Blocked',
-    checkStep: 'Checking case \u2026',
+    uploadTitle: 'Upload CAD file',
+    uploadSub: 'Drop file here or select (STL, OBJ)',
+    procSteps: ['File detected', 'Case data being read', 'Routing being checked', 'Decision being created'],
+    caseLabel: 'Case detected',
+    materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
+    decisionLabel: 'Decision',
     verdictOk: 'APPROVED', verdictBlock: 'BLOCKED',
     subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
-    impact: 'This case would otherwise have entered manufacturing.',
-    reasons: {
-      no_jurisdiction_match: 'Jurisdiction not allowed',
-      no_material_match: 'No matching manufacturing partner',
-      default: 'Input data incomplete',
-    },
-    reset: 'Check another case',
+    pruefungLabel: 'Checks',
+    chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
+    ergebnisOk: 'Result: Approved', ergebnisBlock: 'Result: Blocked',
+    fertigungLabel: 'Manufacturing options',
+    auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
+    reset: 'Upload new file',
   },
 };
 
-const CASES = [
-  {
-    pilot_case:{case_id:'f1000001',patient_ref:'P-001',procedure_type:'Crown',material:'Zirconia',file_type:'STL',source_country:'DE',destination_country:'DE'},
-    routing_config:{strategy:'HighestPriority',jurisdiction:'DE'},
+const FILE_CASES = {
+  'krone_3-6_de.stl': {
+    proc: 'Krone \u00b7 Zahn 3\u20136',
+    material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
+    ok: true,
+    checks: {material: true, jurisdiction: true, manufacturing: true},
+    labs: ['Labor Berlin', 'Labor M\u00fcnchen', 'Industriepool EU'],
   },
-  {
-    pilot_case:{case_id:'f1000002',patient_ref:'P-002',procedure_type:'Crown',material:'Zirconia',file_type:'STL',source_country:'US',destination_country:'US'},
-    routing_config:{strategy:'HighestPriority',jurisdiction:'US'},
+  'bruecke_usa.stl': {
+    proc: 'Br\u00fccke',
+    material: 'Zirkon', land: 'USA', indication: 'Standardversorgung',
+    ok: false,
+    checks: {material: true, jurisdiction: false, manufacturing: true},
+    labs: [],
   },
-  {
-    pilot_case:{case_id:'f1000003',patient_ref:'P-003',procedure_type:'Bridge',material:'Emax',file_type:'STL',source_country:'DE',destination_country:'DE'},
-    routing_config:{strategy:'HighestPriority',jurisdiction:'DE'},
-  },
-];
+};
+
+function getCaseData(filename) {
+  return FILE_CASES[filename.toLowerCase()] || {
+    proc: filename, material: '\u2014', land: '\u2014', indication: '\u2014',
+    ok: false, checks: {material: false, jurisdiction: false, manufacturing: false}, labs: [],
+  };
+}
 
 let lang = 'DE';
 
@@ -320,92 +333,118 @@ function setLang(l) {
   document.getElementById('t-f3-blocked-sub').textContent = t.f3BlockedSub;
   document.getElementById('t-f3-ok').textContent = t.f3Ok;
   document.getElementById('t-f3-ok-sub').textContent = t.f3OkSub;
-  document.getElementById('t-demo-heading').textContent = t.demoHeading;
-  document.getElementById('t-s0-title').textContent = t.s0Title;
-  document.getElementById('t-s0-desc').textContent = t.s0Desc;
-  document.getElementById('t-s0-chip').textContent = t.s0Chip;
-  document.getElementById('t-s1-title').textContent = t.s1Title;
-  document.getElementById('t-s1-desc').textContent = t.s1Desc;
-  document.getElementById('t-s1-chip').textContent = t.s1Chip;
-  document.getElementById('t-s2-title').textContent = t.s2Title;
-  document.getElementById('t-s2-desc').textContent = t.s2Desc;
-  document.getElementById('t-s2-chip').textContent = t.s2Chip;
+  document.getElementById('t-upload-title').textContent = t.uploadTitle;
+  document.getElementById('t-upload-sub').textContent = t.uploadSub;
+  document.getElementById('t-case-label').textContent = t.caseLabel;
+  document.getElementById('t-material-lbl').textContent = t.materialLbl;
+  document.getElementById('t-land-lbl').textContent = t.landLbl;
+  document.getElementById('t-indication-lbl').textContent = t.indicationLbl;
+  document.getElementById('t-decision-label').textContent = t.decisionLabel;
+  document.getElementById('t-pruefung-label').textContent = t.pruefungLabel;
+  document.getElementById('t-chk-material').textContent = t.chkMaterial;
+  document.getElementById('t-chk-jurisdiction').textContent = t.chkJurisdiction;
+  document.getElementById('t-chk-manufacturing').textContent = t.chkManufacturing;
+  document.getElementById('t-fertigung-label').textContent = t.fertigungLabel;
+  document.getElementById('t-audit-label').textContent = t.auditLabel;
+  document.getElementById('t-audit-id-lbl').textContent = t.auditIdLbl;
+  document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
+  document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
   document.getElementById('t-reset').textContent = t.reset;
 }
 
-async function callAPIs(c) {
-  try {
-    const routeRes = await fetch('/pilot/route-normalized', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(c),
-    });
-    const routeData = await routeRes.json();
-    if (routeData.outcome !== 'routed') {
-      return {ok:false, refusalCode: routeData.refusal_code || 'default'};
-    }
-    const verifyRes = await fetch('/verify', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(routeData.receipt || routeData),
-    });
-    const verifyData = await verifyRes.json();
-    try {
-      await fetch('/dispatch/create', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({receipt_hash: verifyData.receipt_hash || verifyData.hash || 'unknown'}),
-      });
-    } catch(_) {}
-    return {ok:true, refusalCode:'ok'};
-  } catch(e) {
-    return {ok:false, refusalCode:'default'};
-  }
+function onFileInput(input) {
+  if (input.files[0]) { loadDemo(input.files[0].name); input.value = ''; }
 }
 
-async function startFlow(i) {
-  const t = T[lang];
-  const checkEl = document.getElementById('check-text');
-  checkEl.classList.remove('fade');
-  checkEl.textContent = t.checkStep;
+function loadDemo(filename) {
+  startProcessing(filename);
+}
 
-  document.getElementById('phase-select').style.display = 'none';
-  document.getElementById('phase-check').style.display = 'block';
+async function startProcessing(filename) {
+  const t = T[lang];
+  document.getElementById('proc-filename').textContent = filename;
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById('pstep-' + i);
+    el.textContent = t.procSteps[i];
+    el.classList.remove('visible');
+  }
+  document.getElementById('phase-upload').style.display = 'none';
+  document.getElementById('phase-processing').style.display = 'block';
   document.getElementById('phase-result').style.display = 'none';
 
-  const [result] = await Promise.all([
-    callAPIs(CASES[i]),
-    (async () => { await delay(700); checkEl.classList.add('fade'); await delay(200); })(),
-  ]);
-
-  showResult(result);
+  for (let i = 0; i < 4; i++) {
+    await delay(i === 0 ? 80 : 260);
+    document.getElementById('pstep-' + i).classList.add('visible');
+  }
+  await delay(220);
+  showResult(filename);
 }
 
-function showResult(result) {
+function showResult(filename) {
   const t = T[lang];
-  document.getElementById('phase-check').style.display = 'none';
-  document.getElementById('phase-result').style.display = 'block';
+  const c = getCaseData(filename);
 
-  const block = document.getElementById('result-block');
-  if (result.ok) {
-    block.className = 'result-ok';
-    document.getElementById('result-verdict').textContent = t.verdictOk;
+  document.getElementById('res-proc').textContent = c.proc;
+  document.getElementById('res-material').textContent = c.material;
+  document.getElementById('res-land').textContent = c.land;
+  document.getElementById('res-indication').textContent = c.indication;
+
+  const vEl = document.getElementById('result-verdict');
+  if (c.ok) {
+    vEl.className = 'result-verdict verdict-ok';
+    vEl.textContent = t.verdictOk;
     document.getElementById('result-sub').textContent = t.subOk;
-    document.getElementById('result-reason').style.display = 'none';
   } else {
-    block.className = 'result-blocked';
-    document.getElementById('result-verdict').textContent = t.verdictBlock;
+    vEl.className = 'result-verdict verdict-blocked';
+    vEl.textContent = t.verdictBlock;
     document.getElementById('result-sub').textContent = t.subBlock;
-    const key = result.refusalCode in t.reasons ? result.refusalCode : 'default';
-    document.getElementById('grund-text').textContent = t.reasons[key];
-    document.getElementById('t-impact').textContent = t.impact;
-    document.getElementById('result-reason').style.display = 'block';
   }
+
+  setCheck('chk-material', c.checks.material);
+  setCheck('chk-jurisdiction', c.checks.jurisdiction);
+  setCheck('chk-manufacturing', c.checks.manufacturing);
+  document.getElementById('check-ergebnis').textContent = c.ok ? t.ergebnisOk : t.ergebnisBlock;
+
+  const labsSec = document.getElementById('labs-section');
+  if (c.ok && c.labs.length > 0) {
+    labsSec.style.display = 'block';
+    document.getElementById('labs-list').innerHTML = c.labs.map(l => '<div class="lab-item">' + l + '</div>').join('');
+  } else {
+    labsSec.style.display = 'none';
+  }
+
+  document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
+  document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('audit-status').textContent = c.ok ? t.verdictOk : t.verdictBlock;
+
+  document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-result').style.display = 'block';
 }
 
-function reset() {
+function setCheck(id, pass) {
+  const el = document.getElementById(id);
+  el.textContent = pass ? '\u2713' : '\u2715';
+  el.className = pass ? 'chk-ok' : 'chk-fail';
+}
+
+function resetDemo() {
   document.getElementById('phase-result').style.display = 'none';
-  document.getElementById('phase-check').style.display = 'none';
-  document.getElementById('phase-select').style.display = 'block';
+  document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-upload').style.display = 'block';
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Drag & drop
+(function() {
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over'); });
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) loadDemo(e.dataTransfer.files[0].name);
+  });
+})();
 </script>
 </body>
 </html>

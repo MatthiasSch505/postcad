@@ -9,25 +9,29 @@ pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PostCAD — Deterministic manufacturing routing</title>
+<title>PostCAD — From CAD design to manufacturing dispatch</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 
 :root{
-  --bg:#0f1118;
-  --surface:#161b26;
-  --surface2:#1a2030;
+  --bg:#0e1117;
+  --surface:#151c28;
+  --surface2:#1a2235;
+  --surface3:#1f2840;
   --border:rgba(255,255,255,0.07);
-  --border-md:rgba(255,255,255,0.12);
-  --border-strong:rgba(255,255,255,0.18);
-  --text-1:#e8edf5;
+  --border-md:rgba(255,255,255,0.13);
+  --border-strong:rgba(255,255,255,0.2);
+  --text-1:#eaf0f9;
   --text-2:#7a8fa8;
-  --text-3:#3d4d62;
+  --text-3:#3a4d63;
   --green:#2fcf7a;
   --green-bg:rgba(47,207,122,0.08);
-  --green-border:rgba(47,207,122,0.2);
+  --green-border:rgba(47,207,122,0.22);
+  --green-dim:rgba(47,207,122,0.5);
+  --amber:#e8a020;
   --blue:#5b8cfc;
+  --blue-bg:rgba(91,140,252,0.08);
   --mono:'ui-monospace','Cascadia Code','Menlo',monospace;
 }
 
@@ -40,183 +44,245 @@ body{
 /* ── header ── */
 header{
   border-bottom:1px solid var(--border);
-  padding:.8rem 2.5rem;
+  padding:.85rem 2.5rem;
   display:flex;align-items:center;
   position:sticky;top:0;z-index:10;
-  background:rgba(15,17,24,0.92);
-  backdrop-filter:blur(12px);
+  background:rgba(14,17,23,0.94);
+  backdrop-filter:blur(14px);
 }
-.logo{font-size:.95rem;font-weight:700;color:var(--text-1);letter-spacing:-.015em}
-nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem}
+.logo{font-size:.95rem;font-weight:700;color:var(--text-1);letter-spacing:-.015em;text-decoration:none}
+nav{margin-left:auto;display:flex;align-items:center;gap:1.75rem}
 .nav-link{
   font-size:.82rem;color:var(--text-2);text-decoration:none;
   transition:color .12s;
 }
 .nav-link:hover{color:var(--text-1)}
 .btn-nav{
-  font-family:inherit;font-size:.82rem;font-weight:700;
-  background:var(--text-1);color:#0d1018;
-  border:none;border-radius:6px;padding:.45rem 1.1rem;
+  font-family:inherit;font-size:.84rem;font-weight:700;
+  background:var(--green);color:#05140d;
+  border:none;border-radius:6px;padding:.5rem 1.2rem;
   cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;gap:.3rem;
+  display:inline-flex;align-items:center;gap:.35rem;
   transition:opacity .12s;
 }
 .btn-nav:hover{opacity:.88}
 
-/* ── page container ── */
-.page{max-width:1060px;margin:0 auto;padding:0 2.5rem}
+/* ── page ── */
+.page{max-width:1040px;margin:0 auto;padding:0 2.5rem}
 
 /* ── hero ── */
-.hero{padding:7.5rem 0 5.5rem;max-width:720px}
-.hero-eyebrow{
+.hero{padding:8rem 0 6rem}
+.hero-kicker{
+  display:inline-flex;align-items:center;gap:.5rem;
   font-size:.68rem;font-weight:700;color:var(--text-3);
   text-transform:uppercase;letter-spacing:.12em;
-  margin-bottom:1.4rem;
-  display:flex;align-items:center;gap:.55rem;
+  margin-bottom:1.75rem;
 }
-.hero-eyebrow::before{
-  content:'';width:20px;height:1px;
-  background:var(--text-3);display:inline-block;
+.hero-kicker-dot{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--green);flex-shrink:0;
+  box-shadow:0 0 6px var(--green-dim);
 }
 .hero-h1{
-  font-size:3.4rem;font-weight:700;
-  letter-spacing:-.04em;line-height:1.08;
-  color:var(--text-1);margin-bottom:1.5rem;
+  font-size:4rem;font-weight:700;
+  letter-spacing:-.045em;line-height:1.05;
+  color:var(--text-1);margin-bottom:1.6rem;
+  max-width:720px;
 }
-.hero-h1 em{font-style:normal;color:var(--text-2)}
 .hero-sub{
-  font-size:1.08rem;color:var(--text-2);
-  line-height:1.7;max-width:560px;margin-bottom:2.5rem;
+  font-size:1.1rem;color:var(--text-2);
+  line-height:1.7;max-width:540px;margin-bottom:3rem;
 }
-.cta-row{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
+.cta-row{display:flex;flex-wrap:wrap;gap:.9rem;align-items:center;margin-bottom:2rem}
 .btn-cta-primary{
-  font-family:inherit;font-size:.9rem;font-weight:700;
-  background:var(--text-1);color:#0d1018;
-  border:none;border-radius:7px;padding:.78rem 1.85rem;
+  font-family:inherit;font-size:.95rem;font-weight:700;
+  background:var(--green);color:#05140d;
+  border:none;border-radius:8px;padding:.85rem 2rem;
   cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;gap:.4rem;
+  display:inline-flex;align-items:center;gap:.45rem;
   transition:opacity .12s;
+  box-shadow:0 0 24px rgba(47,207,122,0.18);
 }
 .btn-cta-primary:hover{opacity:.88}
 .btn-cta-secondary{
-  font-family:inherit;font-size:.88rem;font-weight:600;
+  font-family:inherit;font-size:.9rem;font-weight:600;
   background:transparent;color:var(--text-2);
-  border:1px solid var(--border-md);border-radius:7px;
-  padding:.74rem 1.55rem;cursor:pointer;text-decoration:none;
+  border:1px solid var(--border-md);border-radius:8px;
+  padding:.82rem 1.65rem;cursor:pointer;text-decoration:none;
   display:inline-flex;align-items:center;gap:.35rem;
   transition:border-color .12s,color .12s;
 }
 .btn-cta-secondary:hover{border-color:var(--border-strong);color:var(--text-1)}
-.hero-note{font-size:.76rem;color:var(--text-3);margin-top:1.6rem;line-height:1.55}
+.live-tag{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.65rem;font-weight:700;font-family:var(--mono);
+  color:var(--green);
+}
+.live-tag::before{
+  content:'';width:5px;height:5px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 5px var(--green-dim);
+}
+.hero-note{
+  font-size:.78rem;color:var(--text-3);line-height:1.65;
+  border-left:2px solid var(--border-md);
+  padding-left:.9rem;max-width:420px;
+}
+
+/* ── example run block ── */
+.example-run{
+  margin-top:3.5rem;
+  background:var(--surface);
+  border:1px solid var(--border-md);
+  border-radius:12px;
+  overflow:hidden;
+}
+.example-run-header{
+  padding:.6rem 1.25rem;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.65rem;
+  background:var(--surface2);
+}
+.example-run-label{
+  font-size:.65rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.09em;font-family:var(--mono);
+}
+.example-run-tag{
+  font-size:.6rem;font-weight:700;font-family:var(--mono);
+  color:var(--green);background:var(--green-bg);
+  border:1px solid var(--green-border);border-radius:2px;
+  padding:.08rem .35rem;text-transform:uppercase;letter-spacing:.05em;
+}
+.example-run-body{
+  display:grid;grid-template-columns:repeat(4,1fr);
+}
+.er-step{
+  padding:1.25rem 1.4rem;
+  border-right:1px solid var(--border);
+}
+.er-step:last-child{border-right:none}
+.er-step-name{
+  font-size:.6rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.09em;
+  margin-bottom:.65rem;font-family:var(--mono);
+}
+.er-step-value{
+  font-size:.8rem;font-weight:600;color:var(--text-1);
+  line-height:1.4;margin-bottom:.25rem;
+}
+.er-step-detail{
+  font-size:.7rem;color:var(--text-2);font-family:var(--mono);
+  word-break:break-all;line-height:1.4;
+}
+.er-ok{color:var(--green)}
+.er-hash{
+  font-size:.65rem;color:var(--text-3);font-family:var(--mono);
+  margin-top:.25rem;
+}
 
 /* ── section divider ── */
-.section-divider{border:none;border-top:1px solid var(--border)}
+.section-divider{border:none;border-top:1px solid var(--border);margin:0}
 
-/* ── shared section typography ── */
-.section-eyebrow{
-  font-size:.63rem;font-weight:700;color:var(--text-3);
-  text-transform:uppercase;letter-spacing:.1em;margin-bottom:.9rem;
+/* ── how it works section ── */
+.how-section{padding:6rem 0}
+.how-header{
+  display:grid;grid-template-columns:1fr 1fr;gap:4rem;
+  align-items:end;margin-bottom:4rem;
 }
-.section-title{
-  font-size:1.7rem;font-weight:700;letter-spacing:-.025em;
-  color:var(--text-1);margin-bottom:.65rem;
+.how-title{
+  font-size:2rem;font-weight:700;letter-spacing:-.03em;
+  color:var(--text-1);line-height:1.15;
 }
-.section-sub{
-  font-size:.92rem;color:var(--text-2);
-  max-width:480px;line-height:1.65;
+.how-sub{
+  font-size:.88rem;color:var(--text-2);line-height:1.7;
+  align-self:end;
 }
-
-/* ── process section ── */
-.process-section{padding:5.5rem 0}
-.process-header{margin-bottom:3.5rem}
-.process-flow{
-  display:grid;grid-template-columns:repeat(4,1fr);
-  gap:0;position:relative;
+.how-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative}
+.how-connector{
+  position:absolute;top:14px;
+  left:calc(12.5% + 10px);right:calc(12.5% + 10px);
+  height:1px;background:linear-gradient(90deg,var(--border) 0%,var(--green-border) 40%,var(--green-border) 100%);
 }
-.process-connector{
-  position:absolute;top:15px;
-  left:calc(12.5% + 12px);right:calc(12.5% + 12px);
-  height:1px;background:var(--border-md);
-}
-.process-step{
-  padding:0 1.1rem;text-align:center;
-  position:relative;
-}
-.process-step:first-child{padding-left:0;text-align:left}
-.process-step:last-child{padding-right:0;text-align:right}
-.process-dot{
-  width:30px;height:30px;border-radius:50%;
-  border:1px solid var(--border-md);background:var(--surface2);
+.how-step{padding:0 1rem;position:relative}
+.how-step:first-child{padding-left:0}
+.how-step:last-child{padding-right:0}
+.how-dot{
+  width:28px;height:28px;border-radius:50%;
+  border:1px solid var(--border-md);background:var(--surface);
   display:inline-flex;align-items:center;justify-content:center;
-  font-size:.6rem;font-weight:700;color:var(--text-3);
+  font-size:.58rem;font-weight:700;color:var(--text-3);
   font-family:var(--mono);margin-bottom:1.1rem;
   position:relative;z-index:1;
 }
-.process-step.process-postcad .process-dot{
-  background:var(--green-bg);
-  border-color:var(--green-border);
-  color:var(--green);
+.how-step.how-postcad .how-dot{
+  background:var(--green-bg);border-color:var(--green-border);color:var(--green);
 }
-.process-step-label{
-  font-size:.85rem;font-weight:600;color:var(--text-1);
+.how-tag{
+  font-size:.58rem;font-weight:700;font-family:var(--mono);
+  color:var(--green);background:var(--green-bg);
+  border:1px solid var(--green-border);border-radius:2px;
+  padding:.06rem .28rem;text-transform:uppercase;letter-spacing:.05em;
+  margin-bottom:.4rem;display:inline-block;
+}
+.how-step-label{
+  font-size:.88rem;font-weight:600;color:var(--text-1);
   margin-bottom:.3rem;letter-spacing:-.01em;
 }
-.process-step-desc{font-size:.76rem;color:var(--text-2);line-height:1.5}
-.process-step-tag{
-  display:inline-block;font-size:.58rem;font-weight:700;
-  font-family:var(--mono);color:var(--green);
-  background:var(--green-bg);border:1px solid var(--green-border);
-  border-radius:2px;padding:.08rem .3rem;
-  text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;
-}
+.how-step-desc{font-size:.75rem;color:var(--text-2);line-height:1.55}
 
-/* ── principles section ── */
+/* ── principles ── */
 .principles-section{
-  padding:5.5rem 0;
-  border-top:1px solid var(--border);
+  padding:6rem 0;border-top:1px solid var(--border);
 }
-.principles-header{margin-bottom:3rem}
+.principles-title{
+  font-size:2rem;font-weight:700;letter-spacing:-.03em;
+  color:var(--text-1);margin-bottom:3rem;
+}
 .principles-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;
 }
 .principle-block{
-  padding:1.6rem 1.75rem;
+  padding:1.75rem 2rem;
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:10px;
 }
-.principle-index{
+.principle-num{
   font-size:.6rem;font-weight:700;color:var(--text-3);
   font-family:var(--mono);text-transform:uppercase;
-  letter-spacing:.08em;margin-bottom:.85rem;
+  letter-spacing:.08em;margin-bottom:.9rem;
 }
 .principle-title{
-  font-size:.95rem;font-weight:700;color:var(--text-1);
-  letter-spacing:-.01em;margin-bottom:.45rem;
+  font-size:.98rem;font-weight:700;color:var(--text-1);
+  letter-spacing:-.012em;margin-bottom:.45rem;
 }
 .principle-body{font-size:.8rem;color:var(--text-2);line-height:1.65}
 
-/* ── callout / CTA strip ── */
-.callout-section{
-  padding:5rem 0;
-  border-top:1px solid var(--border);
-}
+/* ── callout ── */
+.callout-section{padding:5rem 0;border-top:1px solid var(--border)}
 .callout-inner{
-  background:var(--surface);border:1px solid var(--border-md);
-  border-radius:12px;padding:3rem 3.5rem;
-  display:flex;align-items:center;justify-content:space-between;
-  gap:2rem;flex-wrap:wrap;
+  background:var(--surface);
+  border:1px solid var(--border-md);
+  border-radius:14px;
+  padding:3.25rem 3.75rem;
+  display:flex;align-items:center;
+  justify-content:space-between;gap:2.5rem;
+  flex-wrap:wrap;
 }
-.callout-tag{
-  display:inline-block;font-size:.62rem;font-weight:700;
-  font-family:var(--mono);color:var(--green);
-  background:var(--green-bg);border:1px solid var(--green-border);
-  border-radius:3px;padding:.15rem .45rem;margin-bottom:.7rem;
-  text-transform:uppercase;letter-spacing:.06em;
+.callout-left{}
+.callout-live{
+  font-size:.65rem;font-weight:700;font-family:var(--mono);
+  color:var(--green);text-transform:uppercase;letter-spacing:.08em;
+  display:flex;align-items:center;gap:.4rem;margin-bottom:.7rem;
+}
+.callout-live::before{
+  content:'';width:5px;height:5px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 6px var(--green-dim);
 }
 .callout-title{
-  font-size:1.4rem;font-weight:700;letter-spacing:-.02em;
-  margin-bottom:.45rem;
+  font-size:1.55rem;font-weight:700;letter-spacing:-.025em;
+  margin-bottom:.5rem;color:var(--text-1);
 }
 .callout-sub{
   font-size:.88rem;color:var(--text-2);
@@ -226,11 +292,11 @@ nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem}
 /* ── footer ── */
 footer{
   border-top:1px solid var(--border);
-  padding:2rem 2.5rem;
+  padding:1.75rem 2.5rem;
   display:flex;align-items:center;justify-content:space-between;
-  flex-wrap:wrap;gap:1rem;
+  flex-wrap:wrap;gap:.75rem;
 }
-.footer-brand{font-size:.82rem;font-weight:700;color:var(--text-3)}
+.footer-brand{font-size:.82rem;font-weight:700;color:var(--text-3);text-decoration:none}
 .footer-links{display:flex;gap:1.5rem}
 .footer-link{
   font-size:.78rem;color:var(--text-3);text-decoration:none;
@@ -240,20 +306,31 @@ footer{
 .footer-note{font-size:.72rem;color:var(--text-3)}
 
 /* ── responsive ── */
-@media(max-width:760px){
-  .hero{padding:4.5rem 0 3.5rem}
-  .hero-h1{font-size:2.2rem}
-  .process-flow{grid-template-columns:1fr 1fr;gap:1.75rem}
-  .process-connector{display:none}
-  .process-step,.process-step:first-child,.process-step:last-child{
-    text-align:left;padding:0;
-  }
+@media(max-width:860px){
+  .hero{padding:5rem 0 4rem}
+  .hero-h1{font-size:2.8rem}
+  .example-run-body{grid-template-columns:1fr 1fr}
+  .er-step{border-bottom:1px solid var(--border)}
+  .er-step:nth-child(2n){border-right:none}
+  .er-step:nth-last-child(-n+2){border-bottom:none}
+  .how-header{grid-template-columns:1fr}
+  .how-steps{grid-template-columns:1fr 1fr;gap:2rem}
+  .how-connector{display:none}
+  .how-step,.how-step:first-child,.how-step:last-child{padding:0}
   .principles-grid{grid-template-columns:1fr}
-  .callout-inner{padding:2rem 1.75rem}
-  header{padding:.75rem 1.25rem}
+  .callout-inner{padding:2.25rem 2rem}
+  .page{padding:0 1.5rem}
+  header{padding:.75rem 1.5rem}
   nav .nav-link{display:none}
-  .page{padding:0 1.25rem}
-  footer{padding:1.75rem 1.25rem}
+  footer{padding:1.5rem 1.5rem}
+}
+@media(max-width:540px){
+  .hero-h1{font-size:2.2rem}
+  .example-run-body{grid-template-columns:1fr}
+  .er-step{border-right:none}
+  .er-step:last-child{border-bottom:none}
+  .how-steps{grid-template-columns:1fr}
+  .cta-row{flex-direction:column;align-items:flex-start}
 }
 </style>
 </head>
@@ -261,11 +338,11 @@ footer{
 
 <!-- ── header ── -->
 <header>
-  <span class="logo">PostCAD</span>
+  <a class="logo" href="/">PostCAD</a>
   <nav>
-    <a class="nav-link" href="#process">How it works</a>
+    <a class="nav-link" href="#how-it-works">How it works</a>
     <a class="nav-link" href="#principles">Principles</a>
-    <a class="btn-nav" href="/reviewer">Open Demo ↗</a>
+    <a class="btn-nav" href="/reviewer">Open demo →</a>
   </nav>
 </header>
 
@@ -273,75 +350,109 @@ footer{
 
 <!-- ── hero ── -->
 <section class="hero">
-  <div class="hero-eyebrow">Post-CAD manufacturing layer</div>
-  <h1 class="hero-h1">Deterministic routing<br>from CAD to <em>production</em></h1>
+  <div class="hero-kicker">
+    <span class="hero-kicker-dot"></span>
+    Post-CAD manufacturing layer
+  </div>
+  <h1 class="hero-h1">From CAD design<br>to manufacturing<br>dispatch.</h1>
   <p class="hero-sub">
-    PostCAD sits between dental CAD design and manufacturing.
-    It verifies certifications, applies jurisdiction rules, selects an eligible manufacturer,
-    and records an immutable audit trail — without making clinical decisions.
+    PostCAD sits between your dental CAD output and production.
+    It verifies manufacturer certifications, applies jurisdiction rules,
+    routes to the right lab, and produces an immutable audit trail —
+    without making clinical decisions.
   </p>
   <div class="cta-row">
     <a class="btn-cta-primary" href="/reviewer">Open live demo →</a>
-    <a class="btn-cta-secondary" href="mailto:pilot@routecore.ai">Request pilot</a>
+    <a class="btn-cta-secondary" href="mailto:pilot@routecore.ai">Request pilot access</a>
   </div>
   <p class="hero-note">
     No AI decision-making. No clinical liability.<br>
-    Every routing output carries a reason code and a verifiable receipt hash.
+    Every output carries a reason code and a verifiable receipt hash.
   </p>
+
+  <!-- Real example run -->
+  <div class="example-run">
+    <div class="example-run-header">
+      <span class="example-run-label">Example run</span>
+      <span class="example-run-tag">real engine output</span>
+    </div>
+    <div class="example-run-body">
+      <div class="er-step">
+        <div class="er-step-name">Input</div>
+        <div class="er-step-value">Crown · Zirconia</div>
+        <div class="er-step-detail">Germany · case f1000001</div>
+      </div>
+      <div class="er-step">
+        <div class="er-step-name">Routing</div>
+        <div class="er-step-value er-ok">3 candidates → 1 selected</div>
+        <div class="er-step-detail">pilot-de-001<br>Alpha Dental GmbH</div>
+      </div>
+      <div class="er-step">
+        <div class="er-step-name">Receipt</div>
+        <div class="er-step-value er-ok">Issued · verified</div>
+        <div class="er-hash">0db54077cff0fbc4…</div>
+      </div>
+      <div class="er-step">
+        <div class="er-step-name">Dispatch</div>
+        <div class="er-step-value er-ok">Ready for handoff</div>
+        <div class="er-step-detail">Audit record attached</div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <hr class="section-divider">
 
-<!-- ── process ── -->
-<section class="process-section" id="process">
-  <div class="process-header">
-    <div class="section-eyebrow">Workflow</div>
-    <h2 class="section-title">One deterministic path</h2>
-    <p class="section-sub">
+<!-- ── how it works ── -->
+<section class="how-section" id="how-it-works">
+  <div class="how-header">
+    <h2 class="how-title">One deterministic<br>path from design<br>to production</h2>
+    <p class="how-sub">
       The same inputs always produce the same manufacturer selection and receipt hash.
-      No variance between runs, no manual reinterpretation.
+      PostCAD controls steps 2–4. Step 1 is your existing CAD tool.
+      Step 5 is your manufacturer.
     </p>
   </div>
 
-  <div class="process-flow">
-    <div class="process-connector" aria-hidden="true"></div>
+  <div class="how-steps">
+    <div class="how-connector" aria-hidden="true"></div>
 
-    <div class="process-step">
-      <div class="process-dot">01</div>
-      <div class="process-step-label">CAD Design</div>
-      <div class="process-step-desc">
-        A structured case file exits your design software.
-        Material, procedure, and jurisdiction are defined.
+    <div class="how-step">
+      <div class="how-dot">01</div>
+      <div class="how-step-label">CAD Design</div>
+      <div class="how-step-desc">
+        A structured case exits your design software.
+        Material, procedure, and jurisdiction defined.
       </div>
     </div>
 
-    <div class="process-step process-postcad">
-      <div class="process-dot">02</div>
-      <div class="process-step-tag">PostCAD</div>
-      <div class="process-step-label">Routing Engine</div>
-      <div class="process-step-desc">
-        Manufacturer registry is checked against certifications and country rules.
-        A deterministic selection is made.
+    <div class="how-step how-postcad">
+      <div class="how-dot">02</div>
+      <div class="how-tag">PostCAD</div>
+      <div class="how-step-label">Routing Engine</div>
+      <div class="how-step-desc">
+        Registry checked against certifications,
+        jurisdiction rules, and capability constraints.
       </div>
     </div>
 
-    <div class="process-step process-postcad">
-      <div class="process-dot">03</div>
-      <div class="process-step-tag">PostCAD</div>
-      <div class="process-step-label">Verification</div>
-      <div class="process-step-desc">
-        The receipt is replayed from original inputs to confirm
-        the routing decision is reproducible and unmodified.
+    <div class="how-step how-postcad">
+      <div class="how-dot">03</div>
+      <div class="how-tag">PostCAD</div>
+      <div class="how-step-label">Verification</div>
+      <div class="how-step-desc">
+        Receipt replayed from original inputs.
+        Routing decision confirmed reproducible.
       </div>
     </div>
 
-    <div class="process-step process-postcad">
-      <div class="process-dot">04</div>
-      <div class="process-step-tag">PostCAD</div>
-      <div class="process-step-label">Dispatch</div>
-      <div class="process-step-desc">
-        A traceable handoff is prepared. Full audit record attached
-        before the case reaches the manufacturer.
+    <div class="how-step how-postcad">
+      <div class="how-dot">04</div>
+      <div class="how-tag">PostCAD</div>
+      <div class="how-step-label">Dispatch</div>
+      <div class="how-step-desc">
+        Traceable handoff prepared.
+        Full audit chain attached before manufacturing.
       </div>
     </div>
   </div>
@@ -349,34 +460,30 @@ footer{
 
 <!-- ── principles ── -->
 <section class="principles-section" id="principles">
-  <div class="principles-header">
-    <div class="section-eyebrow">Principles</div>
-    <h2 class="section-title">Built for regulated environments</h2>
-  </div>
-
+  <h2 class="principles-title">Built for regulated environments</h2>
   <div class="principles-grid">
     <div class="principle-block">
-      <div class="principle-index">01 · Determinism</div>
-      <div class="principle-title">Same input, same output</div>
+      <div class="principle-num">01 · Determinism</div>
+      <div class="principle-title">Same input, same output — always</div>
       <div class="principle-body">
         Identical case data and registry state produce the same manufacturer selection
-        and receipt hash every time. There is no variance between runs.
+        and receipt hash on every run. No variance, no approximation.
       </div>
     </div>
     <div class="principle-block">
-      <div class="principle-index">02 · Verifiability</div>
+      <div class="principle-num">02 · Verifiability</div>
       <div class="principle-title">Every decision is replayable</div>
       <div class="principle-body">
         Routing receipts can be independently verified by replaying the kernel
-        from the original inputs. No black-box outputs. No manual sign-off required.
+        against original inputs. No black-box outputs, no manual sign-off required.
       </div>
     </div>
     <div class="principle-block">
-      <div class="principle-index">03 · Audit trail</div>
-      <div class="principle-title">Immutable record by design</div>
+      <div class="principle-num">03 · Immutable audit trail</div>
+      <div class="principle-title">Records that can't be altered</div>
       <div class="principle-body">
-        Every step produces a hash-chained audit entry. The record cannot be altered
-        without detection. Designed to withstand regulatory inspection.
+        Every step produces a hash-chained entry. The chain cannot be modified
+        without detection. Designed to satisfy regulatory inspection requirements.
       </div>
     </div>
   </div>
@@ -385,13 +492,13 @@ footer{
 <!-- ── callout ── -->
 <section class="callout-section">
   <div class="callout-inner">
-    <div>
-      <div class="callout-tag">Live · engine-connected</div>
-      <div class="callout-title">See the routing kernel run</div>
+    <div class="callout-left">
+      <div class="callout-live">Engine-connected · real outputs</div>
+      <div class="callout-title">See all three scenarios live</div>
       <p class="callout-sub">
-        The operator demo connects to the real PostCAD engine.
-        Load a pilot case, run routing, verify the receipt, and create a dispatch record —
-        all against live backend endpoints.
+        The operator demo runs against the real PostCAD engine.
+        Choose from an eligible routing, a jurisdiction refusal, or a capability mismatch —
+        and see exactly how the engine responds.
       </p>
     </div>
     <a class="btn-cta-primary" href="/reviewer">Open operator demo →</a>
@@ -402,12 +509,12 @@ footer{
 
 <!-- ── footer ── -->
 <footer>
-  <span class="footer-brand">PostCAD</span>
+  <a class="footer-brand" href="/">PostCAD</a>
   <div class="footer-links">
     <a class="footer-link" href="/reviewer">Operator Demo</a>
     <a class="footer-link" href="mailto:pilot@routecore.ai">Contact</a>
   </div>
-  <span class="footer-note">Post-CAD manufacturing routing layer</span>
+  <span class="footer-note">Post-CAD manufacturing routing layer · routecore.ai</span>
 </footer>
 
 </body>

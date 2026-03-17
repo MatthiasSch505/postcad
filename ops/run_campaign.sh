@@ -43,10 +43,10 @@ Non-negotiable rules:
 SYS
 )"
 
-claude \
+CI=1 claude \
   --print \
   --model sonnet \
   --permission-mode acceptEdits \
   --output-format text \
   --system-prompt "$SYSTEM_PROMPT" \
-  "$PROMPT"
+  "$PROMPT" </dev/null

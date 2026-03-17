@@ -1,0 +1,90 @@
+======================================
+POSTCAD BATCHED CAMPAIGN RUNNER
+======================================
+
+Repo: /home/matthias/projects/postcad
+
+Campaign file:
+--------------------------------------
+campaign name
+
+pilot: clean and standardize --pilot-demo output
+
+files allowed to change
+
+examples/pilot/run_pilot.sh
+crates/service/tests/pilot_demo_surface_tests.rs
+
+Claude prompt
+
+Refine the `--pilot-demo` output to be:
+
+- perfectly aligned (no uneven spacing)
+- deterministic (no timestamps, no randomness)
+- visually clean:
+
+PostCAD Pipeline
+
+CAD
+↓
+PostCAD routing
+↓
+compliance verification
+↓
+manufacturing dispatch
+↓
+audit receipt
+
+Rules:
+- exact wording must stay stable
+- no extra logs or noise
+- no colors or ANSI codes
+- stdout only
+
+Update surface test if needed to enforce:
+- presence of "PostCAD Pipeline"
+- exact arrow structure using "↓"
+
+test command
+
+cd ~/projects/postcad && bash examples/pilot/run_pilot.sh --pilot-demo | grep -E "PostCAD Pipeline|PostCAD routing|audit receipt"
+
+commit message
+
+pilot: standardize demo output formatting
+
+--------------------------------------
+
+All 35 tests pass — including the 8 new ones added for `--pilot-demo`. The campaign is complete.
+
+---
+
+**Summary of changes made (strictly within campaign bounds):**
+
+### `examples/pilot/run_pilot.sh`
+Replaced the dynamic `--pilot-demo` block (which read `receipt.json`, checked artifact presence, emitted `[DONE]`/`[PENDING]` stage lines, and varied output per run state) with a **static, deterministic pipeline display**:
+
+```
+PostCAD Pipeline
+
+CAD
+↓
+PostCAD routing
+↓
+compliance verification
+↓
+manufacturing dispatch
+↓
+audit receipt
+```
+- No timestamps, no runtime variable expansion, no ANSI codes, stdout only.
+
+### `crates/service/tests/pilot_demo_surface_tests.rs`
+Added 8 new surface tests enforcing:
+- `pilot_demo_prints_postcad_pipeline_header` — "PostCAD Pipeline" must be present
+- `pilot_demo_uses_down_arrows` — `↓` must appear in the block
+- `pilot_demo_includes_postcad_routing_stage` / `compliance_verification_stage` / `manufacturing_dispatch_stage` / `audit_receipt_stage` — each stage name enforced
+- `pilot_demo_block_has_no_timestamps` — no `$(date` in block
+- `pilot_demo_block_has_no_ansi_codes` — no `\033[` or `\e[` in block
+
+**Test result: 35/35 passed.**

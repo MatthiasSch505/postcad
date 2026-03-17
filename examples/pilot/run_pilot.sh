@@ -1762,112 +1762,18 @@ fi
 
 if [[ "${1:-}" == "--pilot-demo" ]]; then
 
-  # Resolve run context from receipt.json if present
-  PD_RUN_ID=""
-  PD_CASE_ID=""
-  PD_LAB=""
-
-  if [[ -f "${SCRIPT_DIR}/receipt.json" ]]; then
-    PD_CASE_ID=$(python3 -c "
-import json
-try:
-    d = json.loads(open('${SCRIPT_DIR}/receipt.json').read())
-    print(d.get('routing_input', {}).get('case_id', ''))
-except: print('')
-" 2>/dev/null || echo "")
-    PD_RECEIPT_HASH=$(grep -o '"receipt_hash": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
-    PD_RUN_ID="${PD_CASE_ID:-${PD_RECEIPT_HASH:0:12}}"
-    PD_LAB=$(grep -o '"selected_candidate_id": *"[^"]*"' "${SCRIPT_DIR}/receipt.json" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
-  fi
-
-  # Artifact presence checks — read-only, no side effects
-  PD_RECEIPT_PRESENT=false
-  [[ -f "${SCRIPT_DIR}/receipt.json" ]] && PD_RECEIPT_PRESENT=true
-
-  PD_OUTBOUND_PRESENT=false
-  PD_SEND_NOTE_PRESENT=false
-  if [[ -n "$PD_RUN_ID" ]]; then
-    PD_OUTBOUND_DIR="${SCRIPT_DIR}/outbound/lab_trial_${PD_RUN_ID}"
-    [[ -d "$PD_OUTBOUND_DIR" ]] && PD_OUTBOUND_PRESENT=true
-    [[ -f "$PD_OUTBOUND_DIR/operator_send_note.txt" ]] && PD_SEND_NOTE_PRESENT=true
-  fi
-
-  PD_INBOUND_PRESENT=false
-  if [[ -n "$PD_RUN_ID" ]]; then
-    _PD_INBOUND="${SCRIPT_DIR}/inbound/lab_reply_${PD_RUN_ID}.json"
-    [[ -f "$_PD_INBOUND" ]] && PD_INBOUND_PRESENT=true
-  fi
-
-  PD_VERIFY_PRESENT=false
-  _PD_VERIFY=$(ls "${SCRIPT_DIR}/reports/decision_"*.txt 2>/dev/null | head -1 || true)
-  [[ -n "$_PD_VERIFY" ]] && PD_VERIFY_PRESENT=true
-
-  PD_DISPATCH_PRESENT=false
-  [[ -f "${SCRIPT_DIR}/export_packet.json" ]] && PD_DISPATCH_PRESENT=true
-
-  # Determine next missing stage label
-  PD_NEXT_MISSING="CAD case available"
-  if [[ "$PD_RECEIPT_PRESENT" == true ]];   then PD_NEXT_MISSING="outbound package created"; fi
-  if [[ "$PD_OUTBOUND_PRESENT" == true ]];  then PD_NEXT_MISSING="send log recorded"; fi
-  if [[ "$PD_SEND_NOTE_PRESENT" == true ]]; then PD_NEXT_MISSING="lab reply received"; fi
-  if [[ "$PD_INBOUND_PRESENT" == true ]];   then PD_NEXT_MISSING="verification artifact"; fi
-  if [[ "$PD_VERIFY_PRESENT" == true ]];    then PD_NEXT_MISSING="audit receipt"; fi
-  if [[ "$PD_DISPATCH_PRESENT" == true ]];  then PD_NEXT_MISSING="none"; fi
-
   echo ""
-  echo "============================================================"
-  echo "  POSTCAD PILOT DEMO"
-  echo "============================================================"
+  echo "PostCAD Pipeline"
   echo ""
-  echo "RUN CONTEXT"
-  echo "  Run ID     : ${PD_RUN_ID:-not detected}"
-  echo "  Case ID    : ${PD_CASE_ID:-not available}"
-  echo "  Target lab : ${PD_LAB:-not available}"
-  echo ""
-  echo "STAGE FLOW"
-  echo ""
-  if [[ "$PD_RECEIPT_PRESENT" == true ]]; then
-    echo "  [DONE]    1.  CAD case available"
-    echo "  [DONE]    2.  routing decision recorded"
-    echo "  [DONE]    3.  compliance/eligibility evidenced"
-  else
-    echo "  [PENDING] 1.  CAD case available"
-    echo "  [PENDING] 2.  routing decision recorded"
-    echo "  [PENDING] 3.  compliance/eligibility evidenced"
-  fi
-  if [[ "$PD_OUTBOUND_PRESENT" == true ]]; then
-    echo "  [DONE]    4.  outbound package created"
-  else
-    echo "  [PENDING] 4.  outbound package created"
-  fi
-  if [[ "$PD_SEND_NOTE_PRESENT" == true ]]; then
-    echo "  [DONE]    5.  send log recorded"
-  else
-    echo "  [PENDING] 5.  send log recorded"
-  fi
-  if [[ "$PD_INBOUND_PRESENT" == true ]]; then
-    echo "  [DONE]    6.  lab reply received"
-  else
-    echo "  [PENDING] 6.  lab reply received"
-  fi
-  if [[ "$PD_VERIFY_PRESENT" == true ]]; then
-    echo "  [DONE]    7.  verification artifact present"
-  else
-    echo "  [PENDING] 7.  verification artifact present"
-  fi
-  if [[ "$PD_DISPATCH_PRESENT" == true ]]; then
-    echo "  [DONE]    8.  audit receipt present"
-  else
-    echo "  [PENDING] 8.  audit receipt present"
-  fi
-  echo ""
-  echo "------------------------------------------------------------"
-  if [[ "$PD_NEXT_MISSING" == "none" ]]; then
-    echo "  Demo complete: end-to-end protocol evidence present"
-  else
-    echo "  Demo in progress — next stage: $PD_NEXT_MISSING"
-  fi
-  echo "------------------------------------------------------------"
+  echo "CAD"
+  echo "↓"
+  echo "PostCAD routing"
+  echo "↓"
+  echo "compliance verification"
+  echo "↓"
+  echo "manufacturing dispatch"
+  echo "↓"
+  echo "audit receipt"
   echo ""
   exit 0
 fi

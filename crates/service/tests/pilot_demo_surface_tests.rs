@@ -246,3 +246,94 @@ fn readme_demo_surface_describes_single_command_intro() {
         "README Demo Surface section must describe it as the fastest single-command introduction"
     );
 }
+
+// ── pilot-demo pipeline output ────────────────────────────────────────────────
+
+#[test]
+fn pilot_demo_prints_postcad_pipeline_header() {
+    assert!(
+        RUN_PILOT_SH.contains("PostCAD Pipeline"),
+        "run_pilot.sh --pilot-demo must print 'PostCAD Pipeline'"
+    );
+}
+
+#[test]
+fn pilot_demo_uses_down_arrows() {
+    // Locate the --pilot-demo block and verify it contains the ↓ arrow
+    let block_start = RUN_PILOT_SH
+        .find("\"--pilot-demo\"")
+        .expect("--pilot-demo flag must exist in run_pilot.sh");
+    let block_end = RUN_PILOT_SH[block_start..]
+        .find("\nfi\n")
+        .map(|i| block_start + i + 4)
+        .unwrap_or(block_start + 500);
+    let block = &RUN_PILOT_SH[block_start..block_end];
+    assert!(
+        block.contains('↓'),
+        "run_pilot.sh --pilot-demo block must use '↓' arrows between pipeline stages"
+    );
+}
+
+#[test]
+fn pilot_demo_includes_postcad_routing_stage() {
+    assert!(
+        RUN_PILOT_SH.contains("PostCAD routing"),
+        "run_pilot.sh --pilot-demo must include 'PostCAD routing' stage"
+    );
+}
+
+#[test]
+fn pilot_demo_includes_compliance_verification_stage() {
+    assert!(
+        RUN_PILOT_SH.contains("compliance verification"),
+        "run_pilot.sh --pilot-demo must include 'compliance verification' stage"
+    );
+}
+
+#[test]
+fn pilot_demo_includes_manufacturing_dispatch_stage() {
+    assert!(
+        RUN_PILOT_SH.contains("manufacturing dispatch"),
+        "run_pilot.sh --pilot-demo must include 'manufacturing dispatch' stage"
+    );
+}
+
+#[test]
+fn pilot_demo_includes_audit_receipt_stage() {
+    assert!(
+        RUN_PILOT_SH.contains("audit receipt"),
+        "run_pilot.sh --pilot-demo must include 'audit receipt' stage"
+    );
+}
+
+#[test]
+fn pilot_demo_block_has_no_timestamps() {
+    let block_start = RUN_PILOT_SH
+        .find("\"--pilot-demo\"")
+        .expect("--pilot-demo flag must exist in run_pilot.sh");
+    let block_end = RUN_PILOT_SH[block_start..]
+        .find("\nfi\n")
+        .map(|i| block_start + i + 4)
+        .unwrap_or(block_start + 500);
+    let block = &RUN_PILOT_SH[block_start..block_end];
+    assert!(
+        !block.contains("$(date"),
+        "run_pilot.sh --pilot-demo block must not embed timestamps"
+    );
+}
+
+#[test]
+fn pilot_demo_block_has_no_ansi_codes() {
+    let block_start = RUN_PILOT_SH
+        .find("\"--pilot-demo\"")
+        .expect("--pilot-demo flag must exist in run_pilot.sh");
+    let block_end = RUN_PILOT_SH[block_start..]
+        .find("\nfi\n")
+        .map(|i| block_start + i + 4)
+        .unwrap_or(block_start + 500);
+    let block = &RUN_PILOT_SH[block_start..block_end];
+    assert!(
+        !block.contains("\\033[") && !block.contains("\\e["),
+        "run_pilot.sh --pilot-demo block must not contain ANSI color codes"
+    );
+}

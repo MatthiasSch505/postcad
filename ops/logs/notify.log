@@ -1,3 +1,4 @@
 [2026-03-16T22:25:07Z] [campaign-failed] pilot: add case summary surface — failed after 2 attempts — see /home/matthias/projects/postcad/ops/campaign_queue/logs/pilot_case_summary_surface_20260316T222502Z.log
 [2026-03-16T22:44:12Z] [queue-finished] queue — PASSED — 3 passed, 0 blocked
 [2026-03-16T23:24:40Z] [queue-finished] queue — PASSED — 10 passed, 0 blocked
+[2026-03-17T07:31:44Z] [queue-finished] queue — PASSED — 1 passed, 0 blocked

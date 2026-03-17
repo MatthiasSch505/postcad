@@ -1,3 +1,11 @@
+======================================
+POSTCAD BATCHED CAMPAIGN RUNNER
+======================================
+
+Repo: /home/matthias/projects/postcad
+
+Campaign file:
+--------------------------------------
 campaign name
 
 ops: add night mode smoke note
@@ -55,3 +63,14 @@ cd ~/projects/postcad && test -f ops/README_night_mode.md && grep -F "# PostCAD 
 commit message
 
 ops: add night mode smoke note
+
+--------------------------------------
+
+All checks passed. Here's a summary of what was done:
+
+- **Created** `ops/README_night_mode.md` with the four required sections in order: `# PostCAD Night Mode`, `## Purpose`, `## Allowed Scope`, and `## Stop Conditions`.
+- **Purpose** states night mode is for unattended lane-1 campaigns only.
+- **Allowed Scope** lists exactly the four required paths.
+- **Stop Conditions** lists exactly the four required bullets.
+- **No other files were modified.**
+- **Test command** executed successfully — all three `grep` assertions confirmed.

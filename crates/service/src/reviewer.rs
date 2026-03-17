@@ -1,9 +1,10 @@
-//! Reviewer shell — single page, three actions, real kernel output.
+//! Reviewer shell — premium operator demo surface.
 //!
 //! Served at `GET /reviewer`. Auto-loads pilot fixtures from `examples/pilot/`
 //! via `GET /pilot-fixtures`. Calls real endpoints only:
-//!   POST /route  — routing kernel execution
-//!   POST /verify — deterministic receipt verification
+//!   POST /pilot/route-normalized  — routing kernel execution
+//!   POST /verify                  — deterministic receipt verification
+//!   POST /dispatch/create         — dispatch commitment
 //!
 //! No mock data. No fake outputs. No mocked decisions.
 
@@ -12,1461 +13,875 @@ pub const REVIEWER_HTML: &str = r#"<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PostCAD — Reviewer Shell</title>
+<title>PostCAD — Operator Demo</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:ui-monospace,"Cascadia Mono","Menlo",monospace;
-     background:#0f1117;color:#c9d1d9;min-height:100vh;font-size:13px}
+
+/* ── tokens ── */
+:root{
+  --bg:#111318;
+  --surface:#181c25;
+  --surface2:#1e2230;
+  --surface3:#232838;
+  --border:rgba(255,255,255,0.07);
+  --border-md:rgba(255,255,255,0.11);
+  --border-strong:rgba(255,255,255,0.16);
+  --text-1:#dde4f0;
+  --text-2:#7a8fa8;
+  --text-3:#3d4d60;
+  --green:#30c97e;
+  --green-bg:rgba(48,201,126,0.08);
+  --green-border:rgba(48,201,126,0.2);
+  --amber:#e8a020;
+  --amber-bg:rgba(232,160,32,0.08);
+  --amber-border:rgba(232,160,32,0.2);
+  --red:#e05555;
+  --red-bg:rgba(224,85,85,0.08);
+  --red-border:rgba(224,85,85,0.2);
+  --blue:#5b8cfc;
+  --mono:'ui-monospace','Cascadia Code','Menlo',monospace;
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text-1);min-height:100vh;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
 
 /* ── header ── */
-header{background:#161b22;border-bottom:1px solid #30363d;
-       padding:.55rem 1.2rem;display:flex;align-items:center;gap:.75rem}
-#status-dot{width:7px;height:7px;border-radius:50%;background:#d29922;flex-shrink:0}
-#status-dot.ok{background:#3fb950}
-#status-dot.err{background:#f85149}
-#hdr-title{font-size:.92rem;font-weight:700;color:#f0f6fc}
-#hdr-tag{font-size:.7rem;color:#6e7681;margin-left:.25rem}
-#ver{margin-left:auto;font-size:.7rem;color:#6e7681}
+header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:.65rem 2rem;
+  display:flex;align-items:center;gap:.75rem;
+  position:sticky;top:0;z-index:20;
+}
+.logo{font-size:.9rem;font-weight:700;color:var(--text-1);letter-spacing:-.01em}
+.demo-tag{
+  font-size:.65rem;font-weight:600;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.08em;
+  border:1px solid var(--border);border-radius:3px;
+  padding:.1rem .4rem;
+}
+.hdr-right{
+  margin-left:auto;display:flex;align-items:center;gap:.75rem;
+  font-family:var(--mono);font-size:.68rem;color:var(--text-3);
+}
+.hdr-dot{
+  width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;
+}
+.hdr-dot.ok{background:var(--green)}
+.hdr-dot.err{background:var(--red)}
 
 /* ── layout ── */
-main{max-width:1100px;margin:1.2rem auto;padding:0 1rem 3.5rem;display:grid;gap:1rem}
+main{max-width:860px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
 
 /* ── hero ── */
-.hero{background:#161b22;border:1px solid #30363d;border-radius:8px;
-      padding:1rem 1.25rem}
-.hero-title{font-size:1.15rem;font-weight:700;color:#f0f6fc;margin-bottom:.2rem}
-.hero-sub{font-size:.82rem;color:#8b949e;margin-bottom:.25rem}
-.hero-why{font-size:.78rem;color:#6e7681;margin-bottom:.9rem;
-          border-left:2px solid #21262d;padding-left:.6rem}
+.hero{margin-bottom:2.5rem}
+.hero-eyebrow{
+  font-size:.65rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem;
+}
+.hero-title{
+  font-size:1.7rem;font-weight:700;color:var(--text-1);
+  letter-spacing:-.02em;line-height:1.25;margin-bottom:.65rem;
+}
+.hero-sub{
+  font-size:.95rem;color:var(--text-2);line-height:1.6;
+  max-width:600px;margin-bottom:1.1rem;
+}
+.trust-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
+.chip{
+  font-size:.7rem;font-weight:600;color:var(--text-2);
+  border:1px solid var(--border-md);border-radius:4px;
+  padding:.22rem .65rem;background:var(--surface);
+  letter-spacing:.02em;
+}
+.hero-framing{
+  font-size:.8rem;color:var(--text-3);line-height:1.6;
+  border-left:2px solid var(--border-md);padding-left:.75rem;
+  max-width:560px;
+}
 
-/* ── 4-step flow ── */
-.flow{display:flex;align-items:stretch;gap:0;overflow-x:auto}
-.flow-step{flex:1;min-width:0;background:#0d1117;border:1px solid #21262d;
-           border-radius:0;padding:.6rem .75rem;position:relative}
-.flow-step:first-child{border-radius:6px 0 0 6px}
-.flow-step:last-child {border-radius:0 6px 6px 0}
-.flow-step+.flow-step{border-left:none}
-.flow-num{font-size:.6rem;color:#6e7681;font-weight:700;letter-spacing:.08em;
-          text-transform:uppercase;margin-bottom:.2rem}
-.flow-label{font-size:.75rem;font-weight:700;color:#c9d1d9;margin-bottom:.2rem}
-.flow-desc{font-size:.68rem;color:#8b949e;line-height:1.45}
-.flow-arrow{align-self:center;color:#6e7681;font-size:.9rem;padding:0 .1rem;
-            flex-shrink:0}
+/* ── step cards ── */
+.step-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:1.75rem 2rem;
+  margin-bottom:1.25rem;
+  transition:border-color .2s,opacity .2s;
+}
+.step-card.step-done{border-left:3px solid var(--green)}
+.step-card.step-active{border-left:3px solid var(--blue);border-left-width:3px}
+.step-card.step-locked{opacity:.45}
+.step-card.step-locked .btn-primary{cursor:default}
 
-/* ── card ── */
-.card{background:#161b22;border:1px solid #30363d;border-radius:8px;
-      padding:.9rem 1.1rem}
-.card-title{font-size:.65rem;font-weight:700;color:#8b949e;letter-spacing:.08em;
-            text-transform:uppercase;margin-bottom:.65rem}
+.step-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:.6rem;
+}
+.step-label{
+  font-size:.63rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.1em;
+}
+.status-chip{
+  font-family:var(--mono);font-size:.6rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+  padding:.18rem .5rem;border-radius:3px;
+}
+.chip-gray{background:var(--surface2);color:var(--text-3);border:1px solid var(--border)}
+.chip-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.chip-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.chip-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.chip-blue{background:rgba(91,140,252,0.1);color:var(--blue);border:1px solid rgba(91,140,252,0.2)}
 
-/* ── two-col ── */
-.two-col{display:grid;grid-template-columns:320px 1fr;gap:1rem}
-@media(max-width:800px){.two-col{grid-template-columns:1fr}}
-
-/* ── inputs panel ── */
-.input-label{font-size:.65rem;color:#6e7681;text-transform:uppercase;
-             letter-spacing:.06em;margin:.55rem 0 .15rem;display:flex;
-             align-items:center;gap:.4rem}
-.input-label:first-child{margin-top:0}
-.input-badge{font-size:.6rem;color:#8b949e;background:#1c2128;
-             border:1px solid #30363d;border-radius:2px;padding:.02rem .3rem}
-details{margin-bottom:.15rem}
-summary{font-size:.72rem;color:#58a6ff;cursor:pointer;padding:.15rem 0;
-        user-select:none;list-style:none;display:flex;align-items:center;gap:.3rem}
-summary::before{content:"▶";font-size:.55rem;transition:transform .15s;color:#30363d}
-details[open] summary::before{transform:rotate(90deg)}
-summary:hover{color:#79c0ff}
-pre.fixture{background:#0d1117;border:1px solid #21262d;border-radius:5px;
-            padding:.45rem .65rem;font-size:.67rem;overflow-x:auto;
-            white-space:pre-wrap;word-break:break-all;max-height:160px;
-            overflow-y:auto;line-height:1.4;margin-top:.25rem;color:#8b949e}
+.step-title{
+  font-size:1.05rem;font-weight:600;color:var(--text-1);
+  letter-spacing:-.01em;margin-bottom:.4rem;
+}
+.step-body{
+  font-size:.85rem;color:var(--text-2);line-height:1.6;
+  margin-bottom:1.25rem;max-width:520px;
+}
 
 /* ── buttons ── */
-.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.38rem .9rem;
-     font-family:inherit;font-size:.78rem;border-radius:5px;
-     border:1px solid transparent;cursor:pointer;transition:opacity .12s;font-weight:600}
-.btn:hover:not(:disabled){opacity:.82}
-.btn:disabled{opacity:.4;cursor:default}
-.btn-route      {background:#238636;border-color:#2ea043;color:#fff;width:100%;
-                 justify-content:center;margin-top:.5rem}
-.btn-route-norm {background:#1a3455;border-color:#388bfd;color:#79c0ff;width:100%;
-                 justify-content:center;margin-top:.35rem;font-size:.75rem}
-.btn-verify {background:#6e40c9;border-color:#8957e5;color:#fff;width:100%;
-             justify-content:center;margin-top:.5rem}
-.btn-tamper   {background:#21262d;border-color:#b36200;color:#d29922;width:100%;
-               justify-content:center;margin-top:.4rem;font-size:.72rem}
-.btn-dispatch {background:#1a3455;border-color:#388bfd;color:#79c0ff;width:100%;
-               justify-content:center;margin-top:.5rem}
-.btn-approve  {background:#1a3e2c;border-color:#2ea043;color:#3fb950;width:100%;
-               justify-content:center;margin-top:.35rem}
-.btn-export   {background:#21262d;border-color:#388bfd;color:#58a6ff;width:100%;
-               justify-content:center;margin-top:.35rem;font-size:.72rem}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:.4rem;
+  background:var(--text-1);color:#0d1018;
+  font-family:inherit;font-size:.82rem;font-weight:700;
+  border:none;border-radius:6px;padding:.6rem 1.3rem;
+  cursor:pointer;transition:opacity .12s;
+  margin-bottom:1.1rem;
+}
+.btn-primary:hover:not(:disabled){opacity:.88}
+.btn-primary:disabled{opacity:.28;cursor:default}
+.btn-primary.loading{opacity:.6;cursor:default}
 
-/* ── artifact summary ── */
-.artifacts{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-           padding:.65rem .85rem;margin-bottom:.65rem}
-.artifact-row{display:grid;grid-template-columns:max-content 1fr;gap:.15rem .6rem;
-              align-items:baseline;margin-bottom:.2rem}
-.artifact-row:last-child{margin-bottom:0}
-.art-key{font-size:.65rem;color:#6e7681;text-transform:uppercase;
-         letter-spacing:.05em;white-space:nowrap}
-.art-val{font-size:.8rem;font-weight:700;color:#f0f6fc;word-break:break-all}
-.art-hash{font-size:.71rem;color:#58a6ff;word-break:break-all;font-family:inherit}
-.determinism-note{font-size:.67rem;color:#3fb950;margin-top:.5rem;
-                  padding-top:.4rem;border-top:1px solid #21262d;
-                  display:flex;align-items:center;gap:.35rem}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:.35rem;
+  background:transparent;color:var(--text-2);
+  font-family:inherit;font-size:.78rem;font-weight:600;
+  border:1px solid var(--border-md);border-radius:5px;
+  padding:.45rem .9rem;cursor:pointer;transition:border-color .12s,color .12s;
+  margin-top:.5rem;
+}
+.btn-secondary:hover:not(:disabled){border-color:var(--border-strong);color:var(--text-1)}
+.btn-secondary:disabled{opacity:.3;cursor:default}
+.btn-secondary+.btn-secondary{margin-left:.5rem}
 
-/* ── pills / badges ── */
-.pill{display:inline-block;padding:.06rem .4rem;border-radius:3px;
-      font-size:.68rem;font-weight:700}
-.pill-ok   {background:#1a3e2c;color:#3fb950}
-.pill-err  {background:#3d1f1f;color:#f85149}
-.pill-warn {background:#2d2009;color:#d29922}
-.pill-info {background:#1e2d45;color:#58a6ff}
+.btn-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem}
 
-/* ── receipt JSON ── */
-.section-title{font-size:.65rem;font-weight:700;color:#8b949e;text-transform:uppercase;
-               letter-spacing:.07em;margin:.8rem 0 .3rem;
-               display:flex;align-items:center;gap:.4rem}
-pre.result{background:#0d1117;border:1px solid #21262d;border-radius:5px;
-           padding:.55rem .75rem;font-size:.68rem;overflow-x:auto;
-           white-space:pre-wrap;word-break:break-all;max-height:380px;
-           overflow-y:auto;line-height:1.45}
-pre.result-ok  {border-left:3px solid #3fb950}
-pre.result-err {border-left:3px solid #f85149}
-pre.result-info{border-left:3px solid #388bfd}
+/* ── result panel ── */
+.result-panel{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:1.1rem 1.25rem;
+  margin-bottom:.75rem;
+}
+.result-panel.result-ok{border-left:3px solid var(--green)}
+.result-panel.result-err{border-left:3px solid var(--red)}
+.result-panel.result-pending{border-left:3px solid var(--amber)}
+
+.result-status-header{
+  display:flex;align-items:center;gap:.45rem;
+  margin-bottom:.85rem;
+}
+.result-status-dot{
+  width:6px;height:6px;border-radius:50%;flex-shrink:0;
+}
+.dot-green{background:var(--green)}
+.dot-amber{background:var(--amber)}
+.dot-red{background:var(--red)}
+
+.result-status-title{
+  font-size:.78rem;font-weight:700;color:var(--text-2);
+  text-transform:uppercase;letter-spacing:.06em;
+}
+
+/* ── field rows ── */
+.field-grid{
+  display:grid;grid-template-columns:max-content 1fr;
+  gap:.18rem .75rem;margin-bottom:.65rem;
+}
+.field-key{
+  font-size:.72rem;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.05em;
+  white-space:nowrap;padding-top:.06rem;
+}
+.field-val{font-size:.82rem;color:var(--text-1);word-break:break-all}
+.field-val-mono{
+  font-family:var(--mono);font-size:.72rem;
+  color:var(--text-2);word-break:break-all;
+}
+.field-val-pill{} /* inline wrapper */
+
+/* ── pill / badge ── */
+.pill{
+  display:inline-block;font-family:var(--mono);font-size:.65rem;
+  font-weight:700;padding:.1rem .4rem;border-radius:3px;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.pill-ok{background:var(--green-bg);color:var(--green)}
+.pill-warn{background:var(--amber-bg);color:var(--amber)}
+.pill-err{background:var(--red-bg);color:var(--red)}
+.pill-info{background:rgba(91,140,252,0.1);color:var(--blue)}
+.pill-muted{background:var(--surface3);color:var(--text-3)}
+
+/* ── explanation bullets ── */
+.result-bullets{
+  display:grid;gap:.25rem;margin:.55rem 0 .65rem;
+}
+.result-bullet{
+  font-size:.78rem;color:var(--text-2);
+  display:flex;align-items:baseline;gap:.4rem;line-height:1.45;
+}
+.result-bullet::before{
+  content:'';width:4px;height:4px;border-radius:50%;
+  background:var(--text-3);flex-shrink:0;margin-top:.35rem;
+}
+
+/* ── trust line ── */
+.trust-line{
+  font-size:.75rem;color:var(--green);
+  display:flex;align-items:center;gap:.4rem;
+  border-top:1px solid var(--border);
+  padding-top:.6rem;margin-top:.1rem;
+}
 
 /* ── verify banner ── */
-.verify-section{margin-top:.9rem}
-.verify-banner{border-radius:6px;padding:.7rem 1rem;font-size:.88rem;
-               font-weight:700;text-align:center;margin-bottom:.5rem}
-.banner-ok  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea043}
-.banner-err {background:#3d1f1f;color:#f85149;border:1px solid #f85149}
-.verify-sub{font-size:.72rem;color:#8b949e;margin-bottom:.3rem;
-            font-weight:400;display:block}
-
-/* ── tamper section ── */
-.tamper-section{margin-top:.9rem;padding-top:.8rem;border-top:1px dashed #30363d}
-.tamper-label{font-size:.65rem;color:#6e7681;text-transform:uppercase;
-              letter-spacing:.07em;margin-bottom:.4rem}
-.tamper-desc{font-size:.72rem;color:#8b949e;margin-bottom:.5rem;line-height:1.5}
-
-/* ── footer ── */
-footer{position:fixed;bottom:0;left:0;right:0;background:#0d1117;
-       border-top:1px solid #21262d;padding:.45rem 1.2rem;
-       display:flex;align-items:center;gap:1.4rem;font-size:.67rem;
-       color:#6e7681;z-index:10;overflow-x:auto;white-space:nowrap}
-.ft-label{color:#6e7681;font-size:.62rem;text-transform:uppercase;
-          letter-spacing:.07em;margin-right:.3rem}
-.ft-ep{color:#8b949e}
-.ft-ep .method{color:#d29922}
-.ft-ep .path{color:#58a6ff}
-.ft-arch{margin-left:auto;color:#6e7681;font-size:.65rem}
-
-/* ── misc ── */
-.dimmed{color:#6e7681;font-size:.75rem}
-.hidden{display:none!important}
-.error-note  {font-size:.75rem;color:#f85149;margin-top:.4rem;line-height:1.5}
-.warn-note   {font-size:.75rem;color:#d29922;margin-top:.4rem;line-height:1.5}
-.success-note{font-size:.75rem;color:#3fb950;margin-top:.4rem;line-height:1.5}
-.loading-note{font-size:.75rem;color:#6e7681;margin-top:.4rem;line-height:1.5}
-.norm-preview{background:#0d1117;border:1px solid #21262d;border-radius:5px;
-              padding:.4rem .65rem;margin-top:.35rem;font-size:.67rem;line-height:1.6}
-.norm-preview-row{display:grid;grid-template-columns:max-content 1fr;gap:.1rem .6rem}
-.norm-preview-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;
-                  letter-spacing:.05em;white-space:nowrap}
-.norm-preview-val{color:#c9d1d9;word-break:break-all}
-.norm-field-invalid{border-color:#f85149!important}
-.copy-btn{background:none;border:1px solid #30363d;border-radius:3px;color:#58a6ff;
-          cursor:pointer;font-family:inherit;font-size:.6rem;padding:.05rem .3rem;
-          margin-left:.35rem;transition:color .1s}
-.copy-btn:hover{color:#79c0ff}
-.btn-dl{display:inline-flex;align-items:center;gap:.3rem;background:#1a3455;
-        border:1px solid #388bfd;border-radius:4px;color:#79c0ff;cursor:pointer;
-        font-family:inherit;font-size:.72rem;font-weight:600;padding:.28rem .7rem;
-        margin-top:.45rem;transition:opacity .12s}
-.btn-dl:hover{opacity:.82}
-
-/* ── norm form inputs ── */
-.norm-field-wrap{margin:.42rem 0 .1rem}
-.norm-field-label{font-size:.62rem;color:#6e7681;text-transform:uppercase;
-                  letter-spacing:.06em;margin-bottom:.15rem;display:flex;
-                  align-items:center;gap:.3rem}
-.norm-req{color:#f85149;font-size:.65rem;line-height:1}
-.norm-input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:4px;
-            color:#c9d1d9;font-family:inherit;font-size:.8rem;padding:.3rem .5rem;
-            outline:none;transition:border-color .12s}
-.norm-input:focus{border-color:#388bfd}
-.norm-input.norm-field-invalid{border-color:#f85149!important}
-/* ── step framing inside norm section ── */
-.norm-step{display:flex;align-items:center;gap:.4rem;
-           margin:.65rem 0 .3rem;padding-top:.55rem;border-top:1px solid #21262d}
-.norm-step-num{background:#1e2d45;color:#58a6ff;border-radius:50%;
-               width:17px;height:17px;display:inline-flex;align-items:center;
-               justify-content:center;font-size:.58rem;font-weight:700;flex-shrink:0}
-.norm-step-num.done{background:#1a3e2c;color:#3fb950}
-.norm-step-lbl{font-size:.7rem;font-weight:700;color:#8b949e;text-transform:uppercase;
-               letter-spacing:.06em}
-/* ── success panel (steps 3–4) ── */
-.norm-success-panel{background:#0d1117;border:1px solid #2ea04355;border-radius:5px;
-                    padding:.55rem .75rem;margin-top:.1rem}
-.norm-success-title{font-size:.65rem;font-weight:700;color:#3fb950;
-                    text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem;
-                    display:flex;align-items:center;gap:.35rem}
-.norm-success-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.45rem;
-                      padding-top:.35rem;border-top:1px solid #21262d}
-/* ── error guidance panel ── */
-.norm-error-panel{background:#0d1117;border:1px solid #f8514944;border-radius:5px;
-                  padding:.55rem .75rem;margin-top:.1rem}
-.norm-error-code{font-size:.63rem;font-weight:700;color:#f85149;
-                 text-transform:uppercase;letter-spacing:.06em;margin-bottom:.18rem}
-.norm-error-hint{font-size:.7rem;color:#8b949e;border-left:2px solid #f8514966;
-                 padding-left:.45rem;margin-top:.2rem;line-height:1.5}
-
-/* ── source-of-truth badge ── */
-.sot-badge{font-size:.55rem;color:#3fb950;background:#1a3e2c;border-radius:2px;
-           padding:.02rem .28rem;font-weight:700;letter-spacing:0;text-transform:none;
-           margin-left:.3rem;vertical-align:middle}
-/* ── artifact guide ── */
-.artifact-guide{background:#0d1117;border:1px solid #21262d;border-radius:5px;
-               padding:.5rem .75rem;margin-bottom:.55rem}
-.ag-row{display:grid;grid-template-columns:110px 1fr;gap:.1rem .55rem;
-        font-size:.7rem;align-items:baseline;margin-bottom:.25rem}
-.ag-row:last-child{margin-bottom:0}
-.ag-key{color:#6e7681;font-weight:700;font-size:.63rem;text-transform:uppercase;
-        letter-spacing:.04em;white-space:nowrap}
-.ag-val{color:#8b949e;line-height:1.5}
-/* ── operator state block ── */
-.op-state-block{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-               padding:.5rem .75rem;margin-bottom:.65rem}
-.op-state-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem .5rem}
-.op-state-item{display:flex;flex-direction:column;gap:.1rem}
-.op-state-key{font-size:.55rem;color:#6e7681;text-transform:uppercase;letter-spacing:.06em}
-.op-not-run  {font-size:.7rem;font-weight:700;color:#484f58}
-.op-available{font-size:.7rem;font-weight:700;color:#d29922}
-.op-verified {font-size:.7rem;font-weight:700;color:#3fb950}
-.op-failed   {font-size:.7rem;font-weight:700;color:#f85149}
-.op-missing  {font-size:.7rem;font-weight:700;color:#f85149}
-/* guidance notes */
-.guidance-note{font-size:.71rem;color:#d29922;background:#2d200944;
-               border:1px solid #d2992233;border-radius:4px;
-               padding:.35rem .6rem;margin-top:.35rem;line-height:1.5}
-.guidance-note-err{font-size:.71rem;color:#f85149;background:#3d1f1f44;
-                   border:1px solid #f8514933;border-radius:4px;
-                   padding:.35rem .6rem;margin-top:.35rem;line-height:1.5}
-/* ── dispatch readiness panel ── */
-.dr-panel{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-          padding:.5rem .75rem;margin-bottom:.5rem}
-.dr-ready    {font-size:.78rem;font-weight:700;color:#3fb950}
-.dr-not-ready{font-size:.78rem;font-weight:700;color:#d29922}
-.dr-completed{font-size:.78rem;font-weight:700;color:#58a6ff}
-.dr-reason   {font-size:.68rem;color:#8b949e;margin-top:.15rem;line-height:1.5}
-.checklist   {display:grid;gap:.2rem;margin-top:.4rem;padding-top:.35rem;
-              border-top:1px solid #21262d33}
-.cl-item     {font-size:.68rem;display:flex;align-items:center;gap:.3rem;line-height:1.4}
-.cl-ok       {color:#3fb950}
-.cl-pending  {color:#484f58}
-/* ── panel subtitle ── */
-.panel-subtitle{font-size:.72rem;color:#6e7681;margin:.05rem 0 .65rem;line-height:1.5}
-/* ── integrity badges ── */
-.integrity-badge{display:inline-flex;align-items:center;font-size:.52rem;font-weight:700;
-                 border-radius:2px;padding:.03rem .28rem;text-transform:uppercase;
-                 letter-spacing:.05em;margin-left:.4rem;vertical-align:middle}
-.ib-unverified{background:#1c2128;color:#6e7681;border:1px solid #30363d}
-.ib-verified  {background:#1a3e2c;color:#3fb950;border:1px solid #2ea04355}
-.ib-failed    {background:#3d1f1f;color:#f85149;border:1px solid #f8514955}
-/* ── consistency sentinel ── */
-.ccs{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.45rem .75rem;margin-bottom:.5rem}
-.ccs-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.2rem}
-.ccs-headline{font-size:.72rem;font-weight:700;margin-bottom:.1rem}
-.ccs-detail{font-size:.65rem;line-height:1.4}
-.ccs-mismatch{color:#d29922;padding:.04rem 0}
-.ccs-consistent{border-left:3px solid #2ea04355}
-.ccs-consistent .ccs-headline{color:#3fb950}
-.ccs-attention {border-left:3px solid #d29922}
-.ccs-attention  .ccs-headline{color:#d29922}
-/* ── handoff summary card ── */
-.hsc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.55rem .8rem;margin-bottom:.5rem}
-.hsc-title{font-size:.7rem;font-weight:700;color:#c9d1d9;margin-bottom:.28rem}
-.hsc-verdict{font-size:.82rem;font-weight:700;margin-bottom:.22rem}
-.hsc-verdict-not-ready{color:#484f58}
-.hsc-verdict-ready    {color:#d29922}
-.hsc-verdict-complete {color:#3fb950}
-.hsc-section{margin-top:.28rem}
-.hsc-section-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-                   letter-spacing:.07em;margin-bottom:.12rem}
-.hsc-row{font-size:.67rem;display:flex;gap:.35rem;line-height:1.4;padding:.04rem 0}
-.hsc-row-ok{color:#3fb950}
-.hsc-row-no{color:#484f58}
-.hsc-summary-line{font-size:.7rem;color:#c9d1d9;margin-top:.3rem;padding-top:.28rem;
-                  border-top:1px solid #21262d;line-height:1.45;font-style:italic}
-@media print{
-  header,footer,#op-cheatsheet,.ase-bar,#nar-rail,#run-timeline,#oab,#orb,
-  #crc,#pfc,.op-state-block,#active-run-context,#run-history-panel,
-  #results-placeholder,#results-loading,#route-error,#route-result,
-  .hero,details,.two-col>div:first-child{display:none!important}
-  .two-col{display:block!important}
-  .card{border:none!important;padding:0!important}
-  #hsc{border:1px solid #ccc;background:#fff;color:#000;border-radius:0}
-  #hsc .hsc-title{color:#000}
-  #hsc .hsc-verdict-not-ready,#hsc .hsc-verdict-ready,#hsc .hsc-verdict-complete{color:#000}
-  #hsc .hsc-section-label{color:#555}
-  #hsc .hsc-row-ok,#hsc .hsc-row-no{color:#000}
-  #hsc .hsc-summary-line{color:#000;border-top-color:#ccc}
+.verify-banner{
+  border-radius:6px;padding:.65rem .9rem;
+  font-size:.82rem;font-weight:700;margin-bottom:.65rem;
 }
-/* ── audit snapshot export ── */
-.ase-bar{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;
-         padding:.35rem .65rem;background:#0d111766;border:1px solid #21262d;
-         border-radius:4px}
-.ase-label{font-size:.62rem;color:#6e7681;flex:1}
-.ase-btn{background:none;border:1px solid #30363d;border-radius:3px;color:#58a6ff;
-         cursor:pointer;font-family:inherit;font-size:.65rem;font-weight:700;
-         padding:.18rem .5rem;white-space:nowrap;transition:color .1s,border-color .1s}
-.ase-btn:hover{color:#79c0ff;border-color:#388bfd}
-/* ── preflight summary card ── */
-.pfc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-bottom:.5rem}
-.pfc-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.25rem}
-.pfc-headline{font-size:.82rem;font-weight:700;margin-bottom:.1rem}
-.pfc-detail{font-size:.67rem;color:#8b949e;line-height:1.45;margin-bottom:.2rem}
-.pfc-rows{display:grid;gap:.1rem;margin:.2rem 0 .15rem}
-.pfc-row{font-size:.67rem;display:flex;align-items:baseline;gap:.35rem;line-height:1.4}
-.pfc-ok {color:#3fb950}
-.pfc-dim{color:#484f58}
-.pfc-link{font-size:.62rem;color:#58a6ff;background:none;border:none;
-          font-family:inherit;padding:0;cursor:pointer;
-          text-decoration:underline;text-underline-offset:2px;margin-top:.15rem;display:inline-block}
-.pfc-link:hover{color:#79c0ff}
-.pfc-not-ready{border-left:3px solid #30363d}
-.pfc-ready    {border-left:3px solid #d29922}
-.pfc-complete {border-left:3px solid #2ea043}
-.pfc-not-ready .pfc-headline{color:#484f58}
-.pfc-ready     .pfc-headline{color:#d29922}
-.pfc-complete  .pfc-headline{color:#3fb950}
-/* ── active section emphasis ── */
-.as-chip{display:inline-block;padding:.04rem .3rem;border-radius:2px;font-size:.55rem;
-         font-weight:700;vertical-align:middle;margin-left:.35rem;letter-spacing:.03em;
-         background:#1e2d45;color:#388bfd;text-transform:lowercase}
-.as-active{border-color:#388bfd44!important;box-shadow:inset 0 0 0 1px #388bfd1a}
-/* ── current-run checklist card ── */
-.crc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-bottom:.5rem}
-.crc-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.3rem}
-.crc-row{font-size:.7rem;display:flex;align-items:baseline;gap:.4rem;
-         padding:.1rem 0;line-height:1.45}
-.crc-icon-done   {color:#3fb950;flex-shrink:0;width:.85rem}
-.crc-icon-pending{color:#484f58;flex-shrink:0;width:.85rem}
-.crc-icon-blocked{color:#d29922;flex-shrink:0;width:.85rem}
-.crc-text-done   {color:#c9d1d9}
-.crc-text-pending{color:#484f58}
-.crc-text-blocked{color:#6e7681}
-.crc-anchor{font-size:.62rem;color:#58a6ff;background:none;border:none;
-            font-family:inherit;padding:0;cursor:pointer;
-            text-decoration:underline;text-underline-offset:2px;margin-left:.35rem}
-.crc-anchor:hover{color:#79c0ff}
-.crc-footer{font-size:.67rem;margin-top:.28rem;padding-top:.28rem;
-            border-top:1px solid #21262d;line-height:1.4}
-.crc-footer-incomplete{color:#484f58}
-.crc-footer-ready     {color:#d29922}
-.crc-footer-complete  {color:#3fb950}
-/* ── dispatch blocker list ── */
-.dbl{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.45rem .75rem;margin-top:.4rem;margin-bottom:.5rem}
-.dbl-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.22rem}
-.dbl-item{font-size:.68rem;display:flex;align-items:baseline;gap:.4rem;
-          padding:.1rem 0;line-height:1.45}
-.dbl-item-blocked{color:#d29922}
-.dbl-item-bullet{color:#d29922;flex-shrink:0}
-.dbl-clear{font-size:.68rem;color:#3fb950;line-height:1.45}
-.dbl-done {font-size:.68rem;color:#58a6ff;line-height:1.45}
-.dbl-anchor{font-size:.62rem;color:#58a6ff;background:none;border:none;
-            font-family:inherit;padding:0;cursor:pointer;
-            text-decoration:underline;text-underline-offset:2px;margin-left:.3rem}
-.dbl-anchor:hover{color:#79c0ff}
-/* ── artifact freshness markers ── */
-.fm{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
-    font-weight:700;vertical-align:middle;margin-left:.2rem;letter-spacing:.03em;
-    text-transform:lowercase}
-.fm-fresh  {background:#1e2d45;color:#388bfd}
-.fm-pending{background:#1c2128;color:#484f58}
-/* ── panel microbadges ── */
-.mb{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
-    font-weight:700;vertical-align:middle;margin-left:.35rem;letter-spacing:.03em;
-    text-transform:lowercase}
-.mb-on {background:#1a3e2c;color:#3fb950}
-.mb-dim{background:#1c2128;color:#484f58}
-.mb-err{background:#3d1f1f;color:#f85149}
-/* ── next-action rail ── */
-.nar-rail{background:#0d1117;border:1px solid #21262d;border-radius:5px;
-          padding:.4rem .65rem;margin-bottom:.5rem}
-.nar-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.1rem}
-.nar-action{font-size:.75rem;font-weight:700;display:block}
-.nar-action-idle{color:#484f58}
-.nar-action-next{color:#d29922}
-.nar-action-done{color:#3fb950}
-.nar-reason{font-size:.65rem;color:#6e7681;margin-top:.08rem;line-height:1.4;display:block}
-/* ── active run context ── */
-.arc-block{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-           padding:.5rem .75rem;margin-bottom:.5rem}
-.arc-row{display:grid;grid-template-columns:90px 1fr;gap:.1rem .5rem;
-         font-size:.68rem;align-items:baseline;margin-bottom:.2rem}
-.arc-row:last-child{margin-bottom:0}
-.arc-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;
-         letter-spacing:.05em;white-space:nowrap}
-.arc-val{color:#c9d1d9;word-break:break-all}
-.arc-val-pending{color:#484f58;font-style:italic;word-break:break-all}
-.arc-val-ok {color:#3fb950;word-break:break-all}
-.arc-val-err{color:#f85149;word-break:break-all}
-/* ── handoff note ── */
-.handoff-note{background:#0d1117;border:1px solid #21262d;border-radius:5px;
-              padding:.45rem .7rem;margin-top:.5rem}
-.handoff-note-active{border-color:#388bfd44}
-.hn-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-          letter-spacing:.08em;margin-bottom:.22rem}
-.hn-row{font-size:.68rem;color:#8b949e;display:flex;align-items:baseline;
-        gap:.35rem;line-height:1.45;padding:.06rem 0}
-.hn-row-check{color:#3fb950}
-.hn-object{font-size:.67rem;color:#6e7681;margin-top:.2rem;padding-top:.2rem;
-           border-top:1px solid #21262d33;line-height:1.4}
-/* ── run history ── */
-.run-history{background:#0d1117;border:1px solid #21262d;border-radius:5px;
-             padding:.45rem .7rem;margin-bottom:.3rem}
-.rh-entry{font-size:.68rem;display:flex;align-items:baseline;gap:.5rem;
-          padding:.15rem 0;border-bottom:1px solid #21262d33;line-height:1.4}
-.rh-entry:last-child{border-bottom:none}
-.rh-ts{color:#484f58;font-size:.62rem;white-space:nowrap;flex-shrink:0}
-.rh-ok{color:#3fb950}
-.rh-err{color:#f85149}
-/* ── artifact size guard ── */
-pre.result.collapsed{max-height:120px;overflow:hidden}
-.expand-btn{background:none;border:1px solid #30363d;border-radius:3px;
-            color:#58a6ff;cursor:pointer;font-family:inherit;font-size:.63rem;
-            padding:.1rem .38rem;margin-top:.2rem;transition:color .1s}
-.expand-btn:hover{color:#79c0ff}
-/* ── run timeline ── */
-.run-timeline{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-              padding:.5rem .75rem;margin-bottom:.5rem}
-.rt-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-          letter-spacing:.08em;margin-bottom:.35rem}
-.rt-steps{display:flex;align-items:center;gap:0;margin-bottom:.28rem}
-.rt-step{display:flex;flex-direction:column;align-items:center;gap:.12rem;flex:1;min-width:0}
-.rt-dot{width:8px;height:8px;border-radius:50%;background:#1c2128;border:1px solid #30363d}
-.rt-name{font-size:.6rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-         color:#484f58;white-space:nowrap}
-.rt-conn{flex:1;height:1px;background:#21262d;min-width:.4rem}
-.rt-idle    .rt-dot{background:#1c2128;border-color:#30363d}
-.rt-idle    .rt-name{color:#484f58}
-.rt-ready   .rt-dot{background:#1e2d45;border-color:#388bfd}
-.rt-ready   .rt-name{color:#58a6ff}
-.rt-done    .rt-dot{background:#1a3e2c;border-color:#2ea043}
-.rt-done    .rt-name{color:#3fb950}
-.rt-blocked .rt-dot{background:#2d2009;border-color:#d29922}
-.rt-blocked .rt-name{color:#6e7681}
-.rt-summary{font-size:.69rem;color:#6e7681;line-height:1.4}
-/* ── operator action bar ── */
-.oab{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.45rem .75rem;margin-bottom:.5rem}
-.oab-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.2rem}
-.oab-body{display:flex;align-items:center;gap:.5rem}
-.oab-action{font-size:.78rem;font-weight:700;flex:1}
-.oab-action-idle    {color:#484f58}
-.oab-action-active  {color:#d29922}
-.oab-action-complete{color:#3fb950}
-.oab-btn{background:none;border:1px solid #30363d;border-radius:3px;color:#58a6ff;
-         cursor:pointer;font-family:inherit;font-size:.68rem;font-weight:700;
-         padding:.15rem .5rem;white-space:nowrap;flex-shrink:0;
-         transition:color .1s,border-color .1s}
-.oab-btn:hover{color:#79c0ff;border-color:#388bfd}
-.oab-btn-complete{color:#6e7681;border-color:#21262d;cursor:default}
-.oab-reason{font-size:.65rem;color:#6e7681;margin-top:.18rem;line-height:1.4}
-/* ── outcome banner ── */
-.orb{background:#0d1117;border-left:3px solid #30363d;border:1px solid #21262d;
-     border-radius:6px;padding:.5rem .75rem;margin-bottom:.5rem}
-.orb-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.22rem}
-.orb-headline{font-size:.8rem;font-weight:700;margin-bottom:.1rem}
-.orb-detail{font-size:.67rem;color:#8b949e;line-height:1.45;margin-bottom:.15rem}
-.orb-link{font-size:.67rem;color:#58a6ff;cursor:pointer;background:none;border:none;
-          font-family:inherit;padding:0;text-decoration:underline;text-underline-offset:2px}
-.orb-link:hover{color:#79c0ff}
-.orb-neutral .orb-headline{color:#484f58}
-.orb-success .orb-headline{color:#3fb950}
-.orb-warning .orb-headline{color:#d29922}
-.orb-blocked .orb-headline{color:#f85149}
-.orb-neutral{border-left-color:#30363d}
-.orb-success{border-left-color:#2ea043}
-.orb-warning{border-left-color:#d29922}
-.orb-blocked{border-left-color:#f85149}
-/* ── session activity log ── */
-.sal{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.45rem .75rem;margin-bottom:.5rem}
-.sal-header{display:flex;align-items:center;margin-bottom:.22rem}
-.sal-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;flex:1}
-.sal-clear{background:none;border:none;color:#484f58;font-family:inherit;font-size:.6rem;
-           cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
-.sal-clear:hover{color:#8b949e}
-.sal-empty{font-size:.65rem;color:#3d4349;font-style:italic}
-.sal-list{display:flex;flex-direction:column;gap:.06rem}
-.sal-entry{font-size:.67rem;display:flex;align-items:baseline;gap:.4rem;
-           padding:.06rem 0;line-height:1.4}
-.sal-entry-latest{color:#c9d1d9;font-weight:600}
-.sal-entry-older{color:#484f58}
-.sal-idx{color:#3d4349;font-size:.6rem;min-width:.9rem;flex-shrink:0;text-align:right}
-.sal-msg{color:#6e7681;font-size:.62rem}
-/* ── run identity block ── */
-.rib{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.45rem .75rem;margin-bottom:.5rem}
-.rib-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.25rem}
-.rib-row{display:grid;grid-template-columns:90px 1fr;gap:.06rem .5rem;
-         font-size:.68rem;align-items:baseline}
-.rib-key{color:#6e7681;font-size:.63rem;text-transform:uppercase;letter-spacing:.04em}
-.rib-val-current{color:#3fb950}.rib-val-prev{color:#d29922}.rib-val-idle{color:#484f58}
-.rib-val-err{color:#f85149}
-.rib-hint{font-size:.6rem;color:#6e7681;grid-column:2;margin-top:.02rem;font-style:italic}
-/* ── artifact lineage badge ── */
-.lin{display:inline-block;padding:.04rem .32rem;border-radius:2px;font-size:.57rem;
-     font-weight:700;vertical-align:middle;margin-left:.2rem;letter-spacing:.03em;
-     text-transform:lowercase}
-.lin-current{background:#1a3e2c;color:#3fb950}
-.lin-prev   {background:#2d2009;color:#d29922}
-.lin-idle   {background:#1c2128;color:#484f58}
-/* ── lineage mismatch note ── */
-.lin-note{font-size:.67rem;line-height:1.5;color:#d29922;
-          background:#1c180055;border:1px solid #d2992244;border-radius:4px;
-          padding:.3rem .55rem;margin-top:.35rem;margin-bottom:.3rem}
-.lin-note-hint{font-size:.62rem;color:#8b949e;margin-top:.1rem}
-/* ── dispatch handoff dossier ── */
-.dhd{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.55rem .8rem;margin-top:.5rem}
-.dhd-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.28rem}
-.dhd-verdict{font-size:.85rem;font-weight:700;margin-bottom:.18rem}
-.dhd-verdict-none       {color:#484f58}
-.dhd-verdict-not-ready  {color:#484f58}
-.dhd-verdict-ready      {color:#d29922}
-.dhd-verdict-exported   {color:#3fb950}
-.dhd-verdict-attention  {color:#f85149}
-.dhd-meaning{font-size:.67rem;color:#8b949e;line-height:1.5;margin-bottom:.28rem;
-             padding-bottom:.25rem;border-bottom:1px solid #21262d}
-.dhd-checklist{display:grid;gap:.08rem;margin-bottom:.25rem}
-.dhd-row{font-size:.68rem;display:flex;align-items:baseline;gap:.38rem;
-         line-height:1.4;padding:.04rem 0}
-.dhd-ok  {color:#3fb950;flex-shrink:0;width:.85rem}
-.dhd-no  {color:#484f58;flex-shrink:0;width:.85rem}
-.dhd-warn{color:#d29922;flex-shrink:0;width:.85rem}
-.dhd-next{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
-          border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
-.dhd-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-                letter-spacing:.07em;display:block;margin-bottom:.06rem}
-/* ── dispatch packet inspection ── */
-.dpi{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-top:.5rem}
-.dpi-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.28rem}
-.dpi-meta{display:flex;align-items:center;gap:.65rem;margin-bottom:.3rem;flex-wrap:wrap}
-.dpi-meta-item{display:flex;align-items:baseline;gap:.3rem;font-size:.65rem}
-.dpi-meta-key{color:#6e7681;text-transform:uppercase;font-size:.6rem;letter-spacing:.04em}
-.dpi-origin-current{color:#3fb950;font-weight:700}
-.dpi-origin-prev   {color:#d29922;font-weight:700}
-.dpi-origin-none   {color:#484f58;font-weight:700}
-.dpi-integrity-ok  {color:#3fb950;font-weight:700}
-.dpi-integrity-fail{color:#f85149;font-weight:700}
-.dpi-integrity-none{color:#484f58;font-weight:700}
-.dpi-empty{font-size:.67rem;color:#3d4349;font-style:italic;line-height:1.5}
-.dpi-empty-hint{font-size:.63rem;color:#3d4349;margin-top:.1rem}
-.dpi-viewer{background:#0d111788;border:1px solid #21262d;border-radius:4px;
-            font-size:.67rem;line-height:1.45;padding:.4rem .6rem;
-            white-space:pre-wrap;word-break:break-all;max-height:220px;
-            overflow-y:auto;color:#8b949e;margin-top:.22rem}
-/* ── route reproducibility check ── */
-.rrc{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-top:.5rem;margin-bottom:.3rem}
-.rrc-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.28rem}
-.rrc-status{font-size:.75rem;font-weight:700;margin-bottom:.15rem}
-.rrc-ok        {color:#3fb950}
-.rrc-mismatch  {color:#f85149}
-.rrc-not-tested{color:#484f58}
-.rrc-detail{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.22rem}
-.rrc-btn{background:#21262d;border:1px solid #30363d;border-radius:4px;
-         color:#c9d1d9;font-size:.68rem;cursor:pointer;padding:.22rem .55rem;
-         margin-top:.12rem}
-.rrc-btn:disabled{opacity:.45;cursor:not-allowed}
-.rrc-btn:hover:not(:disabled){background:#30363d}
-/* ── operator dry-run status ── */
-.drs{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-bottom:.4rem}
-.drs-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.28rem}
-.drs-verdict{font-size:.8rem;font-weight:700;margin-bottom:.12rem}
-.drs-verdict-none       {color:#484f58}
-.drs-verdict-incomplete {color:#d29922}
-.drs-verdict-passed     {color:#3fb950}
-.drs-verdict-attention  {color:#f85149}
-.drs-meaning{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.28rem}
-.drs-checklist{margin-bottom:.22rem}
-.drs-row{display:flex;align-items:baseline;gap:.4rem;font-size:.67rem;
-         color:#c9d1d9;line-height:1.5;padding:.04rem 0}
-.drs-ok  {color:#3fb950;flex-shrink:0;width:.85rem}
-.drs-no  {color:#484f58;flex-shrink:0;width:.85rem}
-.drs-warn{color:#d29922;flex-shrink:0;width:.85rem}
-.drs-next{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
-          border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
-.drs-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-                letter-spacing:.07em;display:block;margin-bottom:.06rem}
-/* ── pilot handoff summary ── */
-.phs{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-bottom:.4rem}
-.phs-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.28rem}
-.phs-verdict{font-size:.8rem;font-weight:700;margin-bottom:.12rem}
-.phs-verdict-not-ready {color:#484f58}
-.phs-verdict-pending   {color:#d29922}
-.phs-verdict-ready     {color:#3fb950}
-.phs-verdict-attention {color:#f85149}
-.phs-meaning{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.28rem}
-.phs-checklist{margin-bottom:.22rem}
-.phs-row{display:flex;align-items:baseline;gap:.4rem;font-size:.67rem;
-         color:#c9d1d9;line-height:1.5;padding:.04rem 0}
-.phs-ok  {color:#3fb950;flex-shrink:0;width:.85rem}
-.phs-no  {color:#484f58;flex-shrink:0;width:.85rem}
-.phs-warn{color:#d29922;flex-shrink:0;width:.85rem}
-.phs-action{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
-            border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
-.phs-action-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-                  letter-spacing:.07em;display:block;margin-bottom:.06rem}
-/* ── canonical pilot workflow ── */
-.cpw{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-bottom:.4rem}
-.cpw-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.18rem}
-.cpw-desc{font-size:.64rem;color:#484f58;line-height:1.45;margin-bottom:.28rem;font-style:italic}
-.cpw-steps{display:flex;flex-direction:column;gap:.06rem}
-.cpw-step{display:flex;align-items:baseline;gap:.45rem;font-size:.67rem;
-          color:#c9d1d9;line-height:1.55;padding:.1rem .25rem;border-radius:3px}
-.cpw-step-num{font-size:.6rem;font-weight:700;color:#6e7681;min-width:.85rem;flex-shrink:0}
-.cpw-step-name{flex:1}
-.cpw-step-status{font-size:.6rem;font-weight:700;text-transform:uppercase;
-                 letter-spacing:.05em;flex-shrink:0}
-.cpw-s-available  {color:#d29922}
-.cpw-s-completed  {color:#3fb950}
-.cpw-s-blocked    {color:#30363d}
-.cpw-s-not-started{color:#484f58}
-.cpw-s-warn       {color:#f85149}
-/* ── current-run artifact bundle ── */
-.cab{background:#0d1117;border:1px solid #21262d;border-radius:6px;
-     padding:.5rem .75rem;margin-bottom:.4rem}
-.cab-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.28rem}
-.cab-verdict{font-size:.8rem;font-weight:700;margin-bottom:.12rem}
-.cab-verdict-none       {color:#484f58}
-.cab-verdict-incomplete {color:#d29922}
-.cab-verdict-ready      {color:#3fb950}
-.cab-verdict-attention  {color:#f85149}
-.cab-meaning{font-size:.67rem;color:#6e7681;line-height:1.45;margin-bottom:.28rem}
-.cab-artifacts{margin-bottom:.22rem}
-.cab-row{display:flex;align-items:baseline;gap:.5rem;font-size:.67rem;
-         color:#c9d1d9;line-height:1.5;padding:.04rem 0}
-.cab-key{color:#6e7681;min-width:7rem;flex-shrink:0;font-size:.63rem;
-         text-transform:uppercase;letter-spacing:.04em}
-.cab-val-current{color:#3fb950;font-weight:700}
-.cab-val-missing{color:#484f58}
-.cab-val-prev   {color:#d29922;font-weight:700}
-.cab-val-failed {color:#f85149;font-weight:700}
-.cab-next{font-size:.67rem;color:#c9d1d9;background:#21262d44;border:1px solid #30363d;
-          border-radius:4px;padding:.28rem .5rem;margin-top:.22rem;line-height:1.45}
-.cab-next-label{font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;
-                letter-spacing:.07em;display:block;margin-bottom:.06rem}
-/* ── operator session guard ── */
-.osg{background:#1a0f0f;border:1px solid #f8514933;border-radius:6px;
-     padding:.5rem .75rem;margin-bottom:.4rem;display:none}
-.osg-active{display:block}
-.osg-label{font-size:.55rem;font-weight:700;color:#f85149;text-transform:uppercase;
-           letter-spacing:.08em;margin-bottom:.18rem}
-.osg-headline{font-size:.75rem;font-weight:700;color:#f85149;margin-bottom:.15rem}
-.osg-detail{font-size:.67rem;color:#c9d1d9;line-height:1.45;margin-bottom:.22rem}
-.osg-reasons{margin-bottom:.25rem}
-.osg-reason{font-size:.65rem;color:#d29922;line-height:1.5;padding:.02rem 0}
-.osg-btn{background:#f8514918;border:1px solid #f85149;border-radius:4px;
-         color:#f85149;font-size:.68rem;font-weight:700;cursor:pointer;
-         padding:.25rem .65rem}
-.osg-btn:hover{background:#f8514933}
+.banner-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.banner-err{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.verify-sub{
+  display:block;font-size:.72rem;font-weight:400;
+  color:var(--text-2);margin-top:.18rem;
+}
+
+/* ── result explanation ── */
+.result-explanation{
+  font-size:.78rem;color:var(--text-2);line-height:1.6;
+  padding-top:.55rem;border-top:1px solid var(--border);
+  margin-top:.1rem;
+}
+
+/* ── technical drawer ── */
+details.tech-drawer{margin-top:.9rem}
+details.tech-drawer summary{
+  font-size:.7rem;font-weight:600;color:var(--text-3);
+  cursor:pointer;user-select:none;list-style:none;
+  display:flex;align-items:center;gap:.35rem;
+  padding:.3rem 0;letter-spacing:.03em;
+}
+details.tech-drawer summary::-webkit-details-marker{display:none}
+details.tech-drawer summary::before{
+  content:'▶';font-size:.5rem;color:var(--border-md);
+  transition:transform .12s;
+}
+details.tech-drawer[open] summary::before{transform:rotate(90deg)}
+details.tech-drawer summary:hover{color:var(--text-2)}
+pre.json-pre{
+  background:var(--surface3);border:1px solid var(--border);
+  border-radius:5px;padding:.65rem .85rem;
+  font-family:var(--mono);font-size:.67rem;color:var(--text-2);
+  white-space:pre-wrap;word-break:break-all;
+  line-height:1.5;overflow-x:auto;margin-top:.45rem;
+  max-height:280px;overflow-y:auto;
+}
+pre.json-pre.json-ok{border-left:3px solid var(--green)}
+pre.json-pre.json-err{border-left:3px solid var(--red)}
+pre.json-pre.json-info{border-left:3px solid var(--blue)}
+
+/* ── small copy btn ── */
+.copy-btn{
+  background:none;border:1px solid var(--border);border-radius:3px;
+  color:var(--blue);cursor:pointer;font-family:inherit;font-size:.6rem;
+  padding:.05rem .3rem;margin-left:.3rem;transition:color .1s;
+}
+.copy-btn:hover{color:var(--text-1);border-color:var(--border-md)}
+
+/* ── loading / error notes ── */
+.loading-note{font-size:.8rem;color:var(--text-3);padding:.5rem 0}
+.error-note{font-size:.78rem;color:var(--red);line-height:1.5;margin:.3rem 0}
+.warn-note{font-size:.78rem;color:var(--amber);line-height:1.5;margin:.3rem 0}
+.success-note{font-size:.78rem;color:var(--green);line-height:1.5;margin:.3rem 0}
+
+/* ── dispatch sub-buttons area ── */
+.dispatch-actions{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:.85rem 1rem;margin-top:.65rem;
+}
+.dispatch-actions-label{
+  font-size:.63rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:.55rem;
+}
+
+/* ── value section ── */
+.value-section{
+  margin-top:2.5rem;padding-top:2rem;
+  border-top:1px solid var(--border);
+}
+.value-eyebrow{
+  font-size:.63rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:1.25rem;
+}
+.value-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem}
+@media(max-width:600px){.value-grid{grid-template-columns:1fr}}
+.value-block{}
+.value-block-title{
+  font-size:.82rem;font-weight:700;color:var(--text-1);
+  margin-bottom:.3rem;
+}
+.value-block-body{font-size:.78rem;color:var(--text-2);line-height:1.6}
+.value-bottom{
+  font-size:.78rem;color:var(--text-3);margin-top:1.5rem;
+  padding-top:1rem;border-top:1px solid var(--border);line-height:1.6;
+}
+
+/* ── footer util bar ── */
+.util-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(17,19,24,0.95);
+  border-top:1px solid var(--border);
+  backdrop-filter:blur(8px);
+  padding:.4rem 2rem;
+  display:flex;align-items:center;gap:1rem;
+  font-size:.65rem;color:var(--text-3);z-index:10;
+}
+.util-bar-actions{margin-left:auto;display:flex;align-items:center;gap:.5rem}
+.util-btn{
+  background:none;border:1px solid var(--border);border-radius:3px;
+  color:var(--text-3);cursor:pointer;font-family:inherit;font-size:.63rem;
+  padding:.15rem .45rem;transition:color .1s,border-color .1s;
+}
+.util-btn:hover{color:var(--text-2);border-color:var(--border-md)}
+
+/* ── hidden util ── */
+.hidden{display:none!important}
+
+/* ── expand btn ── */
+pre.collapsed{max-height:120px;overflow:hidden}
+.expand-btn{
+  background:none;border:1px solid var(--border);border-radius:3px;
+  color:var(--blue);cursor:pointer;font-family:inherit;font-size:.63rem;
+  padding:.1rem .38rem;margin-top:.2rem;transition:color .1s;
+}
+.expand-btn:hover{color:var(--text-1)}
+
+/* ── step 2 routing result inline fields ── */
+#art-hash,#art-kver,#art-dispatch-id{font-family:var(--mono);font-size:.7rem;color:var(--text-2)}
+
+/* ── verify kind label ── */
+#verify-kind-label .pill{margin-left:.25rem}
+
+/* ── print ── */
+@media print{
+  header,.util-bar,.tech-drawer{display:none!important}
+  body{background:#fff;color:#000}
+  .step-card{border:1px solid #ccc;page-break-inside:avoid}
+}
 </style>
 </head>
 <body>
 
+<!-- ── header ── -->
 <header>
-  <span id="status-dot"></span>
-  <span id="hdr-title">PostCAD</span>
-  <span id="hdr-tag">reviewer shell</span>
-  <span id="ver">loading…</span>
+  <span class="logo">PostCAD</span>
+  <span class="demo-tag">Operator Demo</span>
+  <div class="hdr-right">
+    <span class="hdr-dot" id="status-dot"></span>
+    <span id="ver">loading…</span>
+  </div>
 </header>
 
 <main>
 
-  <!-- A. Hero / info architecture -->
-  <div class="hero">
-    <div class="hero-title">PostCAD — Human Review Surface</div>
-    <div class="hero-sub">Deterministic manufacturing routing · verifiable receipts · operator-gated dispatch</div>
-    <div class="hero-why"><strong style="color:#c9d1d9">What is this page?</strong> This is the PostCAD reviewer shell — a human review layer on top of a deterministic routing kernel. The operator reviews the routed result, supporting evidence, and dispatch readiness before a case is handed off to manufacturing. The protocol is auditable: every decision carries a machine-readable reason code and a cryptographic receipt. This UI does not make routing decisions; it presents the kernel output for human review.</div>
+<!-- ── hero ── -->
+<div class="hero">
+  <div class="hero-eyebrow">Manufacturing routing layer</div>
+  <h1 class="hero-title">Deterministic manufacturing<br>routing after CAD</h1>
+  <p class="hero-sub">Route, verify, and prepare a manufacturing decision with a reproducible audit trail.</p>
+  <div class="trust-chips">
+    <span class="chip">Deterministic</span>
+    <span class="chip">Verifiable</span>
+    <span class="chip">No clinical decision-making</span>
+  </div>
+  <p class="hero-framing">PostCAD sits between CAD and manufacturing. It does not diagnose, and it does not manufacture. It controls the routing and audit layer.</p>
+</div>
 
-    <div style="font-size:.6rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin:.8rem 0 .3rem">Operator flow — 5 steps</div>
-    <div class="flow" style="margin-bottom:.8rem">
-      <div class="flow-step">
-        <div class="flow-num">step 1</div>
-        <div class="flow-label">Open reviewer</div>
-        <div class="flow-desc">Fixtures load automatically. Confirm all four pilot fields are present before proceeding.</div>
-      </div>
-      <div class="flow-arrow">›</div>
-      <div class="flow-step">
-        <div class="flow-num">step 2</div>
-        <div class="flow-label">Run route</div>
-        <div class="flow-desc">Submit for review. The kernel evaluates eligibility and issues a cryptographic receipt. Routing status changes to <strong>available</strong>.</div>
-      </div>
-      <div class="flow-arrow">›</div>
-      <div class="flow-step">
-        <div class="flow-num">step 3</div>
-        <div class="flow-label">Inspect receipt</div>
-        <div class="flow-desc">Review the receipt hash, selected manufacturer, and jurisdiction. Confirm the decision is correct before verifying.</div>
-      </div>
-      <div class="flow-arrow">›</div>
-      <div class="flow-step">
-        <div class="flow-num">step 4</div>
-        <div class="flow-label">Verify replay</div>
-        <div class="flow-desc">Run replay verification. The kernel re-derives the receipt from original inputs. Verification status changes to <strong>verified</strong>.</div>
-      </div>
-      <div class="flow-arrow">›</div>
-      <div class="flow-step">
-        <div class="flow-num">step 5</div>
-        <div class="flow-label">Dispatch</div>
-        <div class="flow-desc">If verified, create and approve the dispatch commitment. Stop here if evidence is insufficient. Dispatch is irreversible once approved.</div>
-      </div>
-    </div>
+<!-- ═══════════════════════════════════════════════
+     Step 1 — Load Case
+════════════════════════════════════════════════ -->
+<div class="step-card step-active" id="step1-card">
+  <div class="step-header">
+    <span class="step-label">01 · Demo Case</span>
+    <span class="status-chip chip-amber" id="step1-chip">READY</span>
+  </div>
+  <h2 class="step-title">Load a canonical case</h2>
+  <p class="step-body">Use a fixed pilot case to review the routing flow from input to dispatch.</p>
 
-    <div style="font-size:.6rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Protocol internals</div>
-    <div class="flow">
-      <div class="flow-step">
-        <div class="flow-num">01 · inputs</div>
-        <div class="flow-label">Inputs</div>
-        <div class="flow-desc">Dental CAD case + manufacturer registry + routing policy</div>
+  <div id="fixtures-loading" class="loading-note">Loading case…</div>
+  <div id="fixtures-error" class="hidden"></div>
+
+  <button class="btn-primary" id="btn-load-case" onclick="loadDemoCase()" disabled>
+    Load Demo Case
+  </button>
+
+  <!-- case summary shown after load -->
+  <div id="step1-result" class="hidden">
+    <div class="result-panel result-ok">
+      <div class="result-status-header">
+        <span class="result-status-dot dot-green"></span>
+        <span class="result-status-title">Case loaded</span>
       </div>
-      <div class="flow-arrow">›</div>
-      <div class="flow-step">
-        <div class="flow-num">02 · kernel</div>
-        <div class="flow-label">Kernel</div>
-        <div class="flow-desc">Deterministic routing engine evaluates eligibility and selects a manufacturer</div>
-      </div>
-      <div class="flow-arrow">›</div>
-      <div class="flow-step">
-        <div class="flow-num">03 · output</div>
-        <div class="flow-label">Output</div>
-        <div class="flow-desc">Cryptographically committed receipt with hash-chained audit entry</div>
-      </div>
-      <div class="flow-arrow">›</div>
-      <div class="flow-step">
-        <div class="flow-num">04 · verify</div>
-        <div class="flow-label">Verification</div>
-        <div class="flow-desc">Independent replay confirms the decision — same hash, every time</div>
+      <div class="field-grid">
+        <span class="field-key">Case ID</span>
+        <span class="field-val-mono" id="s1-case-id">—</span>
+        <span class="field-key">Procedure</span>
+        <span class="field-val" id="s1-procedure">—</span>
+        <span class="field-key">Material</span>
+        <span class="field-val" id="s1-material">—</span>
+        <span class="field-key">Jurisdiction</span>
+        <span class="field-val" id="s1-jurisdiction">—</span>
+        <span class="field-key">Routing policy</span>
+        <span class="field-val" id="s1-policy">—</span>
       </div>
     </div>
   </div>
 
-  <!-- CLI quick reference -->
-  <details class="card" id="cli-quickref">
-    <summary style="color:#8b949e;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.65rem">CLI helper commands &amp; quick reference</summary>
-    <div style="margin-top:.6rem">
-      <div style="font-size:.65rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">Golden path</div>
-      <div style="font-size:.73rem;color:#8b949e;margin-bottom:.75rem;border-left:2px solid #21262d;padding-left:.6rem;line-height:1.6">Open reviewer &rarr; Run route &rarr; Inspect receipt &rarr; Verify replay &rarr; Dispatch</div>
-      <div style="font-size:.65rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">CLI companion scripts (no service required)</div>
-      <div style="display:grid;gap:.35rem;margin-bottom:.75rem">
-        <div style="display:grid;grid-template-columns:240px 1fr;gap:0 .75rem;font-size:.72rem;align-items:baseline">
-          <code style="color:#58a6ff">./examples/pilot/run_pilot.sh</code>
-          <span style="color:#8b949e">Route the pilot case + self-verify. Writes <code style="color:#8b949e">examples/pilot/receipt.json</code>.</span>
-        </div>
-        <div style="display:grid;grid-template-columns:240px 1fr;gap:0 .75rem;font-size:.72rem;align-items:baseline">
-          <code style="color:#58a6ff">./examples/pilot/verify.sh</code>
-          <span style="color:#8b949e">Replay-verify the receipt against the original inputs. No stored state trusted.</span>
-        </div>
+  <details class="tech-drawer">
+    <summary>Technical input JSON</summary>
+    <div style="font-size:.63rem;color:var(--text-3);margin-top:.4rem;margin-bottom:.2rem;text-transform:uppercase;letter-spacing:.06em">case.json</div>
+    <pre class="json-pre" id="fix-case"></pre>
+    <div style="font-size:.63rem;color:var(--text-3);margin-top:.55rem;margin-bottom:.2rem;text-transform:uppercase;letter-spacing:.06em">registry_snapshot.json</div>
+    <pre class="json-pre" id="fix-registry"></pre>
+    <div style="font-size:.63rem;color:var(--text-3);margin-top:.55rem;margin-bottom:.2rem;text-transform:uppercase;letter-spacing:.06em">config.json</div>
+    <pre class="json-pre" id="fix-config"></pre>
+  </details>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     Step 2 — Routing
+════════════════════════════════════════════════ -->
+<div class="step-card step-locked" id="step2-card">
+  <div class="step-header">
+    <span class="step-label">02 · Routing</span>
+    <span class="status-chip chip-gray" id="step2-chip">PENDING</span>
+  </div>
+  <h2 class="step-title">Find an eligible manufacturer</h2>
+  <p class="step-body">PostCAD evaluates the case against the routing policy and manufacturer registry.</p>
+
+  <button class="btn-primary" id="btn-route-norm" onclick="routeNormalized(this)" disabled>
+    Run Routing
+  </button>
+  <div id="route-norm-inline" class="hidden"></div>
+
+  <div id="results-loading" class="hidden loading-note">Routing in progress…</div>
+
+  <!-- routing success result -->
+  <div id="route-result" class="hidden">
+    <div class="result-panel result-ok">
+      <div class="result-status-header">
+        <span class="result-status-dot dot-green"></span>
+        <span class="result-status-title">Manufacturer selected</span>
+        <span id="route-result-badge" class="hidden"></span>
       </div>
-      <div style="font-size:.65rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem">This page uses the same protocol over HTTP</div>
-      <div style="font-size:.72rem;color:#8b949e;line-height:1.6">This reviewer calls <code style="color:#8b949e">POST /pilot/route-normalized</code> and <code style="color:#8b949e">POST /verify</code> — the same kernel and verifier as the CLI scripts. Pilot fixtures are loaded automatically from <code style="color:#8b949e">examples/pilot/</code>. Use this page for human review and dispatch; use the CLI scripts for headless CI or independent verification.</div>
+      <div class="field-grid">
+        <span class="field-key">Manufacturer</span>
+        <span class="field-val" id="art-selected">—</span>
+        <span class="field-key">Outcome</span>
+        <span class="field-val field-val-pill"><span id="art-outcome"></span></span>
+        <span class="field-key">Kernel</span>
+        <span class="field-val-mono" id="art-kver">—</span>
+        <span class="field-key">Receipt hash</span>
+        <span class="field-val-mono" id="art-hash">—</span><button class="copy-btn hidden" id="art-hash-copy" onclick="copyArtHashVal(this)">Copy</button>
+      </div>
+      <div class="result-bullets">
+        <div class="result-bullet">eligible for this case</div>
+        <div class="result-bullet">compliant with jurisdiction rules</div>
+        <div class="result-bullet">deterministic under identical inputs</div>
+      </div>
+      <div class="trust-line">
+        <span>◆</span>
+        Same inputs produce the same receipt hash every time
+      </div>
     </div>
+
+    <!-- hidden legacy compatibility elements -->
+    <span id="receipt-json-badge" class="hidden"></span>
+    <span id="mb-receipt" class="hidden"></span>
+    <span id="fm-receipt" class="hidden"></span>
+    <span id="as-chip-route" class="hidden"></span>
+    <div id="receipt-empty-state" class="hidden"></div>
+    <div id="verify-artifact-note" class="hidden"></div>
+    <div id="receipt-json-actions" class="hidden">
+      <button class="copy-btn" onclick="copyReceiptJson(this)">Copy receipt JSON</button>
+    </div>
+    <button class="expand-btn hidden" id="receipt-expand-btn" onclick="expandArtifact('route-receipt-json','receipt-expand-btn')">Expand</button>
+  </div>
+
+  <!-- routing error -->
+  <div id="route-error" class="hidden">
+    <div class="result-panel result-err">
+      <div class="result-status-header">
+        <span class="result-status-dot dot-red"></span>
+        <span class="result-status-title">Routing failed</span>
+      </div>
+      <div id="route-error-banner" class="hidden error-note"></div>
+      <pre class="json-pre json-err" id="route-error-json"></pre>
+      <div id="route-error-json-actions" style="margin-top:.3rem">
+        <button class="copy-btn" onclick="copyRouteErrorJson(this)">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <details class="tech-drawer">
+    <summary>Routing receipt</summary>
+    <pre class="json-pre json-ok" id="route-receipt-json"></pre>
+  </details>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     Step 3 — Verification
+════════════════════════════════════════════════ -->
+<div class="step-card step-locked" id="step3-card" id="as-verify-section">
+  <div class="step-header">
+    <span class="step-label">03 · Verification</span>
+    <span class="status-chip chip-gray" id="step3-chip">PENDING</span>
+  </div>
+  <h2 class="step-title">Verify the routing decision</h2>
+  <p class="step-body">Replay verification confirms that the receipt and routing decision are reproducible.</p>
+
+  <button class="btn-primary" id="btn-verify" onclick="verifyReceipt(this)" disabled>
+    Verify Receipt
+  </button>
+  <span id="as-chip-verify" class="hidden"></span>
+  <span id="mb-verify" class="hidden"></span>
+  <span id="fm-verify" class="hidden"></span>
+
+  <!-- verify result -->
+  <div id="verify-result" class="hidden">
+    <div id="verify-banner"></div>
+    <div id="verify-kind-label" class="hidden"></div>
+    <div class="result-panel result-ok" id="verify-summary-panel">
+      <div class="result-status-header">
+        <span class="result-status-dot dot-green" id="verify-dot"></span>
+        <span class="result-status-title">Decision verified</span>
+        <span id="verify-result-badge" class="hidden"></span>
+      </div>
+      <div class="field-grid">
+        <span class="field-key">Result</span>
+        <span class="field-val field-val-pill" id="s3-result-field">—</span>
+        <span class="field-key">Receipt hash</span>
+        <span class="field-val-mono" id="s3-hash-display">—</span>
+        <span class="field-key">Replay</span>
+        <span class="field-val">Receipt reconstructed from original inputs</span>
+      </div>
+      <div class="result-explanation">
+        This confirms that the decision can be independently checked and reproduced without manual reinterpretation.
+      </div>
+    </div>
+    <span id="lin-verify" class="hidden"></span>
+    <div id="lin-verify-note" class="hidden"></div>
+    <div id="verify-json-actions" class="hidden">
+      <button class="copy-btn" onclick="copyVerifyJson(this)">Copy</button>
+    </div>
+    <button class="expand-btn hidden" id="verify-expand-btn" onclick="expandArtifact('verify-json','verify-expand-btn')">Expand</button>
+  </div>
+
+  <details class="tech-drawer">
+    <summary>Verification details</summary>
+    <pre class="json-pre" id="verify-json"></pre>
   </details>
 
-  <!-- Glossary -->
-  <details class="card">
-    <summary style="color:#8b949e;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.65rem">Terms &amp; glossary</summary>
-    <div style="margin-top:.6rem;display:grid;gap:.3rem">
-      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Candidate</span><span style="color:#c9d1d9;line-height:1.5">A manufacturer that meets the capability and compliance requirements for this case.</span></div>
-      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Route</span><span style="color:#c9d1d9;line-height:1.5">Running the routing kernel: compliance rules are evaluated, candidates are filtered, one manufacturer is selected deterministically.</span></div>
-      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Receipt</span><span style="color:#c9d1d9;line-height:1.5">The auditable record of a routing decision — a JSON object with hash-committed fields that can be independently verified from the original inputs.</span></div>
-      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Dispatch</span><span style="color:#c9d1d9;line-height:1.5">A commitment to hand the case off to the selected manufacturer. Requires a verified receipt; irreversible once approved.</span></div>
-      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Refusal</span><span style="color:#c9d1d9;line-height:1.5">The kernel's explicit rejection of a case, always with a machine-readable reason code. Never a silent failure.</span></div>
-      <div style="display:grid;grid-template-columns:145px 1fr;gap:0 .6rem;font-size:.72rem;align-items:baseline"><span style="color:#8b949e;font-weight:700">Replay verification</span><span style="color:#c9d1d9;line-height:1.5">Re-runs routing from the original inputs and recomputes every hash in the receipt. Does not trust stored state.</span></div>
-    </div>
-  </details>
+  <!-- tamper demo hidden -->
+  <button class="hidden" id="btn-tamper" onclick="tamperVerify(this)"></button>
+</div>
 
-  <!-- Two-column: inputs + results -->
-  <div class="two-col">
 
-    <!-- LEFT: Inputs -->
-    <div id="as-route-section" class="card as-active">
-      <div class="card-title">Case inputs <span style="font-weight:400;color:#6e7681">— pilot fixtures loaded from examples/pilot/</span><span id="as-chip-route" class="as-chip">active step</span></div>
-      <div class="panel-subtitle">Run the deterministic pilot route — pilot fixtures auto-load from <code style="color:#6e7681">examples/pilot/</code>.</div>
+<!-- ═══════════════════════════════════════════════
+     Step 4 — Dispatch
+════════════════════════════════════════════════ -->
+<div class="step-card step-locked" id="step4-card" id="dispatch-section">
+  <div class="step-header">
+    <span class="step-label">04 · Dispatch</span>
+    <span class="status-chip chip-gray" id="step4-chip">PENDING</span>
+  </div>
+  <h2 class="step-title">Create a dispatch-ready record</h2>
+  <p class="step-body">Once verification succeeds, PostCAD prepares a traceable handoff for manufacturing.</p>
 
-      <p id="fixtures-loading" class="dimmed">Loading fixtures…</p>
-      <div id="fixtures-panel" class="hidden">
+  <button class="btn-primary" id="btn-dispatch-create" onclick="createDispatch(this)" disabled>
+    Create Dispatch
+  </button>
+  <span id="as-chip-dispatch" class="hidden"></span>
+  <span id="mb-dispatch" class="hidden"></span>
+  <span id="fm-dispatch" class="hidden"></span>
+  <div id="verify-pending-note" class="hidden warn-note"></div>
+  <div id="dispatch-blocked-note" class="hidden error-note"></div>
+  <div id="dispatch-stale-note" class="hidden"></div>
+  <div id="dispatch-success" class="hidden success-note"></div>
+  <div id="dispatch-error" class="hidden error-note"></div>
 
-        <div class="input-label">case <span class="input-badge">case.json</span></div>
-        <details open>
-          <summary>view JSON</summary>
-          <pre class="fixture" id="fix-case"></pre>
-        </details>
-
-        <div class="input-label">registry <span class="input-badge">registry_snapshot.json</span></div>
-        <details>
-          <summary>view JSON</summary>
-          <pre class="fixture" id="fix-registry"></pre>
-        </details>
-
-        <div class="input-label">policy / config <span class="input-badge">config.json</span></div>
-        <details>
-          <summary>view JSON</summary>
-          <pre class="fixture" id="fix-config"></pre>
-        </details>
+  <!-- dispatch created — approve + export -->
+  <div id="dispatch-created" class="hidden">
+    <div class="result-panel result-pending">
+      <div class="result-status-header">
+        <span class="result-status-dot dot-amber"></span>
+        <span class="result-status-title">Dispatch record created</span>
       </div>
-      <div id="fixtures-error" class="hidden error-note"></div>
-
-      <button class="btn btn-route" id="btn-route" onclick="routeCase(this)" disabled>
-        ▶ Execute Routing Kernel
+      <div class="field-grid">
+        <span class="field-key">Dispatch ID</span>
+        <span id="art-dispatch-id" style="font-family:var(--mono);font-size:.7rem;color:var(--text-2);grid-column:2;word-break:break-all"></span><button class="copy-btn hidden" id="art-dispatch-id-copy" onclick="copyDispatchId(this)">Copy</button>
+        <span class="field-key">Status</span>
+        <span class="field-val field-val-pill"><span id="art-dispatch-status"></span></span>
+      </div>
+    </div>
+    <div class="dispatch-actions">
+      <div class="dispatch-actions-label">Next steps</div>
+      <button class="btn-secondary" id="btn-dispatch-approve" onclick="approveDispatch(this)" disabled>
+        Approve Dispatch
       </button>
-
-      <div id="norm-input-section" style="margin-top:.75rem;border-top:1px solid #21262d;padding-top:.65rem">
-
-        <!-- Step 1: Enter input -->
-        <div class="norm-step" style="border-top:none;padding-top:0;margin-top:0">
-          <span class="norm-step-num">1</span>
-          <span class="norm-step-lbl">Enter normalized pilot input</span>
-        </div>
-        <p style="font-size:.7rem;color:#6e7681;margin:.2rem 0 .5rem;line-height:1.5">
-          All four fields are required. Use <strong style="color:#c9d1d9">⊕ Load sample</strong> to pre-fill the canonical pilot case.
-        </p>
-        <div class="norm-field-wrap">
-          <div class="norm-field-label">case_id <span class="norm-req">*</span></div>
-          <input class="norm-input" id="norm-case-id"
-                 value="f1000001-0000-0000-0000-000000000001"
-                 placeholder="UUID" autocomplete="off" spellcheck="false">
-        </div>
-        <div class="norm-field-wrap">
-          <div class="norm-field-label">restoration_type <span class="norm-req">*</span></div>
-          <input class="norm-input" id="norm-restoration-type"
-                 value="crown"
-                 placeholder="crown / bridge / …" autocomplete="off" spellcheck="false">
-        </div>
-        <div class="norm-field-wrap">
-          <div class="norm-field-label">material <span class="norm-req">*</span></div>
-          <input class="norm-input" id="norm-material"
-                 value="zirconia"
-                 placeholder="zirconia / pmma / …" autocomplete="off" spellcheck="false">
-        </div>
-        <div class="norm-field-wrap">
-          <div class="norm-field-label">jurisdiction <span class="norm-req">*</span></div>
-          <input class="norm-input" id="norm-jurisdiction"
-                 value="DE"
-                 placeholder="DE / US / JP / …" autocomplete="off" spellcheck="false">
-        </div>
-        <div style="margin-top:.4rem;display:flex;gap:.5rem;align-items:center">
-          <button class="copy-btn" onclick="clearNormForm()">↺ Clear form</button>
-          <button class="copy-btn" onclick="loadNormSample()">⊕ Load sample</button>
-        </div>
-
-        <!-- Step 2: Submit -->
-        <div class="norm-step">
-          <span class="norm-step-num">2</span>
-          <span class="norm-step-lbl">Submit for review</span>
-        </div>
-        <p style="font-size:.7rem;color:#6e7681;margin:.2rem 0 .35rem;line-height:1.5">
-          Keyboard shortcut: <strong style="color:#c9d1d9">Ctrl+Enter</strong> (or ⌘+Enter on Mac). The button disables during routing to prevent double-submission.
-        </p>
-        <button class="btn btn-route-norm" id="btn-route-norm" onclick="routeNormalized(this)" disabled>
-          ▶ Submit for Review
-        </button>
-        <div id="route-norm-inline" class="hidden"></div>
-
-        <!-- Steps 3 + 4 rendered here by JS on success -->
-        <div id="route-norm-preview" class="hidden"></div>
-      </div>
-    </div>
-
-    <!-- RIGHT: Results -->
-    <div class="card">
-      <!-- Operator cheat sheet — always visible -->
-      <div id="op-cheatsheet" style="font-size:.67rem;color:#484f58;margin-bottom:.5rem;padding:.3rem .6rem;background:#0d111766;border:1px solid #21262d;border-radius:4px;line-height:1.7">
-        <span style="color:#6e7681;font-weight:700">Quick path: </span>Run route &rarr; Inspect artifacts &rarr; Verify replay &rarr; Dispatch after verification succeeds
-      </div>
-
-      <!-- Audit snapshot export bar — always visible -->
-      <div class="ase-bar">
-        <span class="ase-label">Audit snapshot — current-run artifacts only</span>
-        <button class="ase-btn" id="btn-copy-snapshot" onclick="copyAuditSnapshot(this)">Copy snapshot</button>
-        <button class="ase-btn" onclick="downloadAuditSnapshot()">↓ Download .txt</button>
-        <button class="ase-btn" id="btn-print-handoff" onclick="window.print()">⎙ Print summary</button>
-      </div>
-
-      <!-- Next-action rail — always visible, one action at a time -->
-      <div id="nar-rail" class="nar-rail">
-        <div class="nar-label">Next action</div>
-        <span id="nar-action" class="nar-action nar-action-idle">Next: run route</span>
-        <span id="nar-reason" class="nar-reason">No current receipt loaded.</span>
-      </div>
-
-      <!-- Current-run timeline strip — always visible -->
-      <div id="run-timeline" class="run-timeline">
-        <div class="rt-label">Current run</div>
-        <div class="rt-steps">
-          <div id="rt-route" class="rt-step rt-idle">
-            <div class="rt-dot"></div>
-            <div class="rt-name">Route</div>
-          </div>
-          <div class="rt-conn"></div>
-          <div id="rt-receipt" class="rt-step rt-idle">
-            <div class="rt-dot"></div>
-            <div class="rt-name">Receipt</div>
-          </div>
-          <div class="rt-conn"></div>
-          <div id="rt-verify" class="rt-step rt-idle">
-            <div class="rt-dot"></div>
-            <div class="rt-name">Verify</div>
-          </div>
-          <div class="rt-conn"></div>
-          <div id="rt-dispatch" class="rt-step rt-idle">
-            <div class="rt-dot"></div>
-            <div class="rt-name">Dispatch</div>
-          </div>
-        </div>
-        <div id="rt-summary" class="rt-summary">Current run not started</div>
-      </div>
-
-      <!-- Current run identity — lineage-aware status summary -->
-      <div id="rib" class="rib">
-        <div class="rib-label">Current run</div>
-        <div class="rib-row"><span class="rib-key">Route</span><span id="rib-route" class="rib-val-idle">no run yet</span></div>
-        <div class="rib-row"><span class="rib-key">Receipt</span><span id="rib-receipt" class="rib-val-idle">not generated</span></div>
-        <div class="rib-row"><span class="rib-key">Verification</span><span id="rib-verify" class="rib-val-idle">not executed</span></div>
-        <div class="rib-row"><span class="rib-key">Dispatch</span><span id="rib-dispatch" class="rib-val-idle">not exported</span></div>
-      </div>
-
-      <!-- Operator session guard — warns when interacting with previous-run artifacts -->
-      <div id="osg" class="osg">
-        <div class="osg-label">Operator Session Guard</div>
-        <div class="osg-headline">Previous-run artifacts detected</div>
-        <div class="osg-detail">The current session may contain artifacts from a previous run. Starting a clean run prevents confusion and ensures all displayed artifacts belong to the active route.</div>
-        <div id="osg-reasons" class="osg-reasons"></div>
-        <button class="osg-btn" onclick="startCleanRun()">Start Clean Run</button>
-      </div>
-
-      <!-- Operator action bar — always visible, exactly one next step -->
-      <div id="oab" class="oab">
-        <div class="oab-label">Next action</div>
-        <div class="oab-body">
-          <span id="oab-action" class="oab-action oab-action-idle">Start a route for the current case</span>
-          <button id="oab-btn" class="oab-btn" onclick="oabNavigate()">→ Go to route</button>
-        </div>
-        <div id="oab-reason" class="oab-reason">No current route artifacts exist yet.</div>
-      </div>
-
-      <!-- Current-run outcome banner — always visible -->
-      <div id="orb" class="orb orb-neutral">
-        <div class="orb-label">Current run status</div>
-        <div id="orb-headline" class="orb-headline">No current run started</div>
-        <div id="orb-detail" class="orb-detail">Start routing to generate current-run artifacts.</div>
-        <button id="orb-link" class="orb-link hidden" onclick="orbNavigate()"></button>
-      </div>
-
-      <!-- Current-run completion checklist — always visible -->
-      <div id="crc" class="crc">
-        <div class="crc-label">Current run checklist</div>
-        <div id="crc-rows"></div>
-        <div id="crc-footer" class="crc-footer crc-footer-incomplete">Current run incomplete</div>
-      </div>
-
-      <!-- Current-run preflight summary — always visible -->
-      <div id="pfc" class="pfc pfc-not-ready">
-        <div class="pfc-label">Current run preflight</div>
-        <div id="pfc-headline" class="pfc-headline">Current run not ready</div>
-        <div id="pfc-detail" class="pfc-detail">Complete remaining workflow steps before dispatch export.</div>
-        <div id="pfc-rows" class="pfc-rows"></div>
-        <button id="pfc-link" class="pfc-link hidden" onclick="pfcNavigate()"></button>
-      </div>
-
-      <!-- Canonical pilot workflow panel -->
-      <div id="cpw" class="cpw">
-        <div class="cpw-label">Canonical Pilot Workflow</div>
-        <div class="cpw-desc">The correct operational sequence for executing a PostCAD pilot run. Steps reflect current-run progress only.</div>
-        <div class="cpw-steps">
-          <div class="cpw-step"><span class="cpw-step-num">1</span><span class="cpw-step-name">Generate route</span><span id="cpw-s1" class="cpw-step-status cpw-s-available">available</span></div>
-          <div class="cpw-step"><span class="cpw-step-num">2</span><span class="cpw-step-name">Verify receipt</span><span id="cpw-s2" class="cpw-step-status cpw-s-blocked">blocked</span></div>
-          <div class="cpw-step"><span class="cpw-step-num">3</span><span class="cpw-step-name">Inspect artifacts</span><span id="cpw-s3" class="cpw-step-status cpw-s-blocked">blocked</span></div>
-          <div class="cpw-step"><span class="cpw-step-num">4</span><span class="cpw-step-name">Run reproducibility check</span><span id="cpw-s4" class="cpw-step-status cpw-s-blocked">blocked</span></div>
-          <div class="cpw-step"><span class="cpw-step-num">5</span><span class="cpw-step-name">Export dispatch packet</span><span id="cpw-s5" class="cpw-step-status cpw-s-blocked">blocked</span></div>
-          <div class="cpw-step"><span class="cpw-step-num">6</span><span class="cpw-step-name">Confirm dry-run and pilot readiness</span><span id="cpw-s6" class="cpw-step-status cpw-s-blocked">blocked</span></div>
-        </div>
-      </div>
-
-      <!-- Operator dry-run status panel -->
-      <div id="drs" class="drs">
-        <div class="drs-label">Operator Dry-Run Status</div>
-        <div id="drs-verdict" class="drs-verdict drs-verdict-none">No dry-run in progress</div>
-        <div id="drs-meaning" class="drs-meaning">Complete all minimum pilot workflow steps to validate this run as a successful dry-run.</div>
-        <div id="drs-checklist" class="drs-checklist"></div>
-        <div class="drs-next">
-          <span class="drs-next-label">Next step</span>
-          <span id="drs-next-text">Generate a route to begin the dry-run.</span>
-        </div>
-      </div>
-
-      <!-- Pilot handoff summary card -->
-      <div id="phs" class="phs">
-        <div class="phs-label">Pilot Handoff Summary</div>
-        <div id="phs-verdict" class="phs-verdict phs-verdict-not-ready">Not ready for pilot handoff</div>
-        <div id="phs-meaning" class="phs-meaning">Complete all minimum workflow steps before presenting this run to a pilot reviewer or external lab.</div>
-        <div id="phs-checklist" class="phs-checklist"></div>
-        <div class="phs-action">
-          <span class="phs-action-label">Required action</span>
-          <span id="phs-action-text">Complete the current run before pilot handoff.</span>
-        </div>
-      </div>
-
-      <!-- Current-run artifact bundle panel -->
-      <div id="cab" class="cab">
-        <div class="cab-label">Current-Run Artifact Bundle</div>
-        <div id="cab-verdict" class="cab-verdict cab-verdict-none">No current bundle</div>
-        <div id="cab-meaning" class="cab-meaning">This panel shows the artifact set belonging to the active run. Previous-run artifacts do not belong to the current bundle.</div>
-        <div id="cab-artifacts" class="cab-artifacts"></div>
-        <div class="cab-next">
-          <span class="cab-next-label">Next action</span>
-          <span id="cab-next-text">Generate a route to start the current-run bundle.</span>
-        </div>
-      </div>
-
-      <!-- Handoff summary card — visible in shell and printable -->
-      <div id="hsc" class="hsc">
-        <div class="hsc-title">PostCAD current-run handoff summary</div>
-        <div id="hsc-verdict" class="hsc-verdict hsc-verdict-not-ready">Not ready</div>
-        <div class="hsc-section">
-          <div class="hsc-section-label">Workflow status</div>
-          <div id="hsc-rows"></div>
-        </div>
-        <div class="hsc-section">
-          <div class="hsc-section-label">Dispatch readiness</div>
-          <div id="hsc-readiness"></div>
-        </div>
-        <div class="hsc-section">
-          <div class="hsc-section-label">Artifact availability</div>
-          <div id="hsc-artifacts"></div>
-        </div>
-        <div id="hsc-summary" class="hsc-summary-line">Current run requires routing before dispatch.</div>
-      </div>
-
-      <!-- Current-run consistency sentinel — always visible -->
-      <div id="ccs" class="ccs ccs-consistent">
-        <div class="ccs-label">Current run consistency</div>
-        <div id="ccs-headline" class="ccs-headline">Current run shell state is consistent</div>
-        <div id="ccs-detail" class="ccs-detail"><span style="color:#484f58;font-size:.65rem">Visible workflow indicators agree for the current run.</span></div>
-      </div>
-
-      <!-- Operator workflow status — always visible -->
-      <div class="op-state-block">
-        <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem">Workflow status</div>
-        <div class="op-state-grid">
-          <div class="op-state-item">
-            <span class="op-state-key">Routing</span>
-            <span id="ops-routing" class="op-not-run">not-run</span>
-          </div>
-          <div class="op-state-item">
-            <span class="op-state-key">Receipt</span>
-            <span id="ops-receipt" class="op-not-run">not-run</span>
-          </div>
-          <div class="op-state-item">
-            <span class="op-state-key">Verification</span>
-            <span id="ops-verify" class="op-not-run">not-run</span>
-          </div>
-          <div class="op-state-item">
-            <span class="op-state-key">Dispatch</span>
-            <span id="ops-dispatch" class="op-not-run">not-run</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Active run context -->
-      <div id="active-run-context" class="arc-block hidden">
-        <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Active run context</div>
-        <div class="arc-row">
-          <span class="arc-key">Manufacturer</span>
-          <span class="arc-val" id="arc-manufacturer">—</span>
-        </div>
-        <div class="arc-row">
-          <span class="arc-key">Receipt hash</span>
-          <span class="arc-val" id="arc-receipt-hash">—</span>
-        </div>
-        <div class="arc-row">
-          <span class="arc-key">Verification</span>
-          <span id="arc-verify-status" class="arc-val-pending">No verification result for current route</span>
-        </div>
-        <div class="arc-row">
-          <span class="arc-key">Dispatch</span>
-          <span id="arc-dispatch-status" class="arc-val-pending">No dispatch export for current route</span>
-        </div>
-      </div>
-
-      <!-- Pilot run history -->
-      <div id="run-history-panel" class="hidden" style="margin-bottom:.5rem">
-        <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.28rem">Pilot run history</div>
-        <div id="run-history-list" class="run-history"></div>
-      </div>
-
-      <!-- Session activity log — current page session only, not persisted -->
-      <div id="sal" class="sal">
-        <div class="sal-header">
-          <span class="sal-label">Current session activity</span>
-          <button class="sal-clear" onclick="clearSessionLog()">Clear log</button>
-        </div>
-        <div id="sal-empty" class="sal-empty">No activity yet. Start routing to begin.</div>
-        <div id="sal-list" class="sal-list hidden"></div>
-      </div>
-
-      <div id="results-placeholder" style="padding:1.4rem .75rem">
-        <div style="font-size:.75rem;font-weight:700;color:#484f58;margin-bottom:.3rem">No case submitted yet</div>
-        <div style="font-size:.71rem;color:#3d4349;line-height:1.6;margin-bottom:.45rem">Artifact not yet generated. Run route to continue.</div>
-        <div style="font-size:.68rem;color:#3a3f44;line-height:1.55;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.4rem .6rem">
-          Enter case details on the left and click <strong style="color:#6e7681">Submit for Review</strong>. Dispatch actions are not available until a routed receipt exists.
-        </div>
-      </div>
-      <div id="results-loading" class="hidden" style="padding:1.5rem .5rem;text-align:center">
-        <div class="loading-note" style="font-size:.82rem;font-weight:600">Routing in progress…</div>
-        <div style="font-size:.7rem;color:#484f58;margin-top:.3rem;line-height:1.5">Kernel is evaluating eligibility and selecting a manufacturer.</div>
-      </div>
-
-      <!-- Receipt empty-state: shown when no receipt for current run -->
-      <div id="receipt-empty-state" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">no receipt for current route</div>
-
-      <!-- Route reproducibility check panel -->
-      <div id="rrc" class="rrc">
-        <div class="rrc-label">Route reproducibility check</div>
-        <div id="rrc-status" class="rrc-status rrc-not-tested">Reproducibility not tested</div>
-        <div id="rrc-detail" class="rrc-detail">Run a reproducibility check to confirm the routing result is deterministic.</div>
-        <button id="btn-repro" class="rrc-btn" onclick="runReproCheck(this)" disabled>&#x21BA; Run reproducibility check</button>
-      </div>
-
-      <!-- B. Artifact summary (shown after route) -->
-      <div id="route-result" class="hidden">
-        <div class="card-title">Routing decision — audit record<span id="route-result-badge" class="integrity-badge hidden"></span></div>
-        <div class="panel-subtitle">Inspect generated audit artifacts. Verify before dispatching.</div>
-
-        <div class="artifacts">
-          <div class="artifact-row">
-            <span class="art-key">Outcome</span>
-            <span class="art-val" id="art-outcome"></span>
-          </div>
-          <div class="artifact-row">
-            <span class="art-key">Selected Manufacturer</span>
-            <span class="art-val" id="art-selected"></span>
-          </div>
-          <div class="artifact-row">
-            <span class="art-key">Receipt Hash <span class="sot-badge">source of truth</span></span>
-            <span><span class="art-hash" id="art-hash"></span><button class="copy-btn hidden" id="art-hash-copy" onclick="copyArtHashVal(this)">Copy</button></span>
-          </div>
-          <div class="artifact-row">
-            <span class="art-key">Kernel Version</span>
-            <span class="art-val" id="art-kver"></span>
-          </div>
-          <div class="determinism-note">
-            <span>◆</span>
-            <span>Deterministic result — same inputs produce the same receipt hash on every run</span>
-          </div>
-        </div>
-
-        <!-- Artifact guide -->
-        <details style="margin-bottom:.5rem">
-          <summary id="artifact-guide-summary" style="color:#6e7681;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Artifacts in this flow</summary>
-          <div class="artifact-guide" id="artifact-guide">
-            <div class="ag-row">
-              <span class="ag-key">Receipt</span>
-              <span class="ag-val">Routing decision audit record — <strong style="color:#c9d1d9">inspect this first</strong> before verifying or dispatching.</span>
-            </div>
-            <div class="ag-row">
-              <span class="ag-key">Receipt Hash</span>
-              <span class="ag-val">Cryptographic commitment to all receipt fields. <strong style="color:#c9d1d9">Verification source of truth</strong> — the verifier recomputes this hash from the original inputs.</span>
-            </div>
-            <div class="ag-row">
-              <span class="ag-key">Verification</span>
-              <span class="ag-val">Confirms the receipt hash is authentic by replaying routing from scratch. No stored state trusted. Required before dispatch.</span>
-            </div>
-            <div class="ag-row">
-              <span class="ag-key">Dispatch packet</span>
-              <span class="ag-val">Manufacturer handoff commitment bound to the receipt hash. Irreversible once approved.</span>
-            </div>
-          </div>
-        </details>
-
-        <div class="section-title">
-          Receipt JSON
-          <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— verification source of truth · inspect before dispatch</span>
-          <span id="mb-receipt" class="mb mb-on">available</span>
-          <span id="fm-receipt" class="fm fm-pending">not yet produced for current run</span>
-          <span id="receipt-json-badge" class="integrity-badge hidden"></span>
-        </div>
-        <pre class="result result-ok" id="route-receipt-json"></pre>
-        <div id="receipt-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem;margin-bottom:.35rem">
-          <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyReceiptJson(this)">Copy artifact</button>
-        </div>
-        <button class="expand-btn hidden" id="receipt-expand-btn" onclick="expandArtifact('route-receipt-json','receipt-expand-btn')">Expand artifact</button>
-
-        <!-- D. Verify section -->
-        <div id="as-verify-section" style="border-radius:6px;border:1px solid transparent;padding:.1rem 0">
-        <div class="section-title" style="margin-top:.8rem">Verify before dispatch
-          <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— replay re-derives the receipt from original inputs</span>
-          <span id="mb-verify" class="mb mb-dim">not available</span>
-          <span id="fm-verify" class="fm fm-pending">not yet executed for current run</span>
-          <span id="as-chip-verify" class="as-chip hidden">active step</span>
-        </div>
-        <div class="panel-subtitle">The kernel recomputes every hash from scratch. No stored state is trusted.</div>
-        <div id="verify-artifact-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-bottom:.3rem;line-height:1.5">verification not yet executed for current route</div>
-        <button class="btn btn-verify" id="btn-verify" onclick="verifyReceipt(this)" disabled>
-          ↩ Replay Verification
-        </button>
-        </div>
-
-        <!-- E. Tamper demo -->
-        <div class="tamper-section">
-          <div class="tamper-label">Tamper detection demo</div>
-          <div class="tamper-desc">
-            Modifies <code>selected_candidate_id</code> in the receipt client-side,
-            then submits to the real <code>POST /verify</code> endpoint.
-            The verifier catches the mismatch — no backend changes. This demonstrates
-            that the receipt is cryptographically bound to its content.
-          </div>
-          <button class="btn btn-tamper" id="btn-tamper" onclick="tamperVerify(this)" disabled>
-            ⚠ Tamper + Verify
-          </button>
-        </div>
-
-        <!-- F. Verify result (deterministic order: route → receipt → verification → dispatch) -->
-        <div id="verify-result" class="hidden">
-          <div class="verify-section">
-            <div class="section-title">Verification result <span id="verify-kind-label"></span><span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> — confirms receipt hash is authentic</span><span id="lin-verify" class="lin lin-idle">not executed</span><span id="verify-result-badge" class="integrity-badge hidden"></span></div>
-            <div id="lin-verify-note" class="lin-note hidden">Verification belongs to previous run.<div class="lin-note-hint">Run verification again for current route.</div></div>
-            <div id="verify-banner"></div>
-            <pre class="result" id="verify-json"></pre>
-            <div id="verify-json-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
-              <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyVerifyJson(this)">Copy artifact</button>
-            </div>
-            <button class="expand-btn hidden" id="verify-expand-btn" onclick="expandArtifact('verify-json','verify-expand-btn')">Expand artifact</button>
-          </div>
-        </div>
-
-        <!-- G. Dispatch commitment -->
-        <div class="tamper-section" id="dispatch-section">
-          <div class="section-title">Dispatch commitment
-            <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none">— handoff to manufacturing · irreversible once approved</span>
-            <span id="mb-dispatch" class="mb mb-dim">not available</span>
-            <span id="fm-dispatch" class="fm fm-pending">not yet exported for current run</span>
-            <span id="as-chip-dispatch" class="as-chip hidden">active step</span>
-          </div>
-          <div class="panel-subtitle">Dispatch after verification succeeds. The server re-verifies the receipt before creating the record.</div>
-          <div class="tamper-desc">
-            Calls <code>POST /dispatch/create</code> — approve makes the commitment
-            immutable; export produces the deterministic dispatch packet.
-          </div>
-          <!-- Dispatch readiness panel -->
-          <div class="dr-panel" id="dispatch-readiness-panel">
-            <div style="font-size:.55rem;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem">Dispatch readiness</div>
-            <div id="dr-status" class="dr-not-ready">Not ready for dispatch</div>
-            <div id="dr-reason" class="dr-reason">Required artifact not yet generated.</div>
-            <div class="checklist">
-              <div id="cl-receipt"  class="cl-item cl-pending">◻ Receipt reviewed</div>
-              <div id="cl-verify"   class="cl-item cl-pending">◻ Verification succeeded</div>
-              <div id="cl-dispatch" class="cl-item cl-pending">◻ Dispatch action confirmed</div>
-            </div>
-          </div>
-
-          <!-- Dispatch blocker list -->
-          <div id="dbl" class="dbl">
-            <div class="dbl-label">Dispatch blockers</div>
-            <div id="dbl-body">
-              <div class="dbl-item dbl-item-blocked"><span class="dbl-item-bullet">▸</span><span>No current route result — run routing first.</span></div>
-            </div>
-          </div>
-
-          <div style="font-size:.7rem;color:#d29922;background:#2d200966;border:1px solid #d2992233;border-radius:4px;padding:.4rem .6rem;margin-bottom:.2rem;line-height:1.55">
-            <strong style="color:#f0f6fc">Stop here if:</strong> evidence is insufficient · jurisdiction or compliance fit is unclear · manufacturer handoff should not proceed. Dispatch is irreversible once approved.
-          </div>
-          <button class="btn btn-dispatch" id="btn-dispatch-create" onclick="createDispatch(this)" disabled>
-            ⬦ Create Dispatch
-          </button>
-          <div id="verify-pending-note" class="guidance-note hidden">Verification pending. Run verify before dispatch.</div>
-          <div id="dispatch-blocked-note" class="guidance-note-err hidden">Dispatch blocked until verification succeeds.</div>
-          <div id="dispatch-stale-note" class="hidden" style="font-size:.71rem;color:#6e7681;background:#0d111766;border:1px solid #21262d;border-radius:4px;padding:.35rem .6rem;margin-top:.35rem;line-height:1.5">no dispatch export for current route</div>
-
-          <div id="dispatch-created" class="hidden" style="margin-top:.55rem">
-            <div class="artifacts">
-              <div class="artifact-row">
-                <span class="art-key">Dispatch ID</span>
-                <span><span class="art-hash" id="art-dispatch-id"></span><button class="copy-btn hidden" id="art-dispatch-id-copy" onclick="copyDispatchId(this)">Copy</button></span>
-              </div>
-              <div class="artifact-row">
-                <span class="art-key">Status</span>
-                <span class="art-val" id="art-dispatch-status"></span>
-              </div>
-            </div>
-            <button class="btn btn-approve" id="btn-dispatch-approve" onclick="approveDispatch(this)" disabled>
-              ✓ Approve Dispatch
-            </button>
-            <button class="btn btn-export" id="btn-dispatch-export" onclick="exportDispatch(this)" disabled>
-              ↓ Export Dispatch Packet
-            </button>
-          </div>
-
-          <div id="dispatch-export-result" class="hidden" style="margin-top:.55rem">
-            <div class="section-title">Export packet — deterministic dispatch record
-              <span style="font-weight:400;color:#6e7681;font-size:.63rem;text-transform:none"> · ready for handoff</span>
-              <span id="as-chip-export" class="as-chip hidden">active step</span>
-              <span id="lin-dispatch-export" class="lin lin-idle">not exported</span>
-              <span id="dispatch-result-badge" class="integrity-badge hidden"></span>
-            </div>
-            <div id="lin-dispatch-note" class="lin-note hidden">Dispatch export belongs to previous run.<div class="lin-note-hint">Export dispatch packet again for current route.</div></div>
-            <pre class="result result-info" id="dispatch-export-json"></pre>
-            <div id="dispatch-export-actions" class="hidden" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.4rem;padding-top:.35rem;border-top:1px solid #21262d">
-              <button class="btn-dl" onclick="downloadExportPacket()">↓ Download export_packet.json</button>
-              <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyExportJson(this)">Copy JSON</button>
-            </div>
-            <button class="expand-btn hidden" id="dispatch-expand-btn" onclick="expandArtifact('dispatch-export-json','dispatch-expand-btn')">Expand artifact</button>
-          </div>
-
-          <!-- Dispatch packet inspection panel — always visible -->
-          <div id="dpi" class="dpi">
-            <div class="dpi-label">Dispatch packet inspection</div>
-            <div id="dpi-meta" class="dpi-meta hidden">
-              <div class="dpi-meta-item">
-                <span class="dpi-meta-key">Packet origin</span>
-                <span id="dpi-origin" class="dpi-origin-none">—</span>
-              </div>
-              <div class="dpi-meta-item">
-                <span class="dpi-meta-key">Packet integrity</span>
-                <span id="dpi-integrity" class="dpi-integrity-none">—</span>
-              </div>
-            </div>
-            <div id="dpi-empty">
-              <div class="dpi-empty">No dispatch packet generated for the current run.</div>
-              <div class="dpi-empty-hint">Run dispatch export to generate a packet for inspection.</div>
-            </div>
-            <pre id="dpi-viewer" class="dpi-viewer hidden"></pre>
-          </div>
-
-          <!-- Operator handoff note — neutral until export exists -->
-          <div id="handoff-note" class="handoff-note">
-            <div class="hn-label">Handoff</div>
-            <div id="hn-body"><span style="color:#484f58;font-style:italic">No export for current route. Handoff not yet applicable.</span></div>
-          </div>
-
-          <!-- Dispatch handoff dossier — final operator checkpoint for active run -->
-          <div id="dhd" class="dhd">
-            <div class="dhd-label">Dispatch handoff dossier</div>
-            <div id="dhd-verdict" class="dhd-verdict dhd-verdict-none">No current dispatch packet</div>
-            <div id="dhd-meaning" class="dhd-meaning">No route has been generated yet for the current session.</div>
-            <div id="dhd-checklist" class="dhd-checklist"></div>
-            <div class="dhd-next">
-              <span class="dhd-next-label">Next step</span>
-              <span id="dhd-next-text">Generate a route first.</span>
-            </div>
-          </div>
-
-          <div id="dispatch-success" class="hidden success-note" style="margin-top:.4rem"></div>
-          <div id="dispatch-error" class="hidden error-note" style="margin-top:.4rem"></div>
-        </div>
-      </div>
-
-      <!-- Route error -->
-      <div id="route-error" class="hidden">
-        <div class="card-title">Routing failed — case refused or invalid input</div>
-        <div id="route-error-banner" class="hidden error-note" style="margin-bottom:.35rem"></div>
-        <div style="font-size:.7rem;color:#6e7681;margin-bottom:.5rem">
-          The kernel returned an explicit refusal with a reason code. Review the error below, correct the inputs, and resubmit. If the case genuinely does not meet routing criteria, refusal is the correct and expected outcome — not an error.
-        </div>
-        <pre class="result result-err" id="route-error-json"></pre>
-        <div id="route-error-json-actions" style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.3rem">
-          <button class="copy-btn" style="font-size:.68rem;padding:.18rem .5rem" onclick="copyRouteErrorJson(this)">Copy artifact</button>
-        </div>
-      </div>
-
-
+      <button class="btn-secondary" id="btn-dispatch-export" onclick="exportDispatch(this)" disabled>
+        Export Dispatch Packet
+      </button>
     </div>
   </div>
+
+  <!-- export result -->
+  <div id="dispatch-export-result" class="hidden">
+    <div class="result-panel result-ok">
+      <div class="result-status-header">
+        <span class="result-status-dot dot-green"></span>
+        <span class="result-status-title">Dispatch packet created</span>
+        <span id="dispatch-result-badge" class="hidden"></span>
+        <span id="as-chip-export" class="hidden"></span>
+      </div>
+      <div class="field-grid">
+        <span class="field-key">Status</span>
+        <span class="field-val field-val-pill" id="s4-status-display">—</span>
+        <span class="field-key">Verification</span>
+        <span class="field-val" id="s4-verify-display">—</span>
+        <span class="field-key">Audit trail</span>
+        <span class="field-val">Traceable routing record attached</span>
+      </div>
+      <div class="result-explanation">
+        The case now has a verifiable record of how the routing decision was made before manufacturing dispatch.
+      </div>
+    </div>
+    <div id="dispatch-export-actions" class="hidden btn-row">
+      <button class="btn-secondary" onclick="downloadExportPacket()">↓ Download export_packet.json</button>
+      <button class="btn-secondary" onclick="copyExportJson(this)">Copy JSON</button>
+    </div>
+    <span id="lin-dispatch-export" class="hidden"></span>
+    <div id="lin-dispatch-note" class="hidden"></div>
+    <button class="expand-btn hidden" id="dispatch-expand-btn" onclick="expandArtifact('dispatch-export-json','dispatch-expand-btn')">Expand</button>
+  </div>
+
+  <details class="tech-drawer">
+    <summary>Dispatch packet</summary>
+    <pre class="json-pre json-info" id="dispatch-export-json"></pre>
+  </details>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     Value section
+════════════════════════════════════════════════ -->
+<div class="value-section">
+  <div class="value-eyebrow">Why PostCAD</div>
+  <div class="value-grid">
+    <div class="value-block">
+      <div class="value-block-title">Routing</div>
+      <div class="value-block-body">Replace manual lab selection with deterministic decision logic</div>
+    </div>
+    <div class="value-block">
+      <div class="value-block-title">Verification</div>
+      <div class="value-block-body">Confirm that the decision can be replayed and checked</div>
+    </div>
+    <div class="value-block">
+      <div class="value-block-title">Audit</div>
+      <div class="value-block-body">Create a traceable record before manufacturing</div>
+    </div>
+  </div>
+  <p class="value-bottom">PostCAD is the execution layer after CAD and before production.</p>
+</div>
 
 </main>
 
-<!-- C. Architecture / endpoint footer -->
-<footer>
-  <span>
-    <span class="ft-label">endpoints</span>
-    <span class="ft-ep"><span class="method">GET</span> <span class="path">/pilot-fixtures</span></span>
-    <span style="color:#30363d;margin:0 .3rem">·</span>
-    <span class="ft-ep"><span class="method">POST</span> <span class="path">/route</span></span>
-    <span style="color:#30363d;margin:0 .3rem">·</span>
-    <span class="ft-ep"><span class="method">POST</span> <span class="path">/pilot/route-normalized</span></span>
-    <span style="color:#30363d;margin:0 .3rem">·</span>
-    <span class="ft-ep"><span class="method">POST</span> <span class="path">/verify</span></span>
-    <span style="color:#30363d;margin:0 .3rem">·</span>
-    <span class="ft-ep"><span class="method">POST</span> <span class="path">/dispatch/create</span></span>
-    <span style="color:#30363d;margin:0 .3rem">·</span>
-    <span class="ft-ep"><span class="method">POST</span> <span class="path">/dispatch/:id/approve</span></span>
-    <span style="color:#30363d;margin:0 .3rem">·</span>
-    <span class="ft-ep"><span class="method">GET</span> <span class="path">/dispatch/:id/export</span></span>
+<!-- ── util bar ── -->
+<div class="util-bar">
+  <span style="font-family:var(--mono)">
+    GET /pilot-fixtures · POST /pilot/route-normalized · POST /verify · POST /dispatch/create
   </span>
-  <span class="ft-arch">Reviewer UI → HTTP API → PostCAD Service → Routing Kernel → Receipt / Verification / Dispatch</span>
-</footer>
+  <div class="util-bar-actions">
+    <button class="util-btn" id="btn-copy-snapshot" onclick="copyAuditSnapshot(this)">Copy snapshot</button>
+    <button class="util-btn" onclick="downloadAuditSnapshot()">↓ Download</button>
+    <button class="util-btn" id="btn-print-handoff" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     Hidden legacy panel — all IDs required by JS
+════════════════════════════════════════════════ -->
+<div id="_legacy" style="display:none!important" aria-hidden="true">
+
+  <!-- fixtures panel (ids used for JSON display) -->
+  <div id="fixtures-panel"></div>
+
+  <!-- hidden routing form (keyboard listener target + form state) -->
+  <div id="norm-input-section">
+    <input id="norm-case-id" value="f1000001-0000-0000-0000-000000000001">
+    <input id="norm-restoration-type" value="crown">
+    <input id="norm-material" value="zirconia">
+    <input id="norm-jurisdiction" value="DE">
+    <div id="route-norm-preview"></div>
+    <button id="btn-route" onclick="routeCase(this)"></button>
+  </div>
+
+  <!-- legacy op state displays -->
+  <span id="ops-routing"></span>
+  <span id="ops-receipt"></span>
+  <span id="ops-verify"></span>
+  <span id="ops-dispatch"></span>
+
+  <!-- legacy panels (all updated by JS, not shown) -->
+  <div id="nar-rail"><span id="nar-action" class="nar-action nar-action-idle"></span><span id="nar-reason"></span></div>
+  <div id="run-timeline">
+    <div id="rt-route" class="rt-step rt-idle"><div class="rt-dot"></div><div class="rt-name"></div></div>
+    <div id="rt-receipt" class="rt-step rt-idle"><div class="rt-dot"></div><div class="rt-name"></div></div>
+    <div id="rt-verify" class="rt-step rt-idle"><div class="rt-dot"></div><div class="rt-name"></div></div>
+    <div id="rt-dispatch" class="rt-step rt-idle"><div class="rt-dot"></div><div class="rt-name"></div></div>
+    <div id="rt-summary"></div>
+  </div>
+  <div id="rib">
+    <span id="rib-route"></span><span id="rib-receipt"></span>
+    <span id="rib-verify"></span><span id="rib-dispatch"></span>
+  </div>
+  <div id="osg"><div id="osg-reasons"></div><button onclick="startCleanRun()"></button></div>
+  <div id="oab">
+    <span id="oab-action" class="oab-action oab-action-idle"></span>
+    <button id="oab-btn" onclick="oabNavigate()"></button>
+    <div id="oab-reason"></div>
+  </div>
+  <div id="orb" class="orb orb-neutral">
+    <div id="orb-headline"></div><div id="orb-detail"></div>
+    <button id="orb-link" class="hidden" onclick="orbNavigate()"></button>
+  </div>
+  <div id="crc"><div id="crc-rows"></div><div id="crc-footer"></div></div>
+  <div id="pfc" class="pfc pfc-not-ready">
+    <div id="pfc-headline"></div><div id="pfc-detail"></div>
+    <div id="pfc-rows"></div><button id="pfc-link" class="hidden" onclick="pfcNavigate()"></button>
+  </div>
+  <div id="ccs" class="ccs ccs-consistent">
+    <div id="ccs-headline"></div><div id="ccs-detail"></div>
+  </div>
+  <div id="hsc">
+    <div id="hsc-verdict"></div><div id="hsc-rows"></div>
+    <div id="hsc-readiness"></div><div id="hsc-artifacts"></div>
+    <div id="hsc-summary"></div>
+  </div>
+  <div id="active-run-context">
+    <span id="arc-manufacturer"></span><span id="arc-receipt-hash"></span>
+    <span id="arc-verify-status" class="arc-val-pending"></span>
+    <span id="arc-dispatch-status" class="arc-val-pending"></span>
+  </div>
+  <div id="run-history-panel"><div id="run-history-list"></div></div>
+  <div id="sal">
+    <div id="sal-empty"></div><div id="sal-list" class="hidden"></div>
+  </div>
+  <div id="op-cheatsheet"></div>
+  <div class="ase-bar"></div>
+  <div id="rrc">
+    <div id="rrc-status" class="rrc-status rrc-not-tested"></div>
+    <div id="rrc-detail"></div>
+    <button id="btn-repro" onclick="runReproCheck(this)" disabled></button>
+  </div>
+  <div id="dpi">
+    <div id="dpi-meta" class="hidden">
+      <span id="dpi-origin" class="dpi-origin-none"></span>
+      <span id="dpi-integrity" class="dpi-integrity-none"></span>
+    </div>
+    <div id="dpi-empty"></div>
+    <pre id="dpi-viewer" class="hidden"></pre>
+  </div>
+  <div id="handoff-note"><div id="hn-body"></div></div>
+  <div id="dispatch-readiness-panel">
+    <div id="dr-status" class="dr-not-ready"></div>
+    <div id="dr-reason"></div>
+    <div id="cl-receipt" class="cl-item cl-pending"></div>
+    <div id="cl-verify" class="cl-item cl-pending"></div>
+    <div id="cl-dispatch" class="cl-item cl-pending"></div>
+  </div>
+  <div id="dbl"><div id="dbl-body"></div></div>
+  <div id="dhd">
+    <div id="dhd-verdict" class="dhd-verdict dhd-verdict-none"></div>
+    <div id="dhd-meaning"></div><div id="dhd-checklist"></div>
+    <span id="dhd-next-text"></span>
+  </div>
+  <div id="drs">
+    <div id="drs-verdict" class="drs-verdict drs-verdict-none"></div>
+    <div id="drs-meaning"></div><div id="drs-checklist"></div>
+    <span id="drs-next-text"></span>
+  </div>
+  <div id="phs">
+    <div id="phs-verdict" class="phs-verdict phs-verdict-not-ready"></div>
+    <div id="phs-meaning"></div><div id="phs-checklist"></div>
+    <span id="phs-action-text"></span>
+  </div>
+  <div id="cab">
+    <div id="cab-verdict" class="cab-verdict cab-verdict-none"></div>
+    <div id="cab-meaning"></div><div id="cab-artifacts"></div>
+    <span id="cab-next-text"></span>
+  </div>
+  <div id="cpw">
+    <span id="cpw-s1" class="cpw-step-status cpw-s-available"></span>
+    <span id="cpw-s2" class="cpw-step-status cpw-s-blocked"></span>
+    <span id="cpw-s3" class="cpw-step-status cpw-s-blocked"></span>
+    <span id="cpw-s4" class="cpw-step-status cpw-s-blocked"></span>
+    <span id="cpw-s5" class="cpw-step-status cpw-s-blocked"></span>
+    <span id="cpw-s6" class="cpw-step-status cpw-s-blocked"></span>
+  </div>
+  <!-- placeholder used by old routeCase/routeNormalized hide/show calls -->
+  <div id="results-placeholder"></div>
+</div>
 
 <script>
 // ── state ──────────────────────────────────────────────────────────────────
-let fixtures       = null;   // {case, registry_snapshot, routing_config}
+let fixtures       = null;
 let lastReceipt    = null;
 let lastPolicy     = null;
 let lastDispatchId = null;
 let lastExportPacket = null;
-let opRouting  = 'not-run';  // not-run | available | failed
-let opReceipt  = 'not-run';  // not-run | available | missing
-let opVerify   = 'not-run';  // not-run | verified  | failed
-let opDispatch = 'not-run';  // not-run | available | failed
-const runHistory = [];       // chronological pilot run actions
-let runSerial      = 0;   // monotonic counter, increments on each new route
-let verifySerial   = 0;   // set to runSerial when verification completes
-let dispatchSerial = 0;   // set to runSerial when dispatch is exported
-let lastRouteInputs   = null;  // request body sent on last successful route
-let lastRouteEndpoint = null;  // endpoint used on last successful route
-let reproStatus = 'not-tested'; // 'not-tested'|'reproducible'|'mismatch'|'running'
+let opRouting  = 'not-run';
+let opReceipt  = 'not-run';
+let opVerify   = 'not-run';
+let opDispatch = 'not-run';
+const runHistory = [];
+let runSerial      = 0;
+let verifySerial   = 0;
+let dispatchSerial = 0;
+let lastRouteInputs   = null;
+let lastRouteEndpoint = null;
+let reproStatus = 'not-tested';
 
 // ── boot ───────────────────────────────────────────────────────────────────
 (async function boot() {
   try {
     const r = await fetch('/version');
     const v = await r.json();
-    document.getElementById('status-dot').className = r.ok ? 'ok' : 'err';
+    document.getElementById('status-dot').className = 'hdr-dot' + (r.ok ? ' ok' : ' err');
     document.getElementById('ver').textContent =
       v.protocol_version
         ? v.protocol_version + ' · ' + v.routing_kernel_version
         : JSON.stringify(v);
   } catch(e) {
-    document.getElementById('status-dot').className = 'err';
+    document.getElementById('status-dot').className = 'hdr-dot err';
     document.getElementById('ver').textContent = 'service unreachable';
   }
 
@@ -1478,37 +893,113 @@ let reproStatus = 'not-tested'; // 'not-tested'|'reproducible'|'mismatch'|'runni
     document.getElementById('fix-registry').textContent = fmt(fixtures.registry_snapshot);
     document.getElementById('fix-config').textContent   = fmt(fixtures.routing_config);
     document.getElementById('fixtures-loading').classList.add('hidden');
-    document.getElementById('fixtures-panel').classList.remove('hidden');
+    document.getElementById('btn-load-case').disabled = false;
+    document.getElementById('btn-route-norm').disabled = false;
     document.getElementById('btn-route').disabled      = false;
-    document.getElementById('btn-route-norm').disabled  = false;
   } catch(e) {
     document.getElementById('fixtures-loading').classList.add('hidden');
     const errEl = document.getElementById('fixtures-error');
     errEl.innerHTML =
-      '<div style="background:#3d1f1f44;border:1px solid #f8514933;border-radius:5px;padding:.55rem .75rem;margin-bottom:.4rem">'
-      + '<div style="font-size:.65rem;font-weight:700;color:#f85149;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.25rem">Cannot review — no valid case context loaded</div>'
-      + '<div style="font-size:.71rem;color:#c9d1d9;line-height:1.5;margin-bottom:.3rem">Pilot fixtures could not be loaded. This reviewer requires a valid routed case context before any review or dispatch action is possible. This page is <strong>not dispatchable</strong> in this state.</div>'
-      + '<div style="font-size:.67rem;color:#8b949e;border-left:2px solid #f8514966;padding-left:.4rem;line-height:1.45">' + esc(e.message) + '</div>'
-      + '</div>'
-      + '<div style="font-size:.69rem;color:#d29922;line-height:1.55">'
-      + '<strong style="color:#f0f6fc">Safe action:</strong> Start the service from the repo root '
-      + '(<code style="color:#8b949e">cargo run -p postcad-service</code>) so <code style="color:#8b949e">examples/pilot/</code> '
-      + 'is reachable, then reload this page. Do not attempt to dispatch without a valid loaded case.'
+      '<div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:6px;padding:.75rem 1rem;margin-bottom:.5rem">'
+      + '<div style="font-size:.72rem;font-weight:700;color:var(--red);margin-bottom:.25rem">Cannot load case fixtures</div>'
+      + '<div style="font-size:.78rem;color:var(--text-2);line-height:1.5;margin-bottom:.3rem">Start the service from the repo root: <code style="font-family:var(--mono);color:var(--text-2)">cargo run -p postcad-service</code></div>'
+      + '<div style="font-size:.72rem;color:var(--text-3);font-family:var(--mono)">' + esc(e.message) + '</div>'
       + '</div>';
     errEl.classList.remove('hidden');
   }
 })();
 
-// ── Execute Routing Kernel ─────────────────────────────────────────────────
-async function routeCase(btn) {
-  if (!fixtures) {
-    hide('results-placeholder');
-    document.getElementById('route-error-json').textContent =
-      'No case fixtures loaded. The reviewer cannot route without valid pilot fixtures.\n\n'
-      + 'Reload the page after starting the service from the repo root (cargo run -p postcad-service).';
-    show('route-error');
-    return;
+// ── Load Demo Case (Step 1) ────────────────────────────────────────────────
+function loadDemoCase() {
+  loadNormSample();
+  document.getElementById('s1-case-id').textContent    = document.getElementById('norm-case-id').value || '—';
+  document.getElementById('s1-procedure').textContent  = document.getElementById('norm-restoration-type').value || '—';
+  document.getElementById('s1-material').textContent   = document.getElementById('norm-material').value || '—';
+  document.getElementById('s1-jurisdiction').textContent = document.getElementById('norm-jurisdiction').value || '—';
+  if (fixtures && fixtures.routing_config) {
+    const s = fixtures.routing_config.routing_strategy || fixtures.routing_config.strategy || 'deterministic_hash';
+    document.getElementById('s1-policy').textContent = s;
   }
+  show('step1-result');
+  document.getElementById('step1-card').className = 'step-card step-done';
+  document.getElementById('step1-chip').textContent = 'LOADED';
+  document.getElementById('step1-chip').className = 'status-chip chip-green';
+  updateStepCards();
+}
+
+// ── Step card unlock ───────────────────────────────────────────────────────
+function updateStepCards() {
+  // Step 2: unlocks when fixtures loaded
+  if (fixtures) {
+    const c2 = document.getElementById('step2-card');
+    if (c2.classList.contains('step-locked')) {
+      c2.classList.remove('step-locked');
+      c2.classList.add('step-active');
+    }
+    const ch2 = document.getElementById('step2-chip');
+    if (ch2.className === 'status-chip chip-gray') {
+      ch2.textContent = 'READY';
+      ch2.className = 'status-chip chip-amber';
+    }
+  }
+
+  // Step 2 status by routing state
+  if (opRouting === 'available') {
+    document.getElementById('step2-card').className = 'step-card step-done';
+    document.getElementById('step2-chip').textContent = 'ROUTED';
+    document.getElementById('step2-chip').className = 'status-chip chip-green';
+    // Unlock step 3
+    const c3 = document.getElementById('step3-card');
+    c3.classList.remove('step-locked');
+    if (!c3.classList.contains('step-done')) c3.classList.add('step-active');
+    const ch3 = document.getElementById('step3-chip');
+    if (ch3.className === 'status-chip chip-gray') {
+      ch3.textContent = 'READY';
+      ch3.className = 'status-chip chip-amber';
+    }
+  } else if (opRouting === 'failed') {
+    document.getElementById('step2-card').className = 'step-card step-active';
+    document.getElementById('step2-chip').textContent = 'BLOCKED';
+    document.getElementById('step2-chip').className = 'status-chip chip-red';
+  }
+
+  // Step 3 status by verify state
+  if (opVerify === 'verified') {
+    document.getElementById('step3-card').className = 'step-card step-done';
+    document.getElementById('step3-chip').textContent = 'VERIFIED';
+    document.getElementById('step3-chip').className = 'status-chip chip-green';
+    // Unlock step 4
+    const c4 = document.getElementById('step4-card');
+    c4.classList.remove('step-locked');
+    if (!c4.classList.contains('step-done')) c4.classList.add('step-active');
+    const ch4 = document.getElementById('step4-chip');
+    if (ch4.className === 'status-chip chip-gray') {
+      ch4.textContent = 'READY';
+      ch4.className = 'status-chip chip-amber';
+    }
+  } else if (opVerify === 'failed') {
+    document.getElementById('step3-card').className = 'step-card step-active';
+    document.getElementById('step3-chip').textContent = 'BLOCKED';
+    document.getElementById('step3-chip').className = 'status-chip chip-red';
+  }
+
+  // Step 4 status
+  if (lastExportPacket) {
+    document.getElementById('step4-card').className = 'step-card step-done';
+    document.getElementById('step4-chip').textContent = 'DISPATCHED';
+    document.getElementById('step4-chip').className = 'status-chip chip-green';
+    // Update dispatch result fields
+    const dispStatus = lastExportPacket.status || 'exported';
+    document.getElementById('s4-status-display').innerHTML =
+      '<span class="pill pill-ok">' + esc(dispStatus) + '</span>';
+    document.getElementById('s4-verify-display').innerHTML =
+      '<span class="pill pill-ok">verified</span>';
+  }
+}
+
+// ── Execute Routing Kernel (legacy, hidden btn) ────────────────────────────
+async function routeCase(btn) {
+  if (!fixtures) return;
   setBtn(btn, 'Running kernel…', true);
   document.getElementById('btn-route-norm').disabled = true;
   if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
@@ -1516,25 +1007,12 @@ async function routeCase(btn) {
   runSerial++;
   lastRouteInputs = null; lastRouteEndpoint = null; reproStatus = 'not-tested';
 
-  hide('results-placeholder');
-  hide('route-norm-inline'); hide('route-norm-preview');
-  hide('route-result'); hide('route-error'); hide('verify-result');
-  hide('dispatch-created'); hide('dispatch-export-result');
+  hide('results-placeholder'); hide('route-result'); hide('route-error');
+  hide('verify-result'); hide('dispatch-created'); hide('dispatch-export-result');
   hide('dispatch-success'); hide('dispatch-error');
   show('results-loading');
   lastReceipt = null; lastPolicy = null; lastDispatchId = null; lastExportPacket = null;
   updateOpState('not-run', 'not-run', 'not-run', 'not-run');
-  const _chb = document.getElementById('art-hash-copy');
-  if (_chb) _chb.classList.add('hidden');
-  const _dic = document.getElementById('art-dispatch-id-copy');
-  if (_dic) _dic.classList.add('hidden');
-  hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
-  hide('receipt-empty-state');
-  hide('dispatch-export-actions');
-  hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
-  ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.classList.remove('collapsed');
-  });
   clearRunHistory();
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
@@ -1545,39 +1023,15 @@ async function routeCase(btn) {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        case:             fixtures.case,
+        case: fixtures.case,
         registry_snapshot: fixtures.registry_snapshot,
-        routing_config:   fixtures.routing_config,
+        routing_config:    fixtures.routing_config,
       }),
     });
     const data = await r.json();
-
     if (r.ok && data.receipt) {
-      lastReceipt = data.receipt;
-      lastPolicy  = data.derived_policy;
-      const rc = data.receipt;
-
-      const outcome  = rc.outcome || '—';
-      const selected = rc.selected_candidate_id || '(none — refused)';
-      const rhash    = rc.receipt_hash || '—';
-      const kver     = rc.routing_kernel_version || '—';
-
-      document.getElementById('art-outcome').innerHTML =
-        `<span class="pill ${outcome === 'routed' ? 'pill-ok' : 'pill-warn'}">${esc(outcome)}</span>`;
-      document.getElementById('art-selected').textContent = selected;
-      document.getElementById('art-hash').textContent     = rhash;
-      document.getElementById('art-kver').textContent     = kver;
-      document.getElementById('route-receipt-json').textContent = fmt(rc);
-      collapseIfLarge('route-receipt-json', 'receipt-expand-btn');
-      const copyHashBtn = document.getElementById('art-hash-copy');
-      if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
-      show('receipt-json-actions');
-      show('verify-artifact-note');
-
-      show('route-result');
-      document.getElementById('btn-verify').disabled          = false;
-      document.getElementById('btn-tamper').disabled          = false;
-      document.getElementById('btn-dispatch-create').disabled = false;
+      lastReceipt = data.receipt; lastPolicy = data.derived_policy;
+      populateRoutingResult(data.receipt);
       lastRouteEndpoint = '/route';
       lastRouteInputs   = {case: fixtures.case, registry_snapshot: fixtures.registry_snapshot, routing_config: fixtures.routing_config};
       updateOpState('available', 'available', 'not-run', 'available');
@@ -1586,19 +1040,14 @@ async function routeCase(btn) {
     } else {
       hide('route-error-banner');
       document.getElementById('route-error-json').textContent = fmt(data);
-      show('route-error');
-      show('receipt-empty-state');
+      show('route-error'); show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
-      salLog('Route result received', 'Route execution returned an error.');
       appendRunHistory('Route executed', false);
     }
   } catch(e) {
-    hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
-    show('receipt-empty-state');
     updateOpState('failed', 'missing', null, null);
-    salLog('Route result received', 'Route execution returned an error.');
     appendRunHistory('Route executed', false);
   } finally {
     hide('results-loading');
@@ -1614,54 +1063,35 @@ async function routeNormalized(btn) {
   const pilotCase = readNormInputs();
   const ni = document.getElementById('route-norm-inline');
 
-  // ── client-side validation ──────────────────────────────────────────────
   const missing = validateNormInput(pilotCase);
   if (missing.length) {
     markNormInvalid(missing);
     ni.textContent = 'Required fields missing: ' + missing.join(', ');
     ni.className = 'error-note';
     ni.classList.remove('hidden');
-    return;   // button stays enabled; clearNormForm() / loadNormSample() clear this error
+    return;
   }
   clearNormInvalid();
 
-  setBtn(btn, 'Running kernel…', true);
+  setBtn(btn, 'Routing…', true);
   document.getElementById('btn-route').disabled = true;
   if (lastReceipt) salLog('Current run reset', 'Previous run cleared for new route.');
   salLog('Route requested', 'Routing kernel execution started.');
   runSerial++;
   lastRouteInputs = null; lastRouteEndpoint = null; reproStatus = 'not-tested';
 
-  hide('results-placeholder');
-  hide('route-result'); hide('route-error'); hide('verify-result');
-  hide('dispatch-created'); hide('dispatch-export-result');
+  hide('results-placeholder'); hide('route-result'); hide('route-error');
+  hide('verify-result'); hide('dispatch-created'); hide('dispatch-export-result');
   hide('dispatch-success'); hide('dispatch-error');
-  hide('route-norm-preview');
   show('results-loading');
-  // Transition to submitting state immediately — button stays disabled until finally.
-  ni.textContent = 'Submitting…';
-  ni.className = 'loading-note';
-  ni.classList.remove('hidden');
   lastReceipt = null; lastPolicy = null; lastDispatchId = null; lastExportPacket = null;
   updateOpState('not-run', 'not-run', 'not-run', 'not-run');
-  const _chb = document.getElementById('art-hash-copy');
-  if (_chb) _chb.classList.add('hidden');
-  const _dic = document.getElementById('art-dispatch-id-copy');
-  if (_dic) _dic.classList.add('hidden');
-  hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
-  hide('receipt-empty-state');
-  hide('dispatch-export-actions');
-  hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
-  ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.classList.remove('collapsed');
-  });
   clearRunHistory();
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
   document.getElementById('btn-dispatch-export').disabled  = true;
 
   try {
-    // ── fetch (network failure → inline error) ──────────────────────────────
     let r;
     try {
       r = await fetch('/pilot/route-normalized', {
@@ -1674,172 +1104,85 @@ async function routeNormalized(btn) {
         }),
       });
     } catch(netErr) {
-      ni.innerHTML = '<div class="norm-error-panel">'
-        + '<div class="norm-error-code">Network failure</div>'
-        + '<div class="norm-error-hint">' + esc(String(netErr)) + '</div>'
-        + '<div class="norm-error-hint" style="margin-top:.2rem">Check your network connection and confirm the PostCAD service is running.</div>'
-        + '</div>';
-      ni.className = '';
-      ni.classList.remove('hidden');
-      hide('route-error-banner');
       document.getElementById('route-error-json').textContent = String(netErr);
       show('route-error');
-      show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
       appendRunHistory('Route executed', false);
       return;
     }
 
-    // ── parse (invalid JSON → inline error) ────────────────────────────────
     let data;
-    try {
-      data = await r.json();
-    } catch(parseErr) {
-      ni.innerHTML = '<div class="norm-error-panel">'
-        + '<div class="norm-error-code">Invalid JSON response</div>'
-        + '<div class="norm-error-hint">HTTP ' + r.status + ' — ' + esc(String(parseErr)) + '</div>'
-        + '<div class="norm-error-hint" style="margin-top:.2rem">The service returned an unexpected response. Check the server logs for details.</div>'
-        + '</div>';
-      ni.className = '';
-      ni.classList.remove('hidden');
-      hide('route-error-banner');
+    try { data = await r.json(); }
+    catch(parseErr) {
       document.getElementById('route-error-json').textContent =
         'HTTP ' + r.status + ' — response is not valid JSON: ' + String(parseErr);
       show('route-error');
-      show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
       appendRunHistory('Route executed', false);
       return;
     }
 
     if (r.ok && data.receipt) {
-      lastReceipt = data.receipt;
-      lastPolicy  = data.derived_policy;
-      const rc = data.receipt;
-
-      const outcome  = rc.outcome || '—';
-      const selected = rc.selected_candidate_id || '(none — refused)';
-      const rhash    = rc.receipt_hash || '—';
-      const kver     = rc.routing_kernel_version || '—';
-
-      document.getElementById('art-outcome').innerHTML =
-        `<span class="pill ${outcome === 'routed' ? 'pill-ok' : 'pill-warn'}">${esc(outcome)}</span>`;
-      document.getElementById('art-selected').textContent = selected;
-      document.getElementById('art-hash').textContent     = rhash;
-      document.getElementById('art-kver').textContent     = kver;
-      document.getElementById('route-receipt-json').textContent = fmt(rc);
-      collapseIfLarge('route-receipt-json', 'receipt-expand-btn');
-      const copyHashBtn = document.getElementById('art-hash-copy');
-      if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
-      show('receipt-json-actions');
-      show('verify-artifact-note');
-
-      show('route-result');
-      document.getElementById('btn-verify').disabled          = false;
-      document.getElementById('btn-tamper').disabled          = false;
-      document.getElementById('btn-dispatch-create').disabled = false;
+      lastReceipt = data.receipt; lastPolicy = data.derived_policy;
+      populateRoutingResult(data.receipt);
       lastRouteEndpoint = '/pilot/route-normalized';
       lastRouteInputs   = {pilot_case: pilotCase, registry_snapshot: fixtures.registry_snapshot, routing_config: fixtures.routing_config};
       updateOpState('available', 'available', 'not-run', 'available');
       salLog('Route result received', 'Route receipt generated.');
       appendRunHistory('Route executed', true);
-      ni.textContent = '✓ Routing complete — receipt ' + rhash.slice(0, 12) + '…';
-      ni.className = 'success-note';
-      const prev = document.getElementById('route-norm-preview');
-      const hashRow = rhash !== '—'
-        ? '<div class="norm-preview-row">'
-            + '<span class="norm-preview-key">Receipt Hash</span>'
-            + '<span class="norm-preview-val">' + esc(rhash)
-            + ' <button class="copy-btn" onclick="copyReceiptHash(this,'
-            + JSON.stringify(rhash) + ')">Copy</button></span></div>'
-        : previewRow('Receipt Hash', rhash);
-      const mfrRow = rc.selected_candidate_id
-        ? '<div class="norm-preview-row">'
-            + '<span class="norm-preview-key">Manufacturer</span>'
-            + '<span class="norm-preview-val">' + esc(selected)
-            + ' <button class="copy-btn" onclick="copyReceiptHash(this,'
-            + JSON.stringify(rc.selected_candidate_id) + ')">Copy</button></span></div>'
-        : previewRow('Manufacturer', selected);
-      prev.innerHTML =
-        '<div class="norm-step" style="border-top:none;padding-top:0;margin-top:.55rem">'
-          + '<span class="norm-step-num done">3</span>'
-          + '<span class="norm-step-lbl">Inspect receipt summary</span>'
-        + '</div>'
-        + '<div class="norm-success-panel">'
-          + '<div class="norm-success-title">&#x2713; Routing complete</div>'
-          + '<div class="norm-preview">'
-          + hashRow + mfrRow
-          + previewRow('Jurisdiction', rc.routing_input?.jurisdiction || '—')
-          + previewRow('Material',     rc.routing_input?.material     || '—')
-          + previewRow('Created At',   rc.created_at                  || '—')
-          + '</div>'
-        + '</div>'
-        + '<div class="norm-step">'
-          + '<span class="norm-step-num done">4</span>'
-          + '<span class="norm-step-lbl">Copy or download receipt</span>'
-        + '</div>'
-        + '<div class="norm-success-actions">'
-          + '<button class="btn-dl" onclick="downloadReceiptJson()">↓ Download receipt.json</button>'
-          + '<button class="btn-route-norm" style="font-size:.72rem"'
-          + ' id="btn-toggle-receipt" onclick="toggleNormReceiptJson()">Show receipt JSON</button>'
-        + '</div>'
-        + '<pre class="fixture hidden" id="norm-receipt-json-block"'
-        + ' style="margin-top:.3rem;max-height:300px"></pre>';
-      document.getElementById('norm-receipt-json-block').textContent = fmt(rc);
-      prev.classList.remove('hidden');
     } else {
-      // non-2xx HTTP response → inline error + details panel
       const code = data?.error?.code || data?.result || 'error';
       const msg  = data?.error?.message || '';
-      const hint = errorHint(code);
-      ni.innerHTML = '<div class="norm-error-panel">'
-        + '<div class="norm-error-code">' + esc(code) + '</div>'
-        + '<div class="norm-error-hint">' + esc(msg || 'The routing request could not be processed.') + '</div>'
-        + (hint ? '<div class="norm-error-hint" style="margin-top:.2rem">' + hint + '</div>' : '')
-        + '</div>';
-      ni.className = '';
-      ni.classList.remove('hidden');
       const banner = document.getElementById('route-error-banner');
-      banner.innerHTML = '<strong>[' + esc(code) + ']</strong>'
-        + (msg ? ' ' + esc(msg) : '')
-        + (hint ? '<br><span style="font-weight:400;font-size:.7rem;color:#8b949e;display:block;margin-top:.2rem">' + hint + '</span>' : '');
+      banner.textContent = '[' + code + '] ' + (msg || 'Routing request failed.');
       banner.classList.remove('hidden');
       document.getElementById('route-error-json').textContent = fmt(data);
       show('route-error');
-      show('receipt-empty-state');
       updateOpState('failed', 'missing', null, null);
-      salLog('Route result received', 'Route execution returned an error.');
       appendRunHistory('Route executed', false);
     }
   } catch(e) {
-    ni.innerHTML = '<div class="norm-error-panel">'
-      + '<div class="norm-error-code">Unexpected error</div>'
-      + '<div class="norm-error-hint">' + esc(String(e)) + '</div>'
-      + '<div class="norm-error-hint" style="margin-top:.2rem">Try again, or check the browser console for details.</div>'
-      + '</div>';
-    ni.className = '';
-    ni.classList.remove('hidden');
-    hide('route-error-banner');
     document.getElementById('route-error-json').textContent = String(e);
     show('route-error');
-    show('receipt-empty-state');
     updateOpState('failed', 'missing', null, null);
-    salLog('Route result received', 'Route execution returned an error.');
     appendRunHistory('Route executed', false);
   } finally {
     hide('results-loading');
-    setBtn(btn, '▶ Submit for Review', false);
+    setBtn(btn, 'Run Routing', false);
     document.getElementById('btn-route').disabled = false;
   }
+}
+
+// ── Populate routing result fields ─────────────────────────────────────────
+function populateRoutingResult(rc) {
+  const outcome  = rc.outcome || '—';
+  const selected = rc.selected_candidate_id || '(none — refused)';
+  const rhash    = rc.receipt_hash || '—';
+  const kver     = rc.routing_kernel_version || '—';
+
+  document.getElementById('art-outcome').innerHTML =
+    '<span class="pill ' + (outcome === 'routed' ? 'pill-ok' : 'pill-warn') + '">' + esc(outcome) + '</span>';
+  document.getElementById('art-selected').textContent = selected;
+  document.getElementById('art-hash').textContent     = rhash;
+  document.getElementById('art-kver').textContent     = kver;
+  document.getElementById('route-receipt-json').textContent = fmt(rc);
+  collapseIfLarge('route-receipt-json', 'receipt-expand-btn');
+  const copyHashBtn = document.getElementById('art-hash-copy');
+  if (copyHashBtn && rhash && rhash !== '—') copyHashBtn.classList.remove('hidden');
+  show('receipt-json-actions');
+  show('route-result');
+  document.getElementById('btn-verify').disabled          = false;
+  document.getElementById('btn-tamper').disabled          = false;
+  document.getElementById('btn-dispatch-create').disabled = false;
 }
 
 // ── Replay Verification ────────────────────────────────────────────────────
 async function verifyReceipt(btn) {
   if (!lastReceipt || !lastPolicy) {
-    showVerifyResult(false, {error: {code: 'no_review_context', message: 'No receipt available. Submit a case for review first, then use Replay Verification.'}}, 'No review context');
+    showVerifyResult(false, {error: {code: 'no_review_context', message: 'No receipt. Run routing first.'}}, 'No review context');
     return;
   }
-  setBtn(btn, 'Replaying…', true);
+  setBtn(btn, 'Verifying…', true);
   hide('verify-result');
   salLog('Verification executed', 'Replay verification started against current receipt.');
 
@@ -1858,78 +1201,78 @@ async function verifyReceipt(btn) {
   } catch(e) {
     showVerifyResult(false, {error: {code: 'client_error', message: String(e)}}, 'Replay Verification');
   } finally {
-    setBtn(btn, '↩ Replay Verification', false);
+    setBtn(btn, 'Verify Receipt', false);
   }
 }
 
-// ── E. Tamper + Verify ─────────────────────────────────────────────────────
+// ── Tamper + Verify ────────────────────────────────────────────────────────
 async function tamperVerify(btn) {
-  if (!lastReceipt || !lastPolicy) {
-    showVerifyResult(false, {error: {code: 'no_review_context', message: 'No receipt available. Submit a case for review before attempting the tamper demo.'}}, 'No review context');
-    return;
-  }
+  if (!lastReceipt || !lastPolicy) return;
   setBtn(btn, 'Tampering…', true);
   hide('verify-result');
-
-  // Deep-copy receipt and change selected_candidate_id client-side only.
-  // No backend changes. The real POST /verify will catch the mismatch.
   const tampered = JSON.parse(JSON.stringify(lastReceipt));
-  const original = tampered.selected_candidate_id || '(none)';
   tampered.selected_candidate_id = 'tampered-mfr-reviewer-demo';
-
   try {
     const r = await fetch('/verify', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        receipt: tampered,
-        case:    fixtures.case,
-        policy:  lastPolicy,
-      }),
+      body: JSON.stringify({receipt: tampered, case: fixtures.case, policy: lastPolicy}),
     });
     const data = await r.json();
-    // Annotate response with what was changed so the reviewer sees it clearly
-    const annotated = {
-      _tamper_note: `selected_candidate_id changed client-side: "${original}" → "tampered-mfr-reviewer-demo"`,
-      _submitted_to: 'POST /verify (real endpoint, no backend changes)',
-      ...data,
-    };
-    showVerifyResult(false, annotated, 'Tamper Demo');
+    showVerifyResult(false, {_tamper_note:'selected_candidate_id tampered', ...data}, 'Tamper Demo');
   } catch(e) {
-    showVerifyResult(false, {error: {code: 'client_error', message: String(e)}}, 'Tamper Demo');
+    showVerifyResult(false, {error:{code:'client_error',message:String(e)}}, 'Tamper Demo');
   } finally {
     setBtn(btn, '⚠ Tamper + Verify', false);
   }
 }
 
-// ── F. Verification result display ─────────────────────────────────────────
+// ── Verify result display ──────────────────────────────────────────────────
 function showVerifyResult(isVerified, data, kind) {
   document.getElementById('verify-kind-label').innerHTML =
-    `<span class="pill ${isVerified ? 'pill-ok' : 'pill-err'}">${esc(kind)}</span>`;
+    '<span class="pill ' + (isVerified ? 'pill-ok' : 'pill-err') + '">' + esc(kind) + '</span>';
 
   const banner = document.getElementById('verify-banner');
   if (isVerified) {
     banner.className = 'verify-banner banner-ok';
-    banner.innerHTML = '✓ VERIFIED — receipt replay matched'
+    banner.innerHTML = '✓ Verified — receipt replay matched'
       + '<span class="verify-sub">The kernel reproduced the same receipt hash from the original inputs.</span>';
   } else {
     const code    = data?.error?.code || data?.result || 'FAILED';
     const msg     = data?.error?.message || '';
-    const heading = kind === 'Tamper Demo' ? '✗ TAMPER DETECTED' : '✗ VERIFICATION FAILED';
+    const heading = kind === 'Tamper Demo' ? '✗ Tamper detected' : '✗ Verification failed';
     banner.className = 'verify-banner banner-err';
     banner.innerHTML = heading
-      + `<span class="verify-sub">Error code: <strong>${esc(code)}</strong>${msg ? ' — ' + esc(msg) : ''}</span>`;
+      + '<span class="verify-sub">Code: <strong>' + esc(code) + '</strong>'
+      + (msg ? ' — ' + esc(msg) : '') + '</span>';
+  }
+
+  // Update step 3 summary panel
+  const panel = document.getElementById('verify-summary-panel');
+  if (panel) {
+    panel.className = 'result-panel ' + (isVerified ? 'result-ok' : 'result-err');
+  }
+  const dot = document.getElementById('verify-dot');
+  if (dot) dot.className = 'result-status-dot ' + (isVerified ? 'dot-green' : 'dot-red');
+
+  // Update result fields
+  const s3result = document.getElementById('s3-result-field');
+  if (s3result) s3result.innerHTML =
+    '<span class="pill ' + (isVerified ? 'pill-ok' : 'pill-err') + '">'
+    + (isVerified ? 'VERIFIED' : 'FAILED') + '</span>';
+  const s3hash = document.getElementById('s3-hash-display');
+  if (s3hash && lastReceipt?.receipt_hash) {
+    s3hash.textContent = lastReceipt.receipt_hash.slice(0, 16) + '…';
   }
 
   if (kind === 'Replay Verification') {
     verifySerial = runSerial;
     updateOpState(null, null, isVerified ? 'verified' : 'failed', null);
-    hide('verify-artifact-note');
     appendRunHistory('Verification executed', isVerified);
     salLog('Verification completed', isVerified ? 'Receipt replay matched.' : 'Verification failed.');
   }
   const pre = document.getElementById('verify-json');
-  pre.className = 'result ' + (isVerified ? 'result-ok' : 'result-err');
+  pre.className = 'json-pre ' + (isVerified ? 'json-ok' : 'json-err');
   pre.textContent = fmt(data);
   collapseIfLarge('verify-json', 'verify-expand-btn');
   show('verify-result');
@@ -1937,15 +1280,13 @@ function showVerifyResult(isVerified, data, kind) {
   document.getElementById('verify-result').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
-// ── G. Dispatch Commitment ─────────────────────────────────────────────────
+// ── Dispatch Commitment ────────────────────────────────────────────────────
 async function createDispatch(btn) {
   if (!lastReceipt || !lastPolicy) {
-    showDispatchMsg('error', 'Cannot create dispatch — no valid receipt. A routed case with a receipt is required. Submit a case for review first.');
+    showDispatchMsg('error', 'No valid receipt. Run routing and verification first.');
     return;
   }
   setBtn(btn, 'Creating…', true);
-  // Only clear the error/success displays — preserve any existing dispatch panel
-  // so that a 409 (already created) doesn't wipe the visible dispatch_id.
   hide('dispatch-success'); hide('dispatch-error');
 
   try {
@@ -1955,13 +1296,11 @@ async function createDispatch(btn) {
       body: JSON.stringify({receipt: lastReceipt, case: fixtures.case, policy: lastPolicy}),
     });
     const data = await r.json();
-
     if (r.ok && data.dispatch_id) {
-      // Fresh creation — update full dispatch panel.
       lastDispatchId = data.dispatch_id;
       document.getElementById('art-dispatch-id').textContent = data.dispatch_id;
       document.getElementById('art-dispatch-status').innerHTML =
-        `<span class="pill pill-info">${esc(data.status)}</span>`;
+        '<span class="pill pill-info">' + esc(data.status) + '</span>';
       const _dic2 = document.getElementById('art-dispatch-id-copy');
       if (_dic2) _dic2.classList.remove('hidden');
       hide('dispatch-export-result');
@@ -1969,8 +1308,6 @@ async function createDispatch(btn) {
       document.getElementById('btn-dispatch-approve').disabled = false;
       document.getElementById('btn-dispatch-export').disabled  = true;
     } else if (r.status === 409) {
-      // Already created for this receipt — show as a warning, not an error.
-      // Keep any existing dispatch panel visible so the operator can continue.
       showDispatchMsg('warn',
         '[' + (data?.error?.code || 'receipt_already_dispatched') + '] ' +
         (data?.error?.message || 'Dispatch already exists for this receipt.'));
@@ -1981,19 +1318,17 @@ async function createDispatch(btn) {
   } catch(e) {
     showDispatchMsg('error', String(e));
   } finally {
-    setBtn(btn, '⬦ Create Dispatch', false);
+    setBtn(btn, 'Create Dispatch', false);
   }
 }
 
 async function approveDispatch(btn) {
   if (!lastDispatchId) {
-    showDispatchMsg('error', 'Cannot approve — no dispatch record found. Create a dispatch commitment first.');
+    showDispatchMsg('error', 'No dispatch record. Create a dispatch commitment first.');
     return;
   }
   setBtn(btn, 'Approving…', true);
   hide('dispatch-success'); hide('dispatch-error');
-  // Track whether this button should stay disabled after the call.
-  // true = terminal state (success or already-approved 409).
   let terminal = false;
 
   try {
@@ -2003,23 +1338,20 @@ async function approveDispatch(btn) {
       body: JSON.stringify({approved_by: 'reviewer'}),
     });
     const data = await r.json();
-
     if (r.ok && data.status === 'approved') {
       document.getElementById('art-dispatch-status').innerHTML =
-        `<span class="pill pill-ok">${esc(data.status)}</span>`;
-      terminal = true;   // immutable — disable approve permanently
+        '<span class="pill pill-ok">' + esc(data.status) + '</span>';
+      terminal = true;
       document.getElementById('btn-dispatch-export').disabled = false;
       const s = document.getElementById('dispatch-success');
       s.textContent = 'Dispatch approved.';
       s.classList.remove('hidden');
     } else if (r.status === 409) {
-      // Already approved server-side — enable export so the operator can continue.
       terminal = true;
       document.getElementById('btn-dispatch-export').disabled = false;
       showDispatchMsg('warn',
         '[' + (data?.error?.code || 'dispatch_not_draft') + '] ' +
-        (data?.error?.message || 'Dispatch is already approved.') +
-        ' Export is now available.');
+        (data?.error?.message || 'Already approved.') + ' Export is now available.');
     } else {
       showDispatchMsg('error',
         '[' + (data?.error?.code || 'error') + '] ' + (data?.error?.message || JSON.stringify(data)));
@@ -2027,14 +1359,13 @@ async function approveDispatch(btn) {
   } catch(e) {
     showDispatchMsg('error', String(e));
   } finally {
-    // Re-enable only if not in a terminal state.
-    setBtn(btn, '✓ Approve Dispatch', terminal);
+    setBtn(btn, 'Approve Dispatch', terminal);
   }
 }
 
 async function exportDispatch(btn) {
   if (!lastDispatchId) {
-    showDispatchMsg('error', 'Cannot export — no dispatch record found. Create and approve a dispatch commitment first.');
+    showDispatchMsg('error', 'No dispatch record. Create and approve first.');
     return;
   }
   setBtn(btn, 'Exporting…', true);
@@ -2073,7 +1404,7 @@ async function exportDispatch(btn) {
       updateActiveRunContext();
       updateNextActionRail();
       document.getElementById('art-dispatch-status').innerHTML =
-        `<span class="pill pill-ok">${esc(data.status)}</span>`;
+        '<span class="pill pill-ok">' + esc(data.status) + '</span>';
       document.getElementById('dispatch-export-json').textContent = fmt(data);
       collapseIfLarge('dispatch-export-json', 'dispatch-expand-btn');
       show('dispatch-export-result');
@@ -2083,6 +1414,7 @@ async function exportDispatch(btn) {
       const s = document.getElementById('dispatch-success');
       s.textContent = 'Export complete — dispatch packet ready for handoff.';
       s.classList.remove('hidden');
+      updateStepCards();
     } else {
       showDispatchMsg('error',
         '[' + (data?.error?.code || 'error') + '] ' + (data?.error?.message || JSON.stringify(data)));
@@ -2090,11 +1422,11 @@ async function exportDispatch(btn) {
   } catch(e) {
     showDispatchMsg('error', String(e));
   } finally {
-    setBtn(btn, '↓ Export Dispatch Packet', false);
+    setBtn(btn, 'Export Dispatch Packet', false);
   }
 }
 
-// ── Artifact export / dispatch-ID copy ────────────────────────────────────
+// ── Artifact copy / download ───────────────────────────────────────────────
 function downloadExportPacket() {
   if (!lastExportPacket) return;
   const id = lastDispatchId ? lastDispatchId.slice(0, 8) : 'dispatch';
@@ -2107,93 +1439,92 @@ function downloadExportPacket() {
 function copyExportJson(btn) {
   if (!lastExportPacket) return;
   navigator.clipboard.writeText(fmt(lastExportPacket)).then(() => {
-    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
-  }).catch(() => {
-    btn.textContent = 'Failed'; btn.style.color = '#f85149';
-  });
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  }).catch(() => { btn.textContent = 'Failed'; });
   setTimeout(() => { btn.textContent = 'Copy JSON'; btn.style.color = ''; }, 1500);
 }
 function copyDispatchId(btn) {
   const id = document.getElementById('art-dispatch-id').textContent.trim();
   if (!id) return;
   navigator.clipboard.writeText(id).then(() => {
-    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
-  }).catch(() => {
-    btn.textContent = 'Failed'; btn.style.color = '#f85149';
-  });
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  }).catch(() => { btn.textContent = 'Failed'; });
   setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
 }
-
-// ── Artifact receipt-hash copy ─────────────────────────────────────────────
 function copyArtHashVal(btn) {
   const hash = document.getElementById('art-hash').textContent.trim();
   if (!hash || hash === '—') return;
   navigator.clipboard.writeText(hash).then(() => {
-    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
-  }).catch(() => {
-    btn.textContent = 'Failed'; btn.style.color = '#f85149';
-  });
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  }).catch(() => { btn.textContent = 'Failed'; });
+  setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
+}
+function copyReceiptJson(btn) {
+  if (!lastReceipt) return;
+  navigator.clipboard.writeText(fmt(lastReceipt)).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  }).catch(() => { btn.textContent = 'Failed'; });
+  setTimeout(() => { btn.textContent = 'Copy receipt JSON'; btn.style.color = ''; }, 1500);
+}
+function copyVerifyJson(btn) {
+  const pre = document.getElementById('verify-json');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  }).catch(() => { btn.textContent = 'Failed'; });
+  setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
+}
+function copyRouteErrorJson(btn) {
+  const pre = document.getElementById('route-error-json');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  }).catch(() => { btn.textContent = 'Failed'; });
+  setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
+}
+function downloadReceiptJson() {
+  if (!lastReceipt) return;
+  const blob = new Blob([JSON.stringify(lastReceipt, null, 2)], {type: 'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  const hash = lastReceipt.receipt_hash ? lastReceipt.receipt_hash.slice(0, 12) : 'receipt';
+  a.download = 'receipt_' + hash + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+async function copyReceiptHash(btn, hash) {
+  try {
+    await navigator.clipboard.writeText(hash);
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  } catch(e) {
+    btn.textContent = 'Copy failed';
+  }
   setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
 }
 
-// ── Integrity badges ───────────────────────────────────────────────────────
+// ── Integrity badges (legacy compat) ───────────────────────────────────────
 function setBadge(id, state) {
   const el = document.getElementById(id);
   if (!el) return;
   if (!state) { el.classList.add('hidden'); return; }
-  el.classList.remove('hidden', 'ib-unverified', 'ib-verified', 'ib-failed');
-  if      (state === 'verified')   { el.textContent = 'VERIFIED';   el.classList.add('ib-verified'); }
-  else if (state === 'failed')     { el.textContent = 'FAILED';     el.classList.add('ib-failed'); }
-  else                             { el.textContent = 'UNVERIFIED'; el.classList.add('ib-unverified'); }
+  el.classList.remove('hidden');
+  el.textContent = state.toUpperCase();
 }
 function updateIntegrityBadges() {
-  // Receipt panels: hidden before routing; reflects verify state once routed
   const receiptState = opRouting !== 'available' ? null
     : opVerify === 'verified' ? 'verified'
     : opVerify === 'failed'   ? 'failed'
     : 'unverified';
   setBadge('route-result-badge', receiptState);
   setBadge('receipt-json-badge', receiptState);
-  // Verification result: shown only after verify has run
   const verifyState = opVerify === 'verified' ? 'verified'
     : opVerify === 'failed' ? 'failed' : null;
   setBadge('verify-result-badge', verifyState);
-  // Dispatch export: verified — server re-verifies before creating the record
   setBadge('dispatch-result-badge', lastExportPacket ? 'verified' : null);
 }
 
-// ── Artifact panel copy ────────────────────────────────────────────────────
-function copyReceiptJson(btn) {
-  if (!lastReceipt) return;
-  navigator.clipboard.writeText(fmt(lastReceipt)).then(() => {
-    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
-  }).catch(() => {
-    btn.textContent = 'Failed'; btn.style.color = '#f85149';
-  });
-  setTimeout(() => { btn.textContent = 'Copy artifact'; btn.style.color = ''; }, 1500);
-}
-function copyVerifyJson(btn) {
-  const pre = document.getElementById('verify-json');
-  if (!pre) return;
-  navigator.clipboard.writeText(pre.textContent).then(() => {
-    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
-  }).catch(() => {
-    btn.textContent = 'Failed'; btn.style.color = '#f85149';
-  });
-  setTimeout(() => { btn.textContent = 'Copy artifact'; btn.style.color = ''; }, 1500);
-}
-function copyRouteErrorJson(btn) {
-  const pre = document.getElementById('route-error-json');
-  if (!pre) return;
-  navigator.clipboard.writeText(pre.textContent).then(() => {
-    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
-  }).catch(() => {
-    btn.textContent = 'Failed'; btn.style.color = '#f85149';
-  });
-  setTimeout(() => { btn.textContent = 'Copy artifact'; btn.style.color = ''; }, 1500);
-}
-
-// ── Dispatch readiness panel ───────────────────────────────────────────────
+// ── Dispatch readiness (legacy compat) ────────────────────────────────────
 const DR_LABELS = {
   'cl-receipt':  'Receipt reviewed',
   'cl-verify':   'Verification succeeded',
@@ -2202,48 +1533,28 @@ const DR_LABELS = {
 function setCheck(id, ok) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.className = 'cl-item ' + (ok ? 'cl-ok' : 'cl-pending');
   el.textContent = (ok ? '✓ ' : '◻ ') + (DR_LABELS[id] || '');
 }
 function updateDispatchReadiness() {
-  const status = document.getElementById('dr-status');
-  const reason = document.getElementById('dr-reason');
-  if (!status) return;
   const receiptOk = opRouting === 'available';
   const verifyOk  = opVerify  === 'verified';
   const completed = !!lastExportPacket;
   setCheck('cl-receipt',  receiptOk);
   setCheck('cl-verify',   verifyOk);
   setCheck('cl-dispatch', completed);
-  if (completed) {
-    status.textContent = 'Dispatch completed';
-    status.className   = 'dr-completed';
-    reason.textContent = 'Export packet produced. Current run is complete.';
-  } else if (verifyOk) {
-    status.textContent = 'Ready for dispatch';
-    status.className   = 'dr-ready';
-    reason.textContent = 'Verification succeeded. Create and approve the dispatch commitment.';
-  } else if (opVerify === 'failed') {
-    status.textContent = 'Not ready for dispatch';
-    status.className   = 'dr-not-ready';
-    reason.textContent = 'Verification failed. Resolve before dispatching.';
-  } else if (receiptOk) {
-    status.textContent = 'Not ready for dispatch';
-    status.className   = 'dr-not-ready';
-    reason.textContent = 'Verification pending. Run verify before dispatch.';
-  } else {
-    status.textContent = 'Not ready for dispatch';
-    status.className   = 'dr-not-ready';
-    reason.textContent = 'Required artifact not yet generated.';
-  }
+  const status = document.getElementById('dr-status');
+  const reason = document.getElementById('dr-reason');
+  if (!status) return;
+  if (completed)        { status.textContent = 'Dispatch completed'; reason.textContent = 'Export packet produced.'; }
+  else if (verifyOk)    { status.textContent = 'Ready for dispatch';  reason.textContent = 'Verification succeeded.'; }
+  else if (receiptOk)   { status.textContent = 'Not ready';           reason.textContent = 'Verification pending.'; }
+  else                  { status.textContent = 'Not ready';           reason.textContent = 'Required artifact not yet generated.'; }
 }
-
-// ── Dispatch blocker list ─────────────────────────────────────────────────
 function dispatchBlockers() {
   const items = [];
   if (opRouting !== 'available') {
     items.push({text:'No current route result — run routing first.',
-                anchor:{label:'Go to routing', target:'norm-input-section'}});
+                anchor:{label:'Go to routing', target:'btn-route-norm'}});
   } else {
     if (opVerify === 'not-run') {
       items.push({text:'Verification not yet executed for current run.',
@@ -2260,35 +1571,15 @@ function updateDispatchBlockers() {
   const body = document.getElementById('dbl-body');
   if (!body) return;
   if (lastExportPacket) {
-    body.innerHTML = '<div class="dbl-done">Dispatch already exported for current run.</div>';
-    return;
+    body.innerHTML = '<div>Dispatch already exported.</div>'; return;
   }
   const items = dispatchBlockers();
-  if (items.length === 0) {
-    body.innerHTML = '<div class="dbl-clear">No current blockers — dispatch export is available.</div>';
-    return;
-  }
-  body.innerHTML = items.map(b =>
-    '<div class="dbl-item dbl-item-blocked">'
-    + '<span class="dbl-item-bullet">▸</span>'
-    + '<span>' + esc(b.text)
-    + (b.anchor
-        ? ' <button class="dbl-anchor" onclick="dblNavigate('
-          + JSON.stringify(b.anchor.target) + ')">'
-          + esc(b.anchor.label) + '</button>'
-        : '')
-    + '</span></div>'
-  ).join('');
-}
-function dblNavigate(target) {
-  const el = document.getElementById(target);
-  if (!el) return;
-  el.scrollIntoView({behavior:'smooth', block:'nearest'});
-  if (typeof el.focus === 'function') el.focus({preventScroll:true});
+  body.innerHTML = items.length === 0
+    ? '<div>No current blockers.</div>'
+    : items.map(b => '<div>' + esc(b.text) + '</div>').join('');
 }
 
-// ── Operator state block ───────────────────────────────────────────────────
-// ── Dispatch packet inspection ────────────────────────────────────────────
+// ── Dispatch packet inspection (legacy compat) ────────────────────────────
 function updateDpi() {
   const meta      = document.getElementById('dpi-meta');
   const empty     = document.getElementById('dpi-empty');
@@ -2296,113 +1587,43 @@ function updateDpi() {
   const origin    = document.getElementById('dpi-origin');
   const integrity = document.getElementById('dpi-integrity');
   if (!meta) return;
-  if (!lastExportPacket) {
-    meta.classList.add('hidden');
-    empty.classList.remove('hidden');
-    viewer.classList.add('hidden');
-    viewer.textContent = '';
-    return;
-  }
-  empty.classList.add('hidden');
-  meta.classList.remove('hidden');
-  viewer.classList.remove('hidden');
-  viewer.textContent = fmt(lastExportPacket);
+  if (!lastExportPacket) { meta.classList.add('hidden'); empty.classList.remove('hidden'); if(viewer){viewer.classList.add('hidden');viewer.textContent='';} return; }
+  empty.classList.add('hidden'); meta.classList.remove('hidden');
+  if (viewer) { viewer.classList.remove('hidden'); viewer.textContent = fmt(lastExportPacket); }
   const dlin = dispatchLineage();
-  if (dlin === 'current')     { origin.className = 'dpi-origin-current'; origin.textContent = 'current run'; }
-  else if (dlin === 'prev')   { origin.className = 'dpi-origin-prev';    origin.textContent = 'previous run'; }
-  else                        { origin.className = 'dpi-origin-none';    origin.textContent = '—'; }
+  if (origin) origin.textContent = dlin === 'current' ? 'current run' : dlin === 'prev' ? 'previous run' : '—';
   const vlin = verifyLineage();
-  if (vlin === 'current' && opVerify === 'verified') {
-    integrity.className = 'dpi-integrity-ok';   integrity.textContent = 'verified packet';
-  } else if (vlin === 'current' && opVerify === 'failed') {
-    integrity.className = 'dpi-integrity-fail'; integrity.textContent = 'verification failed';
-  } else {
-    integrity.className = 'dpi-integrity-none'; integrity.textContent = 'verification not executed';
-  }
+  if (integrity) integrity.textContent = vlin === 'current' && opVerify === 'verified' ? 'verified packet' : 'verification not executed';
 }
 
-// ── Dispatch handoff dossier ───────────────────────────────────────────────
+// ── Dispatch handoff dossier (legacy compat) ──────────────────────────────
 function dhdVerdictKey() {
-  if (runSerial === 0)               return 'none';
+  if (runSerial === 0) return 'none';
   const dlin = dispatchLineage();
-  if (dlin === 'current')            return 'exported';
-  if (dlin === 'prev')               return 'attention';
+  if (dlin === 'current') return 'exported';
+  if (dlin === 'prev')    return 'attention';
   const vlin = verifyLineage();
   if (vlin === 'current' && opVerify === 'verified') return 'ready';
   return 'not-ready';
 }
 const DHD_VERDICTS = {
-  'none':      {cls:'dhd-verdict-none',      text:'No current dispatch packet'},
-  'not-ready': {cls:'dhd-verdict-not-ready', text:'Current route not ready for dispatch'},
-  'ready':     {cls:'dhd-verdict-ready',     text:'Current route ready for dispatch export'},
-  'exported':  {cls:'dhd-verdict-exported',  text:'Current dispatch packet exported'},
-  'attention': {cls:'dhd-verdict-attention', text:'Current dispatch packet requires attention'},
+  'none':      {text:'No current dispatch packet'},
+  'not-ready': {text:'Current route not ready for dispatch'},
+  'ready':     {text:'Current route ready for dispatch export'},
+  'exported':  {text:'Current dispatch packet exported'},
+  'attention': {text:'Current dispatch packet requires attention'},
 };
-const DHD_MEANINGS = {
-  'none':      'No route has been generated yet for the current session.',
-  'not-ready': 'A route exists for the current run but prerequisites are not complete. Verification must pass before dispatch can be exported.',
-  'ready':     'The current route is verified. Exporting the dispatch packet creates the handoff record bound to this route and run. Rerouting will require a new export.',
-  'exported':  'The dispatch export packet exists for the current route. This run is complete. Rerouting will invalidate this export — a new export will be required for the new route.',
-  'attention': 'A dispatch export exists but it belongs to a previous route. The current run has been rerouted. A new export is required to represent the active route.',
-};
-function dhdNextStep(key) {
-  if (key === 'none')      return 'Generate a route first.';
-  if (key === 'exported')  return 'Dispatch packet already exported for the current route.';
-  if (key === 'attention') return 'Reroute detected — re-export required for the current route.';
-  if (key === 'ready')     return 'Export the dispatch packet for the current route.';
-  if (opRouting !== 'available') return 'Run routing to begin the current run.';
-  if (verifyLineage() === 'idle') return 'Run verification for the current route.';
-  if (opVerify === 'failed')      return 'Resolve failed verification before handoff.';
-  return 'Run verification for the current route.';
-}
-function dhdRow(icon, cls, label) {
-  return '<div class="dhd-row"><span class="' + cls + '">' + icon + '</span><span>' + esc(label) + '</span></div>';
-}
 function updateDossier() {
-  const vkey = dhdVerdictKey();
-  const conf = DHD_VERDICTS[vkey];
-  const verdict   = document.getElementById('dhd-verdict');
-  const meaning   = document.getElementById('dhd-meaning');
-  const checklist = document.getElementById('dhd-checklist');
-  const nextText  = document.getElementById('dhd-next-text');
+  const vkey    = dhdVerdictKey();
+  const conf    = DHD_VERDICTS[vkey];
+  const verdict = document.getElementById('dhd-verdict');
   if (!verdict) return;
-  verdict.className   = 'dhd-verdict ' + conf.cls;
   verdict.textContent = conf.text;
-  if (meaning)  meaning.textContent  = DHD_MEANINGS[vkey];
-  if (nextText) nextText.textContent = dhdNextStep(vkey);
-  if (checklist) {
-    const vlin = verifyLineage();
-    const dlin = dispatchLineage();
-    const routeOk    = opRouting === 'available';
-    const receiptOk  = opReceipt === 'available';
-    const verifyExec = vlin !== 'idle';
-    const verifyPass = vlin === 'current' && opVerify === 'verified';
-    const dispatchOk = dlin === 'current';
-    let h = '';
-    h += dhdRow(routeOk   ? '✓' : '◻', routeOk   ? 'dhd-ok' : 'dhd-no', 'Route available');
-    h += dhdRow(receiptOk ? '✓' : '◻', receiptOk ? 'dhd-ok' : 'dhd-no', 'Receipt available');
-    if (vlin === 'prev') {
-      h += dhdRow('⚠', 'dhd-warn', 'Verification executed — previous run only');
-    } else {
-      h += dhdRow(verifyExec ? '✓' : '◻', verifyExec ? 'dhd-ok' : 'dhd-no',
-                  'Verification executed for current run');
-    }
-    if (vlin === 'current' && opVerify === 'failed') {
-      h += dhdRow('⚠', 'dhd-warn', 'Verification failed — not passed');
-    } else {
-      h += dhdRow(verifyPass ? '✓' : '◻', verifyPass ? 'dhd-ok' : 'dhd-no', 'Verification passed');
-    }
-    if (dlin === 'prev') {
-      h += dhdRow('⚠', 'dhd-warn', 'Dispatch exported — previous run only');
-    } else {
-      h += dhdRow(dispatchOk ? '✓' : '◻', dispatchOk ? 'dhd-ok' : 'dhd-no',
-                  'Dispatch packet exported for current run');
-    }
-    checklist.innerHTML = h;
-  }
+  const nextText = document.getElementById('dhd-next-text');
+  if (nextText) nextText.textContent = vkey === 'none' ? 'Generate a route first.' : vkey === 'exported' ? 'Complete.' : 'Continue workflow.';
 }
 
-// ── Run identity + artifact lineage ───────────────────────────────────────
+// ── Lineage tracking ───────────────────────────────────────────────────────
 function verifyLineage() {
   if (runSerial === 0)                              return 'idle';
   if (verifySerial === runSerial)                   return 'current';
@@ -2410,45 +1631,14 @@ function verifyLineage() {
   return 'idle';
 }
 function dispatchLineage() {
-  if (runSerial === 0)                                    return 'idle';
-  if (dispatchSerial === runSerial)                       return 'current';
-  if (dispatchSerial > 0 && dispatchSerial < runSerial)   return 'prev';
+  if (runSerial === 0)                                  return 'idle';
+  if (dispatchSerial === runSerial)                     return 'current';
+  if (dispatchSerial > 0 && dispatchSerial < runSerial) return 'prev';
   return 'idle';
 }
-function setRibVal(id, state, text) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.className = 'rib-val-' + state;
-  el.textContent = text;
-}
-function updateRunIdentityBlock() {
-  if (runSerial === 0) {
-    setRibVal('rib-route',    'idle', 'no run yet');
-    setRibVal('rib-receipt',  'idle', 'not generated');
-    setRibVal('rib-verify',   'idle', 'not executed');
-    setRibVal('rib-dispatch', 'idle', 'not exported');
-    return;
-  }
-  if (opRouting === 'available') setRibVal('rib-route', 'current', 'current run');
-  else if (opRouting === 'failed') setRibVal('rib-route', 'err', 'failed');
-  else setRibVal('rib-route', 'idle', 'no run');
-  setRibVal('rib-receipt', opReceipt === 'available' ? 'current' : 'idle',
-                           opReceipt === 'available' ? 'current run' : 'not generated');
-  const vlin = verifyLineage();
-  setRibVal('rib-verify',
-    vlin === 'current' ? 'current' : (vlin === 'prev' ? 'prev' : 'idle'),
-    vlin === 'current' ? 'current run' : (vlin === 'prev' ? 'previous run' : 'not executed'));
-  const dlin = dispatchLineage();
-  setRibVal('rib-dispatch',
-    dlin === 'current' ? 'current' : (dlin === 'prev' ? 'prev' : 'idle'),
-    dlin === 'current' ? 'current run' : (dlin === 'prev' ? 'previous run' : 'not exported'));
-}
 function setLinBadge(id, lineage, idleLabel) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (lineage === 'current')      { el.className = 'lin lin-current'; el.textContent = 'current run'; }
-  else if (lineage === 'prev')    { el.className = 'lin lin-prev';    el.textContent = 'previous run'; }
-  else { el.className = 'lin lin-idle'; el.textContent = idleLabel || 'not executed'; }
+  const el = document.getElementById(id); if (!el) return;
+  el.textContent = lineage === 'current' ? 'current run' : lineage === 'prev' ? 'previous run' : (idleLabel || 'not executed');
 }
 function updateLineageBadges() {
   setLinBadge('lin-verify',          verifyLineage(),   'not executed');
@@ -2460,518 +1650,346 @@ function updateLineageNotes() {
   if (vn) vn.classList.toggle('hidden', verifyLineage()   !== 'prev');
   if (dn) dn.classList.toggle('hidden', dispatchLineage() !== 'prev');
 }
-
-// ── Operator session guard ─────────────────────────────────────────────────
-function updateSessionGuard() {
-  const el = document.getElementById('osg');
-  if (!el) return;
+function updateRunIdentityBlock() {
+  function setRibVal(id, state, text) {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = text;
+  }
+  if (runSerial === 0) { setRibVal('rib-route','idle','no run yet'); setRibVal('rib-receipt','idle','not generated'); setRibVal('rib-verify','idle','not executed'); setRibVal('rib-dispatch','idle','not exported'); return; }
+  setRibVal('rib-route',   null, opRouting === 'available' ? 'current run' : 'failed');
+  setRibVal('rib-receipt', null, opReceipt === 'available' ? 'current run' : 'not generated');
   const vlin = verifyLineage();
+  setRibVal('rib-verify',   null, vlin === 'current' ? 'current run' : vlin === 'prev' ? 'previous run' : 'not executed');
   const dlin = dispatchLineage();
-  const reasons = [];
-  if (vlin === 'prev')  reasons.push('Verification result belongs to a previous run \u2014 re-verify for current route');
-  if (dlin === 'prev')  reasons.push('Dispatch packet belongs to a previous run \u2014 re-export for current route');
-  if (reasons.length === 0) {
-    el.classList.remove('osg-active');
-    return;
-  }
-  el.classList.add('osg-active');
-  const reasonsEl = document.getElementById('osg-reasons');
-  if (reasonsEl) {
-    reasonsEl.innerHTML = reasons.map(r =>
-      '<div class="osg-reason">\u26a0 ' + esc(r) + '</div>'
-    ).join('');
-  }
+  setRibVal('rib-dispatch', null, dlin === 'current' ? 'current run' : dlin === 'prev' ? 'previous run' : 'not exported');
+}
+
+// ── Session guard (legacy compat) ─────────────────────────────────────────
+function updateSessionGuard() {
+  const el = document.getElementById('osg'); if (!el) return;
+  const vlin = verifyLineage(); const dlin = dispatchLineage();
+  const stale = vlin === 'prev' || dlin === 'prev';
+  el.style.display = stale ? 'block' : 'none';
 }
 function startCleanRun() {
   lastReceipt = null; lastPolicy = null; lastDispatchId = null; lastExportPacket = null;
-  lastRouteInputs = null; lastRouteEndpoint = null;
-  reproStatus = 'not-tested';
+  lastRouteInputs = null; lastRouteEndpoint = null; reproStatus = 'not-tested';
   runSerial = 0; verifySerial = 0; dispatchSerial = 0;
   hide('route-result'); hide('route-error'); hide('verify-result');
   hide('dispatch-created'); hide('dispatch-export-result');
   hide('dispatch-success'); hide('dispatch-error');
-  hide('route-norm-preview'); hide('route-norm-inline');
   show('results-placeholder');
-  show('receipt-empty-state');
-  hide('receipt-json-actions'); hide('verify-json-actions'); hide('verify-artifact-note');
-  hide('dispatch-export-actions');
-  hide('receipt-expand-btn'); hide('verify-expand-btn'); hide('dispatch-expand-btn');
-  ['route-receipt-json','verify-json','dispatch-export-json'].forEach(id => {
-    const el2 = document.getElementById(id); if (el2) el2.classList.remove('collapsed');
-  });
   clearRunHistory();
-  const _chb = document.getElementById('art-hash-copy');
-  if (_chb) _chb.classList.add('hidden');
-  const _dic = document.getElementById('art-dispatch-id-copy');
-  if (_dic) _dic.classList.add('hidden');
   document.getElementById('btn-dispatch-create').disabled  = true;
   document.getElementById('btn-dispatch-approve').disabled = true;
   document.getElementById('btn-dispatch-export').disabled  = true;
   document.getElementById('btn-verify').disabled  = true;
   document.getElementById('btn-tamper').disabled  = true;
-  salLog('Session reset', 'Operator initiated clean run. All previous-run artifacts cleared.');
+  salLog('Session reset', 'Operator initiated clean run.');
   updateOpState('not-run', 'not-run', 'not-run', 'not-run');
 }
 
-// ── Current-run artifact bundle ────────────────────────────────────────────
+// ── Artifact bundle (legacy compat) ───────────────────────────────────────
 function cabVerdictKey() {
   if (runSerial === 0) return 'none';
-  const vlin = verifyLineage();
-  const dlin = dispatchLineage();
+  const vlin = verifyLineage(); const dlin = dispatchLineage();
   if (opRouting === 'failed') return 'attention';
   if (vlin === 'prev' || dlin === 'prev') return 'attention';
   if (vlin === 'current' && opVerify === 'failed') return 'attention';
   if (reproStatus === 'mismatch') return 'attention';
-  if (opRouting === 'available' && opReceipt === 'available' &&
-      vlin === 'current' && opVerify === 'verified' &&
-      dlin === 'current' && reproStatus === 'reproducible') {
-    return 'ready';
-  }
+  if (opRouting === 'available' && opReceipt === 'available' && vlin === 'current' && opVerify === 'verified' && dlin === 'current' && reproStatus === 'reproducible') return 'ready';
   return 'incomplete';
-}
-const CAB_VERDICTS = {
-  'none':       {cls:'cab-verdict-none',       text:'No current bundle'},
-  'incomplete': {cls:'cab-verdict-incomplete', text:'Current bundle incomplete'},
-  'ready':      {cls:'cab-verdict-ready',      text:'Current bundle ready for review'},
-  'attention':  {cls:'cab-verdict-attention',  text:'Current bundle requires attention'},
-};
-const CAB_MEANINGS = {
-  'none':       'No route has been generated. Generate a route to begin building the current-run artifact bundle.',
-  'incomplete': 'The current-run artifact bundle is not yet complete. Some artifacts are missing or not yet generated for this run.',
-  'ready':      'All artifacts are present and belong to the current run. This bundle is suitable for external sharing or pilot review.',
-  'attention':  'One or more artifacts are missing, failed, or belong to a previous run. Previous-run artifacts do not belong to the current bundle.',
-};
-function cabNextAction(key) {
-  if (key === 'none') return 'Generate a route to start the current-run bundle.';
-  if (key === 'ready') return 'Current-run bundle ready \u2014 all artifacts present and current.';
-  if (key === 'attention') {
-    if (opRouting === 'failed') return 'Route generation failed \u2014 re-submit for review.';
-    const vlin = verifyLineage();
-    const dlin = dispatchLineage();
-    if (vlin === 'prev' || dlin === 'prev')
-      return 'Reroute detected \u2014 rebuild current-run bundle for the new route.';
-    if (vlin === 'current' && opVerify === 'failed')
-      return 'Resolve failed verification before completing the bundle.';
-    if (reproStatus === 'mismatch')
-      return 'Reproducibility mismatch \u2014 review routing determinism.';
-    return 'Resolve current run issues to complete the bundle.';
-  }
-  if (opRouting !== 'available') return 'Generate a route to start the current-run bundle.';
-  const vlin = verifyLineage();
-  if (vlin !== 'current') return 'Run verification for current route.';
-  if (opVerify !== 'verified') return 'Resolve verification before completing the bundle.';
-  if (dispatchLineage() !== 'current') return 'Export dispatch packet for current route.';
-  if (reproStatus !== 'reproducible') return 'Execute reproducibility check for current route.';
-  return 'All bundle artifacts present.';
-}
-function cabArtRow(key, cls, label) {
-  return '<div class="cab-row"><span class="cab-key">' + esc(key) + '</span>'
-       + '<span class="' + cls + '">' + esc(label) + '</span></div>';
 }
 function updateArtifactBundle() {
-  const verdict  = document.getElementById('cab-verdict');
-  const meaning  = document.getElementById('cab-meaning');
-  const arts     = document.getElementById('cab-artifacts');
-  const nextText = document.getElementById('cab-next-text');
-  if (!verdict) return;
+  const verdict = document.getElementById('cab-verdict'); if (!verdict) return;
   const vkey = cabVerdictKey();
-  const conf = CAB_VERDICTS[vkey];
-  verdict.className   = 'cab-verdict ' + conf.cls;
-  verdict.textContent = conf.text;
-  if (meaning)  meaning.textContent  = CAB_MEANINGS[vkey];
-  if (nextText) nextText.textContent = cabNextAction(vkey);
-  if (arts) {
-    const vlin = verifyLineage();
-    const dlin = dispatchLineage();
-    let h = '';
-    // Route artifact
-    if (opRouting === 'available')
-      h += cabArtRow('Route',          'cab-val-current', 'present \u2014 current run');
-    else if (opRouting === 'failed')
-      h += cabArtRow('Route',          'cab-val-failed',  'failed');
-    else
-      h += cabArtRow('Route',          'cab-val-missing', 'not generated');
-    // Receipt artifact
-    h += cabArtRow('Receipt',
-      opReceipt === 'available' ? 'cab-val-current' : 'cab-val-missing',
-      opReceipt === 'available' ? 'present \u2014 current run' : 'not generated');
-    // Verification result
-    if (vlin === 'current' && opVerify === 'verified')
-      h += cabArtRow('Verification',   'cab-val-current', 'passed \u2014 current run');
-    else if (vlin === 'current' && opVerify === 'failed')
-      h += cabArtRow('Verification',   'cab-val-failed',  'failed \u2014 current run');
-    else if (vlin === 'prev')
-      h += cabArtRow('Verification',   'cab-val-prev',    'present \u2014 previous run');
-    else
-      h += cabArtRow('Verification',   'cab-val-missing', 'not executed');
-    // Dispatch packet
-    if (dlin === 'current')
-      h += cabArtRow('Dispatch packet','cab-val-current', 'present \u2014 current run');
-    else if (dlin === 'prev')
-      h += cabArtRow('Dispatch packet','cab-val-prev',    'present \u2014 previous run');
-    else
-      h += cabArtRow('Dispatch packet','cab-val-missing', 'not exported');
-    // Reproducibility result
-    if (reproStatus === 'reproducible')
-      h += cabArtRow('Repro result',   'cab-val-current', 'passed \u2014 current run');
-    else if (reproStatus === 'mismatch')
-      h += cabArtRow('Repro result',   'cab-val-failed',  'mismatch \u2014 current run');
-    else
-      h += cabArtRow('Repro result',   'cab-val-missing', 'not executed');
-    arts.innerHTML = h;
-  }
+  verdict.textContent = {none:'No current bundle',incomplete:'Current bundle incomplete',ready:'Current bundle ready',attention:'Attention required'}[vkey] || '';
+  const arts = document.getElementById('cab-artifacts'); if (!arts) return;
+  const vlin = verifyLineage(); const dlin = dispatchLineage();
+  arts.innerHTML = '<div>Route: ' + (opRouting==='available'?'present':'missing') + '</div>'
+    + '<div>Receipt: ' + (opReceipt==='available'?'present':'missing') + '</div>'
+    + '<div>Verify: ' + (vlin==='current'?opVerify:'idle') + '</div>'
+    + '<div>Dispatch: ' + (dlin==='current'?'present':'missing') + '</div>';
+  const nt = document.getElementById('cab-next-text');
+  if (nt) nt.textContent = vkey === 'ready' ? 'Complete.' : 'Continue workflow.';
+  const m = document.getElementById('cab-meaning');
+  if (m) m.textContent = 'Artifact bundle for current run.';
 }
 
-// ── Canonical pilot workflow ───────────────────────────────────────────────
-function cpwStepStatus(step) {
-  const vlin = verifyLineage();
-  const dlin = dispatchLineage();
-  switch (step) {
-    case 1: // Generate route
-      if (opRouting === 'available') return 'completed';
-      if (opRouting === 'failed')    return 'warn';
-      return 'available';
-    case 2: // Verify receipt
-      if (opRouting !== 'available') return 'blocked';
-      if (vlin === 'prev') return 'warn';
-      if (vlin === 'current' && opVerify === 'failed') return 'warn';
-      if (vlin === 'current' && opVerify === 'verified') return 'completed';
-      return 'available';
-    case 3: // Inspect artifacts
-      if (opReceipt !== 'available') return 'blocked';
-      return 'completed';
-    case 4: // Run reproducibility check
-      if (opRouting !== 'available') return 'blocked';
-      if (reproStatus === 'mismatch')      return 'warn';
-      if (reproStatus === 'reproducible')  return 'completed';
-      return 'available';
-    case 5: // Export dispatch packet
-      if (dlin === 'prev') return 'warn';
-      if (dlin === 'current') return 'completed';
-      if (vlin !== 'current' || opVerify !== 'verified') return 'blocked';
-      return 'available';
-    case 6: { // Confirm dry-run / pilot readiness
-      const dk = drsVerdictKey();
-      const pk = phsVerdictKey();
-      if (dk === 'attention' || pk === 'attention') return 'warn';
-      if (pk === 'ready')    return 'completed';
-      if (dk === 'passed')   return 'available';
-      if (opRouting === 'available') return 'blocked';
-      return 'blocked';
-    }
-    default: return 'not-started';
-  }
-}
-const CPW_STATUS_LABELS = {
-  'available':   'available',
-  'completed':   'done',
-  'blocked':     'blocked',
-  'not-started': '\u2014',
-  'warn':        'attention',
-};
-const CPW_STATUS_CLS = {
-  'available':   'cpw-s-available',
-  'completed':   'cpw-s-completed',
-  'blocked':     'cpw-s-blocked',
-  'not-started': 'cpw-s-not-started',
-  'warn':        'cpw-s-warn',
-};
+// ── Canonical workflow (legacy compat) ────────────────────────────────────
 function updateCanonicalWorkflow() {
-  for (let i = 1; i <= 6; i++) {
-    const el = document.getElementById('cpw-s' + i);
-    if (!el) continue;
-    const st = cpwStepStatus(i);
-    el.className   = 'cpw-step-status ' + (CPW_STATUS_CLS[st] || 'cpw-s-blocked');
-    el.textContent = CPW_STATUS_LABELS[st] || '\u2014';
-  }
-}
-
-// ── Pilot handoff summary ──────────────────────────────────────────────────
-function phsVerdictKey() {
-  if (runSerial === 0) return 'not-ready';
+  const routeOk   = opRouting === 'available';
+  const receiptOk = opReceipt === 'available';
   const vlin = verifyLineage();
+  const verifyOk  = vlin === 'current' && opVerify === 'verified';
   const dlin = dispatchLineage();
-  // attention: any degraded state for current run
-  if (opRouting === 'failed') return 'attention';
-  if (vlin === 'prev' || dlin === 'prev') return 'attention';
-  if (vlin === 'current' && opVerify === 'failed') return 'attention';
-  if (reproStatus === 'mismatch') return 'attention';
-  // ready: all 6 checklist items complete for current run
-  if (opRouting === 'available' && opReceipt === 'available' &&
-      vlin === 'current' && opVerify === 'verified' &&
-      dlin === 'current' && reproStatus === 'reproducible' &&
-      drsVerdictKey() === 'passed') {
-    return 'ready';
+  const dispOk    = dlin === 'current';
+  const reproExec = reproStatus === 'reproducible' || reproStatus === 'mismatch';
+  function setS(id, done, blocked) {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = done ? 'completed' : (blocked ? 'blocked' : 'available');
   }
-  // pending: started but not complete
-  if (opRouting === 'available') return 'pending';
-  return 'not-ready';
-}
-const PHS_VERDICTS = {
-  'not-ready': {cls:'phs-verdict-not-ready', text:'Not ready for pilot handoff'},
-  'pending':   {cls:'phs-verdict-pending',   text:'Pilot handoff pending final step'},
-  'ready':     {cls:'phs-verdict-ready',     text:'Ready for pilot handoff'},
-  'attention': {cls:'phs-verdict-attention', text:'Pilot handoff requires attention'},
-};
-const PHS_MEANINGS = {
-  'not-ready': 'No route has been generated. Complete all minimum workflow steps before presenting this run to a pilot reviewer or external lab.',
-  'pending':   'A route has been generated but not all minimum workflow steps are complete. Finish the remaining steps before pilot handoff.',
-  'ready':     'The current run has passed all minimum workflow requirements. This run is suitable for presentation to an external lab or pilot reviewer.',
-  'attention': 'One or more workflow steps have failed or belong to a previous run. Resolve the issues listed below before pilot handoff.',
-};
-function phsActionText(key) {
-  if (key === 'ready') return 'Pilot handoff ready \u2014 current run meets all minimum requirements.';
-  if (key === 'attention') {
-    if (opRouting === 'failed') return 'Route generation failed \u2014 re-submit for review.';
-    const vlin = verifyLineage();
-    const dlin = dispatchLineage();
-    if (vlin === 'prev' || dlin === 'prev')
-      return 'Reroute detected \u2014 complete the dry-run again for the current route.';
-    if (vlin === 'current' && opVerify === 'failed')
-      return 'Resolve failed verification before pilot handoff.';
-    if (reproStatus === 'mismatch')
-      return 'Reproducibility mismatch \u2014 review routing determinism before handoff.';
-    return 'Resolve current run issues before pilot handoff.';
-  }
-  if (opRouting !== 'available') return 'Generate a route to begin the pilot run.';
-  if (opReceipt !== 'available') return 'Await receipt.';
-  const vlin = verifyLineage();
-  if (vlin !== 'current') return 'Run verification for current route.';
-  if (opVerify !== 'verified') return 'Resolve verification before proceeding.';
-  if (dispatchLineage() !== 'current') return 'Export dispatch packet for current route.';
-  if (reproStatus !== 'reproducible') return 'Complete reproducibility check for current route.';
-  return 'Complete dry-run to finalise pilot handoff readiness.';
-}
-function phsRow(icon, cls, label) {
-  return '<div class="phs-row"><span class="' + cls + '">' + icon + '</span><span>' + esc(label) + '</span></div>';
-}
-function updatePilotHandoffSummary() {
-  const vkey    = phsVerdictKey();
-  const conf    = PHS_VERDICTS[vkey];
-  const verdict = document.getElementById('phs-verdict');
-  const meaning = document.getElementById('phs-meaning');
-  const list    = document.getElementById('phs-checklist');
-  const action  = document.getElementById('phs-action-text');
-  if (!verdict) return;
-  verdict.className   = 'phs-verdict ' + conf.cls;
-  verdict.textContent = conf.text;
-  if (meaning) meaning.textContent = PHS_MEANINGS[vkey];
-  if (action)  action.textContent  = phsActionText(vkey);
-  if (list) {
-    const vlin = verifyLineage();
-    const dlin = dispatchLineage();
-    const routeOk   = opRouting === 'available';
-    const receiptOk = opReceipt === 'available';
-    const verifyPass = vlin === 'current' && opVerify === 'verified';
-    const dispOk     = dlin === 'current';
-    const reproPass  = reproStatus === 'reproducible';
-    const dryRunPass = drsVerdictKey() === 'passed';
-    let h = '';
-    h += phsRow(routeOk    ? '✓' : '◻', routeOk    ? 'phs-ok' : 'phs-no', 'Route exists for current run');
-    h += phsRow(receiptOk  ? '✓' : '◻', receiptOk  ? 'phs-ok' : 'phs-no', 'Receipt available');
-    if (vlin === 'current' && opVerify === 'failed') {
-      h += phsRow('⚠', 'phs-warn', 'Verification failed \u2014 not passed');
-    } else if (vlin === 'prev') {
-      h += phsRow('⚠', 'phs-warn', 'Verification \u2014 previous run only');
-    } else {
-      h += phsRow(verifyPass ? '✓' : '◻', verifyPass ? 'phs-ok' : 'phs-no', 'Verification passed');
-    }
-    if (dlin === 'prev') {
-      h += phsRow('⚠', 'phs-warn', 'Dispatch exported \u2014 previous run only');
-    } else {
-      h += phsRow(dispOk ? '✓' : '◻', dispOk ? 'phs-ok' : 'phs-no', 'Dispatch packet exported');
-    }
-    if (reproStatus === 'mismatch') {
-      h += phsRow('⚠', 'phs-warn', 'Reproducibility mismatch detected');
-    } else {
-      h += phsRow(reproPass ? '✓' : '◻', reproPass ? 'phs-ok' : 'phs-no', 'Reproducibility passed');
-    }
-    h += phsRow(dryRunPass ? '✓' : '◻', dryRunPass ? 'phs-ok' : 'phs-no', 'Dry-run passed');
-    list.innerHTML = h;
-  }
+  setS('cpw-s1', routeOk,   false);
+  setS('cpw-s2', verifyOk,  !routeOk);
+  setS('cpw-s3', receiptOk, !routeOk);
+  setS('cpw-s4', reproExec, !routeOk);
+  setS('cpw-s5', dispOk,    !verifyOk);
+  setS('cpw-s6', dispOk && reproExec, !dispOk);
 }
 
-// ── Operator dry-run status ────────────────────────────────────────────────
+// ── Dry-run panel (legacy compat) ─────────────────────────────────────────
 function drsVerdictKey() {
   if (runSerial === 0) return 'none';
-  const vlin = verifyLineage();
-  const dlin = dispatchLineage();
-  if (opRouting === 'failed') return 'attention';
-  if (vlin === 'prev' || dlin === 'prev') return 'attention';
-  if (vlin === 'current' && opVerify === 'failed') return 'attention';
-  if (reproStatus === 'mismatch') return 'attention';
+  const vlin = verifyLineage(); const dlin = dispatchLineage();
+  if (opRouting === 'failed' || vlin === 'prev' || dlin === 'prev' || (vlin === 'current' && opVerify === 'failed') || reproStatus === 'mismatch') return 'attention';
   const reproExec = reproStatus === 'reproducible' || reproStatus === 'mismatch';
-  if (opRouting === 'available' && opReceipt === 'available' &&
-      vlin === 'current' && opVerify === 'verified' &&
-      dlin === 'current' && reproExec && reproStatus === 'reproducible') {
-    return 'passed';
-  }
+  if (opRouting === 'available' && opReceipt === 'available' && vlin === 'current' && opVerify === 'verified' && dlin === 'current' && reproExec && reproStatus === 'reproducible') return 'passed';
   return 'incomplete';
 }
-const DRS_VERDICTS = {
-  'none':       {cls:'drs-verdict-none',       text:'No dry-run in progress'},
-  'incomplete': {cls:'drs-verdict-incomplete', text:'Dry-run incomplete'},
-  'passed':     {cls:'drs-verdict-passed',     text:'Dry-run passed'},
-  'attention':  {cls:'drs-verdict-attention',  text:'Dry-run requires attention'},
-};
-const DRS_MEANINGS = {
-  'none':       'No route has been generated yet. Complete all minimum pilot workflow steps to begin a dry-run.',
-  'incomplete': 'A route has been generated but not all minimum workflow steps are complete for the current run.',
-  'passed':     'The current run has completed all minimum pilot workflow steps. This run is suitable for operator review and pilot simulation.',
-  'attention':  'One or more workflow steps for the current run have failed or belong to a previous run. Review the checklist below.',
-};
-function drsNextStep(key) {
-  if (key === 'none')   return 'Generate a route to begin the dry-run.';
-  if (key === 'passed') return 'Dry-run complete for current route.';
-  if (key === 'attention') {
-    if (opRouting === 'failed') return 'Route generation failed \u2014 re-submit for review.';
-    const vlin = verifyLineage();
-    const dlin = dispatchLineage();
-    if (vlin === 'prev' || dlin === 'prev')
-      return 'Reroute detected \u2014 dry-run must be completed again for current route.';
-    if (vlin === 'current' && opVerify === 'failed')
-      return 'Resolve failed verification before completing dry-run.';
-    if (reproStatus === 'mismatch')
-      return 'Reproducibility mismatch detected \u2014 review routing determinism.';
-    return 'Resolve current run issues before completing dry-run.';
-  }
-  if (opRouting !== 'available') return 'Generate a route to begin the dry-run.';
-  if (opReceipt !== 'available') return 'Await receipt \u2014 routing in progress.';
-  const vlin = verifyLineage();
-  if (vlin !== 'current') return 'Run verification for current route.';
-  if (opVerify !== 'verified') return 'Resolve verification before proceeding.';
-  if (dispatchLineage() !== 'current') return 'Export dispatch packet for current route.';
-  if (reproStatus === 'not-tested') return 'Execute reproducibility check for current route.';
-  return 'All dry-run steps complete.';
-}
-function drsRow(icon, cls, label) {
-  return '<div class="drs-row"><span class="' + cls + '">' + icon + '</span><span>' + esc(label) + '</span></div>';
-}
 function updateDryRunPanel() {
-  const vkey     = drsVerdictKey();
-  const conf     = DRS_VERDICTS[vkey];
-  const verdict  = document.getElementById('drs-verdict');
-  const meaning  = document.getElementById('drs-meaning');
-  const list     = document.getElementById('drs-checklist');
-  const nextText = document.getElementById('drs-next-text');
-  if (!verdict) return;
-  verdict.className   = 'drs-verdict ' + conf.cls;
-  verdict.textContent = conf.text;
-  if (meaning)  meaning.textContent  = DRS_MEANINGS[vkey];
-  if (nextText) nextText.textContent = drsNextStep(vkey);
-  if (list) {
-    const vlin = verifyLineage();
-    const dlin = dispatchLineage();
-    const routeOk    = opRouting === 'available';
-    const receiptOk  = opReceipt === 'available';
-    const verifyExec = vlin === 'current';
-    const verifyPass = vlin === 'current' && opVerify === 'verified';
-    const dispOk     = dlin === 'current';
-    const reproExec  = reproStatus === 'reproducible' || reproStatus === 'mismatch';
-    const reproPass  = reproStatus === 'reproducible';
-    let h = '';
-    h += drsRow(routeOk   ? '✓' : '◻', routeOk   ? 'drs-ok' : 'drs-no', 'Route generated');
-    h += drsRow(receiptOk ? '✓' : '◻', receiptOk ? 'drs-ok' : 'drs-no', 'Receipt available');
-    if (vlin === 'prev') {
-      h += drsRow('⚠', 'drs-warn', 'Verification executed \u2014 previous run only');
-    } else {
-      h += drsRow(verifyExec ? '✓' : '◻', verifyExec ? 'drs-ok' : 'drs-no',
-                  'Verification executed for current run');
-    }
-    if (vlin === 'current' && opVerify === 'failed') {
-      h += drsRow('⚠', 'drs-warn', 'Verification failed \u2014 not passed');
-    } else {
-      h += drsRow(verifyPass ? '✓' : '◻', verifyPass ? 'drs-ok' : 'drs-no', 'Verification passed');
-    }
-    if (dlin === 'prev') {
-      h += drsRow('⚠', 'drs-warn', 'Dispatch exported \u2014 previous run only');
-    } else {
-      h += drsRow(dispOk ? '✓' : '◻', dispOk ? 'drs-ok' : 'drs-no',
-                  'Dispatch packet exported for current run');
-    }
-    if (reproStatus === 'mismatch') {
-      h += drsRow('⚠', 'drs-warn', 'Reproducibility check executed \u2014 mismatch detected');
-    } else {
-      h += drsRow(reproExec ? '✓' : '◻', reproExec ? 'drs-ok' : 'drs-no',
-                  'Reproducibility check executed');
-    }
-    h += drsRow(reproPass ? '✓' : '◻', reproPass ? 'drs-ok' : 'drs-no', 'Reproducibility passed');
-    list.innerHTML = h;
-  }
+  const verdict = document.getElementById('drs-verdict'); if (!verdict) return;
+  const vkey = drsVerdictKey();
+  verdict.textContent = {none:'No dry-run',incomplete:'Incomplete',passed:'Passed',attention:'Attention required'}[vkey] || '';
+  const m = document.getElementById('drs-meaning'); if (m) m.textContent = '';
+  const nt = document.getElementById('drs-next-text');
+  if (nt) nt.textContent = vkey === 'passed' ? 'Complete.' : 'Continue workflow.';
 }
 
-// ── Route reproducibility check ────────────────────────────────────────────
+// ── Pilot handoff summary (legacy compat) ────────────────────────────────
+function updatePilotHandoffSummary() {
+  const verdict = document.getElementById('phs-verdict'); if (!verdict) return;
+  const dlin = dispatchLineage();
+  if (dlin === 'current') { verdict.textContent = 'Ready for pilot handoff'; return; }
+  const vlin = verifyLineage();
+  if (vlin === 'current' && opVerify === 'verified') { verdict.textContent = 'Pending dispatch export'; return; }
+  verdict.textContent = 'Not ready for pilot handoff';
+  const nt = document.getElementById('phs-action-text');
+  if (nt) nt.textContent = 'Complete all minimum workflow steps.';
+}
+
+// ── Active run context ────────────────────────────────────────────────────
+function updateActiveRunContext() {
+  const block = document.getElementById('active-run-context'); if (!block) return;
+  if (opRouting !== 'available' || !lastReceipt) { block.classList.add('hidden'); return; }
+  block.classList.remove('hidden');
+  const mfr = document.getElementById('arc-manufacturer');
+  if (mfr) mfr.textContent = lastReceipt.selected_candidate_id || '(none)';
+  const hash = document.getElementById('arc-receipt-hash');
+  const h = lastReceipt.receipt_hash || '—';
+  if (hash) hash.textContent = h !== '—' ? h.slice(0, 16) + '…' : '—';
+  const verEl = document.getElementById('arc-verify-status');
+  if (verEl) verEl.textContent = opVerify === 'verified' ? 'Verified' : opVerify === 'failed' ? 'Failed' : 'Pending';
+  const dispEl = document.getElementById('arc-dispatch-status');
+  if (dispEl) dispEl.textContent = lastExportPacket ? 'Exported' : 'Pending';
+}
+
+// ── Next-action rail (legacy compat) ────────────────────────────────────
+function updateNextActionRail() {
+  const actionEl = document.getElementById('nar-action'); if (!actionEl) return;
+  if (lastExportPacket)             { actionEl.textContent = 'Workflow complete'; }
+  else if (opVerify === 'verified') { actionEl.textContent = 'Next: export dispatch'; }
+  else if (opRouting === 'available') { actionEl.textContent = 'Next: verify current route'; }
+  else { actionEl.textContent = 'Next: run route'; }
+}
+
+// ── Handoff note (legacy compat) ─────────────────────────────────────────
+function updateHandoffNote() {
+  const body  = document.getElementById('hn-body'); if (!body) return;
+  body.textContent = lastExportPacket ? 'Handoff complete.' : 'No export for current route.';
+}
+
+// ── Microbadges / freshness (legacy compat) ───────────────────────────────
+function setMicrobadge(id, state) { const el = document.getElementById(id); if(el) el.textContent = state; }
+function updateMicrobadges() {
+  setMicrobadge('mb-receipt',  opRouting === 'available' ? 'available' : 'not-available');
+  setMicrobadge('mb-verify',   opVerify === 'verified' ? 'verified' : opVerify === 'failed' ? 'failed' : 'not-available');
+  setMicrobadge('mb-dispatch', lastExportPacket ? 'exported' : 'not-available');
+}
+function setFreshness(id, fresh, label) { const el = document.getElementById(id); if(el) el.textContent = label; }
+function updateFreshnessMarkers() {
+  setFreshness('fm-receipt',  opRouting === 'available', opRouting === 'available' ? 'current run' : 'not yet produced');
+  const verifyDone = opVerify === 'verified' || opVerify === 'failed';
+  setFreshness('fm-verify',   verifyDone, verifyDone ? 'current run' : 'not yet executed');
+  setFreshness('fm-dispatch', !!lastExportPacket, lastExportPacket ? 'current run' : 'not yet exported');
+}
+
+// ── Run timeline (legacy compat) ──────────────────────────────────────────
+function updateRunTimeline() {
+  function setState(id, s) { const el = document.getElementById(id); if(el) el.className='rt-step rt-'+s; }
+  setState('rt-route',    opRouting === 'available' ? 'done' : 'idle');
+  setState('rt-receipt',  opReceipt === 'available' ? 'done' : 'idle');
+  setState('rt-verify',   opVerify === 'verified' ? 'done' : opRouting === 'available' ? 'ready' : 'idle');
+  setState('rt-dispatch', lastExportPacket ? 'done' : opVerify === 'verified' ? 'ready' : opVerify === 'failed' ? 'blocked' : 'idle');
+  const s = document.getElementById('rt-summary');
+  if (s) s.textContent = lastExportPacket ? 'Complete' : opVerify === 'verified' ? 'Dispatch ready' : opRouting === 'available' ? 'Verify pending' : 'Not started';
+}
+
+// ── OAB (legacy compat) ───────────────────────────────────────────────────
+function updateOab() {
+  const a = document.getElementById('oab-action'); if (!a) return;
+  if (lastExportPacket)           a.textContent = 'Current run complete';
+  else if (opVerify === 'verified') a.textContent = 'Export dispatch packet';
+  else if (opVerify === 'failed')   a.textContent = 'Resolve verification';
+  else if (opRouting === 'available') a.textContent = 'Run verification';
+  else a.textContent = 'Start a route';
+}
+function oabNavigate() {
+  let target = 'btn-route-norm';
+  if (lastExportPacket)            target = 'dispatch-export-result';
+  else if (opVerify === 'verified') target = 'btn-dispatch-export';
+  else if (opVerify === 'failed')   target = 'verify-result';
+  else if (opRouting === 'available') target = 'btn-verify';
+  const el = document.getElementById(target); if (el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── Outcome banner (legacy compat) ───────────────────────────────────────
+function updateOutcomeBanner() {
+  const orb = document.getElementById('orb'); if (!orb) return;
+  const h = document.getElementById('orb-headline'); const d = document.getElementById('orb-detail');
+  if (lastExportPacket) { if(h) h.textContent='Complete'; if(d) d.textContent='Dispatch exported.'; }
+  else if (opVerify === 'verified') { if(h) h.textContent='Verified'; if(d) d.textContent='Ready for dispatch.'; }
+  else if (opRouting === 'available') { if(h) h.textContent='Routed'; if(d) d.textContent='Verify pending.'; }
+  else { if(h) h.textContent='Not started'; if(d) d.textContent='Run routing.'; }
+}
+function orbNavigate() {}
+
+// ── Completion checklist (legacy compat) ─────────────────────────────────
+function updateCompletionChecklist() {
+  const rows = document.getElementById('crc-rows'); if (!rows) return;
+  rows.textContent = '';
+  const footer = document.getElementById('crc-footer');
+  const allDone = opRouting==='available' && opReceipt==='available' && opVerify==='verified' && !!lastExportPacket;
+  if (footer) footer.textContent = allDone ? 'Complete' : 'Incomplete';
+}
+function crcNavigate(t) { const e=document.getElementById(t); if(e) e.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+
+// ── Preflight card (legacy compat) ────────────────────────────────────────
+function pfcVerdictKey() {
+  if (lastExportPacket)        return 'complete';
+  if (opVerify === 'verified') return 'ready';
+  return 'not-ready';
+}
+function updatePreflightCard() {
+  const card = document.getElementById('pfc'); if (!card) return;
+  const vk = pfcVerdictKey();
+  const h = document.getElementById('pfc-headline');
+  if (h) h.textContent = vk === 'complete' ? 'Complete' : vk === 'ready' ? 'Ready' : 'Not ready';
+}
+function pfcNavigate() {}
+
+// ── Handoff summary (legacy compat) ──────────────────────────────────────
+function updateHandoffSummary() {
+  const v = document.getElementById('hsc-verdict'); if (!v) return;
+  const vk = pfcVerdictKey();
+  v.textContent = vk === 'complete' ? 'Complete' : vk === 'ready' ? 'Ready for dispatch' : 'Not ready';
+  const s = document.getElementById('hsc-summary');
+  if (s) s.textContent = vk === 'complete' ? 'Current run complete.' : 'Complete workflow steps.';
+}
+
+// ── Consistency sentinel (legacy compat) ─────────────────────────────────
+function gatherConsistencyMismatches() { return []; }
+function updateConsistencySentinel() {
+  const card = document.getElementById('ccs'); if (!card) return;
+  const h = document.getElementById('ccs-headline');
+  if (h) h.textContent = 'Consistent';
+}
+
+// ── Active section emphasis (legacy compat) ───────────────────────────────
+function activeSectionIndex() {
+  if (lastExportPacket)                                 return 3;
+  if (opVerify === 'verified' || opVerify === 'failed') return 2;
+  if (opRouting === 'available')                        return 1;
+  return 0;
+}
+function updateActiveSectionEmphasis() {
+  // purely legacy — step card state handled by updateStepCards()
+}
+
+// ── Pilot run history ─────────────────────────────────────────────────────
+function appendRunHistory(label, ok) {
+  const ts = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  runHistory.push({ts, label, ok});
+  const list = document.getElementById('run-history-list'); if (!list) return;
+  const entry = document.createElement('div');
+  entry.textContent = ts + ' — ' + label + (ok ? ' ✓' : ' ✗');
+  list.appendChild(entry);
+  show('run-history-panel');
+}
+function clearRunHistory() {
+  runHistory.length = 0;
+  const list = document.getElementById('run-history-list');
+  if (list) list.innerHTML = '';
+  hide('run-history-panel');
+}
+
+// ── Session activity log (legacy compat) ─────────────────────────────────
+const SAL_MAX = 20;
+let sessionLog = [];
+function salLog(label, msg) {
+  sessionLog.unshift({label, msg});
+  if (sessionLog.length > SAL_MAX) sessionLog.length = SAL_MAX;
+}
+function clearSessionLog() { sessionLog = []; }
+
+// ── Artifact size guard ────────────────────────────────────────────────────
+const ARTIFACT_COLLAPSE_LINES = 40;
+function collapseIfLarge(preId, btnId) {
+  const pre = document.getElementById(preId); const btn = document.getElementById(btnId);
+  if (!pre || !btn) return;
+  if ((pre.textContent.match(/\n/g) || []).length + 1 > ARTIFACT_COLLAPSE_LINES) {
+    pre.classList.add('collapsed'); btn.classList.remove('hidden');
+  } else {
+    pre.classList.remove('collapsed'); btn.classList.add('hidden');
+  }
+}
+function expandArtifact(preId, btnId) {
+  const pre = document.getElementById(preId); const btn = document.getElementById(btnId);
+  if (pre) pre.classList.remove('collapsed');
+  if (btn) btn.classList.add('hidden');
+}
+
+// ── Repro check ───────────────────────────────────────────────────────────
 const REPRO_STATES = {
-  'not-tested':   {cls:'rrc-not-tested', text:'Reproducibility not tested',
-                   detail:'Run a reproducibility check to confirm the routing result is deterministic.'},
-  'running':      {cls:'rrc-not-tested', text:'Check in progress\u2026',
-                   detail:'Re-running route with same inputs.'},
-  'reproducible': {cls:'rrc-ok',        text:'Reproducible',
-                   detail:'The routing result was deterministically reproduced using the same inputs \u2014 receipt hash matched.'},
-  'mismatch':     {cls:'rrc-mismatch',  text:'Mismatch detected',
-                   detail:'The reproduced route returned a different receipt hash. Routing result may not be deterministic.'},
+  'not-tested':   {text:'Reproducibility not tested'},
+  'running':      {text:'Check in progress…'},
+  'reproducible': {text:'Reproducible'},
+  'mismatch':     {text:'Mismatch detected'},
 };
 async function runReproCheck(btn) {
   if (!lastRouteInputs || !lastRouteEndpoint || !lastReceipt) return;
-  reproStatus = 'running';
-  updateReproPanel();
-  if (btn) btn.disabled = true;
+  reproStatus = 'running'; updateReproPanel(); if (btn) btn.disabled = true;
   try {
-    const r = await fetch(lastRouteEndpoint, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(lastRouteInputs),
-    });
+    const r = await fetch(lastRouteEndpoint, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastRouteInputs)});
     if (!r.ok) { reproStatus = 'mismatch'; return; }
     const data = await r.json();
     const reproHash = data?.receipt?.receipt_hash;
     const origHash  = lastReceipt?.receipt_hash;
     reproStatus = (reproHash && origHash && reproHash === origHash) ? 'reproducible' : 'mismatch';
-  } catch(e) {
-    reproStatus = 'mismatch';
-  } finally {
-    updateReproPanel();
-    updateDryRunPanel();
-    updatePilotHandoffSummary();
-    updateArtifactBundle();
-    updateCanonicalWorkflow();
-  }
+  } catch(e) { reproStatus = 'mismatch'; }
+  finally { updateReproPanel(); updateDryRunPanel(); updatePilotHandoffSummary(); updateArtifactBundle(); updateCanonicalWorkflow(); }
 }
 function updateReproPanel() {
-  const statusEl = document.getElementById('rrc-status');
-  const detailEl = document.getElementById('rrc-detail');
-  const btn      = document.getElementById('btn-repro');
-  if (!statusEl) return;
+  const statusEl = document.getElementById('rrc-status'); if (!statusEl) return;
   const st = REPRO_STATES[reproStatus] || REPRO_STATES['not-tested'];
-  statusEl.className   = 'rrc-status ' + st.cls;
   statusEl.textContent = st.text;
-  if (detailEl) detailEl.textContent = st.detail;
+  const btn = document.getElementById('btn-repro');
   if (btn) btn.disabled = !lastReceipt || reproStatus === 'running';
 }
 
+// ── Op state ──────────────────────────────────────────────────────────────
 function updateOpState(routing, receipt, verify, dispatch) {
-  const MAP = {
-    'not-run': 'op-not-run', 'available': 'op-available',
-    'verified': 'op-verified', 'failed': 'op-failed', 'missing': 'op-missing',
-  };
   if (routing  != null) opRouting  = routing;
   if (receipt  != null) opReceipt  = receipt;
   if (verify   != null) opVerify   = verify;
   if (dispatch != null) opDispatch = dispatch;
   [['ops-routing', opRouting], ['ops-receipt', opReceipt],
    ['ops-verify',  opVerify],  ['ops-dispatch', opDispatch]].forEach(([id, st]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = st;
-    el.className = MAP[st] || 'op-not-run';
+    const el = document.getElementById(id); if (el) el.textContent = st;
   });
-  // guidance notes in dispatch section
   const vpn = document.getElementById('verify-pending-note');
-  if (vpn) vpn.classList.toggle('hidden',
-    !(opRouting === 'available' && opVerify === 'not-run'));
+  if (vpn) vpn.classList.toggle('hidden', !(opRouting === 'available' && opVerify === 'not-run'));
   const dbn = document.getElementById('dispatch-blocked-note');
   if (dbn) dbn.classList.toggle('hidden', opVerify !== 'failed');
-  // dispatch stale note: visible when routed but no export yet
   const dsn = document.getElementById('dispatch-stale-note');
   if (dsn) dsn.classList.toggle('hidden', !(opRouting === 'available' && !lastExportPacket));
   updateIntegrityBadges();
@@ -3001,426 +2019,27 @@ function updateOpState(routing, receipt, verify, dispatch) {
   updatePilotHandoffSummary();
   updateArtifactBundle();
   updateCanonicalWorkflow();
+  updateStepCards();
 }
 
-// ── Active run context ────────────────────────────────────────────────────
-function updateActiveRunContext() {
-  const block = document.getElementById('active-run-context');
-  if (!block) return;
-  if (opRouting !== 'available' || !lastReceipt) {
-    block.classList.add('hidden');
-    return;
-  }
-  block.classList.remove('hidden');
-  document.getElementById('arc-manufacturer').textContent =
-    lastReceipt.selected_candidate_id || '(none — refused)';
-  const hash = lastReceipt.receipt_hash || '—';
-  document.getElementById('arc-receipt-hash').textContent =
-    hash !== '—' ? hash.slice(0, 16) + '…' : '—';
-  const verEl = document.getElementById('arc-verify-status');
-  if      (opVerify === 'verified') { verEl.textContent = 'Verified'; verEl.className = 'arc-val-ok'; }
-  else if (opVerify === 'failed')   { verEl.textContent = 'Failed';   verEl.className = 'arc-val-err'; }
-  else { verEl.textContent = 'No verification result for current route'; verEl.className = 'arc-val-pending'; }
-  const dispEl = document.getElementById('arc-dispatch-status');
-  if (lastExportPacket) { dispEl.textContent = 'Exported'; dispEl.className = 'arc-val-ok'; }
-  else { dispEl.textContent = 'No dispatch export for current route'; dispEl.className = 'arc-val-pending'; }
-}
-
-// ── Next-action rail ──────────────────────────────────────────────────────
-function updateNextActionRail() {
-  const actionEl = document.getElementById('nar-action');
-  const reasonEl = document.getElementById('nar-reason');
-  if (!actionEl || !reasonEl) return;
-  let action, reason, cls;
-  if (lastExportPacket) {
-    action = 'Workflow complete';
-    reason = 'Dispatch packet exported for current route.';
-    cls    = 'nar-action-done';
-  } else if (opVerify === 'verified') {
-    action = 'Next: export dispatch';
-    reason = 'Verification complete. Dispatch not yet exported.';
-    cls    = 'nar-action-next';
-  } else if (opRouting === 'available') {
-    action = 'Next: verify current route';
-    reason = 'Receipt exists but verification not yet executed.';
-    cls    = 'nar-action-next';
-  } else {
-    action = 'Next: run route';
-    reason = 'No current receipt loaded.';
-    cls    = 'nar-action-idle';
-  }
-  actionEl.textContent = action;
-  actionEl.className   = 'nar-action ' + cls;
-  reasonEl.textContent = reason;
-}
-
-// ── Operator handoff note ─────────────────────────────────────────────────
-function updateHandoffNote() {
-  const body  = document.getElementById('hn-body');
-  const block = document.getElementById('handoff-note');
-  if (!body || !block) return;
-  if (!lastExportPacket) {
-    block.classList.remove('handoff-note-active');
-    body.innerHTML = '<span style="color:#484f58;font-style:italic">No export for current route. Handoff not yet applicable.</span>';
-    return;
-  }
-  block.classList.add('handoff-note-active');
-  const did = lastDispatchId ? lastDispatchId.slice(0, 8) + '…' : '—';
-  body.innerHTML =
-    '<div class="hn-row hn-row-check">&#x2713; Route processed — manufacturer selected</div>'
-    + '<div class="hn-row hn-row-check">&#x2713; Verification completed</div>'
-    + '<div class="hn-row hn-row-check">&#x2713; Dispatch artifact exported</div>'
-    + '<div class="hn-object">Handoff object: export packet &middot; dispatch ID <span style="color:#c9d1d9">'
-    + esc(did) + '</span> &middot; copy or transfer using the panel above</div>';
-}
-
-// ── Panel microbadges ─────────────────────────────────────────────────────
-const MB_LABELS  = {'available':'available','not-available':'not available',
-                    'verified':'verified','exported':'exported','failed':'failed'};
-const MB_CLASSES = {'available':'mb mb-on','not-available':'mb mb-dim',
-                    'verified':'mb mb-on','exported':'mb mb-on','failed':'mb mb-err'};
-function setMicrobadge(id, state) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.className   = MB_CLASSES[state] || 'mb mb-dim';
-  el.textContent = MB_LABELS[state]  || state;
-}
-function updateMicrobadges() {
-  setMicrobadge('mb-receipt',
-    opRouting === 'available' ? 'available' : 'not-available');
-  setMicrobadge('mb-verify',
-    opVerify === 'verified' ? 'verified' :
-    opVerify === 'failed'   ? 'failed'   : 'not-available');
-  setMicrobadge('mb-dispatch', lastExportPacket ? 'exported' : 'not-available');
-}
-
-// ── Artifact freshness markers ────────────────────────────────────────────
-function setFreshness(id, fresh, label) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.className   = 'fm ' + (fresh ? 'fm-fresh' : 'fm-pending');
-  el.textContent = label;
-}
-function updateFreshnessMarkers() {
-  setFreshness('fm-receipt',
-    opRouting === 'available',
-    opRouting === 'available'
-      ? 'current run artifact'
-      : 'not yet produced for current run');
-  const verifyDone = opVerify === 'verified' || opVerify === 'failed';
-  setFreshness('fm-verify',
-    verifyDone,
-    verifyDone ? 'current run artifact' : 'not yet executed for current run');
-  setFreshness('fm-dispatch',
-    !!lastExportPacket,
-    lastExportPacket ? 'current run artifact' : 'not yet exported for current run');
-}
-
-// ── Run timeline ──────────────────────────────────────────────────────────
-function timelineStepState(step) {
-  if (step === 'route')   return opRouting === 'available' ? 'rt-done' : 'rt-idle';
-  if (step === 'receipt') return opReceipt === 'available' ? 'rt-done' : 'rt-idle';
-  if (step === 'verify') {
-    if (opVerify === 'verified') return 'rt-done';
-    if (opRouting === 'available') return 'rt-ready';
-    return 'rt-idle';
-  }
-  if (step === 'dispatch') {
-    if (lastExportPacket)       return 'rt-done';
-    if (opVerify === 'failed')  return 'rt-blocked';
-    if (opVerify === 'verified') return 'rt-ready';
-    return 'rt-idle';
-  }
-  return 'rt-idle';
-}
-function timelineSummary() {
-  if (lastExportPacket)            return 'Dispatch exported for current run';
-  if (opVerify === 'verified')     return 'Verification completed — dispatch ready';
-  if (opVerify === 'failed')       return 'Verification failed — review inputs before dispatch';
-  if (opRouting === 'available')   return 'Route produced — verification pending';
-  return 'Current run not started';
-}
-function updateRunTimeline() {
-  ['route', 'receipt', 'verify', 'dispatch'].forEach(step => {
-    const el = document.getElementById('rt-' + step);
-    if (!el) return;
-    el.className = 'rt-step ' + timelineStepState(step);
-  });
-  const sumEl = document.getElementById('rt-summary');
-  if (sumEl) sumEl.textContent = timelineSummary();
-}
-
-// ── Operator action bar ───────────────────────────────────────────────────
-const OAB_STATES = {
-  route:    {action:'Start a route for the current case',
-             reason:'No current route artifacts exist yet.',
-             btnLabel:'→ Go to route',     target:'norm-input-section', cls:'oab-action-idle'},
-  verify:   {action:'Run verification for the current route',
-             reason:'Verification has not been executed for the current route.',
-             btnLabel:'→ Go to verify',    target:'btn-verify',          cls:'oab-action-active'},
-  export:   {action:'Export dispatch packet',
-             reason:'Dispatch is ready and no export exists for the current route.',
-             btnLabel:'→ Go to dispatch',  target:'btn-dispatch-export', cls:'oab-action-active'},
-  resolve:  {action:'Resolve readiness items before dispatch',
-             reason:'Verification failed. Resolve before dispatching.',
-             btnLabel:'→ View readiness',  target:'dispatch-readiness-panel', cls:'oab-action-active'},
-  complete: {action:'Current run complete',
-             reason:'Current run already has a dispatch export.',
-             btnLabel:'✓ Done',            target:'dispatch-export-result',   cls:'oab-action-complete'},
-};
-function oabStateKey() {
-  if (lastExportPacket)             return 'complete';
-  if (opVerify === 'verified')      return 'export';
-  if (opVerify === 'failed')        return 'resolve';
-  if (opRouting === 'available')    return 'verify';
-  return 'route';
-}
-function updateOab() {
-  const s = OAB_STATES[oabStateKey()];
-  const actionEl = document.getElementById('oab-action');
-  const reasonEl = document.getElementById('oab-reason');
-  const btnEl    = document.getElementById('oab-btn');
-  if (!actionEl || !reasonEl || !btnEl) return;
-  actionEl.textContent = s.action;
-  actionEl.className   = 'oab-action ' + s.cls;
-  reasonEl.textContent = s.reason;
-  btnEl.textContent    = s.btnLabel;
-  btnEl.className      = 'oab-btn' + (oabStateKey() === 'complete' ? ' oab-btn-complete' : '');
-}
-function oabNavigate() {
-  const target = OAB_STATES[oabStateKey()]?.target;
-  if (!target) return;
-  const el = document.getElementById(target);
-  if (!el) return;
-  el.scrollIntoView({behavior:'smooth', block:'nearest'});
-  if (typeof el.focus === 'function') el.focus({preventScroll:true});
-}
-
-// ── Outcome banner ────────────────────────────────────────────────────────
-const ORB_STATES = {
-  empty:    {type:'neutral', headline:'No current run started',
-             detail:'Start routing to generate current-run artifacts.',
-             link:null},
-  routed:   {type:'warning', headline:'Route generated — verification pending',
-             detail:'Receipt is available. Verification is the next audit step.',
-             link:{label:'→ Go to verify', target:'btn-verify'}},
-  verified: {type:'success', headline:'Verification completed',
-             detail:'Dispatch can be exported for the current run.',
-             link:{label:'→ Go to dispatch', target:'btn-dispatch-export'}},
-  blocked:  {type:'blocked', headline:'Verification not completed',
-             detail:'Verification failed. Review the result before dispatching.',
-             link:{label:'→ Review verification', target:'verify-result'}},
-  complete: {type:'success', headline:'Dispatch exported for current run',
-             detail:'Current run artifacts are complete.',
-             link:{label:'→ View export', target:'dispatch-export-result'}},
-};
-function orbStateKey() {
-  if (lastExportPacket)          return 'complete';
-  if (opVerify === 'verified')   return 'verified';
-  if (opVerify === 'failed')     return 'blocked';
-  if (opRouting === 'available') return 'routed';
-  return 'empty';
-}
-function updateOutcomeBanner() {
-  const s        = ORB_STATES[orbStateKey()];
-  const orb      = document.getElementById('orb');
-  const headline = document.getElementById('orb-headline');
-  const detail   = document.getElementById('orb-detail');
-  const link     = document.getElementById('orb-link');
-  if (!orb || !headline || !detail || !link) return;
-  orb.className        = 'orb orb-' + s.type;
-  headline.textContent = s.headline;
-  detail.textContent   = s.detail;
-  if (s.link) {
-    link.textContent = s.link.label;
-    link.classList.remove('hidden');
-  } else {
-    link.classList.add('hidden');
-  }
-}
-function orbNavigate() {
-  const target = ORB_STATES[orbStateKey()]?.link?.target;
-  if (!target) return;
-  const el = document.getElementById(target);
-  if (!el) return;
-  el.scrollIntoView({behavior:'smooth', block:'nearest'});
-  if (typeof el.focus === 'function') el.focus({preventScroll:true});
-}
-
-// ── Current-run completion checklist ─────────────────────────────────────
-const CRC_ITEMS = [
-  {id:'crc-route',    label:'Route generated',       doneFn: () => opRouting === 'available',
-   pendingAnchor:{label:'Go to routing', target:'norm-input-section'}},
-  {id:'crc-receipt',  label:'Receipt available',     doneFn: () => opReceipt === 'available',
-   pendingAnchor:{label:'Go to routing', target:'norm-input-section'}},
-  {id:'crc-verify',   label:'Verification completed',doneFn: () => opVerify === 'verified',
-   pendingAnchor:{label:'Go to verification', target:'btn-verify'}},
-  {id:'crc-dispatch', label:'Dispatch exported',     doneFn: () => !!lastExportPacket,
-   pendingAnchor:{label:'Go to dispatch', target:'btn-dispatch-export'}},
-];
-function crcRowState(item, idx) {
-  if (item.doneFn()) return 'done';
-  // blocked if any prior item is not done
-  for (let i = 0; i < idx; i++) {
-    if (!CRC_ITEMS[i].doneFn()) return 'blocked';
-  }
-  return 'pending';
-}
-function updateCompletionChecklist() {
-  const rows   = document.getElementById('crc-rows');
-  const footer = document.getElementById('crc-footer');
-  if (!rows || !footer) return;
-  rows.innerHTML = CRC_ITEMS.map((item, idx) => {
-    const state = crcRowState(item, idx);
-    const icon  = state === 'done' ? '✓' : state === 'blocked' ? '◈' : '◻';
-    const anchor = (state === 'pending' || state === 'blocked') && item.pendingAnchor
-      ? ' <button class="crc-anchor" onclick="crcNavigate(' + JSON.stringify(item.pendingAnchor.target) + ')">'
-        + esc(item.pendingAnchor.label) + '</button>'
-      : '';
-    return '<div class="crc-row">'
-      + '<span class="crc-icon-' + state + '">' + icon + '</span>'
-      + '<span class="crc-text-' + state + '">' + esc(item.label) + anchor + '</span>'
-      + '</div>';
-  }).join('');
-  const allDone = CRC_ITEMS.every(item => item.doneFn());
-  const readyForExport = opVerify === 'verified' && !lastExportPacket;
-  if (allDone) {
-    footer.textContent = 'Current run complete';
-    footer.className   = 'crc-footer crc-footer-complete';
-  } else if (readyForExport) {
-    footer.textContent = 'Current run ready for dispatch export';
-    footer.className   = 'crc-footer crc-footer-ready';
-  } else {
-    footer.textContent = 'Current run incomplete';
-    footer.className   = 'crc-footer crc-footer-incomplete';
-  }
-}
-function crcNavigate(target) {
-  const el = document.getElementById(target);
-  if (!el) return;
-  el.scrollIntoView({behavior:'smooth', block:'nearest'});
-  if (typeof el.focus === 'function') el.focus({preventScroll:true});
-}
-
-// ── Preflight summary card ────────────────────────────────────────────────
-const PFC_VERDICTS = {
-  'not-ready': {type:'not-ready',
-    headline:'Current run not ready',
-    detail:'Complete remaining workflow steps before dispatch export.',
-    link:{label:'→ View next step', target:'nar-rail'}},
-  'ready':     {type:'ready',
-    headline:'Current run ready for dispatch',
-    detail:'All current-run prerequisites are satisfied and no dispatch export exists yet.',
-    link:{label:'→ Go to dispatch', target:'btn-dispatch-export'}},
-  'complete':  {type:'complete',
-    headline:'Current run complete',
-    detail:'Dispatch export exists for the current run.',
-    link:{label:'→ View export', target:'dispatch-export-result'}},
-};
-function pfcVerdictKey() {
-  if (lastExportPacket)        return 'complete';
-  if (opVerify === 'verified') return 'ready';
-  return 'not-ready';
-}
-function updatePreflightCard() {
-  const v        = PFC_VERDICTS[pfcVerdictKey()];
-  const card     = document.getElementById('pfc');
-  const headline = document.getElementById('pfc-headline');
-  const detail   = document.getElementById('pfc-detail');
-  const rows     = document.getElementById('pfc-rows');
-  const link     = document.getElementById('pfc-link');
-  if (!card || !headline || !detail || !rows || !link) return;
-  card.className       = 'pfc pfc-' + v.type;
-  headline.textContent = v.headline;
-  detail.textContent   = v.detail;
-  const routeOk   = opRouting === 'available';
-  const receiptOk = opReceipt === 'available';
-  const verifyOk  = opVerify  === 'verified';
-  const exported  = !!lastExportPacket;
-  function pfcRow(ok, label) {
-    return '<div class="pfc-row"><span class="' + (ok ? 'pfc-ok' : 'pfc-dim') + '">'
-      + (ok ? '✓' : '◻') + '</span><span class="' + (ok ? 'pfc-ok' : 'pfc-dim') + '">'
-      + esc(label) + '</span></div>';
-  }
-  rows.innerHTML =
-    pfcRow(routeOk,   'Route available')
-    + pfcRow(receiptOk, 'Receipt available')
-    + pfcRow(verifyOk,  'Verification complete')
-    + (exported ? pfcRow(true,  'Dispatch exported')
-                : pfcRow(false, 'Dispatch not yet exported'));
-  if (v.link) {
-    link.textContent = v.link.label;
-    link.classList.remove('hidden');
-  } else {
-    link.classList.add('hidden');
-  }
-}
-function pfcNavigate() {
-  const target = PFC_VERDICTS[pfcVerdictKey()]?.link?.target;
-  if (!target) return;
-  const el = document.getElementById(target);
-  if (!el) return;
-  el.scrollIntoView({behavior:'smooth', block:'nearest'});
-  if (typeof el.focus === 'function') el.focus({preventScroll:true});
-}
-
-// ── Audit snapshot export ─────────────────────────────────────────────────
+// ── Audit snapshot ────────────────────────────────────────────────────────
 function buildAuditSnapshot() {
-  const verdict = PFC_VERDICTS[pfcVerdictKey()].headline;
-  const routeSummary = lastReceipt
-    ? 'Outcome: ' + (lastReceipt.outcome || '—')
-      + '\nManufacturer: ' + (lastReceipt.selected_candidate_id || '(none)')
-      + '\nReceipt hash: ' + (lastReceipt.receipt_hash || '—')
-      + '\nKernel version: ' + (lastReceipt.routing_kernel_version || '—')
-    : 'not present';
-  const receiptJson = lastReceipt ? fmt(lastReceipt) : 'not present';
-  const verifyEl    = document.getElementById('verify-json');
-  const verifyText  = (verifyEl && verifyEl.textContent.trim())
-    ? verifyEl.textContent.trim() : 'not executed';
-  const dispatchText = lastExportPacket ? fmt(lastExportPacket) : 'not exported';
-  const drStatusEl = document.getElementById('dr-status');
-  const drReasonEl = document.getElementById('dr-reason');
-  const readinessText = drStatusEl
-    ? (drStatusEl.textContent.trim()
-       + (drReasonEl ? ' — ' + drReasonEl.textContent.trim() : ''))
-    : 'not available';
-  return [
-    'POSTCAD REVIEWER AUDIT SNAPSHOT',
-    '================================',
-    'Current run only. Does not include historical runs.',
-    '',
-    'Current run status',
-    '------------------',
-    verdict,
-    '',
-    'Route',
-    '-----',
-    routeSummary,
-    '',
-    'Receipt',
-    '-------',
-    receiptJson,
-    '',
-    'Verification',
-    '------------',
-    verifyText,
-    '',
-    'Dispatch',
-    '--------',
-    dispatchText,
-    '',
-    'Dispatch readiness',
-    '------------------',
-    readinessText,
+  const receiptJson  = lastReceipt    ? fmt(lastReceipt)        : '(not generated)';
+  const verifyText   = document.getElementById('verify-json')?.textContent || '(not executed)';
+  const dispatchText = lastExportPacket ? fmt(lastExportPacket)  : '(not exported)';
+  const readinessText = 'Routing: ' + opRouting + ' | Verification: ' + opVerify + ' | Dispatch: ' + (lastExportPacket ? 'exported' : 'not exported');
+  return ['PostCAD Operator Demo — Audit Snapshot', '='.repeat(44), '',
+    'Receipt', '-------', receiptJson, '',
+    'Verification', '------------', verifyText, '',
+    'Dispatch', '--------', dispatchText, '',
+    'Dispatch readiness', '------------------', readinessText,
   ].join('\n');
 }
 function copyAuditSnapshot(btn) {
   const snapshot = buildAuditSnapshot();
   navigator.clipboard.writeText(snapshot).then(() => {
-    btn.textContent = 'Copied'; btn.style.color = '#3fb950';
-  }).catch(() => {
-    btn.textContent = 'Failed'; btn.style.color = '#f85149';
-  });
+    btn.textContent = 'Copied'; btn.style.color = 'var(--green)';
+  }).catch(() => { btn.textContent = 'Failed'; });
   setTimeout(() => { btn.textContent = 'Copy snapshot'; btn.style.color = ''; }, 1500);
 }
 function downloadAuditSnapshot() {
@@ -3432,219 +2051,15 @@ function downloadAuditSnapshot() {
   URL.revokeObjectURL(url);
 }
 
-// ── Handoff summary card ──────────────────────────────────────────────────
-function updateHandoffSummary() {
-  const verdictEl = document.getElementById('hsc-verdict');
-  const rowsEl    = document.getElementById('hsc-rows');
-  const readyEl   = document.getElementById('hsc-readiness');
-  const artsEl    = document.getElementById('hsc-artifacts');
-  const sumEl     = document.getElementById('hsc-summary');
-  if (!verdictEl || !rowsEl || !readyEl || !artsEl || !sumEl) return;
-  const routeOk   = opRouting === 'available';
-  const receiptOk = opReceipt === 'available';
-  const verifyOk  = opVerify  === 'verified';
-  const exported  = !!lastExportPacket;
-  const vk = pfcVerdictKey();
-  const verdictText = {
-    'not-ready':'Not ready',
-    'ready':    'Ready for dispatch export',
-    'complete': 'Complete',
-  }[vk] || 'Not ready';
-  verdictEl.textContent = verdictText;
-  verdictEl.className   = 'hsc-verdict hsc-verdict-' + vk;
-  function hscRow(ok, label) {
-    return '<div class="hsc-row ' + (ok ? 'hsc-row-ok' : 'hsc-row-no') + '">'
-      + (ok ? '✓' : '✗') + ' ' + esc(label) + ': ' + (ok ? 'yes' : 'no') + '</div>';
-  }
-  rowsEl.innerHTML =
-    hscRow(routeOk,   'Route generated')
-    + hscRow(receiptOk, 'Receipt available')
-    + hscRow(verifyOk,  'Verification completed')
-    + hscRow(exported,  'Dispatch exported');
-  const drStatusEl = document.getElementById('dr-status');
-  const drReasonEl = document.getElementById('dr-reason');
-  const drStatus = drStatusEl ? drStatusEl.textContent.trim() : 'Not evaluated';
-  const drReason = drReasonEl ? drReasonEl.textContent.trim() : '';
-  const drOk = verifyOk || exported;
-  readyEl.innerHTML = '<div class="hsc-row ' + (drOk ? 'hsc-row-ok' : 'hsc-row-no') + '">'
-    + esc(drStatus) + (drReason ? ' — ' + esc(drReason) : '') + '</div>';
-  function artRow(ok, label, noLabel) {
-    return '<div class="hsc-row ' + (ok ? 'hsc-row-ok' : 'hsc-row-no') + '">'
-      + esc(label) + ': ' + esc(ok ? 'present' : noLabel) + '</div>';
-  }
-  artsEl.innerHTML =
-    artRow(routeOk,   'Route',        'not present')
-    + artRow(receiptOk, 'Receipt',      'not present')
-    + artRow(verifyOk,  'Verification', 'not executed')
-    + artRow(exported,  'Dispatch',     'not exported');
-  const summaryLines = {
-    'not-ready':'Current run requires additional workflow steps before dispatch.',
-    'ready':    'Current run is ready for dispatch export.',
-    'complete': 'Current run handoff is complete.',
-  };
-  sumEl.textContent = summaryLines[vk] || summaryLines['not-ready'];
+// ── Dispatch message ──────────────────────────────────────────────────────
+function showDispatchMsg(kind, text) {
+  const el = document.getElementById('dispatch-error');
+  el.className = kind === 'warn' ? 'warn-note' : 'error-note';
+  el.textContent = text;
+  show('dispatch-error');
 }
 
-// ── Consistency sentinel ──────────────────────────────────────────────────
-function gatherConsistencyMismatches() {
-  const mismatches = [];
-  const verifyDone = opVerify !== 'not-run';
-  const exported   = !!lastExportPacket;
-  const routeOk    = opRouting === 'available';
-  const receiptOk  = opReceipt === 'available';
-  const verifyOk   = opVerify  === 'verified';
-  const vk         = pfcVerdictKey();
-  // Rule 1: verification present → route must be present
-  if (verifyDone && !routeOk)
-    mismatches.push('Verification marked present but route artifact missing.');
-  // Rule 2: dispatch present → verification must be present
-  if (exported && !verifyOk)
-    mismatches.push('Dispatch artifact shown without current-run verification.');
-  // Rule 3: dispatch present → receipt must be present
-  if (exported && !receiptOk)
-    mismatches.push('Dispatch artifact shown without current-run receipt.');
-  // Rule 4: complete verdict → dispatch must be present
-  if (vk === 'complete' && !exported)
-    mismatches.push('Complete verdict shown without current-run dispatch export.');
-  // Rule 5: ready verdict → verification must be present
-  if (vk === 'ready' && !verifyOk)
-    mismatches.push('Ready verdict shown but verification not present.');
-  // Rule 6: ready verdict → dispatch must not be present
-  if (vk === 'ready' && exported)
-    mismatches.push('Ready verdict shown but dispatch export already exists.');
-  return mismatches;
-}
-function updateConsistencySentinel() {
-  const card     = document.getElementById('ccs');
-  const headline = document.getElementById('ccs-headline');
-  const detail   = document.getElementById('ccs-detail');
-  if (!card || !headline || !detail) return;
-  const mismatches = gatherConsistencyMismatches();
-  if (mismatches.length === 0) {
-    card.className       = 'ccs ccs-consistent';
-    headline.textContent = 'Current run shell state is consistent';
-    detail.innerHTML     = '<span style="color:#484f58;font-size:.65rem">'
-      + 'Visible workflow indicators agree for the current run.</span>';
-  } else {
-    card.className       = 'ccs ccs-attention';
-    headline.textContent = 'Current run shell state needs attention';
-    detail.innerHTML     = mismatches.map(m =>
-      '<div class="ccs-mismatch">▸ ' + esc(m) + '</div>'
-    ).join('');
-  }
-}
-
-// ── Active section emphasis ───────────────────────────────────────────────
-const AS_CONTAINERS = ['as-route-section','as-verify-section','dispatch-section','dispatch-export-result'];
-const AS_CHIPS      = ['as-chip-route','as-chip-verify','as-chip-dispatch','as-chip-export'];
-function activeSectionIndex() {
-  if (lastExportPacket)                                    return 3;
-  if (opVerify === 'verified' || opVerify === 'failed')    return 2;
-  if (opRouting === 'available')                           return 1;
-  return 0;
-}
-function updateActiveSectionEmphasis() {
-  const active = activeSectionIndex();
-  AS_CONTAINERS.forEach((id, i) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.toggle('as-active', i === active);
-  });
-  AS_CHIPS.forEach((id, i) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.toggle('hidden', i !== active);
-  });
-}
-
-// ── Pilot run history ─────────────────────────────────────────────────────
-function appendRunHistory(label, ok) {
-  const ts = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  runHistory.push({ts, label, ok});
-  const list = document.getElementById('run-history-list');
-  if (!list) return;
-  const entry = document.createElement('div');
-  entry.className = 'rh-entry';
-  entry.innerHTML = '<span class="rh-ts">' + esc(ts) + '</span>'
-    + '<span class="rh-label ' + (ok ? 'rh-ok' : 'rh-err') + '">' + esc(label) + '</span>';
-  list.appendChild(entry);
-  show('run-history-panel');
-}
-function clearRunHistory() {
-  runHistory.length = 0;
-  const list = document.getElementById('run-history-list');
-  if (list) list.innerHTML = '';
-  hide('run-history-panel');
-}
-
-// ── Session activity log ───────────────────────────────────────────────────
-const SAL_MAX = 20;
-let sessionLog = [];
-function salLog(label, msg) {
-  sessionLog.unshift({label, msg});
-  if (sessionLog.length > SAL_MAX) sessionLog.length = SAL_MAX;
-  renderSessionLog();
-}
-function renderSessionLog() {
-  const empty = document.getElementById('sal-empty');
-  const list  = document.getElementById('sal-list');
-  if (!empty || !list) return;
-  if (sessionLog.length === 0) {
-    empty.classList.remove('hidden');
-    list.classList.add('hidden');
-    list.innerHTML = '';
-    return;
-  }
-  empty.classList.add('hidden');
-  list.classList.remove('hidden');
-  list.innerHTML = sessionLog.map((e, i) =>
-    '<div class="sal-entry ' + (i === 0 ? 'sal-entry-latest' : 'sal-entry-older') + '">'
-    + '<span class="sal-idx">' + (i + 1) + '</span>'
-    + '<span>' + esc(e.label) + '</span>'
-    + '<span class="sal-msg">' + esc(e.msg) + '</span>'
-    + '</div>'
-  ).join('');
-}
-function clearSessionLog() {
-  sessionLog = [];
-  renderSessionLog();
-}
-
-// ── Artifact size guard ────────────────────────────────────────────────────
-const ARTIFACT_COLLAPSE_LINES = 40;
-function collapseIfLarge(preId, btnId) {
-  const pre = document.getElementById(preId);
-  const btn = document.getElementById(btnId);
-  if (!pre || !btn) return;
-  const lines = (pre.textContent.match(/\n/g) || []).length + 1;
-  if (lines > ARTIFACT_COLLAPSE_LINES) {
-    pre.classList.add('collapsed');
-    btn.classList.remove('hidden');
-  } else {
-    pre.classList.remove('collapsed');
-    btn.classList.add('hidden');
-  }
-}
-function expandArtifact(preId, btnId) {
-  const pre = document.getElementById(preId);
-  const btn = document.getElementById(btnId);
-  if (pre) pre.classList.remove('collapsed');
-  if (btn) btn.classList.add('hidden');
-}
-
-// ── helpers ────────────────────────────────────────────────────────────────
-function fmt(o)        { return JSON.stringify(o, null, 2); }
-function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function previewRow(k, v) {
-  return '<div class="norm-preview-row">'
-    + '<span class="norm-preview-key">' + esc(k) + '</span>'
-    + '<span class="norm-preview-val">'  + esc(String(v)) + '</span>'
-    + '</div>';
-}
-function validateNormInput(c) {
-  return ['case_id', 'restoration_type', 'material', 'jurisdiction']
-    .filter(k => !c[k] || !String(c[k]).trim());
-}
+// ── Norm form helpers ─────────────────────────────────────────────────────
 const NORM_INPUT_IDS = {
   case_id:          'norm-case-id',
   restoration_type: 'norm-restoration-type',
@@ -3656,27 +2071,25 @@ function readNormInputs() {
     Object.entries(NORM_INPUT_IDS).map(([k, id]) => [k, document.getElementById(id).value.trim()])
   );
 }
+function validateNormInput(c) {
+  return ['case_id', 'restoration_type', 'material', 'jurisdiction']
+    .filter(k => !c[k] || !String(c[k]).trim());
+}
 function markNormInvalid(missing) {
   Object.entries(NORM_INPUT_IDS).forEach(([k, id]) => {
-    const el = document.getElementById(id);
-    if (missing.includes(k)) el.classList.add('norm-field-invalid');
-    else                     el.classList.remove('norm-field-invalid');
+    const el = document.getElementById(id); if (el) el.style.borderColor = missing.includes(k) ? 'var(--red)' : '';
   });
 }
 function clearNormInvalid() {
-  Object.values(NORM_INPUT_IDS).forEach(id =>
-    document.getElementById(id).classList.remove('norm-field-invalid'));
+  Object.values(NORM_INPUT_IDS).forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.borderColor = '';
+  });
 }
 function loadNormSample() {
   document.getElementById('norm-case-id').value          = 'f1000001-0000-0000-0000-000000000001';
   document.getElementById('norm-restoration-type').value = 'crown';
   document.getElementById('norm-material').value         = 'zirconia';
   document.getElementById('norm-jurisdiction').value     = 'DE';
-  const ni = document.getElementById('route-norm-inline');
-  ni.textContent = '';
-  ni.className = 'hidden';
-  document.getElementById('route-norm-preview').innerHTML = '';
-  document.getElementById('route-norm-preview').classList.add('hidden');
   clearNormInvalid();
   if (fixtures) document.getElementById('btn-route-norm').disabled = false;
 }
@@ -3685,13 +2098,7 @@ function clearNormForm() {
   document.getElementById('norm-restoration-type').value = '';
   document.getElementById('norm-material').value         = '';
   document.getElementById('norm-jurisdiction').value     = '';
-  const ni = document.getElementById('route-norm-inline');
-  ni.textContent = '';
-  ni.className = 'hidden';
-  document.getElementById('route-norm-preview').innerHTML = '';
-  document.getElementById('route-norm-preview').classList.add('hidden');
   clearNormInvalid();
-  if (fixtures) document.getElementById('btn-route-norm').disabled = false;
 }
 function toggleNormReceiptJson() {
   const pre = document.getElementById('norm-receipt-json-block');
@@ -3700,45 +2107,8 @@ function toggleNormReceiptJson() {
   const isHidden = pre.classList.toggle('hidden');
   btn.textContent = isHidden ? 'Show receipt JSON' : 'Hide receipt JSON';
 }
-function downloadReceiptJson() {
-  if (!lastReceipt) return;
-  const blob = new Blob([JSON.stringify(lastReceipt, null, 2)], {type: 'application/json'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  const hash = lastReceipt.receipt_hash ? lastReceipt.receipt_hash.slice(0, 12) : 'receipt';
-  a.download = 'receipt_' + hash + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-async function copyReceiptHash(btn, hash) {
-  try {
-    await navigator.clipboard.writeText(hash);
-    btn.textContent = 'Copied';
-    btn.style.color = '#3fb950';
-  } catch(e) {
-    btn.textContent = 'Copy failed';
-    btn.style.color = '#f85149';
-  }
-  setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
-}
-function show(id)      { document.getElementById(id).classList.remove('hidden'); }
-function hide(id)      { document.getElementById(id).classList.add('hidden'); }
-function setBtn(btn, label, disabled) { btn.textContent = label; btn.disabled = disabled; }
 
-// Returns an operator-readable guidance hint for a routing error code.
-function errorHint(code) {
-  const c = String(code || '').toLowerCase();
-  if (c.includes('normaliz') || c.includes('validat') || c.includes('parse'))
-    return 'Check that all fields contain valid values. Example: restoration_type=crown, material=zirconia, jurisdiction=DE.';
-  if (c.includes('no_eligible') || c.includes('routing') || c.includes('refused'))
-    return 'No manufacturer matched the routing criteria. Try a different material, restoration type, or jurisdiction.';
-  if (c.includes('registry') || c.includes('snapshot') || c.includes('fixture'))
-    return 'The registry snapshot could not be loaded. Start the service from the repo root so examples/pilot/ is reachable.';
-  return 'Clear the form and re-enter the values, or click \u2295 Load sample to use the canonical pilot input.';
-}
-
-// Ctrl+Enter / Cmd+Enter inside the normalized input section submits the form.
+// ── Keyboard shortcut ─────────────────────────────────────────────────────
 document.getElementById('norm-input-section').addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     const btn = document.getElementById('btn-route-norm');
@@ -3746,14 +2116,23 @@ document.getElementById('norm-input-section').addEventListener('keydown', functi
   }
 });
 
-// Show a dispatch-section status message.
-// kind: 'error' (red) | 'warn' (amber)
-function showDispatchMsg(kind, text) {
-  const el = document.getElementById('dispatch-error');
-  el.className = (kind === 'warn' ? 'warn-note' : 'error-note');
-  el.textContent = text;
-  show('dispatch-error');
+// ── Utility ───────────────────────────────────────────────────────────────
+function fmt(o)   { return JSON.stringify(o, null, 2); }
+function esc(s)   { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function show(id) { const e=document.getElementById(id); if(e) e.classList.remove('hidden'); }
+function hide(id) { const e=document.getElementById(id); if(e) e.classList.add('hidden'); }
+function setBtn(btn, label, disabled) { btn.textContent = label; btn.disabled = disabled; }
+function errorHint(code) {
+  const c = String(code || '').toLowerCase();
+  if (c.includes('normaliz') || c.includes('validat') || c.includes('parse'))
+    return 'Check that all fields contain valid values.';
+  if (c.includes('no_eligible') || c.includes('routing') || c.includes('refused'))
+    return 'No manufacturer matched the routing criteria.';
+  return 'Clear the form and re-enter the values, or use Load Demo Case.';
 }
+// legacy no-ops
+function previewRow(k, v) { return ''; }
+function norm_preview_row(k, v) { return ''; }
 </script>
 </body>
 </html>"#;

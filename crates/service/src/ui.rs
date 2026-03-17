@@ -17,7 +17,7 @@ pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
   --green:#22c55e;
   --red:#ef4444;
   --text:#f1f5f9;
-  --sub:#8b9ab0;
+  --sub:#94a3b8;
   --dim:#4b5a6e;
 }
 html{scroll-behavior:smooth}
@@ -89,16 +89,17 @@ section{padding:0 24px}
 /* Result */
 #phase-result{display:none;animation:fadein .25s ease-out}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
-.res-section{padding:28px 0;border-top:1px solid var(--border)}
+.res-section{padding:32px 0}
 .res-label{font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:16px}
 .case-proc{font-size:1.35rem;font-weight:700;margin-bottom:14px;line-height:1.2}
 .case-row{font-size:.92rem;color:var(--sub);margin-bottom:6px;display:flex;gap:8px}
 .case-row-lbl{color:var(--dim)}
-.result-verdict{font-size:3.2rem;font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:10px}
+.result-verdict{font-size:clamp(2.4rem,8vw,3.2rem);font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:10px}
 .verdict-ok{color:var(--green)}
 .verdict-blocked{color:var(--red)}
-.result-sub{font-size:1rem;color:var(--sub)}
-.check-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);font-size:.93rem}
+.result-sub{font-size:1rem;color:var(--sub);margin-bottom:6px}
+.result-explanation{font-size:.88rem;color:var(--dim);margin-top:10px;line-height:1.5}
+.check-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:.93rem}
 .check-row-lbl{color:var(--sub)}
 .chk-ok{color:var(--green);font-weight:700;font-size:1.1rem}
 .chk-fail{color:var(--red);font-weight:700;font-size:1.1rem}
@@ -203,6 +204,7 @@ section{padding:0 24px}
         <div class="res-label" id="t-decision-label">Entscheidung</div>
         <div class="result-verdict" id="result-verdict"></div>
         <div class="result-sub" id="result-sub"></div>
+        <div class="result-explanation" id="result-explanation"></div>
       </div>
 
       <div class="res-section">
@@ -260,6 +262,8 @@ const T = {
     decisionLabel: 'Entscheidung',
     verdictOk: 'FREIGEGEBEN', verdictBlock: 'BLOCKIERT',
     subOk: 'Weitergabe möglich', subBlock: 'Weitergabe nicht möglich',
+    explanationOk: 'Zulässig unter MDR-konformer Fertigung in Deutschland.',
+    explanationBlock: 'Verstoß gegen Jurisdiktionsanforderungen.',
     pruefungLabel: 'Prüfung',
     chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zulässig', chkManufacturing: 'Fertigung verfügbar',
     ergebnisOk: 'Ergebnis: Freigegeben', ergebnisBlock: 'Ergebnis: Blockiert',
@@ -283,6 +287,8 @@ const T = {
     decisionLabel: 'Decision',
     verdictOk: 'APPROVED', verdictBlock: 'BLOCKED',
     subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
+    explanationOk: 'Permissible under MDR-compliant manufacturing in Germany.',
+    explanationBlock: 'Violation of jurisdiction requirements.',
     pruefungLabel: 'Checks',
     chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
     ergebnisOk: 'Result: Approved', ergebnisBlock: 'Result: Blocked',
@@ -317,6 +323,7 @@ function getCaseData(filename) {
 }
 
 let lang = 'DE';
+let lastResultOk = null;
 
 function setLang(l) {
   lang = l;
@@ -350,6 +357,9 @@ function setLang(l) {
   document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
   document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
   document.getElementById('t-reset').textContent = t.reset;
+  if (lastResultOk !== null) {
+    document.getElementById('result-explanation').textContent = lastResultOk ? t.explanationOk : t.explanationBlock;
+  }
 }
 
 function onFileInput(input) {
@@ -389,15 +399,18 @@ function showResult(filename) {
   document.getElementById('res-land').textContent = c.land;
   document.getElementById('res-indication').textContent = c.indication;
 
+  lastResultOk = c.ok;
   const vEl = document.getElementById('result-verdict');
   if (c.ok) {
     vEl.className = 'result-verdict verdict-ok';
     vEl.textContent = t.verdictOk;
     document.getElementById('result-sub').textContent = t.subOk;
+    document.getElementById('result-explanation').textContent = t.explanationOk;
   } else {
     vEl.className = 'result-verdict verdict-blocked';
     vEl.textContent = t.verdictBlock;
     document.getElementById('result-sub').textContent = t.subBlock;
+    document.getElementById('result-explanation').textContent = t.explanationBlock;
   }
 
   setCheck('chk-material', c.checks.material);
@@ -428,6 +441,7 @@ function setCheck(id, pass) {
 }
 
 function resetDemo() {
+  lastResultOk = null;
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-upload').style.display = 'block';

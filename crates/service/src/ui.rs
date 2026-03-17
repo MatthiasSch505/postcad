@@ -3,519 +3,225 @@
 //! Served at `GET /`. Static marketing surface — no backend calls, no state.
 //! Links to `GET /reviewer` for the live operator demo.
 
-/// Full single-page landing page, embedded at compile time.
 pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PostCAD — From CAD design to manufacturing dispatch</title>
+<title>PostCAD</title>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d0f12;
+    --surface:#161a1f;
+    --surface2:#1d2229;
+    --border:#252b34;
+    --green:#22c55e;
+    --green-dim:#15803d;
+    --text:#f1f5f9;
+    --muted:#64748b;
+    --accent:#3b82f6;
+  }
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 20px 64px}
 
-:root{
-  --bg:#0e1117;
-  --surface:#151c28;
-  --surface2:#1a2235;
-  --surface3:#1f2840;
-  --border:rgba(255,255,255,0.07);
-  --border-md:rgba(255,255,255,0.13);
-  --border-strong:rgba(255,255,255,0.2);
-  --text-1:#eaf0f9;
-  --text-2:#7a8fa8;
-  --text-3:#3a4d63;
-  --green:#2fcf7a;
-  --green-bg:rgba(47,207,122,0.08);
-  --green-border:rgba(47,207,122,0.22);
-  --green-dim:rgba(47,207,122,0.5);
-  --amber:#e8a020;
-  --blue:#5b8cfc;
-  --blue-bg:rgba(91,140,252,0.08);
-  --mono:'ui-monospace','Cascadia Code','Menlo',monospace;
-}
+  header{width:100%;max-width:480px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 0}
+  .brand{font-size:.85rem;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+  .brand span{color:var(--green)}
+  .lang-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+  .lang-btn{padding:4px 10px;font-size:.75rem;font-weight:600;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+  .lang-btn.active{background:var(--surface2);color:var(--text)}
 
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
-  background:var(--bg);color:var(--text-1);min-height:100vh;
-  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;
-}
+  main{width:100%;max-width:480px}
 
-/* ── header ── */
-header{
-  border-bottom:1px solid var(--border);
-  padding:.85rem 2.5rem;
-  display:flex;align-items:center;
-  position:sticky;top:0;z-index:10;
-  background:rgba(14,17,23,0.94);
-  backdrop-filter:blur(14px);
-}
-.logo{font-size:.95rem;font-weight:700;color:var(--text-1);letter-spacing:-.015em;text-decoration:none}
-nav{margin-left:auto;display:flex;align-items:center;gap:1.75rem}
-.nav-link{
-  font-size:.82rem;color:var(--text-2);text-decoration:none;
-  transition:color .12s;
-}
-.nav-link:hover{color:var(--text-1)}
-.btn-nav{
-  font-family:inherit;font-size:.84rem;font-weight:700;
-  background:var(--green);color:#05140d;
-  border:none;border-radius:6px;padding:.5rem 1.2rem;
-  cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;gap:.35rem;
-  transition:opacity .12s;
-}
-.btn-nav:hover{opacity:.88}
+  /* Hero */
+  .hero{padding:52px 0 44px;text-align:center}
+  .hero-eyebrow{font-size:.7rem;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:12px}
+  .hero h1{font-size:2rem;font-weight:900;line-height:1.18;margin-bottom:14px}
+  .hero-sub{font-size:.95rem;color:var(--muted);line-height:1.6;margin-bottom:32px;max-width:380px;margin-left:auto;margin-right:auto}
+  .cta-row{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .cta-primary{
+    display:inline-block;padding:15px 32px;border-radius:10px;
+    background:var(--green);color:#fff;font-size:1rem;font-weight:700;
+    text-decoration:none;letter-spacing:.01em;transition:opacity .15s;width:100%;text-align:center;
+  }
+  .cta-primary:hover{opacity:.9}
+  .cta-secondary{font-size:.85rem;color:var(--muted);text-decoration:none;padding:6px 0;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+  .cta-secondary:hover{color:var(--text);border-bottom-color:var(--border)}
 
-/* ── page ── */
-.page{max-width:1040px;margin:0 auto;padding:0 2.5rem}
+  /* Phone preview card */
+  .phone-wrap{margin-bottom:44px}
+  .phone-card{
+    background:var(--surface);border:1.5px solid var(--border);border-radius:20px;
+    padding:22px 20px;position:relative;overflow:hidden;
+  }
+  .phone-bar{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+  .phone-dot{width:8px;height:8px;border-radius:50%}
+  .phone-title{font-size:.78rem;font-weight:600;color:var(--muted);flex:1;text-align:center;padding-right:16px}
+  .mini-scenario{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .mini-sc-icon{font-size:1.1rem}
+  .mini-sc-body{flex:1}
+  .mini-sc-title{font-size:.82rem;font-weight:700;margin-bottom:2px}
+  .mini-sc-desc{font-size:.72rem;color:var(--muted)}
+  .mini-cta{width:100%;padding:11px;border-radius:8px;background:var(--green);border:none;color:#fff;font-size:.85rem;font-weight:700;margin-bottom:14px}
+  .mini-result{background:linear-gradient(135deg,#052e16,#14532d);border:1px solid var(--green-dim);border-radius:10px;padding:14px;text-align:center}
+  .mini-result-verdict{font-size:1.1rem;font-weight:900;color:var(--green);letter-spacing:.06em;margin-bottom:2px}
+  .mini-result-sub{font-size:.72rem;color:#86efac}
+  .live-badge{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:5px;font-size:.65rem;font-weight:700;color:var(--green);letter-spacing:.06em;text-transform:uppercase}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+  .phone-link{display:block;text-align:center;font-size:.8rem;color:var(--muted);text-decoration:none;margin-top:12px;transition:color .15s}
+  .phone-link:hover{color:var(--text)}
 
-/* ── hero ── */
-.hero{padding:8rem 0 6rem}
-.hero-kicker{
-  display:inline-flex;align-items:center;gap:.5rem;
-  font-size:.68rem;font-weight:700;color:var(--text-3);
-  text-transform:uppercase;letter-spacing:.12em;
-  margin-bottom:1.75rem;
-}
-.hero-kicker-dot{
-  width:5px;height:5px;border-radius:50%;
-  background:var(--green);flex-shrink:0;
-  box-shadow:0 0 6px var(--green-dim);
-}
-.hero-h1{
-  font-size:4rem;font-weight:700;
-  letter-spacing:-.045em;line-height:1.05;
-  color:var(--text-1);margin-bottom:1.6rem;
-  max-width:720px;
-}
-.hero-sub{
-  font-size:1.1rem;color:var(--text-2);
-  line-height:1.7;max-width:540px;margin-bottom:3rem;
-}
-.cta-row{display:flex;flex-wrap:wrap;gap:.9rem;align-items:center;margin-bottom:2rem}
-.btn-cta-primary{
-  font-family:inherit;font-size:.95rem;font-weight:700;
-  background:var(--green);color:#05140d;
-  border:none;border-radius:8px;padding:.85rem 2rem;
-  cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;gap:.45rem;
-  transition:opacity .12s;
-  box-shadow:0 0 24px rgba(47,207,122,0.18);
-}
-.btn-cta-primary:hover{opacity:.88}
-.btn-cta-secondary{
-  font-family:inherit;font-size:.9rem;font-weight:600;
-  background:transparent;color:var(--text-2);
-  border:1px solid var(--border-md);border-radius:8px;
-  padding:.82rem 1.65rem;cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;gap:.35rem;
-  transition:border-color .12s,color .12s;
-}
-.btn-cta-secondary:hover{border-color:var(--border-strong);color:var(--text-1)}
-.live-tag{
-  display:inline-flex;align-items:center;gap:.3rem;
-  font-size:.65rem;font-weight:700;font-family:var(--mono);
-  color:var(--green);
-}
-.live-tag::before{
-  content:'';width:5px;height:5px;border-radius:50%;
-  background:var(--green);
-  box-shadow:0 0 5px var(--green-dim);
-}
-.hero-note{
-  font-size:.78rem;color:var(--text-3);line-height:1.65;
-  border-left:2px solid var(--border-md);
-  padding-left:.9rem;max-width:420px;
-}
-
-/* ── example run block ── */
-.example-run{
-  margin-top:3.5rem;
-  background:var(--surface);
-  border:1px solid var(--border-md);
-  border-radius:12px;
-  overflow:hidden;
-}
-.example-run-header{
-  padding:.6rem 1.25rem;
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;gap:.65rem;
-  background:var(--surface2);
-}
-.example-run-label{
-  font-size:.65rem;font-weight:700;color:var(--text-3);
-  text-transform:uppercase;letter-spacing:.09em;font-family:var(--mono);
-}
-.example-run-tag{
-  font-size:.6rem;font-weight:700;font-family:var(--mono);
-  color:var(--green);background:var(--green-bg);
-  border:1px solid var(--green-border);border-radius:2px;
-  padding:.08rem .35rem;text-transform:uppercase;letter-spacing:.05em;
-}
-.example-run-body{
-  display:grid;grid-template-columns:repeat(4,1fr);
-}
-.er-step{
-  padding:1.25rem 1.4rem;
-  border-right:1px solid var(--border);
-}
-.er-step:last-child{border-right:none}
-.er-step-name{
-  font-size:.6rem;font-weight:700;color:var(--text-3);
-  text-transform:uppercase;letter-spacing:.09em;
-  margin-bottom:.65rem;font-family:var(--mono);
-}
-.er-step-value{
-  font-size:.8rem;font-weight:600;color:var(--text-1);
-  line-height:1.4;margin-bottom:.25rem;
-}
-.er-step-detail{
-  font-size:.7rem;color:var(--text-2);font-family:var(--mono);
-  word-break:break-all;line-height:1.4;
-}
-.er-ok{color:var(--green)}
-.er-hash{
-  font-size:.65rem;color:var(--text-3);font-family:var(--mono);
-  margin-top:.25rem;
-}
-
-/* ── section divider ── */
-.section-divider{border:none;border-top:1px solid var(--border);margin:0}
-
-/* ── how it works section ── */
-.how-section{padding:6rem 0}
-.how-header{
-  display:grid;grid-template-columns:1fr 1fr;gap:4rem;
-  align-items:end;margin-bottom:4rem;
-}
-.how-title{
-  font-size:2rem;font-weight:700;letter-spacing:-.03em;
-  color:var(--text-1);line-height:1.15;
-}
-.how-sub{
-  font-size:.88rem;color:var(--text-2);line-height:1.7;
-  align-self:end;
-}
-.how-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative}
-.how-connector{
-  position:absolute;top:14px;
-  left:calc(12.5% + 10px);right:calc(12.5% + 10px);
-  height:1px;background:linear-gradient(90deg,var(--border) 0%,var(--green-border) 40%,var(--green-border) 100%);
-}
-.how-step{padding:0 1rem;position:relative}
-.how-step:first-child{padding-left:0}
-.how-step:last-child{padding-right:0}
-.how-dot{
-  width:28px;height:28px;border-radius:50%;
-  border:1px solid var(--border-md);background:var(--surface);
-  display:inline-flex;align-items:center;justify-content:center;
-  font-size:.58rem;font-weight:700;color:var(--text-3);
-  font-family:var(--mono);margin-bottom:1.1rem;
-  position:relative;z-index:1;
-}
-.how-step.how-postcad .how-dot{
-  background:var(--green-bg);border-color:var(--green-border);color:var(--green);
-}
-.how-tag{
-  font-size:.58rem;font-weight:700;font-family:var(--mono);
-  color:var(--green);background:var(--green-bg);
-  border:1px solid var(--green-border);border-radius:2px;
-  padding:.06rem .28rem;text-transform:uppercase;letter-spacing:.05em;
-  margin-bottom:.4rem;display:inline-block;
-}
-.how-step-label{
-  font-size:.88rem;font-weight:600;color:var(--text-1);
-  margin-bottom:.3rem;letter-spacing:-.01em;
-}
-.how-step-desc{font-size:.75rem;color:var(--text-2);line-height:1.55}
-
-/* ── principles ── */
-.principles-section{
-  padding:6rem 0;border-top:1px solid var(--border);
-}
-.principles-title{
-  font-size:2rem;font-weight:700;letter-spacing:-.03em;
-  color:var(--text-1);margin-bottom:3rem;
-}
-.principles-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;
-}
-.principle-block{
-  padding:1.75rem 2rem;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:10px;
-}
-.principle-num{
-  font-size:.6rem;font-weight:700;color:var(--text-3);
-  font-family:var(--mono);text-transform:uppercase;
-  letter-spacing:.08em;margin-bottom:.9rem;
-}
-.principle-title{
-  font-size:.98rem;font-weight:700;color:var(--text-1);
-  letter-spacing:-.012em;margin-bottom:.45rem;
-}
-.principle-body{font-size:.8rem;color:var(--text-2);line-height:1.65}
-
-/* ── callout ── */
-.callout-section{padding:5rem 0;border-top:1px solid var(--border)}
-.callout-inner{
-  background:var(--surface);
-  border:1px solid var(--border-md);
-  border-radius:14px;
-  padding:3.25rem 3.75rem;
-  display:flex;align-items:center;
-  justify-content:space-between;gap:2.5rem;
-  flex-wrap:wrap;
-}
-.callout-left{}
-.callout-live{
-  font-size:.65rem;font-weight:700;font-family:var(--mono);
-  color:var(--green);text-transform:uppercase;letter-spacing:.08em;
-  display:flex;align-items:center;gap:.4rem;margin-bottom:.7rem;
-}
-.callout-live::before{
-  content:'';width:5px;height:5px;border-radius:50%;
-  background:var(--green);
-  box-shadow:0 0 6px var(--green-dim);
-}
-.callout-title{
-  font-size:1.55rem;font-weight:700;letter-spacing:-.025em;
-  margin-bottom:.5rem;color:var(--text-1);
-}
-.callout-sub{
-  font-size:.88rem;color:var(--text-2);
-  max-width:440px;line-height:1.65;
-}
-
-/* ── footer ── */
-footer{
-  border-top:1px solid var(--border);
-  padding:1.75rem 2.5rem;
-  display:flex;align-items:center;justify-content:space-between;
-  flex-wrap:wrap;gap:.75rem;
-}
-.footer-brand{font-size:.82rem;font-weight:700;color:var(--text-3);text-decoration:none}
-.footer-links{display:flex;gap:1.5rem}
-.footer-link{
-  font-size:.78rem;color:var(--text-3);text-decoration:none;
-  transition:color .12s;
-}
-.footer-link:hover{color:var(--text-2)}
-.footer-note{font-size:.72rem;color:var(--text-3)}
-
-/* ── responsive ── */
-@media(max-width:860px){
-  .hero{padding:5rem 0 4rem}
-  .hero-h1{font-size:2.8rem}
-  .example-run-body{grid-template-columns:1fr 1fr}
-  .er-step{border-bottom:1px solid var(--border)}
-  .er-step:nth-child(2n){border-right:none}
-  .er-step:nth-last-child(-n+2){border-bottom:none}
-  .how-header{grid-template-columns:1fr}
-  .how-steps{grid-template-columns:1fr 1fr;gap:2rem}
-  .how-connector{display:none}
-  .how-step,.how-step:first-child,.how-step:last-child{padding:0}
-  .principles-grid{grid-template-columns:1fr}
-  .callout-inner{padding:2.25rem 2rem}
-  .page{padding:0 1.5rem}
-  header{padding:.75rem 1.5rem}
-  nav .nav-link{display:none}
-  footer{padding:1.5rem 1.5rem}
-}
-@media(max-width:540px){
-  .hero-h1{font-size:2.2rem}
-  .example-run-body{grid-template-columns:1fr}
-  .er-step{border-right:none}
-  .er-step:last-child{border-bottom:none}
-  .how-steps{grid-template-columns:1fr}
-  .cta-row{flex-direction:column;align-items:flex-start}
-}
+  /* Support blocks */
+  .blocks{display:flex;flex-direction:column;gap:10px}
+  .block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;align-items:flex-start;gap:14px}
+  .block-icon{font-size:1.3rem;flex-shrink:0;margin-top:1px}
+  .block-title{font-size:.88rem;font-weight:700;margin-bottom:3px}
+  .block-desc{font-size:.8rem;color:var(--muted);line-height:1.45}
 </style>
 </head>
 <body>
 
-<!-- ── header ── -->
 <header>
-  <a class="logo" href="/">PostCAD</a>
-  <nav>
-    <a class="nav-link" href="#how-it-works">How it works</a>
-    <a class="nav-link" href="#principles">Principles</a>
-    <a class="btn-nav" href="/reviewer">Open demo →</a>
-  </nav>
+  <div class="brand">Post<span>CAD</span></div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" id="btn-de" onclick="setLang('DE')">DE</button>
+    <button class="lang-btn" id="btn-en" onclick="setLang('EN')">EN</button>
+  </div>
 </header>
 
-<div class="page">
+<main>
 
-<!-- ── hero ── -->
-<section class="hero">
-  <div class="hero-kicker">
-    <span class="hero-kicker-dot"></span>
-    Post-CAD manufacturing layer
-  </div>
-  <h1 class="hero-h1">From CAD design<br>to manufacturing<br>dispatch.</h1>
-  <p class="hero-sub">
-    PostCAD sits between your dental CAD output and production.
-    It verifies manufacturer certifications, applies jurisdiction rules,
-    routes to the right lab, and produces an immutable audit trail —
-    without making clinical decisions.
-  </p>
-  <div class="cta-row">
-    <a class="btn-cta-primary" href="/reviewer">Open live demo →</a>
-    <a class="btn-cta-secondary" href="mailto:pilot@routecore.ai">Request pilot access</a>
-  </div>
-  <p class="hero-note">
-    No AI decision-making. No clinical liability.<br>
-    Every output carries a reason code and a verifiable receipt hash.
-  </p>
-
-  <!-- Real example run -->
-  <div class="example-run">
-    <div class="example-run-header">
-      <span class="example-run-label">Example run</span>
-      <span class="example-run-tag">real engine output</span>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-eyebrow" id="t-eyebrow">Dental · Fertigung · Compliance</div>
+    <h1 id="t-h1">Digitale Fälle sicher<br>in die Fertigung geben.</h1>
+    <p class="hero-sub" id="t-sub">PostCAD prüft jeden Fall automatisch auf Regularien, Materialeignung und Laborzulassung — bevor die Fertigung beginnt.</p>
+    <div class="cta-row">
+      <a class="cta-primary" href="/reviewer" id="t-cta-primary">Live-Demo starten</a>
+      <a class="cta-secondary" href="#" id="t-cta-secondary">Für Pilot vormerken</a>
     </div>
-    <div class="example-run-body">
-      <div class="er-step">
-        <div class="er-step-name">Input</div>
-        <div class="er-step-value">Crown · Zirconia</div>
-        <div class="er-step-detail">Germany · case f1000001</div>
-      </div>
-      <div class="er-step">
-        <div class="er-step-name">Routing</div>
-        <div class="er-step-value er-ok">3 candidates → 1 selected</div>
-        <div class="er-step-detail">pilot-de-001<br>Alpha Dental GmbH</div>
-      </div>
-      <div class="er-step">
-        <div class="er-step-name">Receipt</div>
-        <div class="er-step-value er-ok">Issued · verified</div>
-        <div class="er-hash">0db54077cff0fbc4…</div>
-      </div>
-      <div class="er-step">
-        <div class="er-step-name">Dispatch</div>
-        <div class="er-step-value er-ok">Ready for handoff</div>
-        <div class="er-step-detail">Audit record attached</div>
-      </div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<hr class="section-divider">
-
-<!-- ── how it works ── -->
-<section class="how-section" id="how-it-works">
-  <div class="how-header">
-    <h2 class="how-title">One deterministic<br>path from design<br>to production</h2>
-    <p class="how-sub">
-      The same inputs always produce the same manufacturer selection and receipt hash.
-      PostCAD controls steps 2–4. Step 1 is your existing CAD tool.
-      Step 5 is your manufacturer.
-    </p>
+  <!-- Phone preview -->
+  <div class="phone-wrap">
+    <a href="/reviewer" style="text-decoration:none">
+      <div class="phone-card">
+        <div class="live-badge"><div class="live-dot"></div><span id="t-live">Live</span></div>
+        <div class="phone-bar">
+          <div class="phone-dot" style="background:#ef4444"></div>
+          <div class="phone-dot" style="background:#f59e0b"></div>
+          <div class="phone-dot" style="background:#22c55e"></div>
+          <div class="phone-title" id="t-phone-title">Fallprüfung vor Fertigung</div>
+        </div>
+        <div class="mini-scenario">
+          <div class="mini-sc-icon">🦷</div>
+          <div class="mini-sc-body">
+            <div class="mini-sc-title" id="t-mini-title">Standardfall</div>
+            <div class="mini-sc-desc" id="t-mini-desc">Krone · Zirkon · Deutschland</div>
+          </div>
+        </div>
+        <button class="mini-cta" id="t-mini-cta">Diesen Fall prüfen</button>
+        <div class="mini-result">
+          <div class="mini-result-verdict" id="t-mini-verdict">✓ FREIGEGEBEN</div>
+          <div class="mini-result-sub" id="t-mini-sub">Weitergabe möglich</div>
+        </div>
+      </div>
+    </a>
+    <a class="phone-link" href="/reviewer" id="t-phone-link">Demo öffnen →</a>
   </div>
 
-  <div class="how-steps">
-    <div class="how-connector" aria-hidden="true"></div>
-
-    <div class="how-step">
-      <div class="how-dot">01</div>
-      <div class="how-step-label">CAD Design</div>
-      <div class="how-step-desc">
-        A structured case exits your design software.
-        Material, procedure, and jurisdiction defined.
+  <!-- Support blocks -->
+  <div class="blocks">
+    <div class="block">
+      <div class="block-icon">✓</div>
+      <div>
+        <div class="block-title" id="t-b1-title">Prüft Regeln</div>
+        <div class="block-desc" id="t-b1-desc">CE-Kennzeichnung, FDA-Zulassung, ISO 13485 — automatisch und nachvollziehbar.</div>
       </div>
     </div>
-
-    <div class="how-step how-postcad">
-      <div class="how-dot">02</div>
-      <div class="how-tag">PostCAD</div>
-      <div class="how-step-label">Routing Engine</div>
-      <div class="how-step-desc">
-        Registry checked against certifications,
-        jurisdiction rules, and capability constraints.
+    <div class="block">
+      <div class="block-icon">✕</div>
+      <div>
+        <div class="block-title" id="t-b2-title">Blockiert Fehler</div>
+        <div class="block-desc" id="t-b2-desc">Unzulässige Jurisdiktionen und nicht verfügbare Materialien werden vor der Weitergabe gestoppt.</div>
       </div>
     </div>
-
-    <div class="how-step how-postcad">
-      <div class="how-dot">03</div>
-      <div class="how-tag">PostCAD</div>
-      <div class="how-step-label">Verification</div>
-      <div class="how-step-desc">
-        Receipt replayed from original inputs.
-        Routing decision confirmed reproducible.
-      </div>
-    </div>
-
-    <div class="how-step how-postcad">
-      <div class="how-dot">04</div>
-      <div class="how-tag">PostCAD</div>
-      <div class="how-step-label">Dispatch</div>
-      <div class="how-step-desc">
-        Traceable handoff prepared.
-        Full audit chain attached before manufacturing.
+    <div class="block">
+      <div class="block-icon">📋</div>
+      <div>
+        <div class="block-title" id="t-b3-title">Dokumentiert Entscheidung</div>
+        <div class="block-desc" id="t-b3-desc">Jede Freigabe und jede Ablehnung wird mit Begründung gespeichert.</div>
       </div>
     </div>
   </div>
-</section>
 
-<!-- ── principles ── -->
-<section class="principles-section" id="principles">
-  <h2 class="principles-title">Built for regulated environments</h2>
-  <div class="principles-grid">
-    <div class="principle-block">
-      <div class="principle-num">01 · Determinism</div>
-      <div class="principle-title">Same input, same output — always</div>
-      <div class="principle-body">
-        Identical case data and registry state produce the same manufacturer selection
-        and receipt hash on every run. No variance, no approximation.
-      </div>
-    </div>
-    <div class="principle-block">
-      <div class="principle-num">02 · Verifiability</div>
-      <div class="principle-title">Every decision is replayable</div>
-      <div class="principle-body">
-        Routing receipts can be independently verified by replaying the kernel
-        against original inputs. No black-box outputs, no manual sign-off required.
-      </div>
-    </div>
-    <div class="principle-block">
-      <div class="principle-num">03 · Immutable audit trail</div>
-      <div class="principle-title">Records that can't be altered</div>
-      <div class="principle-body">
-        Every step produces a hash-chained entry. The chain cannot be modified
-        without detection. Designed to satisfy regulatory inspection requirements.
-      </div>
-    </div>
-  </div>
-</section>
+</main>
 
-<!-- ── callout ── -->
-<section class="callout-section">
-  <div class="callout-inner">
-    <div class="callout-left">
-      <div class="callout-live">Engine-connected · real outputs</div>
-      <div class="callout-title">See all three scenarios live</div>
-      <p class="callout-sub">
-        The operator demo runs against the real PostCAD engine.
-        Choose from an eligible routing, a jurisdiction refusal, or a capability mismatch —
-        and see exactly how the engine responds.
-      </p>
-    </div>
-    <a class="btn-cta-primary" href="/reviewer">Open operator demo →</a>
-  </div>
-</section>
+<script>
+const LP = {
+  DE: {
+    eyebrow: 'Dental · Fertigung · Compliance',
+    h1: 'Digitale Fälle sicher<br>in die Fertigung geben.',
+    sub: 'PostCAD prüft jeden Fall automatisch auf Regularien, Materialeignung und Laborzulassung — bevor die Fertigung beginnt.',
+    ctaPrimary: 'Live-Demo starten',
+    ctaSecondary: 'Für Pilot vormerken',
+    live: 'Live',
+    phoneTitle: 'Fallprüfung vor Fertigung',
+    miniTitle: 'Standardfall', miniDesc: 'Krone · Zirkon · Deutschland',
+    miniCta: 'Diesen Fall prüfen',
+    miniVerdict: '\u2713 FREIGEGEBEN', miniSub: 'Weitergabe möglich',
+    phoneLink: 'Demo öffnen →',
+    b1Title: 'Prüft Regeln', b1Desc: 'CE-Kennzeichnung, FDA-Zulassung, ISO 13485 — automatisch und nachvollziehbar.',
+    b2Title: 'Blockiert Fehler', b2Desc: 'Unzulässige Jurisdiktionen und nicht verfügbare Materialien werden vor der Weitergabe gestoppt.',
+    b3Title: 'Dokumentiert Entscheidung', b3Desc: 'Jede Freigabe und jede Ablehnung wird mit Begründung gespeichert.',
+  },
+  EN: {
+    eyebrow: 'Dental · Manufacturing · Compliance',
+    h1: 'Pass digital cases safely<br>into manufacturing.',
+    sub: 'PostCAD automatically checks every case for regulations, material suitability, and lab certification — before manufacturing begins.',
+    ctaPrimary: 'Start live demo',
+    ctaSecondary: 'Register for pilot',
+    live: 'Live',
+    phoneTitle: 'Pre-Manufacturing Case Review',
+    miniTitle: 'Standard case', miniDesc: 'Crown · Zirconia · Germany',
+    miniCta: 'Check this case',
+    miniVerdict: '\u2713 APPROVED', miniSub: 'Safe to proceed',
+    phoneLink: 'Open demo →',
+    b1Title: 'Checks rules', b1Desc: 'CE marking, FDA clearance, ISO 13485 — automatically and traceably.',
+    b2Title: 'Blocks errors', b2Desc: 'Invalid jurisdictions and unavailable materials are stopped before handoff.',
+    b3Title: 'Documents decisions', b3Desc: 'Every approval and refusal is stored with its reason.',
+  },
+};
 
-</div><!-- /page -->
+let lang = 'DE';
 
-<!-- ── footer ── -->
-<footer>
-  <a class="footer-brand" href="/">PostCAD</a>
-  <div class="footer-links">
-    <a class="footer-link" href="/reviewer">Operator Demo</a>
-    <a class="footer-link" href="mailto:pilot@routecore.ai">Contact</a>
-  </div>
-  <span class="footer-note">Post-CAD manufacturing routing layer · routecore.ai</span>
-</footer>
-
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-de').classList.toggle('active', l === 'DE');
+  document.getElementById('btn-en').classList.toggle('active', l === 'EN');
+  const t = LP[l];
+  document.getElementById('t-eyebrow').textContent = t.eyebrow;
+  document.getElementById('t-h1').innerHTML = t.h1;
+  document.getElementById('t-sub').textContent = t.sub;
+  document.getElementById('t-cta-primary').textContent = t.ctaPrimary;
+  document.getElementById('t-cta-secondary').textContent = t.ctaSecondary;
+  document.getElementById('t-live').textContent = t.live;
+  document.getElementById('t-phone-title').textContent = t.phoneTitle;
+  document.getElementById('t-mini-title').textContent = t.miniTitle;
+  document.getElementById('t-mini-desc').textContent = t.miniDesc;
+  document.getElementById('t-mini-cta').textContent = t.miniCta;
+  document.getElementById('t-mini-verdict').textContent = t.miniVerdict;
+  document.getElementById('t-mini-sub').textContent = t.miniSub;
+  document.getElementById('t-phone-link').textContent = t.phoneLink;
+  document.getElementById('t-b1-title').textContent = t.b1Title;
+  document.getElementById('t-b1-desc').textContent = t.b1Desc;
+  document.getElementById('t-b2-title').textContent = t.b2Title;
+  document.getElementById('t-b2-desc').textContent = t.b2Desc;
+  document.getElementById('t-b3-title').textContent = t.b3Title;
+  document.getElementById('t-b3-desc').textContent = t.b3Desc;
+}
+</script>
 </body>
-</html>"##;
+</html>
+"##;

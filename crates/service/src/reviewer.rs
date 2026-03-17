@@ -54,7 +54,7 @@ main{width:100%;max-width:560px}
 .verdict-blocked{color:var(--red)}
 .result-sub{font-size:1rem;color:var(--sub);margin-bottom:6px}
 .result-explanation{font-size:.88rem;color:var(--dim);margin-top:10px;line-height:1.5}
-.check-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:.93rem}
+.check-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;font-size:1rem}
 .check-row-lbl{color:var(--sub)}
 .chk-ok{color:var(--green);font-weight:700;font-size:1.1rem}
 .chk-fail{color:var(--red);font-weight:700;font-size:1.1rem}

@@ -188,7 +188,6 @@ section{padding:0 24px}
     <!-- processing -->
     <div id="phase-processing">
       <div class="proc-filename" id="proc-filename"></div>
-      <div class="proc-step" id="pstep-detected"></div>
       <div class="proc-running" id="proc-running"></div>
       <div class="proc-check-row" id="pcheck-0"><span id="t-pcheck-0"></span><span class="chk-ok">✓</span></div>
       <div class="proc-check-row" id="pcheck-1"><span id="t-pcheck-1"></span><span class="chk-ok">✓</span></div>
@@ -390,9 +389,6 @@ function loadDemo(filename) {
 async function startProcessing(filename) {
   const t = T[lang];
   document.getElementById('proc-filename').textContent = filename;
-  const detectedEl = document.getElementById('pstep-detected');
-  detectedEl.textContent = '';
-  detectedEl.style.opacity = '0';
   const runEl = document.getElementById('proc-running');
   runEl.style.display = 'none';
   for (let i = 0; i < 3; i++) {
@@ -403,11 +399,7 @@ async function startProcessing(filename) {
   document.getElementById('phase-processing').style.display = 'block';
   document.getElementById('phase-result').style.display = 'none';
 
-  await delay(250);
-  detectedEl.textContent = t.fileDetected;
-  detectedEl.style.opacity = '1';
-
-  await delay(550);
+  await delay(200);
   runEl.textContent = t.procRunning;
   runEl.style.display = 'block';
 

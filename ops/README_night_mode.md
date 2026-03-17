@@ -48,6 +48,24 @@ bash ops/night_status.sh
 Prints session state (`RUNNING` / `STOPPED`), the last few lines of
 `ops/queue_status.log`, and the last few lines of `ops/last_result.md`.
 
+**Tail the queue log (one command)**
+
+`ops/night_tail.sh` is a focused, read-only helper for night-mode monitoring.
+It tails `ops/queue_status.log` with an optional bounded line count.
+
+```bash
+# Default (20 lines)
+bash ops/night_tail.sh
+
+# Override line count
+bash ops/night_tail.sh --lines 50
+```
+
+Behaviour:
+- Refuses to run outside the PostCAD repository (checks `CLAUDE.md` marker).
+- Exits non-zero with a clear message if `ops/queue_status.log` is missing.
+- No writes, no network, no tmux management — safe to run at any time.
+
 **Stop the session**
 
 ```bash

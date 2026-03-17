@@ -12,84 +12,70 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
     --surface2:#1d2229;
     --border:#252b34;
     --green:#22c55e;
-    --green-dim:#15803d;
     --red:#ef4444;
-    --red-dim:#991b1b;
     --text:#f1f5f9;
     --muted:#64748b;
-    --accent:#3b82f6;
   }
-  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 16px 48px}
-  header{width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 28px}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 20px 56px}
+
+  header{width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 32px}
   .brand{font-size:.85rem;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
   .brand span{color:var(--green)}
   .lang-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
-  .lang-btn{padding:4px 10px;font-size:.75rem;font-weight:600;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+  .lang-btn{padding:4px 10px;font-size:.75rem;font-weight:600;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:color .15s}
   .lang-btn.active{background:var(--surface2);color:var(--text)}
 
   main{width:100%;max-width:440px}
 
-  #phase-select{}
-  .hero-label{font-size:.7rem;font-weight:700;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;margin-bottom:8px}
-  h1{font-size:1.6rem;font-weight:800;line-height:1.25;margin-bottom:8px}
-  .subline{font-size:.9rem;color:var(--muted);margin-bottom:28px;line-height:1.5}
-
-  .scenario-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
-  .scenario-cards{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+  /* ── SELECT ── */
+  h1{font-size:1.5rem;font-weight:800;line-height:1.25;margin-bottom:6px}
+  .subline{font-size:.88rem;color:var(--muted);margin-bottom:28px;line-height:1.5}
+  .scenario-label{font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+  .scenario-cards{display:flex;flex-direction:column;gap:8px}
   .scenario-card{
-    background:var(--surface);border:1.5px solid var(--border);border-radius:12px;
-    padding:16px 18px;cursor:pointer;transition:border-color .15s,background .15s;
-    display:flex;align-items:center;gap:14px;
+    border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;cursor:pointer;
+    transition:border-color .15s;
+    display:flex;align-items:center;gap:12px;
   }
-  .scenario-card:hover{border-color:var(--accent);background:var(--surface2)}
-  .scenario-card.selected{border-color:var(--accent);background:var(--surface2)}
-  .sc-icon{font-size:1.4rem;flex-shrink:0}
+  .scenario-card:hover{border-color:#3d4a5c}
+  .sc-icon{font-size:1.3rem;flex-shrink:0}
   .sc-body{flex:1;min-width:0}
-  .sc-title{font-size:.95rem;font-weight:700;margin-bottom:3px}
-  .sc-desc{font-size:.8rem;color:var(--muted);line-height:1.4}
-  .sc-chip{flex-shrink:0;font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.04em}
-  .chip-ok{background:#14532d;color:#86efac}
-  .chip-block{background:#450a0a;color:#fca5a5}
+  .sc-title{font-size:.92rem;font-weight:700;margin-bottom:2px}
+  .sc-desc{font-size:.78rem;color:var(--muted);line-height:1.4}
+  .sc-chip{flex-shrink:0;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.04em}
+  .chip-ok{color:#86efac}
+  .chip-block{color:#fca5a5}
 
-  .cta{
-    width:100%;padding:16px;border:none;border-radius:12px;
-    background:var(--green);color:#fff;font-size:1rem;font-weight:700;
-    cursor:pointer;transition:opacity .15s;letter-spacing:.01em;
-  }
-  .cta:hover{opacity:.9}
-  .cta:disabled{opacity:.4;cursor:not-allowed}
-
-  #phase-check{display:none;text-align:center;padding:40px 0}
-  .spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 28px}
+  /* ── CHECK ── */
+  #phase-check{display:none;text-align:center;padding:56px 0}
+  .spinner{width:40px;height:40px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 28px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .check-step{font-size:1rem;font-weight:600;color:var(--text);transition:opacity .3s;min-height:1.4em}
+  .check-step{font-size:.95rem;font-weight:500;color:var(--muted);transition:opacity .25s;min-height:1.4em}
   .check-step.fade{opacity:0}
 
-  #phase-result{display:none}
-  .result-card{
-    border-radius:16px;padding:28px 24px 24px;text-align:center;
-    animation:scalein .25s ease-out;margin-bottom:14px;
-  }
-  @keyframes scalein{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
-  .result-card.ok{background:linear-gradient(135deg,#052e16,#14532d);border:1.5px solid var(--green-dim)}
-  .result-card.blocked{background:linear-gradient(135deg,#1c0404,#450a0a);border:1.5px solid var(--red-dim)}
-  .result-icon{font-size:2.2rem;margin-bottom:10px}
-  .result-verdict{font-size:1.8rem;font-weight:900;letter-spacing:.04em;margin-bottom:4px}
-  .result-card.ok .result-verdict{color:var(--green)}
-  .result-card.blocked .result-verdict{color:var(--red)}
-  .result-sub{font-size:.9rem;color:#94a3b8}
+  /* ── RESULT ── */
+  #phase-result{display:none;animation:fadein .3s ease-out}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  .result-block{text-align:center;padding:40px 0 32px}
+  .result-icon{font-size:1.6rem;margin-bottom:8px;opacity:.7}
+  .result-verdict{font-size:3rem;font-weight:900;letter-spacing:.03em;line-height:1;margin-bottom:8px}
+  .result-ok .result-verdict{color:var(--green)}
+  .result-blocked .result-verdict{color:var(--red)}
+  .result-sub{font-size:.9rem;color:var(--muted)}
 
-  .reason-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
-  .reason-label{font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
-  .reason-text{font-size:.95rem;color:var(--text);line-height:1.5}
+  .result-sep{border:none;border-top:1px solid var(--border);margin:24px 0}
 
-  .tech-toggle{background:none;border:none;color:var(--muted);font-size:.8rem;cursor:pointer;padding:4px 0;margin-bottom:8px;text-decoration:underline;text-underline-offset:3px}
-  .tech-box{display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;overflow-x:auto}
+  .grund-label{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+  .grund-text{font-size:.95rem;color:var(--text);line-height:1.55;margin-bottom:20px}
+
+  .tech-toggle{background:none;border:none;color:var(--muted);font-size:.8rem;cursor:pointer;padding:0;margin-bottom:10px;text-decoration:underline;text-underline-offset:3px;display:block}
+  .tech-box{display:none;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px;overflow-x:auto}
   .tech-box.open{display:block}
-  .tech-box pre{font-size:.72rem;color:var(--muted);white-space:pre-wrap;word-break:break-all;font-family:'SF Mono','Fira Code',monospace}
+  .tech-box pre{font-size:.7rem;color:var(--muted);white-space:pre-wrap;word-break:break-all;font-family:'SF Mono','Fira Code',monospace}
 
-  .reset-btn{width:100%;padding:14px;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--muted);font-size:.9rem;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
-  .reset-btn:hover{border-color:var(--text);color:var(--text)}
+  .reset-btn{width:100%;padding:13px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;margin-top:4px}
+  .reset-btn:hover{border-color:#3d4a5c;color:var(--text)}
 
   #_legacy{display:none!important}
 </style>
@@ -108,13 +94,12 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
 
 <!-- PHASE: SELECT -->
 <div id="phase-select">
-  <div class="hero-label" id="t-hero-label">Fallprüfung</div>
   <h1 id="t-h1">Fallprüfung<br>vor Fertigung</h1>
-  <p class="subline" id="t-subline">Wählen Sie ein Szenario. Das System prüft den Fall in Echtzeit und zeigt Ihnen die Entscheidung.</p>
+  <p class="subline" id="t-subline">Tippen Sie auf ein Szenario.</p>
 
   <div class="scenario-label" id="t-sc-label">Szenario wählen</div>
   <div class="scenario-cards">
-    <div class="scenario-card" id="card-0" onclick="selectCard(0)">
+    <div class="scenario-card" onclick="startFlow(0)">
       <div class="sc-icon">🦷</div>
       <div class="sc-body">
         <div class="sc-title" id="t-s0-title">Standardfall</div>
@@ -122,7 +107,7 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
       </div>
       <div class="sc-chip chip-ok" id="t-s0-chip">Freigegeben</div>
     </div>
-    <div class="scenario-card" id="card-1" onclick="selectCard(1)">
+    <div class="scenario-card" onclick="startFlow(1)">
       <div class="sc-icon">🌍</div>
       <div class="sc-body">
         <div class="sc-title" id="t-s1-title">Falsche Jurisdiktion</div>
@@ -130,7 +115,7 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
       </div>
       <div class="sc-chip chip-block" id="t-s1-chip">Blockiert</div>
     </div>
-    <div class="scenario-card" id="card-2" onclick="selectCard(2)">
+    <div class="scenario-card" onclick="startFlow(2)">
       <div class="sc-icon">🔬</div>
       <div class="sc-body">
         <div class="sc-title" id="t-s2-title">Kein passendes Labor</div>
@@ -139,10 +124,6 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
       <div class="sc-chip chip-block" id="t-s2-chip">Blockiert</div>
     </div>
   </div>
-
-  <button class="cta" id="cta-run" disabled onclick="startFlow()">
-    <span id="t-cta">Szenario wählen</span>
-  </button>
 </div>
 
 <!-- PHASE: CHECK -->
@@ -153,15 +134,17 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
 
 <!-- PHASE: RESULT -->
 <div id="phase-result">
-  <div class="result-card" id="result-card">
+  <div class="result-block" id="result-block">
     <div class="result-icon" id="result-icon"></div>
     <div class="result-verdict" id="result-verdict"></div>
     <div class="result-sub" id="result-sub"></div>
   </div>
 
-  <div class="reason-card">
-    <div class="reason-label" id="t-reason-label">Begründung</div>
-    <div class="reason-text" id="reason-text"></div>
+  <hr class="result-sep" id="result-sep">
+
+  <div id="result-reason">
+    <div class="grund-label" id="t-grund-label">Grund</div>
+    <div class="grund-text" id="grund-text"></div>
   </div>
 
   <button class="tech-toggle" onclick="toggleTech()">
@@ -189,52 +172,40 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
 <script>
 const T = {
   DE: {
-    heroLabel: 'Fallprüfung',
     h1: 'Fallprüfung<br>vor Fertigung',
-    subline: 'Wählen Sie ein Szenario. Das System prüft den Fall in Echtzeit und zeigt Ihnen die Entscheidung.',
+    subline: 'Tippen Sie auf ein Szenario.',
     scLabel: 'Szenario wählen',
     s0Title: 'Standardfall', s0Desc: 'Krone · Zirkon · Deutschland', s0Chip: 'Freigegeben',
     s1Title: 'Falsche Jurisdiktion', s1Desc: 'Krone · Zirkon · USA', s1Chip: 'Blockiert',
     s2Title: 'Kein passendes Labor', s2Desc: 'Brücke · E.max · Deutschland', s2Chip: 'Blockiert',
-    cta: 'Diesen Fall prüfen',
-    ctaDisabled: 'Szenario wählen',
     steps: ['Fall wird geprüft \u2026', 'Regeln werden geprüft \u2026', 'Labor wird abgeglichen \u2026', 'Nachvollziehbarkeit wird erstellt \u2026'],
-    verdictOk: 'FREIGEGEBEN',
-    verdictBlock: 'BLOCKIERT',
-    subOk: 'Weitergabe möglich',
-    subBlock: 'Weitergabe nicht möglich',
-    reasonLabel: 'Begründung',
+    verdictOk: 'FREIGEGEBEN', verdictBlock: 'BLOCKIERT',
+    subOk: 'Weitergabe möglich', subBlock: 'Weitergabe nicht möglich',
+    grundLabel: 'Grund',
     reasons: {
-      ok: 'Der Fall erfüllt alle Anforderungen. Ein zertifiziertes Labor wurde zugewiesen.',
-      no_jurisdiction_match: 'Für diese Jurisdiktion ist kein zugelassenes Labor registriert. Bitte prüfen Sie das Zielland.',
-      no_material_match: 'Kein Labor kann dieses Material in der gewünschten Kombination fertigen.',
-      default: 'Die Prüfung hat einen Fehler festgestellt. Bitte versuchen Sie es erneut.',
+      no_jurisdiction_match: 'Jurisdiktion nicht zulässig',
+      no_material_match: 'Kein passender Fertigungspartner',
+      default: 'Eingabedaten unvollständig',
     },
     techToggleShow: 'Technische Details anzeigen',
     techToggleHide: 'Technische Details ausblenden',
     reset: 'Anderen Fall prüfen',
   },
   EN: {
-    heroLabel: 'Case Review',
     h1: 'Pre-Manufacturing<br>Case Review',
-    subline: 'Select a scenario. The system checks the case in real time and shows you the decision.',
+    subline: 'Tap a scenario to run it.',
     scLabel: 'Choose a scenario',
     s0Title: 'Standard case', s0Desc: 'Crown · Zirconia · Germany', s0Chip: 'Approved',
     s1Title: 'Wrong jurisdiction', s1Desc: 'Crown · Zirconia · USA', s1Chip: 'Blocked',
     s2Title: 'No matching lab', s2Desc: 'Bridge · E.max · Germany', s2Chip: 'Blocked',
-    cta: 'Check this case',
-    ctaDisabled: 'Choose a scenario',
     steps: ['Submitting case \u2026', 'Checking rules \u2026', 'Matching lab \u2026', 'Creating audit record \u2026'],
-    verdictOk: 'APPROVED',
-    verdictBlock: 'BLOCKED',
-    subOk: 'Safe to proceed',
-    subBlock: 'Cannot proceed',
-    reasonLabel: 'Reason',
+    verdictOk: 'APPROVED', verdictBlock: 'BLOCKED',
+    subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
+    grundLabel: 'Reason',
     reasons: {
-      ok: 'The case meets all requirements. A certified lab has been assigned.',
-      no_jurisdiction_match: 'No approved lab is registered for this jurisdiction. Please check the target country.',
-      no_material_match: 'No lab can manufacture this material in the requested combination.',
-      default: 'The check encountered an error. Please try again.',
+      no_jurisdiction_match: 'Jurisdiction not allowed',
+      no_material_match: 'No matching manufacturing partner',
+      default: 'Input data incomplete',
     },
     techToggleShow: 'Show technical details',
     techToggleHide: 'Hide technical details',
@@ -258,7 +229,6 @@ const CASES = [
 ];
 
 let lang = 'DE';
-let selected = -1;
 let techOpen = false;
 
 function setLang(l) {
@@ -270,7 +240,6 @@ function setLang(l) {
 
 function applyLang() {
   const t = T[lang];
-  document.getElementById('t-hero-label').textContent = t.heroLabel;
   document.getElementById('t-h1').innerHTML = t.h1;
   document.getElementById('t-subline').textContent = t.subline;
   document.getElementById('t-sc-label').textContent = t.scLabel;
@@ -283,17 +252,9 @@ function applyLang() {
   document.getElementById('t-s2-title').textContent = t.s2Title;
   document.getElementById('t-s2-desc').textContent = t.s2Desc;
   document.getElementById('t-s2-chip').textContent = t.s2Chip;
-  document.getElementById('t-cta').textContent = selected >= 0 ? t.cta : t.ctaDisabled;
-  document.getElementById('t-reason-label').textContent = t.reasonLabel;
+  document.getElementById('t-grund-label').textContent = t.grundLabel;
   document.getElementById('t-tech-toggle').textContent = techOpen ? t.techToggleHide : t.techToggleShow;
   document.getElementById('t-reset').textContent = t.reset;
-}
-
-function selectCard(i) {
-  selected = i;
-  document.querySelectorAll('.scenario-card').forEach((c,j) => c.classList.toggle('selected', j === i));
-  document.getElementById('cta-run').disabled = false;
-  document.getElementById('t-cta').textContent = T[lang].cta;
 }
 
 async function callAPIs(c) {
@@ -332,9 +293,8 @@ async function callAPIs(c) {
   }
 }
 
-async function startFlow() {
-  if (selected < 0) return;
-  const c = CASES[selected];
+async function startFlow(i) {
+  const c = CASES[i];
   const t = T[lang];
 
   const apiPromise = callAPIs(c);
@@ -344,11 +304,11 @@ async function startFlow() {
   document.getElementById('phase-result').style.display = 'none';
 
   const stepEl = document.getElementById('check-step-text');
-  for (let i = 0; i < t.steps.length; i++) {
+  for (let s = 0; s < t.steps.length; s++) {
     stepEl.classList.remove('fade');
-    stepEl.textContent = t.steps[i];
+    stepEl.textContent = t.steps[s];
     await delay(220);
-    if (i < t.steps.length - 1) {
+    if (s < t.steps.length - 1) {
       stepEl.classList.add('fade');
       await delay(80);
     }
@@ -363,23 +323,24 @@ function showResult(result) {
   document.getElementById('phase-check').style.display = 'none';
   document.getElementById('phase-result').style.display = 'block';
 
-  const card = document.getElementById('result-card');
+  const block = document.getElementById('result-block');
   if (result.ok) {
-    card.className = 'result-card ok';
+    block.className = 'result-block result-ok';
     document.getElementById('result-icon').textContent = '\u2713';
     document.getElementById('result-verdict').textContent = t.verdictOk;
     document.getElementById('result-sub').textContent = t.subOk;
+    document.getElementById('result-reason').style.display = 'none';
   } else {
-    card.className = 'result-card blocked';
+    block.className = 'result-block result-blocked';
     document.getElementById('result-icon').textContent = '\u2715';
     document.getElementById('result-verdict').textContent = t.verdictBlock;
     document.getElementById('result-sub').textContent = t.subBlock;
+    const reasonKey = result.refusalCode in t.reasons ? result.refusalCode : 'default';
+    document.getElementById('grund-text').textContent = t.reasons[reasonKey];
+    document.getElementById('result-reason').style.display = 'block';
   }
 
-  const reasonKey = result.refusalCode in t.reasons ? result.refusalCode : 'default';
-  document.getElementById('reason-text').textContent = t.reasons[reasonKey];
   document.getElementById('tech-content').textContent = JSON.stringify(result.tech, null, 2);
-
   techOpen = false;
   document.getElementById('tech-box').classList.remove('open');
   document.getElementById('t-tech-toggle').textContent = t.techToggleShow;
@@ -392,11 +353,8 @@ function toggleTech() {
 }
 
 function reset() {
-  selected = -1;
   techOpen = false;
-  document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('cta-run').disabled = true;
-  document.getElementById('t-cta').textContent = T[lang].ctaDisabled;
+  document.getElementById('result-reason').style.display = 'block';
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-check').style.display = 'none';
   document.getElementById('phase-select').style.display = 'block';

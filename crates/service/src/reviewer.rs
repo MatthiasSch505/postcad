@@ -45,7 +45,7 @@ main{width:100%;max-width:560px}
 #phase-result{display:none;animation:fadein .25s ease-out}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 .res-section{padding:32px 0}
-.res-label{font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:16px}
+.res-label{font-size:.68rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:16px}
 .case-proc{font-size:1.35rem;font-weight:700;margin-bottom:14px;line-height:1.2}
 .case-row{font-size:.92rem;color:var(--sub);margin-bottom:6px;display:flex;gap:8px}
 .case-row-lbl{color:var(--dim)}
@@ -59,7 +59,7 @@ main{width:100%;max-width:560px}
 .chk-ok{color:var(--green);font-weight:700;font-size:1.1rem}
 .chk-fail{color:var(--red);font-weight:700;font-size:1.1rem}
 .check-ergebnis{font-size:.9rem;color:var(--sub);margin-top:14px;font-weight:600}
-.lab-item{font-size:.95rem;color:var(--sub);padding:6px 0}
+.lab-item{font-size:1.05rem;color:var(--sub);padding:6px 0}
 .lab-item::before{content:'— ';color:var(--dim)}
 .audit-row{display:flex;font-size:.85rem;padding:5px 0;gap:12px}
 .audit-row-lbl{color:var(--dim);flex-shrink:0;min-width:80px}

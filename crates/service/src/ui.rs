@@ -83,8 +83,13 @@ section{padding:0 24px}
 /* Processing */
 #phase-processing{display:none;padding:52px 0}
 .proc-filename{font-size:.78rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;margin-bottom:20px}
-.proc-step{font-size:.95rem;color:var(--sub);padding:6px 0;opacity:0;transition:opacity .15s}
+.proc-step{font-size:.95rem;color:var(--sub);padding:6px 0;opacity:0;transition:opacity .2s}
 .proc-step.visible{opacity:1}
+.upload-zone.has-file{border-color:var(--green);border-style:solid;cursor:default;pointer-events:none}
+.upload-zone.has-file .upload-icon{color:var(--green)}
+.proc-running{font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin:18px 0 10px;display:none}
+.proc-check-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:.93rem;color:var(--sub);opacity:0;transition:opacity .2s}
+.proc-check-row.visible{opacity:1}
 
 /* Result */
 #phase-result{display:none;animation:fadein .25s ease-out}
@@ -128,9 +133,9 @@ section{padding:0 24px}
   <div class="inner">
     <h1 class="hero-h1" id="t-h1">Nicht jeder Fall<br>darf produziert werden.</h1>
     <p class="hero-sub" id="t-sub">PostCAD entscheidet das automatisch.</p>
-    <a class="hero-cta" href="#demo">
+    <a class="hero-cta" href="#" onclick="startGuidedDemo(); return false;">
       <span id="t-cta">Demo ansehen</span>
-      <span class="hero-cta-arrow">↓</span>
+      <span class="hero-cta-arrow">→</span>
     </a>
   </div>
 </section>
@@ -183,10 +188,11 @@ section{padding:0 24px}
     <!-- processing -->
     <div id="phase-processing">
       <div class="proc-filename" id="proc-filename"></div>
-      <div class="proc-step" id="pstep-0"></div>
-      <div class="proc-step" id="pstep-1"></div>
-      <div class="proc-step" id="pstep-2"></div>
-      <div class="proc-step" id="pstep-3"></div>
+      <div class="proc-step" id="pstep-detected"></div>
+      <div class="proc-running" id="proc-running"></div>
+      <div class="proc-check-row" id="pcheck-0"><span id="t-pcheck-0"></span><span class="chk-ok">✓</span></div>
+      <div class="proc-check-row" id="pcheck-1"><span id="t-pcheck-1"></span><span class="chk-ok">✓</span></div>
+      <div class="proc-check-row" id="pcheck-2"><span id="t-pcheck-2"></span><span class="chk-ok">✓</span></div>
     </div>
 
     <!-- result -->
@@ -256,7 +262,9 @@ const T = {
     f3Ok: 'FREIGEGEBEN', f3OkSub: 'Weitergabe möglich',
     uploadTitle: 'CAD-Datei hochladen',
     uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
-    procSteps: ['Datei erkannt', 'Falldaten werden gelesen', 'Routing wird geprüft', 'Entscheidung wird erstellt'],
+    fileDetected: 'Datei erkannt',
+    procRunning: 'Prüfung läuft\u2026',
+    pcheckLabels: ['Materialprüfung', 'Jurisdiktionsprüfung', 'Fertigungsprüfung'],
     caseLabel: 'Fall erkannt',
     materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
     decisionLabel: 'Entscheidung',
@@ -281,7 +289,9 @@ const T = {
     f3Ok: 'APPROVED', f3OkSub: 'Safe to proceed',
     uploadTitle: 'Upload CAD file',
     uploadSub: 'Drop file here or select (STL, OBJ)',
-    procSteps: ['File detected', 'Case data being read', 'Routing being checked', 'Decision being created'],
+    fileDetected: 'File detected',
+    procRunning: 'Running checks\u2026',
+    pcheckLabels: ['Material check', 'Jurisdiction check', 'Manufacturing check'],
     caseLabel: 'Case detected',
     materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
     decisionLabel: 'Decision',
@@ -299,6 +309,13 @@ const T = {
 };
 
 const FILE_CASES = {
+  'krone_zahn_36.stl': {
+    proc: 'Krone \u00b7 Zahn 3\u20136',
+    material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
+    ok: true,
+    checks: {material: true, jurisdiction: true, manufacturing: true},
+    labs: ['Labor Berlin', 'Labor M\u00fcnchen', 'Industriepool EU'],
+  },
   'krone_3-6_de.stl': {
     proc: 'Krone \u00b7 Zahn 3\u20136',
     material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
@@ -373,21 +390,56 @@ function loadDemo(filename) {
 async function startProcessing(filename) {
   const t = T[lang];
   document.getElementById('proc-filename').textContent = filename;
-  for (let i = 0; i < 4; i++) {
-    const el = document.getElementById('pstep-' + i);
-    el.textContent = t.procSteps[i];
-    el.classList.remove('visible');
+  const detectedEl = document.getElementById('pstep-detected');
+  detectedEl.textContent = '';
+  detectedEl.style.opacity = '0';
+  const runEl = document.getElementById('proc-running');
+  runEl.style.display = 'none';
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('t-pcheck-' + i).textContent = t.pcheckLabels[i];
+    document.getElementById('pcheck-' + i).classList.remove('visible');
   }
   document.getElementById('phase-upload').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'block';
   document.getElementById('phase-result').style.display = 'none';
 
-  for (let i = 0; i < 4; i++) {
-    await delay(i === 0 ? 80 : 260);
-    document.getElementById('pstep-' + i).classList.add('visible');
+  await delay(250);
+  detectedEl.textContent = t.fileDetected;
+  detectedEl.style.opacity = '1';
+
+  await delay(550);
+  runEl.textContent = t.procRunning;
+  runEl.style.display = 'block';
+
+  for (let i = 0; i < 3; i++) {
+    await delay(520);
+    document.getElementById('pcheck-' + i).classList.add('visible');
   }
-  await delay(220);
+  await delay(400);
   showResult(filename);
+}
+
+async function startGuidedDemo() {
+  const t = T[lang];
+  const filename = 'krone_zahn_36.stl';
+  document.getElementById('hero').style.display = 'none';
+  document.getElementById('flow').style.display = 'none';
+  document.getElementById('demo').style.borderTop = 'none';
+  document.getElementById('demo').style.paddingTop = '120px';
+  window.scrollTo(0, 0);
+  document.getElementById('phase-upload').style.display = 'block';
+  document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-result').style.display = 'none';
+
+  await delay(900);
+  document.getElementById('upload-zone').classList.add('has-file');
+  document.getElementById('upload-icon').textContent = '\u2713';
+  document.getElementById('upload-icon').style.color = 'var(--green)';
+  document.getElementById('t-upload-title').textContent = filename;
+  document.getElementById('t-upload-sub').textContent = t.fileDetected;
+
+  await delay(900);
+  startProcessing(filename);
 }
 
 function showResult(filename) {
@@ -442,6 +494,12 @@ function setCheck(id, pass) {
 
 function resetDemo() {
   lastResultOk = null;
+  const t = T[lang];
+  document.getElementById('upload-zone').classList.remove('has-file');
+  document.getElementById('upload-icon').textContent = '\u2191';
+  document.getElementById('upload-icon').style.color = '';
+  document.getElementById('t-upload-title').textContent = t.uploadTitle;
+  document.getElementById('t-upload-sub').textContent = t.uploadSub;
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-upload').style.display = 'block';

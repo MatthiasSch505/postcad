@@ -555,6 +555,11 @@ pre.proof-json{
     </div>
     <div class="panel-body">
 
+      <div class="det-note" style="margin-bottom:.85rem;font-size:.75rem;line-height:1.5">
+        Decision is based on explicit regulatory, SLA, and manufacturing eligibility constraints.
+        Blocked cases do not proceed to manufacturing.
+      </div>
+
       <div class="result-empty" id="result-empty">
         <span class="result-empty-icon">⬡</span>
         Fill in the case form and click<br><strong>Evaluate Case</strong> to see the decision.
@@ -879,25 +884,30 @@ function evaluateCandidate(m, caseObj) {
   const jurCountry = JUR_TO_COUNTRY[caseObj.jurisdiction] || caseObj.jurisdiction.toLowerCase();
   return [
     {
-      label: 'manufacturer active',
-      pass:  m.is_active === true,
+      label:  'manufacturer active',
+      reason: 'manufacturer is not active',
+      pass:   m.is_active === true,
     },
     {
-      label: `jurisdiction (${caseObj.jurisdiction}) served`,
-      pass:  m.jurisdictions_served.includes(jurCountry)
-          || m.jurisdictions_served.includes(caseObj.jurisdiction),
+      label:  `jurisdiction (${caseObj.jurisdiction}) served`,
+      reason: `jurisdiction not met: ${caseObj.jurisdiction} not in served list`,
+      pass:   m.jurisdictions_served.includes(jurCountry)
+           || m.jurisdictions_served.includes(caseObj.jurisdiction),
     },
     {
-      label: `procedure (${caseObj.procedure}) supported`,
-      pass:  m.capabilities.includes(caseObj.procedure),
+      label:  `procedure (${caseObj.procedure}) supported`,
+      reason: `procedure not met: ${caseObj.procedure} not in capability set`,
+      pass:   m.capabilities.includes(caseObj.procedure),
     },
     {
-      label: `material (${caseObj.material}) supported`,
-      pass:  m.materials_supported.includes(caseObj.material),
+      label:  `material (${caseObj.material}) supported`,
+      reason: `material not met: ${caseObj.material} not in supported materials`,
+      pass:   m.materials_supported.includes(caseObj.material),
     },
     {
-      label: 'attestation valid',
-      pass:  m.attestation_statuses.includes('verified'),
+      label:  'attestation valid',
+      reason: 'attestation not met: no verified attestation on record',
+      pass:   m.attestation_statuses.includes('verified'),
     },
   ];
 }
@@ -1002,7 +1012,7 @@ function renderWhy(receipt, caseObj) {
                     : r.allPass  ? '✅ eligible'
                     :              '❌ rejected';
     const reasonTxt = (!r.allPass && firstFail)
-      ? `— ${firstFail.label}` : '';
+      ? `— ${firstFail.reason || firstFail.label}` : '';
     mfrsHtml +=
       `<div class="${rowCls}">` +
       `<span class="why-mfr-name">${esc(r.m.display_name)}</span>` +

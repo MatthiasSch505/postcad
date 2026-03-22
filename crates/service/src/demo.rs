@@ -334,6 +334,36 @@ pre.proof-json{
   max-height:260px;overflow-y:auto;line-height:1.5;
 }
 
+/* ── why section ── */
+.why-block{margin-top:1rem;padding-top:1rem;border-top:1px solid #1c2128}
+.why-block + .why-block{margin-top:.75rem}
+.why-block-title{
+  font-size:.64rem;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;color:#484f58;margin-bottom:.55rem;
+}
+.why-check{
+  display:flex;align-items:baseline;gap:.45rem;
+  font-size:.8rem;margin-bottom:.3rem;
+}
+.why-icon{width:14px;text-align:center;flex-shrink:0;font-style:normal}
+.why-pass{color:#6e7681}.why-pass .why-icon{color:#3fb950}
+.why-fail{color:#8b6166}.why-fail .why-icon{color:#f85149}
+.why-verdict{
+  margin-top:.75rem;font-size:.88rem;font-weight:700;
+}
+.why-verdict-pass{color:#3fb950}
+.why-verdict-fail{color:#f85149}
+.why-mfr{
+  display:flex;align-items:baseline;gap:.45rem;
+  font-size:.8rem;margin-bottom:.35rem;
+}
+.why-mfr-name{color:#8b949e;font-weight:600}
+.why-mfr-sel .why-mfr-name{color:#3fb950}
+.why-mfr-out .why-mfr-name{color:#484f58}
+.why-mfr-arrow{color:#2d333b;flex-shrink:0}
+.why-mfr-status{font-size:.75rem;color:#6e7681}
+.why-mfr-reason{font-size:.72rem;color:#484f58;margin-left:.15rem}
+
 /* ── spinner ── */
 .spin{
   display:inline-block;width:13px;height:13px;
@@ -611,6 +641,22 @@ pre.proof-json{
 
       </div>
 
+      <!-- ── WHY THIS DECISION ── -->
+      <div id="why-section" style="display:none">
+
+        <div class="why-block">
+          <div class="why-block-title">Why this decision?</div>
+          <div id="why-checks"></div>
+          <div id="why-verdict"></div>
+        </div>
+
+        <div class="why-block">
+          <div class="why-block-title">Evaluated manufacturers</div>
+          <div id="why-mfrs"></div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
@@ -808,6 +854,7 @@ async function runDemo(btn) {
     const policy  = rr.json.derived_policy;
 
     renderResult(receipt, null, caseObj);
+    renderWhy(receipt, caseObj);             // ← decision explanation
     renderGraph(receipt, caseObj);           // ← constraint evaluation
     renderDeterminism(receipt);              // ← hash commitments
     setBtn(btn, true, '<span class="spin"></span> Verifying\u2026');
@@ -821,7 +868,7 @@ async function runDemo(btn) {
   } catch(e) {
     showError('Network error: ' + e.message);
   } finally {
-    setBtn(btn, false, 'Route Case');
+   setBtn(btn, false, 'Evaluate Case');
   }
 }
 
@@ -907,11 +954,73 @@ function renderDeterminism(receipt) {
   document.getElementById('det-section').style.display = '';
 }
 
+// ── Decision explanation (reuses evaluateCandidate — no new logic) ───────────
+
+function renderWhy(receipt, caseObj) {
+  const routed = receipt.outcome === 'routed';
+
+  // Evaluate every manufacturer using the existing constraint function.
+  const results = REGISTRY.map(m => {
+    const checks = evaluateCandidate(m, caseObj);
+    return {
+      m,
+      checks,
+      allPass:  checks.every(c => c.pass),
+      selected: m.manufacturer_id === receipt.selected_candidate_id,
+    };
+  });
+
+  // ── "Why this decision?" ──
+  // For each check position: pass if any manufacturer passes it (satisfiable),
+  // fail if no manufacturer passes it (hard blocker).
+  const checkCount = results[0].checks.length;
+  let checksHtml = '';
+  for (let i = 0; i < checkCount; i++) {
+    const label   = results[0].checks[i].label;
+    const anyPass = results.some(r => r.checks[i].pass);
+    const cls     = anyPass ? 'why-pass' : 'why-fail';
+    const icon    = anyPass ? '✔' : '✖';
+    checksHtml +=
+      `<div class="why-check ${cls}">` +
+      `<i class="why-icon">${icon}</i>${esc(label)}</div>`;
+  }
+  document.getElementById('why-checks').innerHTML = checksHtml;
+
+  const verdictEl  = document.getElementById('why-verdict');
+  verdictEl.innerHTML = routed
+    ? `<span class="why-verdict-pass">→ Decision: Approved</span>`
+    : `<span class="why-verdict-fail">→ Decision: Blocked</span>`;
+
+  // ── "Evaluated manufacturers" ──
+  let mfrsHtml = '';
+  for (const r of results) {
+    const firstFail = r.checks.find(c => !c.pass);
+    const rowCls    = r.selected ? 'why-mfr why-mfr-sel'
+                    : r.allPass  ? 'why-mfr'
+                    :              'why-mfr why-mfr-out';
+    const statusTxt = r.selected ? '✅ selected'
+                    : r.allPass  ? '✅ eligible'
+                    :              '❌ rejected';
+    const reasonTxt = (!r.allPass && firstFail)
+      ? `— ${firstFail.label}` : '';
+    mfrsHtml +=
+      `<div class="${rowCls}">` +
+      `<span class="why-mfr-name">${esc(r.m.display_name)}</span>` +
+      `<span class="why-mfr-arrow">→</span>` +
+      `<span class="why-mfr-status">${statusTxt}</span>` +
+      (reasonTxt ? `<span class="why-mfr-reason">${esc(reasonTxt)}</span>` : '') +
+      `</div>`;
+  }
+  document.getElementById('why-mfrs').innerHTML = mfrsHtml;
+  document.getElementById('why-section').style.display = '';
+}
+
 // ── Result rendering ──────────────────────────────────────────────────────────
 
 function hideResult() {
   document.getElementById('result-empty').style.display  = '';
   document.getElementById('result-card').style.display   = 'none';
+  document.getElementById('why-section').style.display   = 'none';
   document.getElementById('graph-section').style.display = 'none';
   document.getElementById('det-section').style.display   = 'none';
   document.getElementById('proof-empty').style.display   = '';

@@ -133,6 +133,11 @@ section{padding:0 24px}
   <div class="inner">
     <h1 class="hero-h1" id="t-h1">Nicht jeder Fall<br>darf produziert werden.</h1>
     <p class="hero-sub" id="t-sub">PostCAD entscheidet das automatisch.</p>
+    <div class="det-note" style="margin-top:.9rem;max-width:40rem;font-size:.8rem;line-height:1.6">
+      This system determines whether a dental case is allowed to enter production.<br>
+      Decisions are based on regulatory, SLA, and manufacturing eligibility constraints.<br>
+      Blocked cases do not proceed to manufacturing.
+    </div>
     <a class="hero-cta" href="#" onclick="startGuidedDemo(); return false;">
       <span id="t-cta">Demo ansehen</span>
       <span class="hero-cta-arrow">→</span>

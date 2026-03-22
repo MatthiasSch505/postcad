@@ -149,6 +149,14 @@ main{width:100%;max-width:560px}
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-status-lbl">Status</span><span class="audit-row-val" id="audit-status"></span></div>
     </div>
 
+    <div class="res-section" id="proof-section" style="display:none">
+      <div class="res-label">Proof &amp; Receipt</div>
+      <details open>
+        <summary style="font-size:.83rem;color:var(--sub);cursor:pointer;padding:4px 0">Receipt JSON</summary>
+        <pre id="proof-receipt-json" style="margin-top:8px;font-size:.7rem;color:var(--sub);font-family:'SF Mono','Fira Code',monospace;white-space:pre-wrap;word-break:break-all;line-height:1.5;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;max-height:260px;overflow-y:auto"></pre>
+      </details>
+    </div>
+
     <div class="res-section" style="border-top:none;padding-top:8px">
       <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neue Datei hochladen</span></button>
     </div>
@@ -203,6 +211,17 @@ const T = {
     auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     reset: 'Upload new file',
   },
+};
+
+const REGISTRY = [
+  {manufacturer_id:"pilot-de-001",display_name:"Alpha Dental GmbH",country:"germany",is_active:true,capabilities:["crown","bridge"],materials_supported:["zirconia","pmma"],jurisdictions_served:["germany"],attestation_statuses:["verified"],sla_days:5},
+  {manufacturer_id:"pilot-de-002",display_name:"Beta Zahntechnik GmbH",country:"germany",is_active:true,capabilities:["crown","veneer"],materials_supported:["zirconia","emax"],jurisdictions_served:["germany"],attestation_statuses:["verified"],sla_days:3},
+  {manufacturer_id:"pilot-de-003",display_name:"Gamma Dental GmbH",country:"germany",is_active:true,capabilities:["crown","implant"],materials_supported:["zirconia","titanium"],jurisdictions_served:["germany"],attestation_statuses:["verified"],sla_days:7},
+];
+
+const FILE_CASES_API = {
+  'krone_3-6_de.stl': {case_id:'f3000003-0000-0000-0000-000000000003',jurisdiction:'DE',routing_policy:'allow_domestic_and_cross_border',patient_country:'germany',manufacturer_country:'germany',material:'emax',procedure:'crown',file_type:'stl'},
+  'bruecke_usa.stl':  {case_id:'f4000004-0000-0000-0000-000000000004',jurisdiction:'US',routing_policy:'allow_domestic_and_cross_border',patient_country:'united_states',manufacturer_country:'germany',material:'zirconia',procedure:'bridge',file_type:'stl'},
 };
 
 const FILE_CASES = {
@@ -329,6 +348,22 @@ function showResult(filename) {
 
   document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-result').style.display = 'block';
+  fetchAndRenderProof(filename);
+}
+
+async function fetchAndRenderProof(filename) {
+  const caseObj = FILE_CASES_API[filename.toLowerCase()];
+  if (!caseObj) return;
+  try {
+    const r = await fetch('/route', {method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({case:caseObj,registry_snapshot:REGISTRY,routing_config:{jurisdiction:caseObj.jurisdiction,routing_policy:caseObj.routing_policy}})});
+    if (!r.ok) return;
+    const data = await r.json();
+    const receipt = data.receipt;
+    if (!receipt) return;
+    document.getElementById('proof-receipt-json').textContent = JSON.stringify(receipt, null, 2);
+    document.getElementById('proof-section').style.display = '';
+  } catch(e) {}
 }
 
 function setCheck(id, pass) {
@@ -342,6 +377,8 @@ function resetDemo() {
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-upload').style.display = 'block';
+  document.getElementById('proof-section').style.display = 'none';
+  document.getElementById('proof-receipt-json').textContent = '';
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }

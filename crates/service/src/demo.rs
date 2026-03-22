@@ -373,6 +373,27 @@ pre.proof-json{
 <!-- ── Main grid ── -->
 <div class="page">
 
+<!-- ── NARRATIVE INTRO ── -->
+<div class="full-section" id="intro-section" style="display:block">
+  <div class="full-section-head">
+    <div class="full-section-title">PostCAD — Manufacturing Decision Layer</div>
+    <div class="full-section-sub">
+      Today, the decision whether a dental case should proceed into production is often implicit, inconsistent, and not auditable.
+    </div>
+  </div>
+  <div class="full-section-body">
+    <div class="det-note">
+      PostCAD makes that decision explicit.
+      For each case, the system:
+      <br>1. evaluates whether the case is allowed to proceed
+      <br>2. routes only if allowed
+      <br>3. generates a verifiable receipt of the decision
+      <br><br>
+      This is a live review surface for the routing and verification kernel, not a finished product UI.
+    </div>
+  </div>
+</div>
+
   <!-- ── LEFT: Case Intake ── -->
   <div class="panel" id="left-panel">
     <div class="panel-head">
@@ -491,7 +512,7 @@ pre.proof-json{
 
       <!-- Route Case CTA -->
       <button class="btn-route" id="btn-route" onclick="runDemo(this)">
-        Route Case
+        Evaluate Case
       </button>
 
     </div>
@@ -500,13 +521,13 @@ pre.proof-json{
   <!-- ── RIGHT: Routing Decision ── -->
   <div class="panel" id="right-panel">
     <div class="panel-head">
-      <div class="panel-head-title">Routing Decision</div>
+      <div class="panel-head-title">Go / No-Go Decision</div>
     </div>
     <div class="panel-body">
 
       <div class="result-empty" id="result-empty">
         <span class="result-empty-icon">⬡</span>
-        Fill in the case form and click<br><strong>Route Case</strong> to see the decision.
+        Fill in the case form and click<br><strong>Evaluate Case</strong> to see the decision.
       </div>
 
       <div id="result-card" style="display:none">

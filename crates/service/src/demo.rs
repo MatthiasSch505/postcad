@@ -412,6 +412,11 @@ pre.proof-json{
     </div>
   </div>
   <div class="full-section-body">
+    <div class="det-note" style="margin-top:.6rem;font-size:.8rem;line-height:1.5">
+      This system determines whether a dental case is allowed to enter production.<br>
+      Decisions are based on regulatory, SLA, and manufacturing eligibility constraints.<br>
+      Blocked cases do not proceed to manufacturing.
+    </div>
     <div class="det-note">
       PostCAD makes that decision explicit.
       For each case, the system:

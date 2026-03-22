@@ -411,12 +411,12 @@ pre.proof-json{
       Today, the decision whether a dental case should proceed into production is often implicit, inconsistent, and not auditable.
     </div>
   </div>
+  <div class="det-note" style="margin-top:.6rem;font-size:.8rem;line-height:1.5">
+    This system determines whether a dental case is allowed to enter production.<br>
+    Decisions are based on regulatory, SLA, and manufacturing eligibility constraints.<br>
+    Blocked cases do not proceed to manufacturing.
+  </div>
   <div class="full-section-body">
-    <div class="det-note" style="margin-top:.6rem;font-size:.8rem;line-height:1.5">
-      This system determines whether a dental case is allowed to enter production.<br>
-      Decisions are based on regulatory, SLA, and manufacturing eligibility constraints.<br>
-      Blocked cases do not proceed to manufacturing.
-    </div>
     <div class="det-note">
       PostCAD makes that decision explicit.
       For each case, the system:

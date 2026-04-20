@@ -13,11 +13,15 @@ use tower::util::ServiceExt;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn make_app(tmp: &tempfile::TempDir) -> axum::Router {
-    let case_store = Arc::new(postcad_service::CaseStore::new(tmp.path().join("cases")));
-    let receipt_store = Arc::new(postcad_service::ReceiptStore::new(
-        tmp.path().join("receipts"),
-    ));
-    postcad_service::app_with_stores(case_store, receipt_store)
+    postcad_service::app_with_all_stores(
+        Arc::new(postcad_service::CaseStore::new(tmp.path().join("cases"))),
+        Arc::new(postcad_service::ReceiptStore::new(tmp.path().join("receipts"))),
+        Arc::new(postcad_service::DispatchStore::new(tmp.path().join("dispatch"))),
+        Arc::new(postcad_service::PolicyStore::new(tmp.path().join("policies"))),
+        Arc::new(postcad_service::VerificationStore::new(tmp.path().join("verification"))),
+        Arc::new(postcad_service::DispatchCommitmentStore::new(tmp.path().join("commitments"))),
+        Arc::new(postcad_service::DecisionStore::new(tmp.path().join("decisions"))),
+    )
 }
 
 async fn post_json(app: axum::Router, uri: &str, body: Value) -> (StatusCode, Value) {
@@ -57,7 +61,7 @@ fn empty_registry() -> Value {
     json!([])
 }
 
-// ── Store helper ──────────────────────────────────────────────────────────────
+// ── Store helpers ─────────────────────────────────────────────────────────────
 
 /// POST /cases and assert 201, returning the case_id.
 async fn store_case(app: axum::Router, case: Value) -> String {
@@ -65,6 +69,22 @@ async fn store_case(app: axum::Router, case: Value) -> String {
     let (status, _) = post_json(app, "/cases", case).await;
     assert_eq!(status, StatusCode::CREATED);
     case_id
+}
+
+/// POST /decisions with a "proceed" decision for the given case_id.
+async fn record_proceed_decision(app: axum::Router, case_id: &str) {
+    let (status, body) = post_json(
+        app,
+        "/decisions",
+        json!({
+            "case_id": case_id,
+            "actor_role": "reviewer",
+            "actor_id": "test-actor",
+            "decision_type": "proceed",
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "record_proceed_decision failed: {body}");
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -77,6 +97,7 @@ async fn route_stored_case_generates_receipt() {
 
     let case = pilot_case();
     let case_id = store_case(make_app(&tmp), case).await;
+    record_proceed_decision(make_app(&tmp), &case_id).await;
 
     let (status, body) = post_json(
         make_app(&tmp),
@@ -105,6 +126,7 @@ async fn route_persists_receipt_file() {
 
     let case = pilot_case();
     let case_id = store_case(make_app(&tmp), case).await;
+    record_proceed_decision(make_app(&tmp), &case_id).await;
 
     let (status, body) = post_json(
         make_app(&tmp),
@@ -135,6 +157,7 @@ async fn route_returns_expected_fields() {
 
     let case = pilot_case();
     let case_id = store_case(make_app(&tmp), case).await;
+    record_proceed_decision(make_app(&tmp), &case_id).await;
 
     let (status, body) = post_json(
         make_app(&tmp),
@@ -175,6 +198,7 @@ async fn route_with_empty_registry_returns_routing_refused() {
 
     let case = pilot_case();
     let case_id = store_case(make_app(&tmp), case).await;
+    record_proceed_decision(make_app(&tmp), &case_id).await;
 
     let (status, body) = post_json(
         make_app(&tmp),
@@ -195,6 +219,7 @@ async fn route_is_deterministic() {
 
     let case = pilot_case();
     let case_id = store_case(make_app(&tmp), case).await;
+    record_proceed_decision(make_app(&tmp), &case_id).await;
 
     let route_body = json!({ "registry": pilot_registry(), "config": pilot_config() });
 

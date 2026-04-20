@@ -51,6 +51,9 @@ fn make_app(tmp: &tempfile::TempDir) -> axum::Router {
         Arc::new(postcad_service::DispatchCommitmentStore::new(
             tmp.path().join("commitments"),
         )),
+        Arc::new(postcad_service::DecisionStore::new(
+            tmp.path().join("decisions"),
+        )),
     )
 }
 

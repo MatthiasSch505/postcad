@@ -14,6 +14,9 @@ use postcad_cli::{
 use serde_json::{json, Value};
 
 use crate::case_store::{CaseStore, CaseStoreError, StoreOutcome};
+use crate::decision::{
+    build_decision_record, compute_case_input_hash, validate_decision, CreateDecisionRequest,
+};
 use crate::demo::DEMO_HTML;
 use crate::dispatch_commitment::{DispatchCommitmentError, DispatchCommitmentStore, DispatchRecord};
 use crate::receipt_store::{ReceiptStore, ReceiptStoreError};
@@ -515,6 +518,61 @@ pub async fn get_case(
 
 // ── Stored-case routing endpoint ──────────────────────────────────────────────
 
+/// POST /decisions
+///
+/// Create a decision record for a stored case. The decision gate must be
+/// satisfied before `POST /cases/:case_id/route` will proceed.
+///
+/// Success (200):  the created `DecisionRecord` as JSON
+/// Not found (404): case not found
+/// Unprocessable (422): validation error (e.g. missing reason_code)
+pub async fn create_decision(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateDecisionRequest>,
+) -> impl IntoResponse {
+    // Look up the case to compute input_hash.
+    let case_value = match state.case_store.get(&req.case_id) {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": {"code": "case_not_found",
+                    "message": format!("case '{}' not found", req.case_id)}})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    // Validate the decision (e.g. reason_code required for certain types).
+    if let Err(e) = validate_decision(&req.decision_type, &req.reason_code) {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "decision_validation_error", "message": e.to_string()}})),
+        )
+            .into_response();
+    }
+
+    let input_hash = compute_case_input_hash(&case_value);
+    let record = build_decision_record(req, input_hash);
+
+    if let Err(e) = state.decision_store.store(&record) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+        )
+            .into_response();
+    }
+
+    (StatusCode::OK, Json(serde_json::to_value(&record).unwrap())).into_response()
+}
+
 /// POST /cases/:case_id/route
 ///
 /// Request body: `{"registry": [...], "config": {...}}`
@@ -551,7 +609,48 @@ pub async fn route_stored_case(
         }
     };
 
-    // 2. Extract registry and config from the request body.
+    // 2. Decision gate — a proceed/proceed_with_risk decision must exist for this case.
+    let decision = match state.decision_store.get_by_case_id(&case_id) {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({"error": {"code": "decision_missing",
+                    "message": format!("no decision recorded for case '{case_id}'; POST /decisions first")}})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": {"code": "internal_error", "message": e.to_string()}})),
+            )
+                .into_response();
+        }
+    };
+
+    // 2a. Verify the decision was made against the current case content.
+    let current_input_hash = compute_case_input_hash(&case_value);
+    if decision.input_hash != current_input_hash {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "decision_case_mismatch",
+                "message": "decision input_hash does not match the stored case; re-record the decision"}})),
+        )
+            .into_response();
+    }
+
+    // 2b. Only proceed/proceed_with_risk decisions unlock routing.
+    if !decision.decision_type.is_routable() {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({"error": {"code": "decision_not_routable",
+                "message": format!("decision_type '{}' does not allow routing", decision.decision_type)}})),
+        )
+            .into_response();
+    }
+
+    // 3. Extract registry and config from the request body.
     let registry = &body["registry"];
     let config = &body["config"];
     if registry.is_null() || config.is_null() {
@@ -582,8 +681,13 @@ pub async fn route_stored_case(
     let receipt = &result.receipt;
     let receipt_hash = &receipt.receipt_hash;
 
-    // 4. Persist the receipt (routed or refused — both are valid audit artifacts).
-    let receipt_json = serde_json::to_string_pretty(receipt).unwrap();
+    // 4. Persist the receipt — inject decision fields AFTER the kernel has
+    //    computed receipt_hash so the hash computation is unaffected.
+    let mut receipt_value = serde_json::to_value(receipt).unwrap();
+    receipt_value["decision_id"] = json!(decision.decision_id);
+    receipt_value["decision_hash"] = json!(decision.decision_hash);
+    receipt_value["decision_type"] = json!(decision.decision_type.to_string());
+    let receipt_json = serde_json::to_string_pretty(&receipt_value).unwrap();
     if let Err(e) = state.receipt_store.store(receipt_hash, &receipt_json) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -822,6 +926,37 @@ pub async fn dispatch_verify(
             Ok(()) => "VERIFIED",
             Err(_) => "INVALID",
         };
+
+    // 5b. If the receipt has decision linkage fields, verify them.
+    let result_str = if result_str == "VERIFIED" {
+        if let Some(stored_decision_id) = receipt_value["decision_id"].as_str() {
+            let case_id = receipt_value["routing_input"]["case_id"]
+                .as_str()
+                .unwrap_or("");
+            match state.decision_store.get_by_case_id(case_id) {
+                Ok(Some(decision)) => {
+                    let expected_dtype = decision.decision_type.to_string();
+                    let dtype_ok = receipt_value["decision_type"].as_str()
+                        == Some(expected_dtype.as_str());
+                    let id_ok = decision.decision_id == stored_decision_id;
+                    let hash_ok = receipt_value["decision_hash"].as_str()
+                        == Some(decision.decision_hash.as_str());
+                    let routable = decision.decision_type.is_routable();
+                    if id_ok && hash_ok && dtype_ok && routable {
+                        "VERIFIED"
+                    } else {
+                        "INVALID"
+                    }
+                }
+                Ok(None) => "INVALID",
+                Err(_) => "INVALID",
+            }
+        } else {
+            "VERIFIED"
+        }
+    } else {
+        result_str
+    };
 
     // 6. Persist the verification result.
     let timestamp = Utc::now().to_rfc3339();

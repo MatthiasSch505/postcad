@@ -1,4 +1,5 @@
 mod case_store;
+mod decision;
 mod demo;
 mod dispatch_commitment;
 mod dispatch_store;
@@ -14,6 +15,7 @@ use std::sync::Arc;
 use axum::{routing, Router};
 
 pub use case_store::CaseStore;
+pub use decision::DecisionStore;
 pub use dispatch_commitment::DispatchCommitmentStore;
 pub use dispatch_store::DispatchStore;
 pub use policy_store::PolicyStore;
@@ -28,6 +30,7 @@ pub struct AppState {
     pub case_store: Arc<CaseStore>,
     pub receipt_store: Arc<ReceiptStore>,
     pub policy_store: Arc<PolicyStore>,
+    pub decision_store: Arc<DecisionStore>,
 }
 
 /// Shared application state for the dispatch endpoint.
@@ -42,6 +45,7 @@ pub struct DispatchVerifyState {
     pub receipt_store: Arc<ReceiptStore>,
     pub policy_store: Arc<PolicyStore>,
     pub verification_store: Arc<VerificationStore>,
+    pub decision_store: Arc<DecisionStore>,
 }
 
 /// Build the service router with default storage paths.
@@ -53,6 +57,7 @@ pub fn app() -> Router {
         Arc::new(PolicyStore::new("data/policies")),
         Arc::new(VerificationStore::new("data/verification")),
         Arc::new(DispatchCommitmentStore::new("data/commitments")),
+        Arc::new(DecisionStore::new("data/decisions")),
     )
 }
 
@@ -69,6 +74,7 @@ pub fn app_with_store(store: Arc<CaseStore>) -> Router {
         Arc::new(PolicyStore::new("data/policies")),
         Arc::new(VerificationStore::new("data/verification")),
         Arc::new(DispatchCommitmentStore::new("data/commitments")),
+        Arc::new(DecisionStore::new("data/decisions")),
     )
 }
 
@@ -84,13 +90,14 @@ pub fn app_with_stores(case_store: Arc<CaseStore>, receipt_store: Arc<ReceiptSto
         Arc::new(PolicyStore::new("data/policies")),
         Arc::new(VerificationStore::new("data/verification")),
         Arc::new(DispatchCommitmentStore::new("data/commitments")),
+        Arc::new(DecisionStore::new("data/decisions")),
     )
 }
 
 /// Build the service router with explicit control over all storage layers.
 ///
 /// Use this in tests that need to inject temporary directories for dispatch,
-/// policy, verification, or commitment storage.
+/// policy, verification, commitment, or decision storage.
 pub fn app_with_all_stores(
     case_store: Arc<CaseStore>,
     receipt_store: Arc<ReceiptStore>,
@@ -98,6 +105,7 @@ pub fn app_with_all_stores(
     policy_store: Arc<PolicyStore>,
     verification_store: Arc<VerificationStore>,
     commitment_store: Arc<DispatchCommitmentStore>,
+    decision_store: Arc<DecisionStore>,
 ) -> Router {
     // Case intake routes: State<Arc<CaseStore>>.
     let case_routes = Router::new()
@@ -116,16 +124,18 @@ pub fn app_with_all_stores(
         .route("/routes", routing::get(handlers::list_routes))
         .with_state(receipt_store.clone());
 
-    // Case routing endpoint: State<Arc<AppState>> (needs case, receipt, and policy stores).
+    // Case routing endpoint: State<Arc<AppState>> (needs case, receipt, policy, decision stores).
     let route_endpoint = Router::new()
         .route(
             "/cases/:case_id/route",
             routing::post(handlers::route_stored_case),
         )
+        .route("/decisions", routing::post(handlers::create_decision))
         .with_state(Arc::new(AppState {
             case_store,
             receipt_store: receipt_store.clone(),
             policy_store: policy_store.clone(),
+            decision_store: decision_store.clone(),
         }));
 
     // Dispatch endpoint: State<Arc<DispatchState>>.
@@ -150,6 +160,7 @@ pub fn app_with_all_stores(
             receipt_store,
             policy_store,
             verification_store,
+            decision_store,
         }));
 
     // Dispatch Commitment Layer endpoints: State<Arc<DispatchCommitmentStore>>.

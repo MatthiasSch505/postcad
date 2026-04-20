@@ -13,11 +13,15 @@ use tower::util::ServiceExt;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn make_app(tmp: &tempfile::TempDir) -> axum::Router {
-    let case_store = Arc::new(postcad_service::CaseStore::new(tmp.path().join("cases")));
-    let receipt_store = Arc::new(postcad_service::ReceiptStore::new(
-        tmp.path().join("receipts"),
-    ));
-    postcad_service::app_with_stores(case_store, receipt_store)
+    postcad_service::app_with_all_stores(
+        Arc::new(postcad_service::CaseStore::new(tmp.path().join("cases"))),
+        Arc::new(postcad_service::ReceiptStore::new(tmp.path().join("receipts"))),
+        Arc::new(postcad_service::DispatchStore::new(tmp.path().join("dispatch"))),
+        Arc::new(postcad_service::PolicyStore::new(tmp.path().join("policies"))),
+        Arc::new(postcad_service::VerificationStore::new(tmp.path().join("verification"))),
+        Arc::new(postcad_service::DispatchCommitmentStore::new(tmp.path().join("commitments"))),
+        Arc::new(postcad_service::DecisionStore::new(tmp.path().join("decisions"))),
+    )
 }
 
 async fn get_json(app: axum::Router, uri: &str) -> (StatusCode, Value) {
@@ -74,6 +78,19 @@ async fn store_and_route(tmp: &tempfile::TempDir, case: Value) -> String {
 
     let (s1, _) = post_json(make_app(tmp), "/cases", case).await;
     assert_eq!(s1, StatusCode::CREATED);
+
+    let (sd, db) = post_json(
+        make_app(tmp),
+        "/decisions",
+        json!({
+            "case_id": &case_id,
+            "actor_role": "reviewer",
+            "actor_id": "test-actor",
+            "decision_type": "proceed",
+        }),
+    )
+    .await;
+    assert_eq!(sd, StatusCode::OK, "decision failed: {db}");
 
     let (s2, body) = post_json(
         make_app(tmp),

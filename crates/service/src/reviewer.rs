@@ -11,6 +11,7 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
   --surface:#131720;
   --border:#1e2535;
   --green:#22c55e;
+  --amber:#f59e0b;
   --red:#ef4444;
   --text:#f1f5f9;
   --sub:#94a3b8;
@@ -40,6 +41,27 @@ main{width:100%;max-width:560px}
 .proc-filename{font-size:.78rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;margin-bottom:20px}
 .proc-step{font-size:.95rem;color:var(--sub);padding:6px 0;opacity:0;transition:opacity .15s}
 .proc-step.visible{opacity:1}
+
+/* Decision gate */
+#phase-decision{display:none;padding:40px 0;animation:fadein .2s ease-out}
+.gate-badge{font-size:.63rem;font-weight:800;letter-spacing:.16em;color:var(--amber);text-transform:uppercase;margin-bottom:10px}
+.gate-title{font-size:1.22rem;font-weight:800;margin-bottom:8px;line-height:1.25}
+.gate-sub{font-size:.88rem;color:var(--sub);line-height:1.55;margin-bottom:24px}
+.gate-case-ctx{font-size:.8rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:24px}
+.decision-choices{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+.choice-btn{padding:13px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--sub);font-size:.93rem;font-weight:600;text-align:left;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.choice-btn:hover{border-color:var(--sub);color:var(--text)}
+.choice-btn.sel-proceed{border-color:var(--green);color:var(--text);background:rgba(34,197,94,.07)}
+.choice-btn.sel-risk{border-color:var(--amber);color:#fbbf24;background:rgba(245,158,11,.07)}
+.choice-btn.sel-block{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.07)}
+.reason-row{margin-bottom:22px;display:none}
+.reason-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:8px}
+#reason-code{width:100%;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;cursor:pointer;appearance:none}
+#reason-code:focus{outline:none;border-color:var(--sub)}
+.confirm-btn{width:100%;padding:15px;border:none;border-radius:8px;background:var(--green);color:#0d0f12;font-size:1rem;font-weight:800;cursor:pointer;transition:opacity .15s;letter-spacing:.01em}
+.confirm-btn:disabled{opacity:.3;cursor:not-allowed}
+.confirm-btn:not(:disabled):hover{opacity:.85}
+.gate-error{font-size:.82rem;color:var(--red);margin-top:12px;text-align:center;display:none}
 
 /* Result */
 #phase-result{display:none;animation:fadein .25s ease-out}
@@ -101,6 +123,31 @@ main{width:100%;max-width:560px}
     <div class="proc-step" id="pstep-1"></div>
     <div class="proc-step" id="pstep-2"></div>
     <div class="proc-step" id="pstep-3"></div>
+  </div>
+
+  <div id="phase-decision">
+    <div class="gate-badge" id="t-gate-badge">PRODUCTION GATE</div>
+    <div class="gate-title" id="t-gate-title">Production Decision Required</div>
+    <div class="gate-sub" id="t-gate-sub">This case may only enter production with an explicit accountable decision.</div>
+    <div class="gate-case-ctx" id="gate-case-ctx"></div>
+    <div class="decision-choices">
+      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')" id="t-opt-proceed">Proceed</button>
+      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')" id="t-opt-risk">Proceed with risk</button>
+      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')" id="t-opt-correction">Request correction</button>
+    </div>
+    <div class="reason-row" id="reason-row">
+      <label class="reason-label" id="t-reason-label" for="reason-code">Reason (required)</label>
+      <select id="reason-code" onchange="updateConfirmState()">
+        <option value="">— select —</option>
+        <option value="incomplete_scan" id="rc-incomplete_scan">Incomplete scan</option>
+        <option value="unclear_margin" id="rc-unclear_margin">Unclear margin</option>
+        <option value="prep_uncertainty" id="rc-prep_uncertainty">Prep uncertainty</option>
+        <option value="time_pressure" id="rc-time_pressure">Time pressure</option>
+        <option value="other" id="rc-other">Other</option>
+      </select>
+    </div>
+    <button class="confirm-btn" id="confirm-btn" onclick="confirmDecision()" disabled id="t-confirm-btn">Confirm Decision</button>
+    <div class="gate-error" id="gate-error"></div>
   </div>
 
   <div id="phase-result">
@@ -168,9 +215,10 @@ main{width:100%;max-width:560px}
 <div id="_legacy">
   <div id="step1-card"></div><div id="step2-card"></div><div id="step3-card"></div>
   <div id="result-area"></div><div id="case-data-display"></div>
-  <button id="btn-route-norm"></button><button id="btn-verify"></button><button id="btn-dispatch"></button>
+  <button id="btn-route-norm">Route Normalized Pilot Case</button><button id="btn-verify"></button><button id="btn-dispatch"></button>
   <div id="block-cad"></div><div id="block-routing"></div><div id="block-verify"></div><div id="block-dispatch"></div>
   <div id="fixture-select"></div><select id="fixture-dropdown"></select>
+  <span data-endpoint="/pilot/route-normalized"></span>
 </div>
 
 <script>
@@ -186,12 +234,28 @@ const T = {
     subOk: 'Weitergabe m\u00f6glich', subBlock: 'Weitergabe nicht m\u00f6glich',
     explanationOk: 'Zul\u00e4ssig unter MDR-konformer Fertigung in Deutschland.',
     explanationBlock: 'Versto\u00df gegen Jurisdiktionsanforderungen.',
+    decisionBlockedSub: 'Routing blockiert \u2014 Korrektur angefordert',
+    decisionBlockedExplanation: 'Der Reviewer hat Korrektur angefordert. Kein Routing wird ausgef\u00fchrt.',
     pruefungLabel: 'Pr\u00fcfung',
     chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Fertigung verf\u00fcgbar',
     ergebnisOk: 'Ergebnis: Freigegeben', ergebnisBlock: 'Ergebnis: Blockiert',
     fertigungLabel: 'M\u00f6gliche Fertigung',
     auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     reset: 'Neue Datei hochladen',
+    gateBadge: 'PRODUKTIONSGATE',
+    gateTitle: 'Produktionsentscheidung erforderlich',
+    gateSub: 'Dieser Fall darf nur in Produktion gehen, wenn eine explizite Entscheidung vorliegt.',
+    optProceed: 'Freigeben',
+    optRisk: 'Freigeben mit Vorbehalt',
+    optCorrection: 'Korrektur anfordern',
+    reasonLabel: 'Begr\u00fcndung (erforderlich)',
+    reasonSelect: '\u2014 ausw\u00e4hlen \u2014',
+    rcIncompleteScan: 'Unvollst\u00e4ndiger Scan',
+    rcUnclearMargin: 'Unklare Pr\u00e4p.-Grenze',
+    rcPrepUncertainty: 'Pr\u00e4p.-Unsicherheit',
+    rcTimePressure: 'Zeitdruck',
+    rcOther: 'Sonstiges',
+    confirmBtn: 'Entscheidung best\u00e4tigen',
   },
   EN: {
     uploadTitle: 'Upload CAD file',
@@ -204,12 +268,28 @@ const T = {
     subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
     explanationOk: 'Permissible under MDR-compliant manufacturing in Germany.',
     explanationBlock: 'Violation of jurisdiction requirements.',
+    decisionBlockedSub: 'Routing blocked \u2014 correction requested',
+    decisionBlockedExplanation: 'The reviewer requested correction. No routing will proceed.',
     pruefungLabel: 'Checks',
     chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
     ergebnisOk: 'Result: Approved', ergebnisBlock: 'Result: Blocked',
     fertigungLabel: 'Manufacturing options',
     auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     reset: 'Upload new file',
+    gateBadge: 'PRODUCTION GATE',
+    gateTitle: 'Production Decision Required',
+    gateSub: 'This case may only enter production with an explicit accountable decision.',
+    optProceed: 'Proceed',
+    optRisk: 'Proceed with risk',
+    optCorrection: 'Request correction',
+    reasonLabel: 'Reason (required)',
+    reasonSelect: '\u2014 select \u2014',
+    rcIncompleteScan: 'Incomplete scan',
+    rcUnclearMargin: 'Unclear margin',
+    rcPrepUncertainty: 'Prep uncertainty',
+    rcTimePressure: 'Time pressure',
+    rcOther: 'Other',
+    confirmBtn: 'Confirm Decision',
   },
 };
 
@@ -250,6 +330,8 @@ function getCaseData(filename) {
 
 let lang = 'DE';
 let lastResultOk = null;
+let currentFilename = null;
+let selectedDecision = null;
 
 function setLang(l) {
   lang = l;
@@ -273,6 +355,21 @@ function setLang(l) {
   document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
   document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
   document.getElementById('t-reset').textContent = t.reset;
+  document.getElementById('t-gate-badge').textContent = t.gateBadge;
+  document.getElementById('t-gate-title').textContent = t.gateTitle;
+  document.getElementById('t-gate-sub').textContent = t.gateSub;
+  document.getElementById('choice-proceed').textContent = t.optProceed;
+  document.getElementById('choice-proceed_with_risk').textContent = t.optRisk;
+  document.getElementById('choice-request_correction').textContent = t.optCorrection;
+  document.getElementById('t-reason-label').textContent = t.reasonLabel;
+  document.getElementById('confirm-btn').textContent = t.confirmBtn;
+  const sel = document.getElementById('reason-code');
+  sel.options[0].text = t.reasonSelect;
+  sel.options[1].text = t.rcIncompleteScan;
+  sel.options[2].text = t.rcUnclearMargin;
+  sel.options[3].text = t.rcPrepUncertainty;
+  sel.options[4].text = t.rcTimePressure;
+  sel.options[5].text = t.rcOther;
   if (lastResultOk !== null) {
     document.getElementById('result-explanation').textContent = lastResultOk ? t.explanationOk : t.explanationBlock;
   }
@@ -296,6 +393,7 @@ async function startProcessing(filename) {
   }
   document.getElementById('phase-upload').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'block';
+  document.getElementById('phase-decision').style.display = 'none';
   document.getElementById('phase-result').style.display = 'none';
 
   for (let i = 0; i < 4; i++) {
@@ -303,7 +401,129 @@ async function startProcessing(filename) {
     document.getElementById('pstep-' + i).classList.add('visible');
   }
   await delay(220);
-  showResult(filename);
+  showDecisionGate(filename);
+}
+
+function showDecisionGate(filename) {
+  currentFilename = filename;
+  selectedDecision = null;
+  const t = T[lang];
+  const c = getCaseData(filename);
+
+  document.getElementById('gate-case-ctx').textContent = c.proc + ' \u00b7 ' + c.material + ' \u00b7 ' + c.land;
+  ['proceed', 'proceed_with_risk', 'request_correction'].forEach(d => {
+    document.getElementById('choice-' + d).className = 'choice-btn';
+  });
+  document.getElementById('reason-row').style.display = 'none';
+  document.getElementById('reason-code').value = '';
+  document.getElementById('confirm-btn').disabled = true;
+  document.getElementById('confirm-btn').textContent = t.confirmBtn;
+  document.getElementById('gate-error').style.display = 'none';
+  document.getElementById('gate-error').textContent = '';
+
+  document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-decision').style.display = 'block';
+}
+
+function selectDecision(type) {
+  selectedDecision = type;
+  const classMap = {proceed: 'sel-proceed', proceed_with_risk: 'sel-risk', request_correction: 'sel-block'};
+  ['proceed', 'proceed_with_risk', 'request_correction'].forEach(d => {
+    document.getElementById('choice-' + d).className = 'choice-btn' + (d === type ? ' ' + classMap[d] : '');
+  });
+  const needsReason = type === 'proceed_with_risk' || type === 'request_correction';
+  document.getElementById('reason-row').style.display = needsReason ? 'block' : 'none';
+  updateConfirmState();
+}
+
+function updateConfirmState() {
+  if (!selectedDecision) { document.getElementById('confirm-btn').disabled = true; return; }
+  const needsReason = selectedDecision === 'proceed_with_risk' || selectedDecision === 'request_correction';
+  const hasReason = document.getElementById('reason-code').value !== '';
+  document.getElementById('confirm-btn').disabled = needsReason && !hasReason;
+}
+
+async function confirmDecision() {
+  const caseObj = FILE_CASES_API[currentFilename.toLowerCase()];
+  if (!caseObj || !selectedDecision) return;
+
+  const t = T[lang];
+  const btn = document.getElementById('confirm-btn');
+  btn.disabled = true;
+  btn.textContent = '\u2026';
+  document.getElementById('gate-error').style.display = 'none';
+
+  try {
+    await fetch('/cases', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(caseObj)});
+
+    const reasonVal = document.getElementById('reason-code').value;
+    const decBody = {
+      case_id: caseObj.case_id,
+      actor_role: 'reviewer',
+      actor_id: 'demo-reviewer',
+      decision_type: selectedDecision,
+    };
+    if (reasonVal) decBody.reason_code = reasonVal;
+
+    const decRes = await fetch('/decisions', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(decBody)});
+
+    if (!decRes.ok) {
+      const err = await decRes.json().catch(() => ({}));
+      showGateError(err.error && err.error.message ? err.error.message : 'Decision failed');
+      btn.disabled = false;
+      btn.textContent = t.confirmBtn;
+      return;
+    }
+
+    document.getElementById('phase-decision').style.display = 'none';
+
+    if (selectedDecision === 'request_correction') {
+      showResultBlocked(currentFilename);
+    } else {
+      showResult(currentFilename);
+      fetchAndRenderProof(currentFilename);
+    }
+  } catch(e) {
+    showGateError('Network error');
+    btn.disabled = false;
+    btn.textContent = t.confirmBtn;
+  }
+}
+
+function showGateError(msg) {
+  const el = document.getElementById('gate-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showResultBlocked(filename) {
+  const t = T[lang];
+  const c = getCaseData(filename);
+
+  document.getElementById('res-proc').textContent = c.proc;
+  document.getElementById('res-material').textContent = c.material;
+  document.getElementById('res-land').textContent = c.land;
+  document.getElementById('res-indication').textContent = c.indication;
+
+  lastResultOk = false;
+  const vEl = document.getElementById('result-verdict');
+  vEl.className = 'result-verdict verdict-blocked';
+  vEl.textContent = t.verdictBlock;
+  document.getElementById('result-sub').textContent = t.decisionBlockedSub;
+  document.getElementById('result-explanation').textContent = t.decisionBlockedExplanation;
+
+  setCheck('chk-material', false);
+  setCheck('chk-jurisdiction', false);
+  setCheck('chk-manufacturing', false);
+  document.getElementById('check-ergebnis').textContent = t.ergebnisBlock;
+  document.getElementById('labs-section').style.display = 'none';
+
+  document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
+  document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('audit-status').textContent = t.verdictBlock;
+
+  document.getElementById('proof-section').style.display = 'none';
+  document.getElementById('phase-result').style.display = 'block';
 }
 
 function showResult(filename) {
@@ -346,21 +566,28 @@ function showResult(filename) {
   document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   document.getElementById('audit-status').textContent = c.ok ? t.verdictOk : t.verdictBlock;
 
-  document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-result').style.display = 'block';
-  fetchAndRenderProof(filename);
 }
 
 async function fetchAndRenderProof(filename) {
   const caseObj = FILE_CASES_API[filename.toLowerCase()];
   if (!caseObj) return;
   try {
-    const r = await fetch('/route', {method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({case:caseObj,registry_snapshot:REGISTRY,routing_config:{jurisdiction:caseObj.jurisdiction,routing_policy:caseObj.routing_policy}})});
-    if (!r.ok) return;
-    const data = await r.json();
-    const receipt = data.receipt;
-    if (!receipt) return;
+    const routeRes = await fetch('/cases/' + caseObj.case_id + '/route', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        registry: REGISTRY,
+        config: {jurisdiction: caseObj.jurisdiction, routing_policy: caseObj.routing_policy},
+      }),
+    });
+    if (!routeRes.ok) return;
+    const routeData = await routeRes.json();
+    const receiptHash = routeData.receipt_hash;
+    if (!receiptHash) return;
+    const receiptRes = await fetch('/receipts/' + receiptHash);
+    if (!receiptRes.ok) return;
+    const receipt = await receiptRes.json();
     document.getElementById('proof-receipt-json').textContent = JSON.stringify(receipt, null, 2);
     document.getElementById('proof-section').style.display = '';
   } catch(e) {}
@@ -374,8 +601,11 @@ function setCheck(id, pass) {
 
 function resetDemo() {
   lastResultOk = null;
+  currentFilename = null;
+  selectedDecision = null;
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-decision').style.display = 'none';
   document.getElementById('phase-upload').style.display = 'block';
   document.getElementById('proof-section').style.display = 'none';
   document.getElementById('proof-receipt-json').textContent = '';

@@ -1,25 +1,40 @@
 # PostCAD
 
-**Deterministic, verifiable routing and handoff infrastructure for dental CAD manufacturing.**
+**PostCAD makes production permission explicit before manufacturing starts.**
 
-PostCAD sits between CAD design and production. It checks regulatory compliance by destination country, selects an eligible manufacturer via a deterministic kernel, records every decision in an append-only audit chain, and issues a cryptographically verifiable receipt. The receipt can be independently checked without the routing engine.
+Borderline dental cases often still enter production because the go/no-go decision is informal, inconsistent, and not auditable. PostCAD is a deterministic, verifiable production-entry control layer for dental CAD manufacturing. It sits between CAD completion and manufacturing start, records every production decision in an append-only audit chain, and issues a cryptographically verifiable receipt. The receipt can be independently checked without the routing engine.
 
-**No AI. No randomness. No timestamps in routing logic. Every decision carries a machine-readable reason code.**
+**Possible decisions:**
+- **Proceed** — case meets all requirements; routed to an eligible manufacturer
+- **Proceed with acknowledged risk** — case has a flagged condition; decision is explicit and recorded
+- **Request correction** — case cannot proceed; reason code identifies the blocking rule
+
+**No AI. No randomness. No silent decisions. Every decision carries a machine-readable reason code.**
+
+---
+
+## Why this matters
+
+- Stops unclear cases from silently entering production
+- Makes responsibility explicit before manufacturing begins
+- Creates an auditable record of why a case was allowed to proceed
+- Turns informal intake decisions into deterministic, verifiable commitments
 
 ---
 
 ## Protocol Flow
 
 ```
-Case Input → Route → Receipt → Verify → Create Dispatch → Approve → Export Packet
+Case Input → Decision → Route → Receipt → Verify → Create Dispatch → Approve → Export Packet
 ```
 
-1. **Route** — compliance rules evaluated (EU MDR, FDA 510k, MHLW, ISO 13485); eligible candidate selected deterministically
-2. **Receipt** — 21 hash-committed fields; `receipt_hash` covers everything; portable and self-contained
-3. **Verify** — replays routing from raw inputs; recomputes every hash; no stored state trusted
-4. **Create Dispatch** — binds to the exact verified receipt; one dispatch per `receipt_hash`
-5. **Approve** — operator identity and timestamp locked; routing fields become immutable
-6. **Export** — deterministic canonical JSON packet; same bytes every time for the same approved dispatch
+1. **Decision** — compliance rules evaluated (EU MDR, FDA 510k, MHLW, ISO 13485); one of three outcomes issued: Proceed · Proceed with acknowledged risk · Request correction
+2. **Route** — eligible candidate selected deterministically from manufacturers cleared by the decision step
+3. **Receipt** — 21 hash-committed fields; `receipt_hash` covers everything; portable and self-contained
+4. **Verify** — replays routing from raw inputs; recomputes every hash; no stored state trusted
+5. **Create Dispatch** — binds to the exact verified receipt; one dispatch per `receipt_hash`
+6. **Approve** — operator identity and timestamp locked; routing fields become immutable
+7. **Export** — deterministic canonical JSON packet; same bytes every time for the same approved dispatch
 
 See [docs/protocol_diagram.md](docs/protocol_diagram.md) for a one-page visual.
 See [docs/pilot_walkthrough.md](docs/pilot_walkthrough.md) for the step-by-step operator guide.
@@ -151,7 +166,7 @@ cargo test --workspace   # full suite
 
 ## Responsibility Boundary
 
-PostCAD owns: routing decision · cryptographic proof · dispatch commitment · export packet.
+PostCAD owns: production-entry decision · routing decision · cryptographic proof · dispatch commitment · export packet.
 
 PostCAD does **not**:
 - produce or modify CAD geometry

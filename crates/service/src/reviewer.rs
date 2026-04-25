@@ -62,6 +62,8 @@ main{width:100%;max-width:560px}
 .confirm-btn:disabled{opacity:.25;cursor:not-allowed}
 .confirm-btn:not(:disabled):hover{opacity:.85}
 .confirm-hint{font-size:.78rem;color:var(--dim);margin-top:8px;text-align:center;min-height:1.1em}
+.choice-hint{font-size:.78rem;color:var(--dim);padding:2px 16px 8px;line-height:1.4}
+.aha-line{font-size:.85rem;color:var(--sub);line-height:1.55;font-style:italic}
 .gate-error{font-size:.82rem;color:var(--red);margin-top:12px;text-align:center;display:none}
 
 /* Result */
@@ -137,8 +139,11 @@ main{width:100%;max-width:560px}
     <div class="gate-case-ctx" id="gate-case-ctx"></div>
     <div class="decision-choices">
       <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">In Produktion freigeben</button>
+      <div class="choice-hint" id="hint-proceed">Fall darf in Produktion</div>
       <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">In Produktion freigeben &#x2013; Risiko dokumentiert</button>
+      <div class="choice-hint" id="hint-proceed_with_risk">Fall darf in Produktion, bekannte Unsicherheit wird festgehalten</div>
       <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Nicht freigeben &#x2013; Korrektur erforderlich</button>
+      <div class="choice-hint" id="hint-request_correction">Fall ist noch nicht produktionsreif</div>
     </div>
     <div class="reason-row" id="reason-row">
       <label class="reason-label" id="t-reason-label" for="reason-code">Grund (erforderlich)</label>
@@ -213,6 +218,10 @@ main{width:100%;max-width:560px}
       </details>
     </div>
 
+    <div class="res-section">
+      <p class="aha-line" id="aha-line">PostCAD ersetzt keine Fachentscheidung &#x2013; es zwingt sie nur an den richtigen Punkt im Workflow.</p>
+    </div>
+
     <div class="res-section" style="border-top:none;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="reset-btn" onclick="backToDecision()"><span id="t-back-decision">Zurück zur Entscheidung</span></button>
       <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neue Datei hochladen</span></button>
@@ -271,6 +280,10 @@ const T = {
     reasonHint: 'W\u00e4hlen Sie einen Grund, um fortzufahren.',
     demoOnlyError: 'Nur Demo-Dateien werden unterst\u00fctzt. Bitte Demo-Datei ausw\u00e4hlen.',
     backToDecision: 'Zur\u00fcck zur Entscheidung',
+    hintProceed: 'Fall darf in Produktion',
+    hintRisk: 'Fall darf in Produktion, bekannte Unsicherheit wird festgehalten',
+    hintCorrection: 'Fall ist noch nicht produktionsreif',
+    ahaLine: 'PostCAD ersetzt keine Fachentscheidung \u2013 es zwingt sie nur an den richtigen Punkt im Workflow.',
   },
   EN: {
     uploadTitle: 'Upload CAD file',
@@ -310,6 +323,10 @@ const T = {
     reasonHint: 'Select a reason to continue.',
     demoOnlyError: 'Only demo files are supported. Please select a demo file.',
     backToDecision: 'Back to Decision',
+    hintProceed: 'Case may proceed to production',
+    hintRisk: 'Case may proceed; known uncertainty will be on record',
+    hintCorrection: 'Case is not yet ready for production',
+    ahaLine: 'PostCAD does not replace clinical judgment – it forces it to the right point in the workflow.',
   },
 };
 
@@ -386,6 +403,10 @@ function setLang(l) {
   document.getElementById('choice-request_correction').textContent = t.optCorrection;
   document.getElementById('t-reason-label').textContent = t.reasonLabel;
   document.getElementById('confirm-btn').textContent = t.confirmBtn;
+  document.getElementById('hint-proceed').textContent = t.hintProceed;
+  document.getElementById('hint-proceed_with_risk').textContent = t.hintRisk;
+  document.getElementById('hint-request_correction').textContent = t.hintCorrection;
+  document.getElementById('aha-line').textContent = t.ahaLine;
   const sel = document.getElementById('reason-code');
   sel.options[0].text = t.reasonSelect;
   sel.options[1].text = t.rcIncompleteScan;

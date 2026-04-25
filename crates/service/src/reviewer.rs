@@ -37,9 +37,9 @@ main{width:100%;max-width:560px}
 .demo-file-btn:hover{border-color:var(--sub);color:var(--text)}
 
 /* Processing */
-#phase-processing{display:none;padding:52px 0}
-.proc-filename{font-size:.78rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;margin-bottom:20px}
-.proc-step{font-size:.95rem;color:var(--sub);padding:6px 0;opacity:0;transition:opacity .15s}
+#phase-processing{display:none;padding:52px 0;animation:fadein .15s ease-out}
+.proc-filename{font-size:.85rem;color:var(--sub);font-family:'SF Mono','Fira Code',monospace;margin-bottom:20px}
+.proc-step{font-size:.95rem;color:var(--sub);padding:6px 0;opacity:0;transition:opacity .3s}
 .proc-step.visible{opacity:1}
 
 /* Decision gate */
@@ -50,17 +50,18 @@ main{width:100%;max-width:560px}
 .gate-case-ctx{font-size:.8rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:24px}
 .decision-choices{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
 .choice-btn{padding:13px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--sub);font-size:.93rem;font-weight:600;text-align:left;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
-.choice-btn:hover{border-color:var(--sub);color:var(--text)}
-.choice-btn.sel-proceed{border-color:var(--green);color:var(--text);background:rgba(34,197,94,.07)}
-.choice-btn.sel-risk{border-color:var(--amber);color:#fbbf24;background:rgba(245,158,11,.07)}
-.choice-btn.sel-block{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.07)}
+.choice-btn:hover{border-color:var(--sub);color:var(--text);background:rgba(148,163,184,.06)}
+.choice-btn.sel-proceed{border:2px solid var(--green);color:var(--text);background:rgba(34,197,94,.10)}
+.choice-btn.sel-risk{border:2px solid var(--amber);color:#fbbf24;background:rgba(245,158,11,.10)}
+.choice-btn.sel-block{border:2px solid var(--red);color:var(--red);background:rgba(239,68,68,.10)}
 .reason-row{margin-bottom:22px;display:none}
 .reason-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:8px}
 #reason-code{width:100%;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;cursor:pointer;appearance:none}
 #reason-code:focus{outline:none;border-color:var(--sub)}
 .confirm-btn{width:100%;padding:15px;border:none;border-radius:8px;background:var(--green);color:#0d0f12;font-size:1rem;font-weight:800;cursor:pointer;transition:opacity .15s;letter-spacing:.01em}
-.confirm-btn:disabled{opacity:.3;cursor:not-allowed}
+.confirm-btn:disabled{opacity:.25;cursor:not-allowed}
 .confirm-btn:not(:disabled):hover{opacity:.85}
+.confirm-hint{font-size:.78rem;color:var(--dim);margin-top:8px;text-align:center;min-height:1.1em}
 .gate-error{font-size:.82rem;color:var(--red);margin-top:12px;text-align:center;display:none}
 
 /* Result */
@@ -71,7 +72,7 @@ main{width:100%;max-width:560px}
 .case-proc{font-size:1.35rem;font-weight:700;margin-bottom:14px;line-height:1.2}
 .case-row{font-size:.92rem;color:var(--sub);margin-bottom:6px;display:flex;gap:8px}
 .case-row-lbl{color:var(--dim)}
-.result-verdict{font-size:clamp(2.4rem,8vw,3.2rem);font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:10px}
+.result-verdict{font-size:clamp(2.4rem,8vw,3.2rem);font-weight:900;letter-spacing:.02em;line-height:1.1;margin-bottom:14px}
 .verdict-ok{color:var(--green)}
 .verdict-blocked{color:var(--red)}
 .verdict-risk{color:var(--amber)}
@@ -86,7 +87,7 @@ main{width:100%;max-width:560px}
 .lab-item::before{content:'— ';color:var(--dim)}
 .audit-row{display:flex;font-size:.85rem;padding:5px 0;gap:12px}
 .audit-row-lbl{color:var(--dim);flex-shrink:0;min-width:80px}
-.audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.78rem}
+.audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;word-break:break-word}
 .reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);font-size:.9rem;font-weight:600;padding:13px 22px;cursor:pointer;transition:border-color .15s,color .15s}
 .reset-btn:hover{border-color:var(--sub);color:var(--text)}
 
@@ -127,27 +128,28 @@ main{width:100%;max-width:560px}
   </div>
 
   <div id="phase-decision">
-    <div class="gate-badge" id="t-gate-badge">PRODUCTION GATE</div>
-    <div class="gate-title" id="t-gate-title">Can this case enter production?</div>
-    <div class="gate-sub" id="t-gate-sub">This case may only enter production with an explicit accountable decision.</div>
+    <div class="gate-badge" id="t-gate-badge">PRODUKTIONSFREIGABE</div>
+    <div class="gate-title" id="t-gate-title">Darf dieser Fall in Produktion gehen?</div>
+    <div class="gate-sub" id="t-gate-sub">Vor Produktionsstart ist eine explizite Entscheidung erforderlich.</div>
     <div class="gate-case-ctx" id="gate-case-ctx"></div>
     <div class="decision-choices">
-      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">Authorize for Production</button>
-      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">Authorize with Acknowledged Risk</button>
-      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Block — Request Correction</button>
+      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">In Produktion freigeben</button>
+      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">In Produktion freigeben &#x2013; Risiko dokumentiert</button>
+      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Nicht freigeben &#x2013; Korrektur erforderlich</button>
     </div>
     <div class="reason-row" id="reason-row">
-      <label class="reason-label" id="t-reason-label" for="reason-code">Reason (required)</label>
+      <label class="reason-label" id="t-reason-label" for="reason-code">Grund (erforderlich)</label>
       <select id="reason-code" onchange="updateConfirmState()">
-        <option value="">— select —</option>
-        <option value="incomplete_scan" id="rc-incomplete_scan">Incomplete scan</option>
-        <option value="unclear_margin" id="rc-unclear_margin">Unclear margin</option>
-        <option value="prep_uncertainty" id="rc-prep_uncertainty">Prep uncertainty</option>
-        <option value="time_pressure" id="rc-time_pressure">Time pressure</option>
-        <option value="other" id="rc-other">Other</option>
+        <option value="">&#x2014; auswählen &#x2014;</option>
+        <option value="incomplete_scan">Unvollständiger Scan</option>
+        <option value="unclear_margin">Unklare Präp.-Grenze</option>
+        <option value="prep_uncertainty">Präp.-Unsicherheit</option>
+        <option value="time_pressure">Zeitdruck</option>
+        <option value="other">Sonstiges</option>
       </select>
     </div>
-    <button class="confirm-btn" id="confirm-btn" onclick="confirmDecision()" disabled id="t-confirm-btn">Confirm Decision</button>
+    <button class="confirm-btn" id="confirm-btn" onclick="confirmDecision()" disabled>Entscheidung bestätigen</button>
+    <div class="confirm-hint" id="confirm-hint"></div>
     <div class="gate-error" id="gate-error"></div>
   </div>
 
@@ -227,31 +229,31 @@ const T = {
   DE: {
     uploadTitle: 'CAD-Datei hochladen',
     uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
-    procSteps: ['Datei erkannt', 'Falldaten werden gelesen', 'Routing wird gepr\u00fcft', 'Entscheidung wird erstellt'],
+    procSteps: ['Datei empfangen', 'Falldaten werden gelesen', 'Pr\u00fcfung l\u00e4uft', 'Produktionsentscheidung erforderlich'],
     caseLabel: 'Fall erkannt',
     materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
     decisionLabel: 'Entscheidung',
-    verdictOk: 'FREIGEGEBEN F\u00dcR PRODUKTION', verdictBlock: 'PRODUKTION BLOCKIERT',
-    verdictRisk: 'FREIGEGEBEN MIT VORBEHALT',
+    verdictOk: 'FALL F\u00dcR PRODUKTION FREIGEGEBEN', verdictBlock: 'FALL NICHT FREIGEGEBEN \u2013 KORREKTUR ERFORDERLICH',
+    verdictRisk: 'FALL FREIGEGEBEN \u2013 RISIKO DOKUMENTIERT',
     subOk: 'Weitergabe m\u00f6glich', subBlock: 'Weitergabe nicht m\u00f6glich',
-    subRisk: 'Risiko durch Reviewer best\u00e4tigt',
+    subRisk: 'Risiko dokumentiert, Freigabe erteilt',
     explanationOk: 'Zul\u00e4ssig unter MDR-konformer Fertigung in Deutschland.',
     explanationBlock: 'Versto\u00df gegen Jurisdiktionsanforderungen.',
-    decisionBlockedSub: 'Routing blockiert \u2014 Korrektur angefordert',
+    decisionBlockedSub: 'Fall zur\u00fcckgestellt. Kein Routing wird ausgef\u00fchrt.',
     decisionBlockedExplanation: 'Der Reviewer hat Korrektur angefordert. Kein Routing wird ausgef\u00fchrt.',
     pruefungLabel: 'Pr\u00fcfung',
     chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Fertigung verf\u00fcgbar',
-    ergebnisOk: 'Ergebnis: Freigegeben für Produktion', ergebnisBlock: 'Ergebnis: Produktion blockiert',
+    ergebnisOk: 'Ergebnis: Fall freigegeben', ergebnisBlock: 'Ergebnis: Nicht freigegeben',
     fertigungLabel: 'M\u00f6gliche Fertigung',
     auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     reset: 'Neue Datei hochladen',
-    gateBadge: 'PRODUKTIONSGATE',
-    gateTitle: 'Kann dieser Fall in Produktion gehen?',
-    gateSub: 'Dieser Fall darf nur in Produktion gehen, wenn eine explizite Entscheidung vorliegt.',
-    optProceed: 'Für Produktion freigeben',
-    optRisk: 'Mit Vorbehalt freigeben',
-    optCorrection: 'Blockieren — Korrektur anfordern',
-    reasonLabel: 'Begr\u00fcndung (erforderlich)',
+    gateBadge: 'PRODUKTIONSFREIGABE',
+    gateTitle: 'Darf dieser Fall in Produktion gehen?',
+    gateSub: 'Vor Produktionsstart ist eine explizite Entscheidung erforderlich.',
+    optProceed: 'In Produktion freigeben',
+    optRisk: 'In Produktion freigeben – Risiko dokumentiert',
+    optCorrection: 'Nicht freigeben – Korrektur erforderlich',
+    reasonLabel: 'Grund (erforderlich)',
     reasonSelect: '\u2014 ausw\u00e4hlen \u2014',
     rcIncompleteScan: 'Unvollst\u00e4ndiger Scan',
     rcUnclearMargin: 'Unklare Pr\u00e4p.-Grenze',
@@ -259,34 +261,35 @@ const T = {
     rcTimePressure: 'Zeitdruck',
     rcOther: 'Sonstiges',
     confirmBtn: 'Entscheidung best\u00e4tigen',
+    reasonHint: 'W\u00e4hlen Sie einen Grund, um fortzufahren.',
   },
   EN: {
     uploadTitle: 'Upload CAD file',
     uploadSub: 'Drop file here or select (STL, OBJ)',
-    procSteps: ['File detected', 'Case data being read', 'Routing being checked', 'Decision being created'],
+    procSteps: ['File received', 'Case data being read', 'Checks running', 'Production decision required'],
     caseLabel: 'Case detected',
     materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
     decisionLabel: 'Decision',
-    verdictOk: 'AUTHORIZED FOR PRODUCTION', verdictBlock: 'PRODUCTION BLOCKED',
-    verdictRisk: 'AUTHORIZED WITH ACKNOWLEDGED RISK',
+    verdictOk: 'CASE RELEASED FOR PRODUCTION', verdictBlock: 'CASE NOT RELEASED – CORRECTION REQUIRED',
+    verdictRisk: 'CASE RELEASED – RISK DOCUMENTED',
     subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
-    subRisk: 'Risk acknowledged by reviewer',
+    subRisk: 'Risk documented, release granted',
     explanationOk: 'Permissible under MDR-compliant manufacturing in Germany.',
     explanationBlock: 'Violation of jurisdiction requirements.',
-    decisionBlockedSub: 'Routing blocked \u2014 correction requested',
+    decisionBlockedSub: 'Case held. No routing performed.',
     decisionBlockedExplanation: 'The reviewer requested correction. No routing will proceed.',
     pruefungLabel: 'Checks',
     chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
-    ergebnisOk: 'Result: Authorized for Production', ergebnisBlock: 'Result: Production Blocked',
+    ergebnisOk: 'Result: Case released', ergebnisBlock: 'Result: Not released',
     fertigungLabel: 'Manufacturing options',
     auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     reset: 'Upload new file',
-    gateBadge: 'PRODUCTION GATE',
-    gateTitle: 'Can this case enter production?',
-    gateSub: 'This case may only enter production with an explicit accountable decision.',
-    optProceed: 'Authorize for Production',
-    optRisk: 'Authorize with Acknowledged Risk',
-    optCorrection: 'Block — Request Correction',
+    gateBadge: 'PRODUCTION AUTHORIZATION',
+    gateTitle: 'May this case enter production?',
+    gateSub: 'An explicit decision is required before production can start.',
+    optProceed: 'Release to Production',
+    optRisk: 'Release to Production – Risk Documented',
+    optCorrection: 'Do Not Release – Correction Required',
     reasonLabel: 'Reason (required)',
     reasonSelect: '\u2014 select \u2014',
     rcIncompleteScan: 'Incomplete scan',
@@ -295,6 +298,7 @@ const T = {
     rcTimePressure: 'Time pressure',
     rcOther: 'Other',
     confirmBtn: 'Confirm Decision',
+    reasonHint: 'Select a reason to continue.',
   },
 };
 
@@ -402,17 +406,17 @@ async function startProcessing(filename) {
   document.getElementById('phase-result').style.display = 'none';
 
   for (let i = 0; i < 4; i++) {
-    await delay(i === 0 ? 80 : 260);
+    await delay(i === 0 ? 300 : 500);
     document.getElementById('pstep-' + i).classList.add('visible');
   }
-  await delay(220);
+  await delay(600);
   showDecisionGate(filename);
 }
 
 function showDecisionGate(filename) {
   currentFilename = filename;
   selectedDecision = null;
-  const t = T[lang];
+  setLang(lang);
   const c = getCaseData(filename);
 
   document.getElementById('gate-case-ctx').textContent = c.proc + ' \u00b7 ' + c.material + ' \u00b7 ' + c.land;
@@ -422,7 +426,7 @@ function showDecisionGate(filename) {
   document.getElementById('reason-row').style.display = 'none';
   document.getElementById('reason-code').value = '';
   document.getElementById('confirm-btn').disabled = true;
-  document.getElementById('confirm-btn').textContent = t.confirmBtn;
+  document.getElementById('confirm-hint').textContent = '';
   document.getElementById('gate-error').style.display = 'none';
   document.getElementById('gate-error').textContent = '';
 
@@ -445,7 +449,9 @@ function updateConfirmState() {
   if (!selectedDecision) { document.getElementById('confirm-btn').disabled = true; return; }
   const needsReason = selectedDecision === 'proceed_with_risk' || selectedDecision === 'request_correction';
   const hasReason = document.getElementById('reason-code').value !== '';
-  document.getElementById('confirm-btn').disabled = needsReason && !hasReason;
+  const disabled = needsReason && !hasReason;
+  document.getElementById('confirm-btn').disabled = disabled;
+  document.getElementById('confirm-hint').textContent = disabled ? T[lang].reasonHint : '';
 }
 
 async function confirmDecision() {
@@ -481,6 +487,7 @@ async function confirmDecision() {
     }
 
     document.getElementById('phase-decision').style.display = 'none';
+    await delay(500);
 
     if (selectedDecision === 'request_correction') {
       showResultBlocked(currentFilename);

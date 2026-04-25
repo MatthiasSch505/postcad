@@ -480,7 +480,17 @@ async function confirmDecision() {
   document.getElementById('gate-error').style.display = 'none';
 
   try {
-    await fetch('/cases', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(caseObj)});
+    const casesRes = await fetch('/cases', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(caseObj)});
+    // 201 Created, 200 Identical, and 409 Conflict (case stored with different content) all mean
+    // the case_id exists in the store — safe to proceed to /decisions.
+    if (!casesRes.ok && casesRes.status !== 409) {
+      const errData = await casesRes.json().catch(() => ({}));
+      const msg = errData.error && errData.error.message ? errData.error.message : 'Case intake failed (' + casesRes.status + ')';
+      showGateError(msg);
+      btn.disabled = false;
+      btn.textContent = t.confirmBtn;
+      return;
+    }
 
     const reasonVal = document.getElementById('reason-code').value;
     const decBody = {
@@ -495,7 +505,7 @@ async function confirmDecision() {
 
     if (!decRes.ok) {
       const err = await decRes.json().catch(() => ({}));
-      showGateError(err.error && err.error.message ? err.error.message : 'Decision failed');
+      showGateError(err.error && err.error.message ? err.error.message : 'Decision failed (' + decRes.status + ')');
       btn.disabled = false;
       btn.textContent = t.confirmBtn;
       return;
@@ -511,7 +521,8 @@ async function confirmDecision() {
       fetchAndRenderProof(currentFilename);
     }
   } catch(e) {
-    showGateError('Network error');
+    console.error('[reviewer] confirmDecision:', e);
+    showGateError('Network error: ' + (e && e.message ? e.message : String(e)));
     btn.disabled = false;
     btn.textContent = t.confirmBtn;
   }

@@ -125,6 +125,9 @@ main{width:100%;max-width:560px}
     <div class="proc-step" id="pstep-1"></div>
     <div class="proc-step" id="pstep-2"></div>
     <div class="proc-step" id="pstep-3"></div>
+    <div style="margin-top:32px">
+      <button class="reset-btn" onclick="resetDemo()"><span id="t-proc-reset">Neue Datei hochladen</span></button>
+    </div>
   </div>
 
   <div id="phase-decision">
@@ -151,6 +154,9 @@ main{width:100%;max-width:560px}
     <button class="confirm-btn" id="confirm-btn" onclick="confirmDecision()" disabled>Entscheidung bestätigen</button>
     <div class="confirm-hint" id="confirm-hint"></div>
     <div class="gate-error" id="gate-error"></div>
+    <div style="margin-top:20px;text-align:center">
+      <button class="reset-btn" onclick="resetDemo()"><span id="t-gate-reset">Neue Datei hochladen</span></button>
+    </div>
   </div>
 
   <div id="phase-result">
@@ -207,7 +213,8 @@ main{width:100%;max-width:560px}
       </details>
     </div>
 
-    <div class="res-section" style="border-top:none;padding-top:8px">
+    <div class="res-section" style="border-top:none;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="reset-btn" onclick="backToDecision()"><span id="t-back-decision">Zurück zur Entscheidung</span></button>
       <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neue Datei hochladen</span></button>
     </div>
 
@@ -263,6 +270,7 @@ const T = {
     confirmBtn: 'Entscheidung best\u00e4tigen',
     reasonHint: 'W\u00e4hlen Sie einen Grund, um fortzufahren.',
     demoOnlyError: 'Nur Demo-Dateien werden unterst\u00fctzt. Bitte Demo-Datei ausw\u00e4hlen.',
+    backToDecision: 'Zur\u00fcck zur Entscheidung',
   },
   EN: {
     uploadTitle: 'Upload CAD file',
@@ -301,6 +309,7 @@ const T = {
     confirmBtn: 'Confirm Decision',
     reasonHint: 'Select a reason to continue.',
     demoOnlyError: 'Only demo files are supported. Please select a demo file.',
+    backToDecision: 'Back to Decision',
   },
 };
 
@@ -366,6 +375,9 @@ function setLang(l) {
   document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
   document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
   document.getElementById('t-reset').textContent = t.reset;
+  document.getElementById('t-proc-reset').textContent = t.reset;
+  document.getElementById('t-gate-reset').textContent = t.reset;
+  document.getElementById('t-back-decision').textContent = t.backToDecision;
   document.getElementById('t-gate-badge').textContent = t.gateBadge;
   document.getElementById('t-gate-title').textContent = t.gateTitle;
   document.getElementById('t-gate-sub').textContent = t.gateSub;
@@ -618,6 +630,11 @@ function setCheck(id, pass) {
   const el = document.getElementById(id);
   el.textContent = pass ? '\u2713' : '\u2715';
   el.className = pass ? 'chk-ok' : 'chk-fail';
+}
+
+function backToDecision() {
+  document.getElementById('phase-result').style.display = 'none';
+  showDecisionGate(currentFilename);
 }
 
 function resetDemo() {

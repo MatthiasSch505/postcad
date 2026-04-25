@@ -45,7 +45,7 @@ main{width:100%;max-width:560px}
 /* Decision gate */
 #phase-decision{display:none;padding:40px 0;animation:fadein .2s ease-out}
 .gate-badge{font-size:.63rem;font-weight:800;letter-spacing:.16em;color:var(--amber);text-transform:uppercase;margin-bottom:10px}
-.gate-title{font-size:1.22rem;font-weight:800;margin-bottom:8px;line-height:1.25}
+.gate-title{font-size:1.7rem;font-weight:900;margin-bottom:10px;line-height:1.2}
 .gate-sub{font-size:.88rem;color:var(--sub);line-height:1.55;margin-bottom:24px}
 .gate-case-ctx{font-size:.8rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:24px}
 .decision-choices{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
@@ -74,6 +74,7 @@ main{width:100%;max-width:560px}
 .result-verdict{font-size:clamp(2.4rem,8vw,3.2rem);font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:10px}
 .verdict-ok{color:var(--green)}
 .verdict-blocked{color:var(--red)}
+.verdict-risk{color:var(--amber)}
 .result-sub{font-size:1rem;color:var(--sub);margin-bottom:6px}
 .result-explanation{font-size:.88rem;color:var(--dim);margin-top:10px;line-height:1.5}
 .check-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;font-size:1rem}
@@ -127,13 +128,13 @@ main{width:100%;max-width:560px}
 
   <div id="phase-decision">
     <div class="gate-badge" id="t-gate-badge">PRODUCTION GATE</div>
-    <div class="gate-title" id="t-gate-title">Production Decision Required</div>
+    <div class="gate-title" id="t-gate-title">Can this case enter production?</div>
     <div class="gate-sub" id="t-gate-sub">This case may only enter production with an explicit accountable decision.</div>
     <div class="gate-case-ctx" id="gate-case-ctx"></div>
     <div class="decision-choices">
-      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')" id="t-opt-proceed">Proceed</button>
-      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')" id="t-opt-risk">Proceed with risk</button>
-      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')" id="t-opt-correction">Request correction</button>
+      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">Authorize for Production</button>
+      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">Authorize with Acknowledged Risk</button>
+      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Block — Request Correction</button>
     </div>
     <div class="reason-row" id="reason-row">
       <label class="reason-label" id="t-reason-label" for="reason-code">Reason (required)</label>
@@ -153,18 +154,18 @@ main{width:100%;max-width:560px}
   <div id="phase-result">
 
     <div class="res-section">
+      <div class="res-label" id="t-decision-label">Entscheidung</div>
+      <div class="result-verdict" id="result-verdict"></div>
+      <div class="result-sub" id="result-sub"></div>
+      <div class="result-explanation" id="result-explanation"></div>
+    </div>
+
+    <div class="res-section">
       <div class="res-label" id="t-case-label">Fall erkannt</div>
       <div class="case-proc" id="res-proc"></div>
       <div class="case-row"><span class="case-row-lbl" id="t-material-lbl">Material</span><span id="res-material"></span></div>
       <div class="case-row"><span class="case-row-lbl" id="t-land-lbl">Land</span><span id="res-land"></span></div>
       <div class="case-row"><span class="case-row-lbl" id="t-indication-lbl">Indikation</span><span id="res-indication"></span></div>
-    </div>
-
-    <div class="res-section">
-      <div class="res-label" id="t-decision-label">Entscheidung</div>
-      <div class="result-verdict" id="result-verdict"></div>
-      <div class="result-sub" id="result-sub"></div>
-      <div class="result-explanation" id="result-explanation"></div>
     </div>
 
     <div class="res-section">
@@ -230,24 +231,26 @@ const T = {
     caseLabel: 'Fall erkannt',
     materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
     decisionLabel: 'Entscheidung',
-    verdictOk: 'FREIGEGEBEN', verdictBlock: 'BLOCKIERT',
+    verdictOk: 'FREIGEGEBEN F\u00dcR PRODUKTION', verdictBlock: 'PRODUKTION BLOCKIERT',
+    verdictRisk: 'FREIGEGEBEN MIT VORBEHALT',
     subOk: 'Weitergabe m\u00f6glich', subBlock: 'Weitergabe nicht m\u00f6glich',
+    subRisk: 'Risiko durch Reviewer best\u00e4tigt',
     explanationOk: 'Zul\u00e4ssig unter MDR-konformer Fertigung in Deutschland.',
     explanationBlock: 'Versto\u00df gegen Jurisdiktionsanforderungen.',
     decisionBlockedSub: 'Routing blockiert \u2014 Korrektur angefordert',
     decisionBlockedExplanation: 'Der Reviewer hat Korrektur angefordert. Kein Routing wird ausgef\u00fchrt.',
     pruefungLabel: 'Pr\u00fcfung',
     chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Fertigung verf\u00fcgbar',
-    ergebnisOk: 'Ergebnis: Freigegeben', ergebnisBlock: 'Ergebnis: Blockiert',
+    ergebnisOk: 'Ergebnis: Freigegeben für Produktion', ergebnisBlock: 'Ergebnis: Produktion blockiert',
     fertigungLabel: 'M\u00f6gliche Fertigung',
     auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     reset: 'Neue Datei hochladen',
     gateBadge: 'PRODUKTIONSGATE',
-    gateTitle: 'Produktionsentscheidung erforderlich',
+    gateTitle: 'Kann dieser Fall in Produktion gehen?',
     gateSub: 'Dieser Fall darf nur in Produktion gehen, wenn eine explizite Entscheidung vorliegt.',
-    optProceed: 'Freigeben',
-    optRisk: 'Freigeben mit Vorbehalt',
-    optCorrection: 'Korrektur anfordern',
+    optProceed: 'Für Produktion freigeben',
+    optRisk: 'Mit Vorbehalt freigeben',
+    optCorrection: 'Blockieren — Korrektur anfordern',
     reasonLabel: 'Begr\u00fcndung (erforderlich)',
     reasonSelect: '\u2014 ausw\u00e4hlen \u2014',
     rcIncompleteScan: 'Unvollst\u00e4ndiger Scan',
@@ -264,24 +267,26 @@ const T = {
     caseLabel: 'Case detected',
     materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
     decisionLabel: 'Decision',
-    verdictOk: 'APPROVED', verdictBlock: 'BLOCKED',
+    verdictOk: 'AUTHORIZED FOR PRODUCTION', verdictBlock: 'PRODUCTION BLOCKED',
+    verdictRisk: 'AUTHORIZED WITH ACKNOWLEDGED RISK',
     subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
+    subRisk: 'Risk acknowledged by reviewer',
     explanationOk: 'Permissible under MDR-compliant manufacturing in Germany.',
     explanationBlock: 'Violation of jurisdiction requirements.',
     decisionBlockedSub: 'Routing blocked \u2014 correction requested',
     decisionBlockedExplanation: 'The reviewer requested correction. No routing will proceed.',
     pruefungLabel: 'Checks',
     chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
-    ergebnisOk: 'Result: Approved', ergebnisBlock: 'Result: Blocked',
+    ergebnisOk: 'Result: Authorized for Production', ergebnisBlock: 'Result: Production Blocked',
     fertigungLabel: 'Manufacturing options',
     auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     reset: 'Upload new file',
     gateBadge: 'PRODUCTION GATE',
-    gateTitle: 'Production Decision Required',
+    gateTitle: 'Can this case enter production?',
     gateSub: 'This case may only enter production with an explicit accountable decision.',
-    optProceed: 'Proceed',
-    optRisk: 'Proceed with risk',
-    optCorrection: 'Request correction',
+    optProceed: 'Authorize for Production',
+    optRisk: 'Authorize with Acknowledged Risk',
+    optCorrection: 'Block — Request Correction',
     reasonLabel: 'Reason (required)',
     reasonSelect: '\u2014 select \u2014',
     rcIncompleteScan: 'Incomplete scan',
@@ -537,7 +542,12 @@ function showResult(filename) {
 
   lastResultOk = c.ok;
   const vEl = document.getElementById('result-verdict');
-  if (c.ok) {
+  if (c.ok && selectedDecision === 'proceed_with_risk') {
+    vEl.className = 'result-verdict verdict-risk';
+    vEl.textContent = t.verdictRisk;
+    document.getElementById('result-sub').textContent = t.subRisk;
+    document.getElementById('result-explanation').textContent = t.explanationOk;
+  } else if (c.ok) {
     vEl.className = 'result-verdict verdict-ok';
     vEl.textContent = t.verdictOk;
     document.getElementById('result-sub').textContent = t.subOk;
@@ -564,7 +574,8 @@ function showResult(filename) {
 
   document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
   document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-  document.getElementById('audit-status').textContent = c.ok ? t.verdictOk : t.verdictBlock;
+  const auditVerdict = !c.ok ? t.verdictBlock : selectedDecision === 'proceed_with_risk' ? t.verdictRisk : t.verdictOk;
+  document.getElementById('audit-status').textContent = auditVerdict;
 
   document.getElementById('phase-result').style.display = 'block';
 }

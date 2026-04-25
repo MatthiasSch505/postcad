@@ -262,6 +262,7 @@ const T = {
     rcOther: 'Sonstiges',
     confirmBtn: 'Entscheidung best\u00e4tigen',
     reasonHint: 'W\u00e4hlen Sie einen Grund, um fortzufahren.',
+    demoOnlyError: 'Nur Demo-Dateien werden unterst\u00fctzt. Bitte Demo-Datei ausw\u00e4hlen.',
   },
   EN: {
     uploadTitle: 'Upload CAD file',
@@ -299,6 +300,7 @@ const T = {
     rcOther: 'Other',
     confirmBtn: 'Confirm Decision',
     reasonHint: 'Select a reason to continue.',
+    demoOnlyError: 'Only demo files are supported. Please select a demo file.',
   },
 };
 
@@ -455,8 +457,9 @@ function updateConfirmState() {
 }
 
 async function confirmDecision() {
-  const caseObj = FILE_CASES_API[currentFilename.toLowerCase()];
-  if (!caseObj || !selectedDecision) return;
+  if (!selectedDecision) return;
+  const caseObj = currentFilename ? FILE_CASES_API[currentFilename.toLowerCase()] : undefined;
+  if (!caseObj) { showGateError(T[lang].demoOnlyError); return; }
 
   const t = T[lang];
   const btn = document.getElementById('confirm-btn');

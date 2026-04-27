@@ -412,7 +412,7 @@ pre.proof-json{
     </div>
   </div>
   <div class="det-note" style="margin-top:.6rem;font-size:.8rem;line-height:1.5">
-    This system determines whether a dental case is allowed to enter production.<br>
+    This system documents whether a dental case is released, released with documented risk, or returned for correction.<br>
     Decisions are based on regulatory, SLA, and manufacturing eligibility constraints.<br>
     Blocked cases do not proceed to manufacturing.
   </div>

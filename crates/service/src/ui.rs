@@ -132,9 +132,9 @@ section{padding:0 24px}
 <section id="hero">
   <div class="inner">
     <h1 class="hero-h1" id="t-h1">Nicht jeder Fall<br>darf produziert werden.</h1>
-    <p class="hero-sub" id="t-sub">PostCAD entscheidet das automatisch.</p>
+    <p class="hero-sub" id="t-sub">PostCAD macht Produktionsfreigabe sichtbar.</p>
     <div class="det-note" style="margin-top:.9rem;max-width:40rem;font-size:.8rem;line-height:1.6">
-      This system determines whether a dental case is allowed to enter production.<br>
+      This system documents whether a dental case is released, released with documented risk, or returned for correction.<br>
       Decisions are based on regulatory, SLA, and manufacturing eligibility constraints.<br>
       Blocked cases do not proceed to manufacturing.
     </div>
@@ -258,7 +258,7 @@ section{padding:0 24px}
 const T = {
   DE: {
     h1: 'Nicht jeder Fall<br>darf produziert werden.',
-    sub: 'PostCAD entscheidet das automatisch.',
+    sub: 'PostCAD macht Produktionsfreigabe sichtbar.',
     cta: 'Demo ansehen',
     flowHeading: 'Ablauf',
     f1: 'CAD-Datei erstellt', f2: 'PostCAD prüft automatisch',

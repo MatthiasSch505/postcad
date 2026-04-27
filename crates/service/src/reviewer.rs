@@ -85,6 +85,8 @@ main{width:100%;max-width:560px}
 .chk-ok{color:var(--green);font-weight:700;font-size:1.1rem}
 .chk-fail{color:var(--red);font-weight:700;font-size:1.1rem}
 .check-ergebnis{font-size:.9rem;color:var(--sub);margin-top:14px;font-weight:600}
+.check-grund{font-size:.78rem;color:var(--red);padding:2px 0 10px;line-height:1.4;display:none}
+.result-next-step{font-size:.85rem;color:var(--red);margin-top:10px;line-height:1.5;display:none}
 .lab-item{font-size:1.05rem;color:var(--sub);padding:6px 0}
 .lab-item::before{content:'— ';color:var(--dim)}
 .audit-row{display:flex;font-size:.85rem;padding:5px 0;gap:12px}
@@ -171,6 +173,7 @@ main{width:100%;max-width:560px}
       <div class="result-verdict" id="result-verdict"></div>
       <div class="result-sub" id="result-sub"></div>
       <div class="result-explanation" id="result-explanation"></div>
+      <div class="result-next-step" id="result-next-step"></div>
     </div>
 
     <div class="res-section">
@@ -187,14 +190,17 @@ main{width:100%;max-width:560px}
         <span class="check-row-lbl" id="t-chk-material">Material zugelassen</span>
         <span id="chk-material"></span>
       </div>
+      <div class="check-grund" id="grund-material"></div>
       <div class="check-row">
         <span class="check-row-lbl" id="t-chk-jurisdiction">Jurisdiktion zulässig</span>
         <span id="chk-jurisdiction"></span>
       </div>
+      <div class="check-grund" id="grund-jurisdiction"></div>
       <div class="check-row">
         <span class="check-row-lbl" id="t-chk-manufacturing">Fertigung verfügbar</span>
         <span id="chk-manufacturing"></span>
       </div>
+      <div class="check-grund" id="grund-manufacturing"></div>
       <div class="check-ergebnis" id="check-ergebnis"></div>
     </div>
 
@@ -284,6 +290,10 @@ const T = {
     hintRisk: 'Fall darf in Produktion, bekannte Unsicherheit wird festgehalten',
     hintCorrection: 'Fall ist noch nicht produktionsreif',
     ahaLine: 'PostCAD ersetzt keine Fachentscheidung \u2013 es zwingt sie nur an den richtigen Punkt im Workflow.',
+    grundMaterial: 'Grund: Material ist f\u00fcr diesen Produkttyp nicht freigegeben.',
+    grundJurisdiction: 'Grund: Der ausgew\u00e4hlte Produktionsweg ist f\u00fcr dieses Herkunftsland nicht freigegeben.',
+    grundManufacturing: 'Grund: Kein freigegebener Produktionspartner mit verf\u00fcgbarer Kapazit\u00e4t hinterlegt.',
+    nextStepBlock: 'N\u00e4chster Schritt: Korrektur oder alternativer Produktionsweg erforderlich.',
   },
   EN: {
     uploadTitle: 'Upload CAD file',
@@ -327,6 +337,10 @@ const T = {
     hintRisk: 'Case may proceed; known uncertainty will be on record',
     hintCorrection: 'Case is not yet ready for production',
     ahaLine: 'PostCAD does not replace clinical judgment – it forces it to the right point in the workflow.',
+    grundMaterial: 'Reason: Material is not approved for this procedure type.',
+    grundJurisdiction: 'Reason: The selected production path is not authorized for this country of origin.',
+    grundManufacturing: 'Reason: No authorized manufacturing partner with available capacity on record.',
+    nextStepBlock: 'Next step: Correction or alternative production path required.',
   },
 };
 
@@ -416,6 +430,13 @@ function setLang(l) {
   sel.options[5].text = t.rcOther;
   if (lastResultOk !== null) {
     document.getElementById('result-explanation').textContent = lastResultOk ? t.explanationOk : t.explanationBlock;
+    const grundKeys = {material: 'grundMaterial', jurisdiction: 'grundJurisdiction', manufacturing: 'grundManufacturing'};
+    ['material', 'jurisdiction', 'manufacturing'].forEach(key => {
+      const el = document.getElementById('grund-' + key);
+      if (el && el.style.display !== 'none') el.textContent = t[grundKeys[key]];
+    });
+    const nsEl = document.getElementById('result-next-step');
+    if (nsEl && nsEl.style.display !== 'none') nsEl.textContent = t.nextStepBlock;
   }
 }
 
@@ -576,6 +597,9 @@ function showResultBlocked(filename) {
   setCheck('chk-manufacturing', false);
   document.getElementById('check-ergebnis').textContent = t.ergebnisBlock;
   document.getElementById('labs-section').style.display = 'none';
+  const nsElBlocked = document.getElementById('result-next-step');
+  nsElBlocked.textContent = t.nextStepBlock;
+  nsElBlocked.style.display = 'block';
 
   document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
   document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
@@ -613,10 +637,13 @@ function showResult(filename) {
     document.getElementById('result-explanation').textContent = t.explanationBlock;
   }
 
-  setCheck('chk-material', c.checks.material);
-  setCheck('chk-jurisdiction', c.checks.jurisdiction);
-  setCheck('chk-manufacturing', c.checks.manufacturing);
+  setCheck('chk-material', c.checks.material, t.grundMaterial);
+  setCheck('chk-jurisdiction', c.checks.jurisdiction, t.grundJurisdiction);
+  setCheck('chk-manufacturing', c.checks.manufacturing, t.grundManufacturing);
   document.getElementById('check-ergebnis').textContent = c.ok ? t.ergebnisOk : t.ergebnisBlock;
+  const nsEl = document.getElementById('result-next-step');
+  if (!c.ok) { nsEl.textContent = t.nextStepBlock; nsEl.style.display = 'block'; }
+  else { nsEl.style.display = 'none'; }
 
   const labsSec = document.getElementById('labs-section');
   if (c.ok && c.labs.length > 0) {
@@ -658,10 +685,19 @@ async function fetchAndRenderProof(filename) {
   } catch(e) {}
 }
 
-function setCheck(id, pass) {
+function setCheck(id, pass, grundText) {
   const el = document.getElementById(id);
   el.textContent = pass ? '\u2713' : '\u2715';
   el.className = pass ? 'chk-ok' : 'chk-fail';
+  const grundEl = document.getElementById('grund-' + id.replace('chk-', ''));
+  if (grundEl) {
+    if (!pass && grundText) {
+      grundEl.textContent = grundText;
+      grundEl.style.display = 'block';
+    } else {
+      grundEl.style.display = 'none';
+    }
+  }
 }
 
 function backToDecision() {

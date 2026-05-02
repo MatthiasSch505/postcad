@@ -3,7 +3,7 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PostCAD · Fallprüfung</title>
+<title>PostCAD · Klärung vor Herstellung</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -21,6 +21,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 header{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 44px}
 .brand{font-size:.78rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
 .brand span{color:var(--sub)}
+.brand-sub{font-size:.68rem;font-weight:600;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-top:3px}
 .lang-toggle{display:flex;gap:1px}
 .lang-btn{padding:3px 9px;font-size:.7rem;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:4px;transition:color .15s,border-color .15s}
 .lang-btn.active{color:var(--sub);border-color:var(--dim)}
@@ -94,6 +95,7 @@ main{width:100%;max-width:560px}
 .audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;word-break:break-word}
 .reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);font-size:.9rem;font-weight:600;padding:13px 22px;cursor:pointer;transition:border-color .15s,color .15s}
 .reset-btn:hover{border-color:var(--sub);color:var(--text)}
+.intro-line{font-size:.83rem;color:var(--sub);line-height:1.55;margin-bottom:28px;max-width:480px}
 
 #_legacy{display:none!important}
 </style>
@@ -101,7 +103,10 @@ main{width:100%;max-width:560px}
 <body>
 
 <header>
-  <div class="brand">Post<span>CAD</span></div>
+  <div>
+    <div class="brand">Post<span>CAD</span></div>
+    <div class="brand-sub" id="t-brand-tagline">Klärung vor Herstellung</div>
+  </div>
   <div class="lang-toggle">
     <button class="lang-btn active" id="btn-de" onclick="setLang('DE')">DE</button>
     <button class="lang-btn" id="btn-en" onclick="setLang('EN')">EN</button>
@@ -109,6 +114,8 @@ main{width:100%;max-width:560px}
 </header>
 
 <main>
+
+  <p class="intro-line" id="t-intro-line">PostCAD strukturiert kritische Klärungspunkte zwischen Labor und Praxis, bevor ein Fall in die Herstellung geht.</p>
 
   <div id="phase-upload">
     <label class="upload-zone" id="upload-zone" for="file-input">
@@ -197,7 +204,7 @@ main{width:100%;max-width:560px}
       </div>
       <div class="check-grund" id="grund-jurisdiction"></div>
       <div class="check-row">
-        <span class="check-row-lbl" id="t-chk-manufacturing">Fertigung verfügbar</span>
+        <span class="check-row-lbl" id="t-chk-manufacturing">Herstellung möglich</span>
         <span id="chk-manufacturing"></span>
       </div>
       <div class="check-grund" id="grund-manufacturing"></div>
@@ -205,7 +212,7 @@ main{width:100%;max-width:560px}
     </div>
 
     <div class="res-section" id="labs-section" style="display:none">
-      <div class="res-label" id="t-fertigung-label">Mögliche Fertigung</div>
+      <div class="res-label" id="t-fertigung-label">Herstellung unter Bedingungen</div>
       <div id="labs-list"></div>
     </div>
 
@@ -261,12 +268,12 @@ const T = {
     subRisk: 'Risiko dokumentiert, Freigabe erteilt',
     explanationOk: 'Zul\u00e4ssig unter MDR-konformer Fertigung in Deutschland.',
     explanationBlock: 'Versto\u00df gegen Jurisdiktionsanforderungen.',
-    decisionBlockedSub: 'Fall zur\u00fcckgestellt. Kein Routing wird ausgef\u00fchrt.',
-    decisionBlockedExplanation: 'Der Reviewer hat Korrektur angefordert. Kein Routing wird ausgef\u00fchrt.',
+    decisionBlockedSub: 'Fall zur\u00fcckgestellt. Herstellung wird nicht gestartet.',
+    decisionBlockedExplanation: 'Korrektur oder R\u00fccksprache erforderlich. Die Herstellung wird vorerst nicht gestartet.',
     pruefungLabel: 'Pr\u00fcfung',
-    chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Fertigung verf\u00fcgbar',
+    chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Herstellung m\u00f6glich',
     ergebnisOk: 'Ergebnis: Fall freigegeben', ergebnisBlock: 'Ergebnis: Nicht freigegeben',
-    fertigungLabel: 'M\u00f6gliche Fertigung',
+    fertigungLabel: 'Herstellung unter Bedingungen',
     auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     reset: 'Neue Datei hochladen',
     gateBadge: 'PRODUKTIONSFREIGABE',
@@ -291,9 +298,11 @@ const T = {
     hintCorrection: 'Fall ist noch nicht produktionsreif',
     ahaLine: 'PostCAD ersetzt keine Fachentscheidung \u2013 es zwingt sie nur an den richtigen Punkt im Workflow.',
     grundMaterial: 'Grund: Material ist f\u00fcr diesen Produkttyp nicht freigegeben.',
-    grundJurisdiction: 'Grund: Der ausgew\u00e4hlte Produktionsweg ist f\u00fcr dieses Herkunftsland nicht freigegeben.',
-    grundManufacturing: 'Grund: Kein freigegebener Produktionspartner mit verf\u00fcgbarer Kapazit\u00e4t hinterlegt.',
-    nextStepBlock: 'N\u00e4chster Schritt: Korrektur oder alternativer Produktionsweg erforderlich.',
+    grundJurisdiction: 'Grund: Die hinterlegte Regelpr\u00fcfung erlaubt die Herstellung unter diesen Angaben nicht.',
+    grundManufacturing: 'Grund: Herstellung unter den hinterlegten Bedingungen aktuell nicht m\u00f6glich.',
+    nextStepBlock: 'N\u00e4chster Schritt: Korrektur oder R\u00fccksprache vor Herstellung erforderlich.',
+    brandTagline: 'Kl\u00e4rung vor Herstellung',
+    introLine: 'PostCAD strukturiert kritische Kl\u00e4rungspunkte zwischen Labor und Praxis, bevor ein Fall in die Herstellung geht.',
   },
   EN: {
     uploadTitle: 'Upload CAD file',
@@ -308,12 +317,12 @@ const T = {
     subRisk: 'Risk documented, release granted',
     explanationOk: 'Permissible under MDR-compliant manufacturing in Germany.',
     explanationBlock: 'Violation of jurisdiction requirements.',
-    decisionBlockedSub: 'Case held. No routing performed.',
-    decisionBlockedExplanation: 'The reviewer requested correction. No routing will proceed.',
+    decisionBlockedSub: 'Case held. Manufacturing is not started.',
+    decisionBlockedExplanation: 'Correction or clarification required. Manufacturing is not started for now.',
     pruefungLabel: 'Checks',
-    chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
+    chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing possible',
     ergebnisOk: 'Result: Case released', ergebnisBlock: 'Result: Not released',
-    fertigungLabel: 'Manufacturing options',
+    fertigungLabel: 'Manufacturing under conditions',
     auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     reset: 'Upload new file',
     gateBadge: 'PRODUCTION AUTHORIZATION',
@@ -338,9 +347,11 @@ const T = {
     hintCorrection: 'Case is not yet ready for production',
     ahaLine: 'PostCAD does not replace clinical judgment – it forces it to the right point in the workflow.',
     grundMaterial: 'Reason: Material is not approved for this procedure type.',
-    grundJurisdiction: 'Reason: The selected production path is not authorized for this country of origin.',
-    grundManufacturing: 'Reason: No authorized manufacturing partner with available capacity on record.',
-    nextStepBlock: 'Next step: Correction or alternative production path required.',
+    grundJurisdiction: 'Reason: The configured rule check does not allow manufacturing under these details.',
+    grundManufacturing: 'Reason: Manufacturing is currently not possible under the configured conditions.',
+    nextStepBlock: 'Next step: Correction or clarification before manufacturing required.',
+    brandTagline: 'Clarification before manufacturing',
+    introLine: 'PostCAD structures critical clarification points between lab and practice before a case enters manufacturing.',
   },
 };
 
@@ -389,6 +400,8 @@ function setLang(l) {
   document.getElementById('btn-de').classList.toggle('active', l === 'DE');
   document.getElementById('btn-en').classList.toggle('active', l === 'EN');
   const t = T[l];
+  document.getElementById('t-brand-tagline').textContent = t.brandTagline;
+  document.getElementById('t-intro-line').textContent = t.introLine;
   document.getElementById('t-upload-title').textContent = t.uploadTitle;
   document.getElementById('t-upload-sub').textContent = t.uploadSub;
   document.getElementById('t-case-label').textContent = t.caseLabel;

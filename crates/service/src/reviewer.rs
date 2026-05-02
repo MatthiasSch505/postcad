@@ -120,7 +120,7 @@ main{width:100%;max-width:560px}
   <div id="phase-upload">
     <label class="upload-zone" id="upload-zone" for="file-input">
       <div class="upload-icon">↑</div>
-      <div class="upload-title" id="t-upload-title">CAD-Datei hochladen</div>
+      <div class="upload-title" id="t-upload-title">Digitalen Laborfall öffnen</div>
       <div class="upload-sub" id="t-upload-sub">Datei hier ablegen oder auswählen (STL, OBJ)</div>
     </label>
     <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
@@ -137,22 +137,22 @@ main{width:100%;max-width:560px}
     <div class="proc-step" id="pstep-2"></div>
     <div class="proc-step" id="pstep-3"></div>
     <div style="margin-top:32px">
-      <button class="reset-btn" onclick="resetDemo()"><span id="t-proc-reset">Neue Datei hochladen</span></button>
+      <button class="reset-btn" onclick="resetDemo()"><span id="t-proc-reset">Neuen Laborfall öffnen</span></button>
     </div>
   </div>
 
   <div id="phase-decision">
-    <div class="gate-badge" id="t-gate-badge">PRODUKTIONSFREIGABE</div>
-    <div class="gate-title" id="t-gate-title">Darf dieser Fall in Produktion gehen?</div>
+    <div class="gate-badge" id="t-gate-badge">ENTSCHEIDUNG VOR HERSTELLUNG</div>
+    <div class="gate-title" id="t-gate-title">Welche Entscheidung wird vor Herstellung dokumentiert?</div>
     <div class="gate-sub" id="t-gate-sub">Vor Produktionsstart ist eine explizite Entscheidung erforderlich.</div>
     <div class="gate-case-ctx" id="gate-case-ctx"></div>
     <div class="decision-choices">
-      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">In Produktion freigeben</button>
-      <div class="choice-hint" id="hint-proceed">Fall darf in Produktion</div>
-      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">In Produktion freigeben &#x2013; Risiko dokumentiert</button>
-      <div class="choice-hint" id="hint-proceed_with_risk">Fall darf in Produktion, bekannte Unsicherheit wird festgehalten</div>
-      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Nicht freigeben &#x2013; Korrektur erforderlich</button>
-      <div class="choice-hint" id="hint-request_correction">Fall ist noch nicht produktionsreif</div>
+      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">Produktion möglich</button>
+      <div class="choice-hint" id="hint-proceed">Herstellung kann auf dieser Grundlage erfolgen.</div>
+      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">Produktion nach dokumentierter Klärung</button>
+      <div class="choice-hint" id="hint-proceed_with_risk">Klärung mit der Praxis wurde dokumentiert.</div>
+      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Korrektur oder Rücksprache erforderlich</button>
+      <div class="choice-hint" id="hint-request_correction">Vor Herstellung ist Korrektur oder Rücksprache erforderlich.</div>
     </div>
     <div class="reason-row" id="reason-row">
       <label class="reason-label" id="t-reason-label" for="reason-code">Grund (erforderlich)</label>
@@ -169,7 +169,7 @@ main{width:100%;max-width:560px}
     <div class="confirm-hint" id="confirm-hint"></div>
     <div class="gate-error" id="gate-error"></div>
     <div style="margin-top:20px;text-align:center">
-      <button class="reset-btn" onclick="resetDemo()"><span id="t-gate-reset">Neue Datei hochladen</span></button>
+      <button class="reset-btn" onclick="resetDemo()"><span id="t-gate-reset">Neuen Laborfall öffnen</span></button>
     </div>
   </div>
 
@@ -224,7 +224,7 @@ main{width:100%;max-width:560px}
     </div>
 
     <div class="res-section" id="proof-section" style="display:none">
-      <div class="res-label">Proof &amp; Receipt</div>
+      <div class="res-label">Technischer Nachweis / Protokollansicht</div>
       <details open>
         <summary style="font-size:.83rem;color:var(--sub);cursor:pointer;padding:4px 0">Receipt JSON</summary>
         <pre id="proof-receipt-json" style="margin-top:8px;font-size:.7rem;color:var(--sub);font-family:'SF Mono','Fira Code',monospace;white-space:pre-wrap;word-break:break-all;line-height:1.5;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;max-height:260px;overflow-y:auto"></pre>
@@ -232,12 +232,12 @@ main{width:100%;max-width:560px}
     </div>
 
     <div class="res-section">
-      <p class="aha-line" id="aha-line">PostCAD ersetzt keine Fachentscheidung &#x2013; es zwingt sie nur an den richtigen Punkt im Workflow.</p>
+      <p class="aha-line" id="aha-line">PostCAD ersetzt keine Fachentscheidung &#x2013; es strukturiert den Klärungsmoment vor Herstellung.</p>
     </div>
 
     <div class="res-section" style="border-top:none;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="reset-btn" onclick="backToDecision()"><span id="t-back-decision">Zurück zur Entscheidung</span></button>
-      <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neue Datei hochladen</span></button>
+      <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neuen Laborfall öffnen</span></button>
     </div>
 
   </div>
@@ -256,32 +256,32 @@ main{width:100%;max-width:560px}
 <script>
 const T = {
   DE: {
-    uploadTitle: 'CAD-Datei hochladen',
+    uploadTitle: 'Digitalen Laborfall öffnen',
     uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
     procSteps: ['Datei empfangen', 'Falldaten werden gelesen', 'Pr\u00fcfung l\u00e4uft', 'Produktionsentscheidung erforderlich'],
     caseLabel: 'Fall erkannt',
     materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
     decisionLabel: 'Entscheidung',
-    verdictOk: 'FALL F\u00dcR PRODUKTION FREIGEGEBEN', verdictBlock: 'FALL NICHT FREIGEGEBEN \u2013 KORREKTUR ERFORDERLICH',
-    verdictRisk: 'FALL FREIGEGEBEN \u2013 RISIKO DOKUMENTIERT',
-    subOk: 'Weitergabe m\u00f6glich', subBlock: 'Weitergabe nicht m\u00f6glich',
-    subRisk: 'Risiko dokumentiert, Freigabe erteilt',
-    explanationOk: 'Zul\u00e4ssig unter MDR-konformer Fertigung in Deutschland.',
+    verdictOk: 'ENTSCHEIDUNG DOKUMENTIERT', verdictBlock: 'FALL NICHT FREIGEGEBEN \u2013 KORREKTUR ERFORDERLICH',
+    verdictRisk: 'ENTSCHEIDUNG DOKUMENTIERT \u2013 KL\u00c4RUNG FESTGEHALTEN',
+    subOk: 'Entscheidung vor Herstellung dokumentiert', subBlock: 'Weitergabe nicht m\u00f6glich',
+    subRisk: 'Kl\u00e4rung dokumentiert',
+    explanationOk: 'Pr\u00fcfung der hinterlegten Bedingungen abgeschlossen.',
     explanationBlock: 'Versto\u00df gegen Jurisdiktionsanforderungen.',
     decisionBlockedSub: 'Fall zur\u00fcckgestellt. Herstellung wird nicht gestartet.',
     decisionBlockedExplanation: 'Korrektur oder R\u00fccksprache erforderlich. Die Herstellung wird vorerst nicht gestartet.',
     pruefungLabel: 'Pr\u00fcfung',
     chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Herstellung m\u00f6glich',
-    ergebnisOk: 'Ergebnis: Fall freigegeben', ergebnisBlock: 'Ergebnis: Nicht freigegeben',
-    fertigungLabel: 'Herstellung unter Bedingungen',
+    ergebnisOk: 'Ergebnis: Entscheidung dokumentiert', ergebnisBlock: 'Ergebnis: Nicht freigegeben',
+    fertigungLabel: 'Dokumentierter Klärungspunkt',
     auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
-    reset: 'Neue Datei hochladen',
-    gateBadge: 'PRODUKTIONSFREIGABE',
-    gateTitle: 'Darf dieser Fall in Produktion gehen?',
+    reset: 'Neuen Laborfall öffnen',
+    gateBadge: 'ENTSCHEIDUNG VOR HERSTELLUNG',
+    gateTitle: 'Welche Entscheidung wird vor Herstellung dokumentiert?',
     gateSub: 'Vor Produktionsstart ist eine explizite Entscheidung erforderlich.',
-    optProceed: 'In Produktion freigeben',
-    optRisk: 'In Produktion freigeben – Risiko dokumentiert',
-    optCorrection: 'Nicht freigeben – Korrektur erforderlich',
+    optProceed: 'Produktion möglich',
+    optRisk: 'Produktion nach dokumentierter Klärung',
+    optCorrection: 'Korrektur oder Rücksprache erforderlich',
     reasonLabel: 'Grund (erforderlich)',
     reasonSelect: '\u2014 ausw\u00e4hlen \u2014',
     rcIncompleteScan: 'Unvollst\u00e4ndiger Scan',
@@ -293,44 +293,45 @@ const T = {
     reasonHint: 'W\u00e4hlen Sie einen Grund, um fortzufahren.',
     demoOnlyError: 'Nur Demo-Dateien werden unterst\u00fctzt. Bitte Demo-Datei ausw\u00e4hlen.',
     backToDecision: 'Zur\u00fcck zur Entscheidung',
-    hintProceed: 'Fall darf in Produktion',
-    hintRisk: 'Fall darf in Produktion, bekannte Unsicherheit wird festgehalten',
-    hintCorrection: 'Fall ist noch nicht produktionsreif',
-    ahaLine: 'PostCAD ersetzt keine Fachentscheidung \u2013 es zwingt sie nur an den richtigen Punkt im Workflow.',
+    hintProceed: 'Herstellung kann auf dieser Grundlage erfolgen.',
+    hintRisk: 'Klärung mit der Praxis wurde dokumentiert.',
+    hintCorrection: 'Vor Herstellung ist Korrektur oder Rücksprache erforderlich.',
+    ahaLine: 'PostCAD ersetzt keine Fachentscheidung \u2013 es strukturiert den Kl\u00e4rungsmoment vor Herstellung.',
     grundMaterial: 'Grund: Material ist f\u00fcr diesen Produkttyp nicht freigegeben.',
     grundJurisdiction: 'Grund: Die hinterlegte Regelpr\u00fcfung erlaubt die Herstellung unter diesen Angaben nicht.',
     grundManufacturing: 'Grund: Herstellung unter den hinterlegten Bedingungen aktuell nicht m\u00f6glich.',
     nextStepBlock: 'N\u00e4chster Schritt: Korrektur oder R\u00fccksprache vor Herstellung erforderlich.',
     brandTagline: 'Kl\u00e4rung vor Herstellung',
     introLine: 'PostCAD strukturiert kritische Kl\u00e4rungspunkte zwischen Labor und Praxis, bevor ein Fall in die Herstellung geht.',
+    fertigungBody: 'Ausgangslage, R\u00fcckmeldung der Praxis und Entscheidung vor Herstellung werden nachvollziehbar festgehalten.',
   },
   EN: {
-    uploadTitle: 'Upload CAD file',
+    uploadTitle: 'Open digital lab case',
     uploadSub: 'Drop file here or select (STL, OBJ)',
     procSteps: ['File received', 'Case data being read', 'Checks running', 'Production decision required'],
     caseLabel: 'Case detected',
     materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
     decisionLabel: 'Decision',
-    verdictOk: 'CASE RELEASED FOR PRODUCTION', verdictBlock: 'CASE NOT RELEASED – CORRECTION REQUIRED',
-    verdictRisk: 'CASE RELEASED – RISK DOCUMENTED',
-    subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
-    subRisk: 'Risk documented, release granted',
-    explanationOk: 'Permissible under MDR-compliant manufacturing in Germany.',
+    verdictOk: 'DECISION DOCUMENTED', verdictBlock: 'CASE NOT RELEASED – CORRECTION REQUIRED',
+    verdictRisk: 'DECISION DOCUMENTED – CLARIFICATION ON RECORD',
+    subOk: 'Decision before manufacturing documented', subBlock: 'Cannot proceed',
+    subRisk: 'Clarification documented',
+    explanationOk: 'Configured conditions have been checked.',
     explanationBlock: 'Violation of jurisdiction requirements.',
     decisionBlockedSub: 'Case held. Manufacturing is not started.',
     decisionBlockedExplanation: 'Correction or clarification required. Manufacturing is not started for now.',
     pruefungLabel: 'Checks',
     chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing possible',
-    ergebnisOk: 'Result: Case released', ergebnisBlock: 'Result: Not released',
-    fertigungLabel: 'Manufacturing under conditions',
+    ergebnisOk: 'Result: Decision documented', ergebnisBlock: 'Result: Not released',
+    fertigungLabel: 'Documented clarification point',
     auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
-    reset: 'Upload new file',
-    gateBadge: 'PRODUCTION AUTHORIZATION',
-    gateTitle: 'May this case enter production?',
+    reset: 'Open new lab case',
+    gateBadge: 'DECISION BEFORE MANUFACTURING',
+    gateTitle: 'Which decision is documented before manufacturing?',
     gateSub: 'An explicit decision is required before production can start.',
-    optProceed: 'Release to Production',
-    optRisk: 'Release to Production – Risk Documented',
-    optCorrection: 'Do Not Release – Correction Required',
+    optProceed: 'Manufacturing possible',
+    optRisk: 'Manufacturing after documented clarification',
+    optCorrection: 'Correction or clarification required',
     reasonLabel: 'Reason (required)',
     reasonSelect: '\u2014 select \u2014',
     rcIncompleteScan: 'Incomplete scan',
@@ -342,16 +343,17 @@ const T = {
     reasonHint: 'Select a reason to continue.',
     demoOnlyError: 'Only demo files are supported. Please select a demo file.',
     backToDecision: 'Back to Decision',
-    hintProceed: 'Case may proceed to production',
-    hintRisk: 'Case may proceed; known uncertainty will be on record',
-    hintCorrection: 'Case is not yet ready for production',
-    ahaLine: 'PostCAD does not replace clinical judgment – it forces it to the right point in the workflow.',
+    hintProceed: 'Manufacturing may proceed on this basis.',
+    hintRisk: 'Clarification with the practice has been documented.',
+    hintCorrection: 'Correction or clarification is required before manufacturing.',
+    ahaLine: 'PostCAD does not replace clinical judgment – it structures the clarification moment before manufacturing.',
     grundMaterial: 'Reason: Material is not approved for this procedure type.',
     grundJurisdiction: 'Reason: The configured rule check does not allow manufacturing under these details.',
     grundManufacturing: 'Reason: Manufacturing is currently not possible under the configured conditions.',
     nextStepBlock: 'Next step: Correction or clarification before manufacturing required.',
     brandTagline: 'Clarification before manufacturing',
     introLine: 'PostCAD structures critical clarification points between lab and practice before a case enters manufacturing.',
+    fertigungBody: 'Initial situation, practice feedback and decision before manufacturing are recorded traceably.',
   },
 };
 
@@ -372,7 +374,7 @@ const FILE_CASES = {
     material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
     ok: true,
     checks: {material: true, jurisdiction: true, manufacturing: true},
-    labs: ['Labor Berlin', 'Labor M\u00fcnchen', 'Industriepool EU'],
+    labs: [],
   },
   'bruecke_usa.stl': {
     proc: 'Br\u00fccke',
@@ -414,6 +416,10 @@ function setLang(l) {
   document.getElementById('t-chk-jurisdiction').textContent = t.chkJurisdiction;
   document.getElementById('t-chk-manufacturing').textContent = t.chkManufacturing;
   document.getElementById('t-fertigung-label').textContent = t.fertigungLabel;
+  if (lastResultOk !== null) {
+    document.getElementById('labs-list').innerHTML =
+      '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
+  }
   document.getElementById('t-audit-label').textContent = t.auditLabel;
   document.getElementById('t-audit-id-lbl').textContent = t.auditIdLbl;
   document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
@@ -609,7 +615,10 @@ function showResultBlocked(filename) {
   setCheck('chk-jurisdiction', false);
   setCheck('chk-manufacturing', false);
   document.getElementById('check-ergebnis').textContent = t.ergebnisBlock;
-  document.getElementById('labs-section').style.display = 'none';
+  const labsSecBlocked = document.getElementById('labs-section');
+  labsSecBlocked.style.display = 'block';
+  document.getElementById('labs-list').innerHTML =
+    '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
   const nsElBlocked = document.getElementById('result-next-step');
   nsElBlocked.textContent = t.nextStepBlock;
   nsElBlocked.style.display = 'block';
@@ -659,9 +668,10 @@ function showResult(filename) {
   else { nsEl.style.display = 'none'; }
 
   const labsSec = document.getElementById('labs-section');
-  if (c.ok && c.labs.length > 0) {
+  if (c.ok) {
     labsSec.style.display = 'block';
-    document.getElementById('labs-list').innerHTML = c.labs.map(l => '<div class="lab-item">' + l + '</div>').join('');
+    document.getElementById('labs-list').innerHTML =
+      '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
   } else {
     labsSec.style.display = 'none';
   }

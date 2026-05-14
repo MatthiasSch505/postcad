@@ -131,12 +131,10 @@ section{padding:0 24px}
 <!-- ── HERO ── -->
 <section id="hero">
   <div class="inner">
-    <h1 class="hero-h1" id="t-h1">Nicht jeder Fall<br>darf produziert werden.</h1>
-    <p class="hero-sub" id="t-sub">PostCAD macht Produktionsfreigabe sichtbar.</p>
-    <div class="det-note" style="margin-top:.9rem;max-width:40rem;font-size:.8rem;line-height:1.6">
-      This system documents whether a dental case is released, released with documented risk, or returned for correction.<br>
-      Decisions are based on regulatory, SLA, and manufacturing eligibility constraints.<br>
-      Blocked cases do not proceed to manufacturing.
+    <h1 class="hero-h1" id="t-h1">Nicht jeder Fall<br>ist vor der Fertigung ausreichend geklärt.</h1>
+    <p class="hero-sub" id="t-sub">PostCAD dokumentiert die Entscheidung vor der Fertigung.</p>
+    <div class="det-note" id="t-det-note" style="margin-top:.9rem;max-width:40rem;font-size:.8rem;line-height:1.6">
+      PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.
     </div>
     <a class="hero-cta" href="#" onclick="startGuidedDemo(); return false;">
       <span id="t-cta">Demo ansehen</span>
@@ -156,16 +154,16 @@ section{padding:0 24px}
       </div>
       <div class="flow-node">
         <div class="flow-spine"><div class="flow-dot lit"></div><div class="flow-line"></div></div>
-        <div class="flow-body"><div class="flow-n">02</div><div class="flow-label primary" id="t-f2">PostCAD prüft automatisch</div></div>
+        <div class="flow-body"><div class="flow-n">02</div><div class="flow-label primary" id="t-f2">PostCAD dokumentiert die Entscheidung</div></div>
       </div>
       <div class="flow-outcomes">
         <div>
-          <div class="outcome-v blocked" id="t-f3-blocked">BLOCKIERT</div>
-          <div class="outcome-sub" id="t-f3-blocked-sub">Weitergabe nicht möglich</div>
+          <div class="outcome-v blocked" id="t-f3-blocked">KLÄRUNG ERFORDERLICH</div>
+          <div class="outcome-sub" id="t-f3-blocked-sub">Klärung erforderlich</div>
         </div>
         <div>
-          <div class="outcome-v ok" id="t-f3-ok">FREIGEGEBEN</div>
-          <div class="outcome-sub" id="t-f3-ok-sub">Weitergabe möglich</div>
+          <div class="outcome-v ok" id="t-f3-ok">FORTSETZUNG DOKUMENTIERT</div>
+          <div class="outcome-sub" id="t-f3-ok-sub">Fortsetzung dokumentiert</div>
         </div>
       </div>
     </div>
@@ -218,24 +216,24 @@ section{padding:0 24px}
       </div>
 
       <div class="res-section">
-        <div class="res-label" id="t-pruefung-label">Prüfung</div>
+        <div class="res-label" id="t-pruefung-label">Falldaten</div>
         <div class="check-row">
-          <span class="check-row-lbl" id="t-chk-material">Material zugelassen</span>
+          <span class="check-row-lbl" id="t-chk-material">Materialangabe</span>
           <span id="chk-material"></span>
         </div>
         <div class="check-row">
-          <span class="check-row-lbl" id="t-chk-jurisdiction">Jurisdiktion zulässig</span>
+          <span class="check-row-lbl" id="t-chk-jurisdiction">Länderangabe</span>
           <span id="chk-jurisdiction"></span>
         </div>
         <div class="check-row">
-          <span class="check-row-lbl" id="t-chk-manufacturing">Fertigung verfügbar</span>
+          <span class="check-row-lbl" id="t-chk-manufacturing">Herstellungsangabe</span>
           <span id="chk-manufacturing"></span>
         </div>
         <div class="check-ergebnis" id="check-ergebnis"></div>
       </div>
 
       <div class="res-section" id="labs-section" style="display:none">
-        <div class="res-label" id="t-fertigung-label">Mögliche Fertigung</div>
+        <div class="res-label" id="t-fertigung-label">Entscheidungsgrundlage</div>
         <div id="labs-list"></div>
       </div>
 
@@ -257,56 +255,62 @@ section{padding:0 24px}
 <script>
 const T = {
   DE: {
-    h1: 'Nicht jeder Fall<br>darf produziert werden.',
-    sub: 'PostCAD macht Produktionsfreigabe sichtbar.',
+    h1: 'Nicht jeder Fall<br>ist vor der Fertigung ausreichend geklärt.',
+    sub: 'PostCAD dokumentiert die Entscheidung vor der Fertigung.',
+    detNote: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.',
     cta: 'Demo ansehen',
     flowHeading: 'Ablauf',
-    f1: 'CAD-Datei erstellt', f2: 'PostCAD prüft automatisch',
-    f3Blocked: 'BLOCKIERT', f3BlockedSub: 'Weitergabe nicht möglich',
-    f3Ok: 'FREIGEGEBEN', f3OkSub: 'Weitergabe möglich',
+    f1: 'CAD-Datei erstellt', f2: 'PostCAD dokumentiert die Entscheidung',
+    f3Blocked: 'KLÄRUNG ERFORDERLICH', f3BlockedSub: 'Klärung erforderlich',
+    f3Ok: 'FORTSETZUNG DOKUMENTIERT', f3OkSub: 'Fortsetzung dokumentiert',
     uploadTitle: 'CAD-Datei hochladen',
     uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
     fileDetected: 'Datei erkannt',
-    procRunning: 'Prüfung läuft\u2026',
-    pcheckLabels: ['Materialprüfung', 'Jurisdiktionsprüfung', 'Fertigungsprüfung'],
+    procRunning: 'Angaben werden gelesen\u2026',
+    pcheckLabels: ['Materialangabe', 'Länderangabe', 'Herstellungsangabe'],
     caseLabel: 'Fall erkannt',
     materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
     decisionLabel: 'Entscheidung',
-    verdictOk: 'FREIGEGEBEN', verdictBlock: 'BLOCKIERT',
-    subOk: 'Weitergabe möglich', subBlock: 'Weitergabe nicht möglich',
-    explanationOk: 'Zulässig unter MDR-konformer Fertigung in Deutschland.',
-    explanationBlock: 'Verstoß gegen Jurisdiktionsanforderungen.',
-    pruefungLabel: 'Prüfung',
-    chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zulässig', chkManufacturing: 'Fertigung verfügbar',
-    ergebnisOk: 'Ergebnis: Freigegeben', ergebnisBlock: 'Ergebnis: Blockiert',
-    fertigungLabel: 'Mögliche Fertigung',
+    verdictOk: 'FORTSETZUNG DOKUMENTIERT', verdictBlock: 'KLÄRUNG ERFORDERLICH',
+    subOk: 'Fortsetzung dokumentiert', subBlock: 'Klärung erforderlich',
+    explanationOk: 'Die verantwortliche Person hat dokumentiert, dass die Ausgangslage ausreichend geklärt ist.',
+    explanationBlock: 'Die verantwortliche Person hat dokumentiert, dass vor der Fertigung eine Klärung erforderlich ist.',
+    pruefungLabel: 'Falldaten',
+    chkMaterial: 'Materialangabe', chkJurisdiction: 'Länderangabe', chkManufacturing: 'Herstellungsangabe',
+    ergebnisOk: 'Entscheidung: Fortsetzung dokumentiert', ergebnisBlock: 'Entscheidung: Klärung erforderlich',
+    fertigungLabel: 'Entscheidungsgrundlage',
+    fertigungHint: 'Dokumentierter Hinweis',
+    fertigungBody: 'Die Entscheidungsgrundlage wird durch die verantwortliche Person festgehalten. Ausgangslage und Entscheidungsbasis werden nachvollziehbar dokumentiert.',
     auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     reset: 'Neue Datei hochladen',
   },
   EN: {
-    h1: 'Not every case<br>may be manufactured.',
-    sub: 'PostCAD decides automatically.',
+    h1: 'Not every case<br>has been sufficiently clarified before manufacturing.',
+    sub: 'PostCAD documents the decision before manufacturing.',
+    detNote: 'PostCAD does not detect medical or technical errors and does not release manufacturing. The system structures communication between practice and lab, and documents which responsible person decided on which basis.',
     cta: 'View demo',
     flowHeading: 'Process',
-    f1: 'CAD file created', f2: 'PostCAD checks automatically',
-    f3Blocked: 'BLOCKED', f3BlockedSub: 'Cannot proceed',
-    f3Ok: 'APPROVED', f3OkSub: 'Safe to proceed',
+    f1: 'CAD file created', f2: 'PostCAD documents the decision',
+    f3Blocked: 'CLARIFICATION REQUIRED', f3BlockedSub: 'Clarification required',
+    f3Ok: 'PROCEED DOCUMENTED', f3OkSub: 'Proceed documented',
     uploadTitle: 'Upload CAD file',
     uploadSub: 'Drop file here or select (STL, OBJ)',
     fileDetected: 'File detected',
-    procRunning: 'Running checks\u2026',
-    pcheckLabels: ['Material check', 'Jurisdiction check', 'Manufacturing check'],
+    procRunning: 'Reading details\u2026',
+    pcheckLabels: ['Material information', 'Country information', 'Manufacturing information'],
     caseLabel: 'Case detected',
     materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
     decisionLabel: 'Decision',
-    verdictOk: 'APPROVED', verdictBlock: 'BLOCKED',
-    subOk: 'Safe to proceed', subBlock: 'Cannot proceed',
-    explanationOk: 'Permissible under MDR-compliant manufacturing in Germany.',
-    explanationBlock: 'Violation of jurisdiction requirements.',
-    pruefungLabel: 'Checks',
-    chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing available',
-    ergebnisOk: 'Result: Approved', ergebnisBlock: 'Result: Blocked',
-    fertigungLabel: 'Manufacturing options',
+    verdictOk: 'PROCEED DOCUMENTED', verdictBlock: 'CLARIFICATION REQUIRED',
+    subOk: 'Proceed documented', subBlock: 'Clarification required',
+    explanationOk: 'The responsible person documented that the starting situation is sufficiently clarified.',
+    explanationBlock: 'The responsible person documented that clarification is required before manufacturing.',
+    pruefungLabel: 'Case data',
+    chkMaterial: 'Material information', chkJurisdiction: 'Country information', chkManufacturing: 'Manufacturing information',
+    ergebnisOk: 'Decision: Proceed documented', ergebnisBlock: 'Decision: Clarification required',
+    fertigungLabel: 'Decision basis',
+    fertigungHint: 'Documented note',
+    fertigungBody: 'The decision basis is recorded by the responsible person. The starting situation and decision basis are documented traceably.',
     auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     reset: 'Upload new file',
   },
@@ -318,14 +322,14 @@ const FILE_CASES = {
     material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
     ok: true,
     checks: {material: true, jurisdiction: true, manufacturing: true},
-    labs: ['Labor Berlin', 'Labor M\u00fcnchen', 'Industriepool EU'],
+    labs: [],
   },
   'krone_3-6_de.stl': {
     proc: 'Krone \u00b7 Zahn 3\u20136',
     material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
     ok: true,
     checks: {material: true, jurisdiction: true, manufacturing: true},
-    labs: ['Labor Berlin', 'Labor M\u00fcnchen', 'Industriepool EU'],
+    labs: [],
   },
   'bruecke_usa.stl': {
     proc: 'Br\u00fccke',
@@ -353,6 +357,7 @@ function setLang(l) {
   const t = T[l];
   document.getElementById('t-h1').innerHTML = t.h1;
   document.getElementById('t-sub').textContent = t.sub;
+  document.getElementById('t-det-note').textContent = t.detNote;
   document.getElementById('t-cta').textContent = t.cta;
   document.getElementById('t-flow-heading').textContent = t.flowHeading;
   document.getElementById('t-f1').textContent = t.f1;
@@ -380,6 +385,7 @@ function setLang(l) {
   document.getElementById('t-reset').textContent = t.reset;
   if (lastResultOk !== null) {
     document.getElementById('result-explanation').textContent = lastResultOk ? t.explanationOk : t.explanationBlock;
+    document.getElementById('labs-list').innerHTML = '<div class="case-row-lbl" style="font-size:.78rem;margin-bottom:4px">' + t.fertigungHint + '</div><div style="font-size:.85rem;color:var(--dim);line-height:1.55;margin-top:4px">' + t.fertigungBody + '</div>';
   }
 }
 
@@ -467,13 +473,8 @@ function showResult(filename) {
   setCheck('chk-manufacturing', c.checks.manufacturing);
   document.getElementById('check-ergebnis').textContent = c.ok ? t.ergebnisOk : t.ergebnisBlock;
 
-  const labsSec = document.getElementById('labs-section');
-  if (c.ok && c.labs.length > 0) {
-    labsSec.style.display = 'block';
-    document.getElementById('labs-list').innerHTML = c.labs.map(l => '<div class="lab-item">' + l + '</div>').join('');
-  } else {
-    labsSec.style.display = 'none';
-  }
+  document.getElementById('labs-section').style.display = 'block';
+  document.getElementById('labs-list').innerHTML = '<div class="case-row-lbl" style="font-size:.78rem;margin-bottom:4px">' + t.fertigungHint + '</div><div style="font-size:.85rem;color:var(--dim);line-height:1.55;margin-top:4px">' + t.fertigungBody + '</div>';
 
   document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
   document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
@@ -489,18 +490,7 @@ function setCheck(id, pass) {
   el.className = pass ? 'chk-ok' : 'chk-fail';
 }
 
-function resetDemo() {
-  lastResultOk = null;
-  const t = T[lang];
-  document.getElementById('upload-zone').classList.remove('has-file');
-  document.getElementById('upload-icon').textContent = '\u2191';
-  document.getElementById('upload-icon').style.color = '';
-  document.getElementById('t-upload-title').textContent = t.uploadTitle;
-  document.getElementById('t-upload-sub').textContent = t.uploadSub;
-  document.getElementById('phase-result').style.display = 'none';
-  document.getElementById('phase-processing').style.display = 'none';
-  document.getElementById('phase-upload').style.display = 'block';
-}
+function resetDemo() { window.location.href = '/'; }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 

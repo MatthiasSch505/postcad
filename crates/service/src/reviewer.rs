@@ -126,7 +126,6 @@ main{width:100%;max-width:560px}
     <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
     <div class="demo-files">
       <button class="demo-file-btn" onclick="loadDemo('Krone_3-6_DE.stl')">Krone_3-6_DE.stl</button>
-      <button class="demo-file-btn" onclick="loadDemo('Bruecke_USA.stl')">Bruecke_USA.stl</button>
     </div>
   </div>
 
@@ -147,12 +146,12 @@ main{width:100%;max-width:560px}
     <div class="gate-sub" id="t-gate-sub">Vor Produktionsstart ist eine explizite Entscheidung erforderlich.</div>
     <div class="gate-case-ctx" id="gate-case-ctx"></div>
     <div class="decision-choices">
-      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">Produktion möglich</button>
-      <div class="choice-hint" id="hint-proceed">Herstellung kann auf dieser Grundlage erfolgen.</div>
-      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">Produktion nach dokumentierter Klärung</button>
-      <div class="choice-hint" id="hint-proceed_with_risk">Klärung mit der Praxis wurde dokumentiert.</div>
-      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Korrektur oder Rücksprache erforderlich</button>
-      <div class="choice-hint" id="hint-request_correction">Vor Herstellung ist Korrektur oder Rücksprache erforderlich.</div>
+      <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">Fortsetzung dokumentiert</button>
+      <div class="choice-hint" id="hint-proceed">Die verantwortliche Person dokumentiert, dass die Ausgangslage ausreichend geklärt ist.</div>
+      <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">Fortsetzung mit Hinweis</button>
+      <div class="choice-hint" id="hint-proceed_with_risk">Die verantwortliche Person dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschränkung besteht.</div>
+      <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Klärung erforderlich</button>
+      <div class="choice-hint" id="hint-request_correction">Die verantwortliche Person dokumentiert, dass vor der Fertigung eine Rückfrage, Ergänzung oder Korrektur durch die Praxis erforderlich ist.</div>
     </div>
     <div class="reason-row" id="reason-row">
       <label class="reason-label" id="t-reason-label" for="reason-code">Grund (erforderlich)</label>
@@ -192,19 +191,19 @@ main{width:100%;max-width:560px}
     </div>
 
     <div class="res-section">
-      <div class="res-label" id="t-pruefung-label">Prüfung</div>
+      <div class="res-label" id="t-pruefung-label">Falldaten</div>
       <div class="check-row">
-        <span class="check-row-lbl" id="t-chk-material">Material zugelassen</span>
+        <span class="check-row-lbl" id="t-chk-material">Materialangabe</span>
         <span id="chk-material"></span>
       </div>
       <div class="check-grund" id="grund-material"></div>
       <div class="check-row">
-        <span class="check-row-lbl" id="t-chk-jurisdiction">Jurisdiktion zulässig</span>
+        <span class="check-row-lbl" id="t-chk-jurisdiction">Länderangabe</span>
         <span id="chk-jurisdiction"></span>
       </div>
       <div class="check-grund" id="grund-jurisdiction"></div>
       <div class="check-row">
-        <span class="check-row-lbl" id="t-chk-manufacturing">Herstellung möglich</span>
+        <span class="check-row-lbl" id="t-chk-manufacturing">Herstellungsangabe</span>
         <span id="chk-manufacturing"></span>
       </div>
       <div class="check-grund" id="grund-manufacturing"></div>
@@ -212,19 +211,23 @@ main{width:100%;max-width:560px}
     </div>
 
     <div class="res-section" id="labs-section" style="display:none">
-      <div class="res-label" id="t-fertigung-label">Herstellung unter Bedingungen</div>
+      <div class="res-label" id="t-fertigung-label">Entscheidungsgrundlage</div>
       <div id="labs-list"></div>
     </div>
 
     <div class="res-section">
-      <div class="res-label" id="t-audit-label">Audit</div>
-      <div class="audit-row"><span class="audit-row-lbl" id="t-audit-id-lbl">Audit-ID</span><span class="audit-row-val" id="audit-id"></span></div>
+      <div class="res-label" id="t-audit-label">Entscheidungsnachweis</div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-fall-lbl">Fall</span><span class="audit-row-val" id="nachweis-fall"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-decision-lbl">Entscheidung</span><span class="audit-row-val" id="nachweis-decision"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-grundlage-lbl">Entscheidungsgrundlage</span><span class="audit-row-val" id="nachweis-grundlage"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-time-lbl">Zeitpunkt</span><span class="audit-row-val" id="audit-time"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-audit-id-lbl">Audit-ID</span><span class="audit-row-val" id="audit-id"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-status-lbl">Status</span><span class="audit-row-val" id="audit-status"></span></div>
+      <div style="font-size:.82rem;color:var(--dim);line-height:1.55;margin-top:12px" id="t-nachweis-body">Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.</div>
     </div>
 
     <div class="res-section" id="proof-section" style="display:none">
-      <div class="res-label">Technischer Nachweis / Protokollansicht</div>
+      <div class="res-label" id="t-proof-label">Technischer Nachweis / Protokollansicht</div>
       <details open>
         <summary style="font-size:.83rem;color:var(--sub);cursor:pointer;padding:4px 0">Receipt JSON</summary>
         <pre id="proof-receipt-json" style="margin-top:8px;font-size:.7rem;color:var(--sub);font-family:'SF Mono','Fira Code',monospace;white-space:pre-wrap;word-break:break-all;line-height:1.5;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;max-height:260px;overflow-y:auto"></pre>
@@ -232,7 +235,7 @@ main{width:100%;max-width:560px}
     </div>
 
     <div class="res-section">
-      <p class="aha-line" id="aha-line">PostCAD ersetzt keine Fachentscheidung &#x2013; es strukturiert den Klärungsmoment vor Herstellung.</p>
+      <p class="aha-line" id="aha-line">PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.</p>
     </div>
 
     <div class="res-section" style="border-top:none;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap">
@@ -258,30 +261,34 @@ const T = {
   DE: {
     uploadTitle: 'Digitalen Laborfall öffnen',
     uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
-    procSteps: ['Datei empfangen', 'Falldaten werden gelesen', 'Pr\u00fcfung l\u00e4uft', 'Produktionsentscheidung erforderlich'],
+    procSteps: ['Datei empfangen', 'Falldaten werden gelesen', 'Angaben werden gelesen', 'Entscheidung vor Herstellung erforderlich'],
     caseLabel: 'Fall erkannt',
     materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
     decisionLabel: 'Entscheidung',
-    verdictOk: 'ENTSCHEIDUNG DOKUMENTIERT', verdictBlock: 'FALL NICHT FREIGEGEBEN \u2013 KORREKTUR ERFORDERLICH',
-    verdictRisk: 'ENTSCHEIDUNG DOKUMENTIERT \u2013 KL\u00c4RUNG FESTGEHALTEN',
-    subOk: 'Entscheidung vor Herstellung dokumentiert', subBlock: 'Weitergabe nicht m\u00f6glich',
-    subRisk: 'Kl\u00e4rung dokumentiert',
-    explanationOk: 'Pr\u00fcfung der hinterlegten Bedingungen abgeschlossen.',
-    explanationBlock: 'Versto\u00df gegen Jurisdiktionsanforderungen.',
-    decisionBlockedSub: 'Fall zur\u00fcckgestellt. Herstellung wird nicht gestartet.',
-    decisionBlockedExplanation: 'Korrektur oder R\u00fccksprache erforderlich. Die Herstellung wird vorerst nicht gestartet.',
-    pruefungLabel: 'Pr\u00fcfung',
-    chkMaterial: 'Material zugelassen', chkJurisdiction: 'Jurisdiktion zul\u00e4ssig', chkManufacturing: 'Herstellung m\u00f6glich',
-    ergebnisOk: 'Ergebnis: Entscheidung dokumentiert', ergebnisBlock: 'Ergebnis: Nicht freigegeben',
-    fertigungLabel: 'Dokumentierter Klärungspunkt',
-    auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
+    verdictOk: 'FORTSETZUNG DOKUMENTIERT', verdictBlock: 'KL\u00c4RUNG ERFORDERLICH',
+    verdictRisk: 'FORTSETZUNG MIT HINWEIS',
+    subOk: 'Fortsetzung dokumentiert', subBlock: 'Kl\u00e4rung erforderlich',
+    subRisk: 'Fortsetzung mit Hinweis',
+    explanationOk: 'Die verantwortliche Person hat dokumentiert, dass die Ausgangslage ausreichend gekl\u00e4rt ist.',
+    explanationRisk: 'Die verantwortliche Person hat dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschr\u00e4nkung besteht.',
+    explanationBlock: 'Die verantwortliche Person hat dokumentiert, dass vor der Fertigung eine Kl\u00e4rung erforderlich ist.',
+    decisionBlockedSub: 'Kl\u00e4rung erforderlich. Herstellung wird nicht gestartet.',
+    decisionBlockedExplanation: 'Vor der Fertigung ist eine R\u00fcckfrage, Erg\u00e4nzung oder Korrektur durch die Praxis erforderlich.',
+    pruefungLabel: 'Falldaten',
+    chkMaterial: 'Materialangabe', chkJurisdiction: 'L\u00e4nderangabe', chkManufacturing: 'Herstellungsangabe',
+    ergebnisOk: 'Entscheidung: Fortsetzung dokumentiert', ergebnisRisk: 'Entscheidung: Fortsetzung mit Hinweis', ergebnisBlock: 'Entscheidung: Kl\u00e4rung erforderlich',
+    fertigungLabel: 'Entscheidungsgrundlage',
+    auditLabel: 'Entscheidungsnachweis', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
+    nachweisFallLbl: 'Fall', nachweisDecisionLbl: 'Entscheidung', nachweisGrundlageLbl: 'Entscheidungsgrundlage',
+    nachweisBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
+    proofLabel: 'Technischer Nachweis / Protokollansicht',
     reset: 'Neuen Laborfall öffnen',
     gateBadge: 'ENTSCHEIDUNG VOR HERSTELLUNG',
     gateTitle: 'Welche Entscheidung wird vor Herstellung dokumentiert?',
     gateSub: 'Vor Produktionsstart ist eine explizite Entscheidung erforderlich.',
-    optProceed: 'Produktion möglich',
-    optRisk: 'Produktion nach dokumentierter Klärung',
-    optCorrection: 'Korrektur oder Rücksprache erforderlich',
+    optProceed: 'Fortsetzung dokumentiert',
+    optRisk: 'Fortsetzung mit Hinweis',
+    optCorrection: 'Klärung erforderlich',
     reasonLabel: 'Grund (erforderlich)',
     reasonSelect: '\u2014 ausw\u00e4hlen \u2014',
     rcIncompleteScan: 'Unvollst\u00e4ndiger Scan',
@@ -293,45 +300,49 @@ const T = {
     reasonHint: 'W\u00e4hlen Sie einen Grund, um fortzufahren.',
     demoOnlyError: 'Nur Demo-Dateien werden unterst\u00fctzt. Bitte Demo-Datei ausw\u00e4hlen.',
     backToDecision: 'Zur\u00fcck zur Entscheidung',
-    hintProceed: 'Herstellung kann auf dieser Grundlage erfolgen.',
-    hintRisk: 'Klärung mit der Praxis wurde dokumentiert.',
-    hintCorrection: 'Vor Herstellung ist Korrektur oder Rücksprache erforderlich.',
-    ahaLine: 'PostCAD ersetzt keine Fachentscheidung \u2013 es strukturiert den Kl\u00e4rungsmoment vor Herstellung.',
-    grundMaterial: 'Grund: Material ist f\u00fcr diesen Produkttyp nicht freigegeben.',
-    grundJurisdiction: 'Grund: Die hinterlegte Regelpr\u00fcfung erlaubt die Herstellung unter diesen Angaben nicht.',
-    grundManufacturing: 'Grund: Herstellung unter den hinterlegten Bedingungen aktuell nicht m\u00f6glich.',
-    nextStepBlock: 'N\u00e4chster Schritt: Korrektur oder R\u00fccksprache vor Herstellung erforderlich.',
+    hintProceed: 'Die verantwortliche Person dokumentiert, dass die Ausgangslage ausreichend geklärt ist.',
+    hintRisk: 'Die verantwortliche Person dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschränkung besteht.',
+    hintCorrection: 'Die verantwortliche Person dokumentiert, dass vor der Fertigung eine Rückfrage, Ergänzung oder Korrektur durch die Praxis erforderlich ist.',
+    ahaLine: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.',
+    grundMaterial: 'Hinweis: Material ist f\u00fcr diesen Produkttyp in den Systemdaten nicht hinterlegt.',
+    grundJurisdiction: 'Hinweis: Die hinterlegten Systemdaten decken diese Jurisdiktion nicht ab.',
+    grundManufacturing: 'Hinweis: Kein geeigneter Herstellungspartner in den Systemdaten hinterlegt.',
+    nextStepBlock: 'N\u00e4chster Schritt: Vor der Fertigung ist eine Kl\u00e4rung erforderlich.',
     brandTagline: 'Kl\u00e4rung vor Herstellung',
     introLine: 'PostCAD strukturiert kritische Kl\u00e4rungspunkte zwischen Labor und Praxis, bevor ein Fall in die Herstellung geht.',
-    fertigungBody: 'Ausgangslage, R\u00fcckmeldung der Praxis und Entscheidung vor Herstellung werden nachvollziehbar festgehalten.',
+    fertigungBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
   },
   EN: {
     uploadTitle: 'Open digital lab case',
     uploadSub: 'Drop file here or select (STL, OBJ)',
-    procSteps: ['File received', 'Case data being read', 'Checks running', 'Production decision required'],
+    procSteps: ['File received', 'Case data being read', 'Reading details', 'Decision before manufacturing required'],
     caseLabel: 'Case detected',
     materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
     decisionLabel: 'Decision',
-    verdictOk: 'DECISION DOCUMENTED', verdictBlock: 'CASE NOT RELEASED – CORRECTION REQUIRED',
-    verdictRisk: 'DECISION DOCUMENTED – CLARIFICATION ON RECORD',
-    subOk: 'Decision before manufacturing documented', subBlock: 'Cannot proceed',
-    subRisk: 'Clarification documented',
-    explanationOk: 'Configured conditions have been checked.',
-    explanationBlock: 'Violation of jurisdiction requirements.',
-    decisionBlockedSub: 'Case held. Manufacturing is not started.',
-    decisionBlockedExplanation: 'Correction or clarification required. Manufacturing is not started for now.',
-    pruefungLabel: 'Checks',
-    chkMaterial: 'Material approved', chkJurisdiction: 'Jurisdiction valid', chkManufacturing: 'Manufacturing possible',
-    ergebnisOk: 'Result: Decision documented', ergebnisBlock: 'Result: Not released',
-    fertigungLabel: 'Documented clarification point',
-    auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
+    verdictOk: 'PROCEED DOCUMENTED', verdictBlock: 'CLARIFICATION REQUIRED',
+    verdictRisk: 'PROCEED WITH NOTE',
+    subOk: 'Proceed documented', subBlock: 'Clarification required',
+    subRisk: 'Proceed with note',
+    explanationOk: 'The responsible person documented that the starting situation is sufficiently clarified.',
+    explanationRisk: 'The responsible person documented that manufacturing proceeds, but a relevant note, assumption, or limitation exists.',
+    explanationBlock: 'The responsible person documented that clarification is required before manufacturing.',
+    decisionBlockedSub: 'Clarification required. Manufacturing is not started.',
+    decisionBlockedExplanation: 'A follow-up, addition or correction by the practice is required before manufacturing.',
+    pruefungLabel: 'Case data',
+    chkMaterial: 'Material information', chkJurisdiction: 'Country information', chkManufacturing: 'Manufacturing information',
+    ergebnisOk: 'Decision: Proceed documented', ergebnisRisk: 'Decision: Proceed with note', ergebnisBlock: 'Decision: Clarification required',
+    fertigungLabel: 'Decision basis',
+    auditLabel: 'Decision record', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
+    nachweisFallLbl: 'Case', nachweisDecisionLbl: 'Decision', nachweisGrundlageLbl: 'Case basis',
+    nachweisBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
+    proofLabel: 'Technical record / Protocol view',
     reset: 'Open new lab case',
     gateBadge: 'DECISION BEFORE MANUFACTURING',
     gateTitle: 'Which decision is documented before manufacturing?',
     gateSub: 'An explicit decision is required before production can start.',
-    optProceed: 'Manufacturing possible',
-    optRisk: 'Manufacturing after documented clarification',
-    optCorrection: 'Correction or clarification required',
+    optProceed: 'Proceed documented',
+    optRisk: 'Proceed with note',
+    optCorrection: 'Clarification required',
     reasonLabel: 'Reason (required)',
     reasonSelect: '\u2014 select \u2014',
     rcIncompleteScan: 'Incomplete scan',
@@ -343,17 +354,17 @@ const T = {
     reasonHint: 'Select a reason to continue.',
     demoOnlyError: 'Only demo files are supported. Please select a demo file.',
     backToDecision: 'Back to Decision',
-    hintProceed: 'Manufacturing may proceed on this basis.',
-    hintRisk: 'Clarification with the practice has been documented.',
-    hintCorrection: 'Correction or clarification is required before manufacturing.',
-    ahaLine: 'PostCAD does not replace clinical judgment – it structures the clarification moment before manufacturing.',
-    grundMaterial: 'Reason: Material is not approved for this procedure type.',
-    grundJurisdiction: 'Reason: The configured rule check does not allow manufacturing under these details.',
-    grundManufacturing: 'Reason: Manufacturing is currently not possible under the configured conditions.',
-    nextStepBlock: 'Next step: Correction or clarification before manufacturing required.',
+    hintProceed: 'The situation has been documented by the responsible person as sufficiently clarified.',
+    hintRisk: 'Manufacturing proceeds, but a relevant note, assumption or constraint is documented.',
+    hintCorrection: 'A follow-up, addition or correction by the practice is required before manufacturing.',
+    ahaLine: 'PostCAD does not detect medical or technical errors and does not release manufacturing. The system structures communication between practice and lab, and documents which responsible person decided on which basis.',
+    grundMaterial: 'Note: Material is not recorded for this procedure type in the system data.',
+    grundJurisdiction: 'Note: The system data does not cover this jurisdiction.',
+    grundManufacturing: 'Note: No eligible manufacturing partner recorded in the system data.',
+    nextStepBlock: 'Next step: Clarification is required before manufacturing.',
     brandTagline: 'Clarification before manufacturing',
     introLine: 'PostCAD structures critical clarification points between lab and practice before a case enters manufacturing.',
-    fertigungBody: 'Initial situation, practice feedback and decision before manufacturing are recorded traceably.',
+    fertigungBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
   },
 };
 
@@ -424,6 +435,11 @@ function setLang(l) {
   document.getElementById('t-audit-id-lbl').textContent = t.auditIdLbl;
   document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
   document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
+  document.getElementById('t-nachweis-fall-lbl').textContent = t.nachweisFallLbl;
+  document.getElementById('t-nachweis-decision-lbl').textContent = t.nachweisDecisionLbl;
+  document.getElementById('t-nachweis-grundlage-lbl').textContent = t.nachweisGrundlageLbl;
+  document.getElementById('t-nachweis-body').textContent = t.nachweisBody;
+  document.getElementById('t-proof-label').textContent = t.proofLabel;
   document.getElementById('t-reset').textContent = t.reset;
   document.getElementById('t-proc-reset').textContent = t.reset;
   document.getElementById('t-gate-reset').textContent = t.reset;
@@ -448,7 +464,8 @@ function setLang(l) {
   sel.options[4].text = t.rcTimePressure;
   sel.options[5].text = t.rcOther;
   if (lastResultOk !== null) {
-    document.getElementById('result-explanation').textContent = lastResultOk ? t.explanationOk : t.explanationBlock;
+    const expl = (lastResultOk && selectedDecision === 'proceed_with_risk') ? t.explanationRisk : lastResultOk ? t.explanationOk : t.explanationBlock;
+    document.getElementById('result-explanation').textContent = expl;
     const grundKeys = {material: 'grundMaterial', jurisdiction: 'grundJurisdiction', manufacturing: 'grundManufacturing'};
     ['material', 'jurisdiction', 'manufacturing'].forEach(key => {
       const el = document.getElementById('grund-' + key);
@@ -456,6 +473,10 @@ function setLang(l) {
     });
     const nsEl = document.getElementById('result-next-step');
     if (nsEl && nsEl.style.display !== 'none') nsEl.textContent = t.nextStepBlock;
+    const auditVerdict2 = (lastResultOk && selectedDecision === 'proceed_with_risk') ? t.verdictRisk : lastResultOk ? t.verdictOk : t.verdictBlock;
+    document.getElementById('nachweis-decision').textContent = auditVerdict2;
+    const grundlage2 = selectedDecision === 'request_correction' ? t.decisionBlockedExplanation : (lastResultOk && selectedDecision === 'proceed_with_risk') ? t.explanationRisk : lastResultOk ? t.explanationOk : t.explanationBlock;
+    document.getElementById('nachweis-grundlage').textContent = grundlage2;
   }
 }
 
@@ -627,6 +648,10 @@ function showResultBlocked(filename) {
   document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   document.getElementById('audit-status').textContent = t.verdictBlock;
 
+  document.getElementById('nachweis-fall').textContent = c.proc;
+  document.getElementById('nachweis-decision').textContent = t.verdictBlock;
+  document.getElementById('nachweis-grundlage').textContent = t.decisionBlockedExplanation;
+
   document.getElementById('proof-section').style.display = 'none';
   document.getElementById('phase-result').style.display = 'block';
 }
@@ -646,7 +671,7 @@ function showResult(filename) {
     vEl.className = 'result-verdict verdict-risk';
     vEl.textContent = t.verdictRisk;
     document.getElementById('result-sub').textContent = t.subRisk;
-    document.getElementById('result-explanation').textContent = t.explanationOk;
+    document.getElementById('result-explanation').textContent = t.explanationRisk;
   } else if (c.ok) {
     vEl.className = 'result-verdict verdict-ok';
     vEl.textContent = t.verdictOk;
@@ -662,24 +687,24 @@ function showResult(filename) {
   setCheck('chk-material', c.checks.material, t.grundMaterial);
   setCheck('chk-jurisdiction', c.checks.jurisdiction, t.grundJurisdiction);
   setCheck('chk-manufacturing', c.checks.manufacturing, t.grundManufacturing);
-  document.getElementById('check-ergebnis').textContent = c.ok ? t.ergebnisOk : t.ergebnisBlock;
+  document.getElementById('check-ergebnis').textContent = (c.ok && selectedDecision === 'proceed_with_risk') ? t.ergebnisRisk : c.ok ? t.ergebnisOk : t.ergebnisBlock;
   const nsEl = document.getElementById('result-next-step');
   if (!c.ok) { nsEl.textContent = t.nextStepBlock; nsEl.style.display = 'block'; }
   else { nsEl.style.display = 'none'; }
 
-  const labsSec = document.getElementById('labs-section');
-  if (c.ok) {
-    labsSec.style.display = 'block';
-    document.getElementById('labs-list').innerHTML =
-      '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
-  } else {
-    labsSec.style.display = 'none';
-  }
+  document.getElementById('labs-section').style.display = 'block';
+  document.getElementById('labs-list').innerHTML =
+    '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
 
   document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
   document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   const auditVerdict = !c.ok ? t.verdictBlock : selectedDecision === 'proceed_with_risk' ? t.verdictRisk : t.verdictOk;
   document.getElementById('audit-status').textContent = auditVerdict;
+
+  document.getElementById('nachweis-fall').textContent = c.proc;
+  document.getElementById('nachweis-decision').textContent = auditVerdict;
+  const nachweisGrundlage = (c.ok && selectedDecision === 'proceed_with_risk') ? t.explanationRisk : c.ok ? t.explanationOk : t.explanationBlock;
+  document.getElementById('nachweis-grundlage').textContent = nachweisGrundlage;
 
   document.getElementById('phase-result').style.display = 'block';
 }

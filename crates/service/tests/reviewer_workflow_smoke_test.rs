@@ -173,7 +173,8 @@ async fn reviewer_shell_visual_step_present() {
 
     assert!(html.contains("phase-visual"),                     "phase-visual id must be present");
     assert!(html.contains("Visuelle Klärung vor Herstellung"), "visual step title must be present");
-    assert!(html.contains("Screenshot oder kurzer visueller Hinweis"), "visual placeholder hint must be present");
+    assert!(html.contains("Demo-Ansicht:"),                "visual placeholder hint must be present");
+    assert!(html.contains("Keine automatische technische"), "visual disclaimer must be present");
     assert!(html.contains("id=\"lab-comment\""),               "lab-comment textarea id must be present");
     assert!(html.contains("Was soll der Praxis vor Herstellung"), "lab comment label must be present");
     assert!(html.contains("proceedToDecision"),                "proceedToDecision JS function must be present");

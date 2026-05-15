@@ -7,15 +7,15 @@ pub const REVIEWER_HTML: &str = r##"<!DOCTYPE html>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0f12;
-  --surface:#131720;
-  --border:#1e2535;
-  --green:#22c55e;
-  --amber:#f59e0b;
-  --red:#ef4444;
-  --text:#f1f5f9;
-  --sub:#94a3b8;
-  --dim:#4b5a6e;
+  --bg:#f4f6f8;
+  --surface:#ffffff;
+  --border:#dde3ea;
+  --green:#059669;
+  --amber:#b45309;
+  --red:#dc2626;
+  --text:#1a2332;
+  --sub:#4e6078;
+  --dim:#8a9bb0;
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 24px 64px}
 header{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:20px 0 44px}
@@ -28,14 +28,14 @@ header{width:100%;max-width:560px;display:flex;align-items:center;justify-conten
 main{width:100%;max-width:560px}
 
 /* Upload */
-.upload-zone{border:1px dashed #2d3d54;border-radius:8px;padding:44px 24px;text-align:center;cursor:pointer;display:block;transition:border-color .15s;margin-bottom:16px;text-decoration:none;color:inherit}
+.upload-zone{border:1px dashed var(--border);border-radius:8px;padding:44px 24px;text-align:center;cursor:pointer;display:block;transition:border-color .15s;margin-bottom:16px;text-decoration:none;color:inherit}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--sub)}
 .upload-icon{font-size:1.4rem;color:var(--dim);margin-bottom:12px}
 .upload-title{font-size:1.05rem;font-weight:700;margin-bottom:6px}
 .upload-sub{font-size:.85rem;color:var(--sub)}
 .demo-files{display:flex;gap:8px;flex-wrap:wrap}
-.demo-file-btn{padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--sub);font-size:.8rem;font-family:'SF Mono','Fira Code',monospace;cursor:pointer;transition:border-color .15s,color .15s}
-.demo-file-btn:hover{border-color:var(--sub);color:var(--text)}
+.demo-file-btn{padding:10px 18px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--sub);font-size:.9rem;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:border-color .15s,color .15s,box-shadow .15s}
+.demo-file-btn:hover{border-color:var(--sub);color:var(--text);box-shadow:0 1px 4px rgba(26,35,50,.08)}
 
 /* Processing */
 #phase-processing{display:none;padding:52px 0;animation:fadein .15s ease-out}
@@ -51,15 +51,15 @@ main{width:100%;max-width:560px}
 .gate-case-ctx{font-size:.8rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:24px}
 .decision-choices{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
 .choice-btn{padding:13px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--sub);font-size:.93rem;font-weight:600;text-align:left;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
-.choice-btn:hover{border-color:var(--sub);color:var(--text);background:rgba(148,163,184,.06)}
-.choice-btn.sel-proceed{border:2px solid var(--green);color:var(--text);background:rgba(34,197,94,.10)}
-.choice-btn.sel-risk{border:2px solid var(--amber);color:#fbbf24;background:rgba(245,158,11,.10)}
-.choice-btn.sel-block{border:2px solid var(--red);color:var(--red);background:rgba(239,68,68,.10)}
+.choice-btn:hover{border-color:var(--sub);color:var(--text);background:rgba(78,96,120,.06)}
+.choice-btn.sel-proceed{border:2px solid var(--green);color:var(--text);background:rgba(5,150,105,.10)}
+.choice-btn.sel-risk{border:2px solid var(--amber);color:var(--amber);background:rgba(180,83,9,.08)}
+.choice-btn.sel-block{border:2px solid var(--red);color:var(--red);background:rgba(220,38,38,.08)}
 .reason-row{margin-bottom:22px;display:none}
 .reason-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:8px}
 #reason-code{width:100%;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;cursor:pointer;appearance:none}
 #reason-code:focus{outline:none;border-color:var(--sub)}
-.confirm-btn{width:100%;padding:15px;border:none;border-radius:8px;background:var(--green);color:#0d0f12;font-size:1rem;font-weight:800;cursor:pointer;transition:opacity .15s;letter-spacing:.01em}
+.confirm-btn{width:100%;padding:15px;border:none;border-radius:8px;background:var(--green);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;transition:opacity .15s;letter-spacing:.01em}
 .confirm-btn:disabled{opacity:.25;cursor:not-allowed}
 .confirm-btn:not(:disabled):hover{opacity:.85}
 .confirm-hint{font-size:.78rem;color:var(--dim);margin-top:8px;text-align:center;min-height:1.1em}
@@ -91,7 +91,7 @@ main{width:100%;max-width:560px}
 .lab-item{font-size:1.05rem;color:var(--sub);padding:6px 0}
 .lab-item::before{content:'— ';color:var(--dim)}
 .audit-row{display:flex;font-size:.85rem;padding:5px 0;gap:12px}
-.audit-row-lbl{color:var(--dim);flex-shrink:0;min-width:80px}
+.audit-row-lbl{color:var(--dim);flex-shrink:0;min-width:120px}
 .audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;word-break:break-word}
 .reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);font-size:.9rem;font-weight:600;padding:13px 22px;cursor:pointer;transition:border-color .15s,color .15s}
 .reset-btn:hover{border-color:var(--sub);color:var(--text)}
@@ -101,15 +101,17 @@ main{width:100%;max-width:560px}
 
 /* Visual clarification step */
 #phase-visual{display:none;padding:40px 0;animation:fadein .2s ease-out}
-.visual-placeholder-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:32px 24px;text-align:center;margin-bottom:20px}
-.visual-tooth-icon{width:52px;height:64px;background:linear-gradient(135deg,#1a2233 60%,#2a3a4e 100%);border:1.5px solid var(--sub);border-radius:5px 5px 9px 9px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--sub);letter-spacing:.06em;font-weight:700}
+.visual-placeholder-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:32px 24px;text-align:center;margin-bottom:12px}
+.visual-tooth-icon{width:52px;height:64px;background:#eef1f5;border:1px solid var(--border);border-radius:5px 5px 9px 9px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--sub);letter-spacing:.06em;font-weight:700}
 .visual-placeholder-lbl{font-size:1rem;font-weight:700;color:var(--sub);margin-bottom:6px}
-.visual-placeholder-hint{font-size:.8rem;color:var(--dim)}
+.visual-placeholder-hint{font-size:.8rem;color:var(--dim);line-height:1.5}
 .comment-row{margin-bottom:22px}
 .comment-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:8px}
 .comment-area{width:100%;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;resize:vertical;min-height:80px;line-height:1.5}
 .comment-area:focus{outline:none;border-color:var(--sub)}
 .comment-area::placeholder{color:var(--dim)}
+.res-section+.res-section{border-top:1px solid var(--border)}
+.visual-disclaimer{font-size:.75rem;color:var(--dim);line-height:1.5;margin-bottom:20px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;border-left:3px solid var(--border)}
 </style>
 </head>
 <body>
@@ -137,7 +139,7 @@ main{width:100%;max-width:560px}
     </label>
     <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
     <div class="demo-files">
-      <button class="demo-file-btn" onclick="loadDemo('Krone_Zahn_36_DE.stl')">Krone_Zahn_36_DE.stl</button>
+      <button class="demo-file-btn" onclick="loadDemo('Krone_Zahn_36_DE.stl')">Krone &middot; Zahn 36</button>
     </div>
   </div>
 
@@ -160,8 +162,9 @@ main{width:100%;max-width:560px}
     <div class="visual-placeholder-box">
       <div class="visual-tooth-icon">36</div>
       <div class="visual-placeholder-lbl" id="t-visual-placeholder-lbl">Krone &middot; Zahn 36</div>
-      <div class="visual-placeholder-hint" id="t-visual-placeholder-hint">Screenshot oder kurzer visueller Hinweis</div>
+      <div class="visual-placeholder-hint" id="t-visual-placeholder-hint">Demo-Ansicht: hier kann sp&#228;ter ein Scan-/CAD-Ausschnitt, Screenshot oder kurzer Clip dokumentiert werden.</div>
     </div>
+    <div class="visual-disclaimer" id="t-visual-disclaimer">Keine automatische technische Pr&#252;fung.</div>
     <div class="comment-row">
       <label class="comment-label" id="t-lab-comment-label" for="lab-comment">Was soll der Praxis vor Herstellung verständlich gemacht werden?</label>
       <textarea class="comment-area" id="lab-comment" placeholder="Kommentar eingeben…"></textarea>
@@ -343,13 +346,14 @@ const T = {
     grundManufacturing: 'Hinweis: Kein geeigneter Herstellungspartner in den Systemdaten hinterlegt.',
     nextStepBlock: 'N\u00e4chster Schritt: Vor der Fertigung ist eine Kl\u00e4rung erforderlich.',
     brandTagline: 'Kl\u00e4rung vor Herstellung',
-    introLine: 'PostCAD strukturiert kritische Kl\u00e4rungspunkte zwischen Labor und Praxis, bevor ein Fall in die Herstellung geht.',
+    introLine: 'Labseitige Kl\u00e4rung und Entscheidungsdokumentation vor Herstellung.',
     fertigungBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
     visualBadge: 'VISUELLE KLÄRUNG',
     visualTitle: 'Visuelle Klärung vor Herstellung',
     visualSub: 'Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.',
     visualPlaceholderLbl: 'Krone · Zahn 36',
-    visualPlaceholderHint: 'Screenshot oder kurzer visueller Hinweis',
+    visualPlaceholderHint: 'Demo-Ansicht: hier kann später ein Scan-/CAD-Ausschnitt, Screenshot oder kurzer Clip dokumentiert werden.',
+    visualDisclaimer: 'Keine automatische technische Prüfung.',
     labCommentLabel: 'Was soll der Praxis vor Herstellung verständlich gemacht werden?',
     labCommentPlaceholder: 'Kommentar eingeben…',
     visualNextBtn: 'Weiter zur Entscheidung',
@@ -408,13 +412,14 @@ const T = {
     grundManufacturing: 'Note: No eligible manufacturing partner recorded in the system data.',
     nextStepBlock: 'Next step: Clarification is required before manufacturing.',
     brandTagline: 'Clarification before manufacturing',
-    introLine: 'PostCAD structures critical clarification points between lab and practice before a case enters manufacturing.',
+    introLine: 'Lab-side clarification and decision documentation before manufacturing.',
     fertigungBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
     visualBadge: 'VISUAL CLARIFICATION',
     visualTitle: 'Visual clarification before manufacturing',
     visualSub: 'Document what should be communicated to the practice before manufacturing.',
     visualPlaceholderLbl: 'Crown · Tooth 36',
-    visualPlaceholderHint: 'Screenshot or brief visual note',
+    visualPlaceholderHint: 'Demo view: a scan/CAD excerpt, screenshot or short clip can be documented here.',
+    visualDisclaimer: 'No automatic technical inspection.',
     labCommentLabel: 'What should the practice understand before manufacturing?',
     labCommentPlaceholder: 'Enter comment…',
     visualNextBtn: 'Proceed to decision',
@@ -512,6 +517,7 @@ function setLang(l) {
   document.getElementById('t-visual-sub').textContent = t.visualSub;
   document.getElementById('t-visual-placeholder-lbl').textContent = t.visualPlaceholderLbl;
   document.getElementById('t-visual-placeholder-hint').textContent = t.visualPlaceholderHint;
+  document.getElementById('t-visual-disclaimer').textContent = t.visualDisclaimer;
   document.getElementById('t-lab-comment-label').textContent = t.labCommentLabel;
   document.getElementById('visual-next-btn').textContent = t.visualNextBtn;
   document.getElementById('t-visual-reset').textContent = t.reset;

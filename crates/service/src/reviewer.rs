@@ -98,6 +98,18 @@ main{width:100%;max-width:560px}
 .intro-line{font-size:.83rem;color:var(--sub);line-height:1.55;margin-bottom:28px;max-width:480px}
 
 #_legacy{display:none!important}
+
+/* Visual clarification step */
+#phase-visual{display:none;padding:40px 0;animation:fadein .2s ease-out}
+.visual-placeholder-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:32px 24px;text-align:center;margin-bottom:20px}
+.visual-tooth-icon{width:52px;height:64px;background:linear-gradient(135deg,#1a2233 60%,#2a3a4e 100%);border:1.5px solid var(--sub);border-radius:5px 5px 9px 9px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--sub);letter-spacing:.06em;font-weight:700}
+.visual-placeholder-lbl{font-size:1rem;font-weight:700;color:var(--sub);margin-bottom:6px}
+.visual-placeholder-hint{font-size:.8rem;color:var(--dim)}
+.comment-row{margin-bottom:22px}
+.comment-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:8px}
+.comment-area{width:100%;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;resize:vertical;min-height:80px;line-height:1.5}
+.comment-area:focus{outline:none;border-color:var(--sub)}
+.comment-area::placeholder{color:var(--dim)}
 </style>
 </head>
 <body>
@@ -125,7 +137,7 @@ main{width:100%;max-width:560px}
     </label>
     <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
     <div class="demo-files">
-      <button class="demo-file-btn" onclick="loadDemo('Krone_3-6_DE.stl')">Krone_3-6_DE.stl</button>
+      <button class="demo-file-btn" onclick="loadDemo('Krone_Zahn_36_DE.stl')">Krone_Zahn_36_DE.stl</button>
     </div>
   </div>
 
@@ -137,6 +149,26 @@ main{width:100%;max-width:560px}
     <div class="proc-step" id="pstep-3"></div>
     <div style="margin-top:32px">
       <button class="reset-btn" onclick="resetDemo()"><span id="t-proc-reset">Neuen Laborfall öffnen</span></button>
+    </div>
+  </div>
+
+  <div id="phase-visual">
+    <div class="gate-badge" id="t-visual-badge">VISUELLE KLÄRUNG</div>
+    <div class="gate-title" id="t-visual-title">Visuelle Klärung vor Herstellung</div>
+    <div class="gate-sub" id="t-visual-sub">Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.</div>
+    <div class="gate-case-ctx" id="visual-case-ctx"></div>
+    <div class="visual-placeholder-box">
+      <div class="visual-tooth-icon">36</div>
+      <div class="visual-placeholder-lbl" id="t-visual-placeholder-lbl">Krone &middot; Zahn 36</div>
+      <div class="visual-placeholder-hint" id="t-visual-placeholder-hint">Screenshot oder kurzer visueller Hinweis</div>
+    </div>
+    <div class="comment-row">
+      <label class="comment-label" id="t-lab-comment-label" for="lab-comment">Was soll der Praxis vor Herstellung verständlich gemacht werden?</label>
+      <textarea class="comment-area" id="lab-comment" placeholder="Kommentar eingeben…"></textarea>
+    </div>
+    <button class="confirm-btn" id="visual-next-btn" onclick="proceedToDecision()">Weiter zur Entscheidung</button>
+    <div style="margin-top:20px;text-align:center">
+      <button class="reset-btn" onclick="resetDemo()"><span id="t-visual-reset">Neuen Laborfall öffnen</span></button>
     </div>
   </div>
 
@@ -220,6 +252,8 @@ main{width:100%;max-width:560px}
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-fall-lbl">Fall</span><span class="audit-row-val" id="nachweis-fall"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-decision-lbl">Entscheidung</span><span class="audit-row-val" id="nachweis-decision"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-grundlage-lbl">Entscheidungsgrundlage</span><span class="audit-row-val" id="nachweis-grundlage"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-visual-lbl">Visuelle Klärung</span><span class="audit-row-val" id="nachweis-visual"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-kommentar-lbl">Laborkommentar</span><span class="audit-row-val" id="nachweis-kommentar"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-time-lbl">Zeitpunkt</span><span class="audit-row-val" id="audit-time"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-id-lbl">Audit-ID</span><span class="audit-row-val" id="audit-id"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-status-lbl">Status</span><span class="audit-row-val" id="audit-status"></span></div>
@@ -311,6 +345,17 @@ const T = {
     brandTagline: 'Kl\u00e4rung vor Herstellung',
     introLine: 'PostCAD strukturiert kritische Kl\u00e4rungspunkte zwischen Labor und Praxis, bevor ein Fall in die Herstellung geht.',
     fertigungBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
+    visualBadge: 'VISUELLE KLÄRUNG',
+    visualTitle: 'Visuelle Klärung vor Herstellung',
+    visualSub: 'Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.',
+    visualPlaceholderLbl: 'Krone · Zahn 36',
+    visualPlaceholderHint: 'Screenshot oder kurzer visueller Hinweis',
+    labCommentLabel: 'Was soll der Praxis vor Herstellung verständlich gemacht werden?',
+    labCommentPlaceholder: 'Kommentar eingeben…',
+    visualNextBtn: 'Weiter zur Entscheidung',
+    visualClarificationSummary: 'Klärungshinweis dokumentiert',
+    nachweisVisualLbl: 'Visuelle Klärung',
+    nachweisKommentarLbl: 'Laborkommentar',
   },
   EN: {
     uploadTitle: 'Open digital lab case',
@@ -365,6 +410,17 @@ const T = {
     brandTagline: 'Clarification before manufacturing',
     introLine: 'PostCAD structures critical clarification points between lab and practice before a case enters manufacturing.',
     fertigungBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
+    visualBadge: 'VISUAL CLARIFICATION',
+    visualTitle: 'Visual clarification before manufacturing',
+    visualSub: 'Document what should be communicated to the practice before manufacturing.',
+    visualPlaceholderLbl: 'Crown · Tooth 36',
+    visualPlaceholderHint: 'Screenshot or brief visual note',
+    labCommentLabel: 'What should the practice understand before manufacturing?',
+    labCommentPlaceholder: 'Enter comment…',
+    visualNextBtn: 'Proceed to decision',
+    visualClarificationSummary: 'Clarification note documented',
+    nachweisVisualLbl: 'Visual clarification',
+    nachweisKommentarLbl: 'Lab comment',
   },
 };
 
@@ -375,13 +431,13 @@ const REGISTRY = [
 ];
 
 const FILE_CASES_API = {
-  'krone_3-6_de.stl': {case_id:'f3000003-0000-0000-0000-000000000003',jurisdiction:'DE',routing_policy:'allow_domestic_and_cross_border',patient_country:'germany',manufacturer_country:'germany',material:'emax',procedure:'crown',file_type:'stl'},
+  'krone_zahn_36_de.stl': {case_id:'f3000003-0000-0000-0000-000000000003',jurisdiction:'DE',routing_policy:'allow_domestic_and_cross_border',patient_country:'germany',manufacturer_country:'germany',material:'emax',procedure:'crown',file_type:'stl'},
   'bruecke_usa.stl':  {case_id:'f4000004-0000-0000-0000-000000000004',jurisdiction:'US',routing_policy:'allow_domestic_and_cross_border',patient_country:'united_states',manufacturer_country:'germany',material:'zirconia',procedure:'bridge',file_type:'stl'},
 };
 
 const FILE_CASES = {
-  'krone_3-6_de.stl': {
-    proc: 'Krone \u00b7 Zahn 3\u20136',
+  'krone_zahn_36_de.stl': {
+    proc: 'Krone \u00b7 Zahn 36',
     material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
     ok: true,
     checks: {material: true, jurisdiction: true, manufacturing: true},
@@ -407,6 +463,7 @@ let lang = 'DE';
 let lastResultOk = null;
 let currentFilename = null;
 let selectedDecision = null;
+let labComment = '';
 
 function setLang(l) {
   lang = l;
@@ -450,6 +507,16 @@ function setLang(l) {
   document.getElementById('choice-proceed').textContent = t.optProceed;
   document.getElementById('choice-proceed_with_risk').textContent = t.optRisk;
   document.getElementById('choice-request_correction').textContent = t.optCorrection;
+  document.getElementById('t-visual-badge').textContent = t.visualBadge;
+  document.getElementById('t-visual-title').textContent = t.visualTitle;
+  document.getElementById('t-visual-sub').textContent = t.visualSub;
+  document.getElementById('t-visual-placeholder-lbl').textContent = t.visualPlaceholderLbl;
+  document.getElementById('t-visual-placeholder-hint').textContent = t.visualPlaceholderHint;
+  document.getElementById('t-lab-comment-label').textContent = t.labCommentLabel;
+  document.getElementById('visual-next-btn').textContent = t.visualNextBtn;
+  document.getElementById('t-visual-reset').textContent = t.reset;
+  document.getElementById('t-nachweis-visual-lbl').textContent = t.nachweisVisualLbl;
+  document.getElementById('t-nachweis-kommentar-lbl').textContent = t.nachweisKommentarLbl;
   document.getElementById('t-reason-label').textContent = t.reasonLabel;
   document.getElementById('confirm-btn').textContent = t.confirmBtn;
   document.getElementById('hint-proceed').textContent = t.hintProceed;
@@ -506,7 +573,22 @@ async function startProcessing(filename) {
     document.getElementById('pstep-' + i).classList.add('visible');
   }
   await delay(600);
-  showDecisionGate(filename);
+  showVisualStep(filename);
+}
+
+function showVisualStep(filename) {
+  currentFilename = filename;
+  const c = getCaseData(filename);
+  document.getElementById('visual-case-ctx').textContent = c.proc + ' · ' + c.material + ' · ' + c.land;
+  document.getElementById('lab-comment').value = '';
+  document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-visual').style.display = 'block';
+}
+
+function proceedToDecision() {
+  labComment = document.getElementById('lab-comment').value.trim();
+  document.getElementById('phase-visual').style.display = 'none';
+  showDecisionGate(currentFilename);
 }
 
 function showDecisionGate(filename) {
@@ -651,6 +733,8 @@ function showResultBlocked(filename) {
   document.getElementById('nachweis-fall').textContent = c.proc;
   document.getElementById('nachweis-decision').textContent = t.verdictBlock;
   document.getElementById('nachweis-grundlage').textContent = t.decisionBlockedExplanation;
+  document.getElementById('nachweis-visual').textContent = t.visualClarificationSummary + ' · ' + c.proc;
+  document.getElementById('nachweis-kommentar').textContent = labComment || '—';
 
   document.getElementById('proof-section').style.display = 'none';
   document.getElementById('phase-result').style.display = 'block';
@@ -705,6 +789,8 @@ function showResult(filename) {
   document.getElementById('nachweis-decision').textContent = auditVerdict;
   const nachweisGrundlage = (c.ok && selectedDecision === 'proceed_with_risk') ? t.explanationRisk : c.ok ? t.explanationOk : t.explanationBlock;
   document.getElementById('nachweis-grundlage').textContent = nachweisGrundlage;
+  document.getElementById('nachweis-visual').textContent = t.visualClarificationSummary + ' · ' + c.proc;
+  document.getElementById('nachweis-kommentar').textContent = labComment || '—';
 
   document.getElementById('phase-result').style.display = 'block';
 }
@@ -757,10 +843,13 @@ function resetDemo() {
   lastResultOk = null;
   currentFilename = null;
   selectedDecision = null;
+  labComment = '';
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'none';
+  document.getElementById('phase-visual').style.display = 'none';
   document.getElementById('phase-decision').style.display = 'none';
   document.getElementById('phase-upload').style.display = 'block';
+  document.getElementById('lab-comment').value = '';
   document.getElementById('proof-section').style.display = 'none';
   document.getElementById('proof-receipt-json').textContent = '';
 }

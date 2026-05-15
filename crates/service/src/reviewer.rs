@@ -112,6 +112,24 @@ main{width:100%;max-width:560px}
 .comment-area::placeholder{color:var(--dim)}
 .res-section+.res-section{border-top:1px solid var(--border)}
 .visual-disclaimer{font-size:.75rem;color:var(--dim);line-height:1.5;margin-bottom:20px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;border-left:3px solid var(--border)}
+
+/* STL viewer */
+.stl-viewer-wrap{background:#eceff4;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;position:relative}
+#stl-canvas{display:block;cursor:grab;touch-action:none}
+#stl-canvas:active{cursor:grabbing}
+.stl-viewer-bar{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:var(--bg);border-top:1px solid var(--border)}
+.stl-viewer-label-txt{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.stl-viewer-hint-txt{font-size:.68rem;color:var(--dim)}
+.stl-viewer-fallback{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:32px 24px;text-align:center;margin-bottom:8px;display:none}
+
+/* Case metadata form */
+.case-meta-form{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px}
+.case-meta-form>*+*{border-top:1px solid var(--border)}
+.case-meta-row{display:flex;align-items:center;gap:12px;padding:9px 14px}
+.case-meta-label{font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;min-width:110px;flex-shrink:0}
+.case-meta-input{flex:1;background:transparent;border:none;padding:2px 0;font-size:.9rem;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;outline:none}
+.case-meta-input::placeholder{color:var(--dim)}
+.case-meta-privacy{font-size:.7rem;color:var(--dim);padding:8px 14px;font-style:italic}
 </style>
 </head>
 <body>
@@ -159,15 +177,41 @@ main{width:100%;max-width:560px}
     <div class="gate-title" id="t-visual-title">Visuelle Klärung vor Herstellung</div>
     <div class="gate-sub" id="t-visual-sub">Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.</div>
     <div class="gate-case-ctx" id="visual-case-ctx"></div>
-    <div class="visual-placeholder-box">
+    <div class="stl-viewer-wrap" id="stl-viewer-wrap">
+      <canvas id="stl-canvas"></canvas>
+      <div class="stl-viewer-bar">
+        <span class="stl-viewer-label-txt" id="t-viewer-label">Demo-Ansicht: schematische Darstellung</span>
+        <span class="stl-viewer-hint-txt" id="t-viewer-hint">Ziehen zum Drehen &middot; Scrollen zum Zoomen</span>
+      </div>
+    </div>
+    <div class="stl-viewer-fallback" id="stl-viewer-fallback">
       <div class="visual-tooth-icon">36</div>
       <div class="visual-placeholder-lbl" id="t-visual-placeholder-lbl">Krone &middot; Zahn 36</div>
-      <div class="visual-placeholder-hint" id="t-visual-placeholder-hint">Demo-Ansicht: hier kann sp&#228;ter ein Scan-/CAD-Ausschnitt, Screenshot oder kurzer Clip dokumentiert werden.</div>
+      <div class="visual-placeholder-hint" id="t-visual-placeholder-hint">3D-Ansicht nicht verf&#252;gbar.</div>
     </div>
-    <div class="visual-disclaimer" id="t-visual-disclaimer">Keine automatische technische Pr&#252;fung.</div>
+    <div class="visual-disclaimer" id="t-visual-disclaimer">Die 3D-Ansicht dient der gemeinsamen Kl&#228;rung und Dokumentation. Keine automatische technische Pr&#252;fung.</div>
+    <div class="case-meta-form" id="case-meta-form">
+      <div class="case-meta-row">
+        <span class="case-meta-label" id="t-meta-bezeichnung-lbl">Fallbezeichnung</span>
+        <input class="case-meta-input" id="meta-bezeichnung" type="text" placeholder="z.&#x202F;B. Krone Zahn 36">
+      </div>
+      <div class="case-meta-row">
+        <span class="case-meta-label" id="t-meta-zahn-lbl">Zahn / Region</span>
+        <input class="case-meta-input" id="meta-zahn" type="text" placeholder="z.&#x202F;B. 36">
+      </div>
+      <div class="case-meta-row">
+        <span class="case-meta-label" id="t-meta-material-lbl">Material</span>
+        <input class="case-meta-input" id="meta-material" type="text" placeholder="z.&#x202F;B. E.max">
+      </div>
+      <div class="case-meta-row">
+        <span class="case-meta-label" id="t-meta-praxis-lbl">Praxis / Kunde</span>
+        <input class="case-meta-input" id="meta-praxis" type="text" placeholder="z.&#x202F;B. Praxis M&#252;ller">
+      </div>
+      <div class="case-meta-privacy" id="t-meta-privacy">Bitte keine Patientennamen eingeben.</div>
+    </div>
     <div class="comment-row">
       <label class="comment-label" id="t-lab-comment-label" for="lab-comment">Was soll der Praxis vor Herstellung verständlich gemacht werden?</label>
-      <textarea class="comment-area" id="lab-comment" placeholder="Kommentar eingeben…"></textarea>
+      <textarea class="comment-area" id="lab-comment" placeholder="z.&#x202F;B. kritischer Randbereich, zu geringer Abstand&#8230;"></textarea>
     </div>
     <button class="confirm-btn" id="visual-next-btn" onclick="proceedToDecision()">Weiter zur Entscheidung</button>
     <div style="margin-top:20px;text-align:center">
@@ -252,6 +296,10 @@ main{width:100%;max-width:560px}
 
     <div class="res-section">
       <div class="res-label" id="t-audit-label">Entscheidungsnachweis</div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-bezeichnung-lbl">Fallbezeichnung</span><span class="audit-row-val" id="nachweis-bezeichnung"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-zahn-lbl">Zahn / Region</span><span class="audit-row-val" id="nachweis-zahn"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-material-lbl">Material</span><span class="audit-row-val" id="nachweis-material"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-praxis-lbl">Praxis / Kunde</span><span class="audit-row-val" id="nachweis-praxis"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-fall-lbl">Fall</span><span class="audit-row-val" id="nachweis-fall"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-decision-lbl">Entscheidung</span><span class="audit-row-val" id="nachweis-decision"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-grundlage-lbl">Entscheidungsgrundlage</span><span class="audit-row-val" id="nachweis-grundlage"></span></div>
@@ -293,6 +341,7 @@ main{width:100%;max-width:560px}
   <span data-endpoint="/pilot/route-normalized"></span>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script>
 const T = {
   DE: {
@@ -353,13 +402,26 @@ const T = {
     visualSub: 'Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.',
     visualPlaceholderLbl: 'Krone · Zahn 36',
     visualPlaceholderHint: 'Demo-Ansicht: hier kann später ein Scan-/CAD-Ausschnitt, Screenshot oder kurzer Clip dokumentiert werden.',
-    visualDisclaimer: 'Keine automatische technische Prüfung.',
+    visualDisclaimer: 'Die 3D-Ansicht dient der gemeinsamen Klärung und Dokumentation. Keine automatische technische Prüfung.',
     labCommentLabel: 'Was soll der Praxis vor Herstellung verständlich gemacht werden?',
-    labCommentPlaceholder: 'Kommentar eingeben…',
+    labCommentPlaceholder: 'z. B. kritischer Randbereich, zu geringer Abstand…',
     visualNextBtn: 'Weiter zur Entscheidung',
     visualClarificationSummary: 'Klärungshinweis dokumentiert',
     nachweisVisualLbl: 'Visuelle Klärung',
     nachweisKommentarLbl: 'Laborkommentar',
+    viewerLabelDemo: 'Demo-Ansicht: schematische Darstellung',
+    viewerLabelLocal: 'Lokale STL-Datei · nur im Browser dargestellt',
+    viewerHint: 'Ziehen zum Drehen · Scrollen zum Zoomen',
+    viewerFallbackHint: '3D-Ansicht nicht verfügbar.',
+    metaBezeichnungLbl: 'Fallbezeichnung',
+    metaZahnLbl: 'Zahn / Region',
+    metaMaterialLbl: 'Material',
+    metaPraxisLbl: 'Praxis / Kunde',
+    metaPrivacy: 'Bitte keine Patientennamen eingeben.',
+    nachweisBezeichnungLbl: 'Fallbezeichnung',
+    nachweisZahnLbl: 'Zahn / Region',
+    nachweisMetaMaterialLbl: 'Material',
+    nachweisMetaPraxisLbl: 'Praxis / Kunde',
   },
   EN: {
     uploadTitle: 'Open digital lab case',
@@ -419,13 +481,26 @@ const T = {
     visualSub: 'Document what should be communicated to the practice before manufacturing.',
     visualPlaceholderLbl: 'Crown · Tooth 36',
     visualPlaceholderHint: 'Demo view: a scan/CAD excerpt, screenshot or short clip can be documented here.',
-    visualDisclaimer: 'No automatic technical inspection.',
+    visualDisclaimer: 'The 3D view is for joint clarification and documentation. No automatic technical inspection.',
     labCommentLabel: 'What should the practice understand before manufacturing?',
-    labCommentPlaceholder: 'Enter comment…',
+    labCommentPlaceholder: 'e.g. critical margin area, insufficient clearance…',
     visualNextBtn: 'Proceed to decision',
     visualClarificationSummary: 'Clarification note documented',
     nachweisVisualLbl: 'Visual clarification',
     nachweisKommentarLbl: 'Lab comment',
+    viewerLabelDemo: 'Demo view: schematic representation',
+    viewerLabelLocal: 'Local STL file · browser only',
+    viewerHint: 'Drag to rotate · Scroll to zoom',
+    viewerFallbackHint: '3D view unavailable.',
+    metaBezeichnungLbl: 'Case name',
+    metaZahnLbl: 'Tooth / Region',
+    metaMaterialLbl: 'Material',
+    metaPraxisLbl: 'Practice / Client',
+    metaPrivacy: 'Please do not enter patient names.',
+    nachweisBezeichnungLbl: 'Case name',
+    nachweisZahnLbl: 'Tooth / Region',
+    nachweisMetaMaterialLbl: 'Material',
+    nachweisMetaPraxisLbl: 'Practice / Client',
   },
 };
 
@@ -457,6 +532,10 @@ const FILE_CASES = {
   },
 };
 
+const DEMO_META = {
+  'krone_zahn_36_de.stl': {bezeichnung:'Krone Zahn 36',zahnRegion:'36',material:'E.max',praxis:'Demo-Praxis'},
+};
+
 function getCaseData(filename) {
   return FILE_CASES[filename.toLowerCase()] || {
     proc: filename, material: '\u2014', land: '\u2014', indication: '\u2014',
@@ -469,6 +548,11 @@ let lastResultOk = null;
 let currentFilename = null;
 let selectedDecision = null;
 let labComment = '';
+let caseMetadata = {bezeichnung:'',zahnRegion:'',material:'',praxis:''};
+let _pendingBuffer = null;
+let _isDemoMesh = true;
+const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null};
+const _orbit = {rotX:0.3,rotY:0.4,zoom:16,dragging:false,lastX:0,lastY:0};
 
 function setLang(l) {
   lang = l;
@@ -516,13 +600,24 @@ function setLang(l) {
   document.getElementById('t-visual-title').textContent = t.visualTitle;
   document.getElementById('t-visual-sub').textContent = t.visualSub;
   document.getElementById('t-visual-placeholder-lbl').textContent = t.visualPlaceholderLbl;
-  document.getElementById('t-visual-placeholder-hint').textContent = t.visualPlaceholderHint;
+  document.getElementById('t-visual-placeholder-hint').textContent = t.viewerFallbackHint;
   document.getElementById('t-visual-disclaimer').textContent = t.visualDisclaimer;
+  document.getElementById('t-viewer-label').textContent = _isDemoMesh ? t.viewerLabelDemo : t.viewerLabelLocal;
+  document.getElementById('t-viewer-hint').textContent = t.viewerHint;
+  document.getElementById('t-meta-bezeichnung-lbl').textContent = t.metaBezeichnungLbl;
+  document.getElementById('t-meta-zahn-lbl').textContent = t.metaZahnLbl;
+  document.getElementById('t-meta-material-lbl').textContent = t.metaMaterialLbl;
+  document.getElementById('t-meta-praxis-lbl').textContent = t.metaPraxisLbl;
+  document.getElementById('t-meta-privacy').textContent = t.metaPrivacy;
   document.getElementById('t-lab-comment-label').textContent = t.labCommentLabel;
   document.getElementById('visual-next-btn').textContent = t.visualNextBtn;
   document.getElementById('t-visual-reset').textContent = t.reset;
   document.getElementById('t-nachweis-visual-lbl').textContent = t.nachweisVisualLbl;
   document.getElementById('t-nachweis-kommentar-lbl').textContent = t.nachweisKommentarLbl;
+  document.getElementById('t-nachweis-bezeichnung-lbl').textContent = t.nachweisBezeichnungLbl;
+  document.getElementById('t-nachweis-zahn-lbl').textContent = t.nachweisZahnLbl;
+  document.getElementById('t-nachweis-material-lbl').textContent = t.nachweisMetaMaterialLbl;
+  document.getElementById('t-nachweis-praxis-lbl').textContent = t.nachweisMetaPraxisLbl;
   document.getElementById('t-reason-label').textContent = t.reasonLabel;
   document.getElementById('confirm-btn').textContent = t.confirmBtn;
   document.getElementById('hint-proceed').textContent = t.hintProceed;
@@ -554,7 +649,13 @@ function setLang(l) {
 }
 
 function onFileInput(input) {
-  if (input.files[0]) { loadDemo(input.files[0].name); input.value = ''; }
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) { _pendingBuffer = e.target.result; };
+  reader.readAsArrayBuffer(file);
+  loadDemo(file.name);
+  input.value = '';
 }
 
 function loadDemo(filename) {
@@ -587,12 +688,27 @@ function showVisualStep(filename) {
   const c = getCaseData(filename);
   document.getElementById('visual-case-ctx').textContent = c.proc + ' · ' + c.material + ' · ' + c.land;
   document.getElementById('lab-comment').value = '';
+  const dm = DEMO_META[filename.toLowerCase()] || {};
+  document.getElementById('meta-bezeichnung').value = dm.bezeichnung || '';
+  document.getElementById('meta-zahn').value = dm.zahnRegion || '';
+  document.getElementById('meta-material').value = dm.material || '';
+  document.getElementById('meta-praxis').value = dm.praxis || '';
   document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-visual').style.display = 'block';
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() { initViewer(_pendingBuffer, filename); });
+  });
 }
 
 function proceedToDecision() {
   labComment = document.getElementById('lab-comment').value.trim();
+  caseMetadata = {
+    bezeichnung: document.getElementById('meta-bezeichnung').value.trim(),
+    zahnRegion:  document.getElementById('meta-zahn').value.trim(),
+    material:    document.getElementById('meta-material').value.trim(),
+    praxis:      document.getElementById('meta-praxis').value.trim(),
+  };
+  disposeViewer();
   document.getElementById('phase-visual').style.display = 'none';
   showDecisionGate(currentFilename);
 }
@@ -736,6 +852,10 @@ function showResultBlocked(filename) {
   document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   document.getElementById('audit-status').textContent = t.verdictBlock;
 
+  document.getElementById('nachweis-bezeichnung').textContent = caseMetadata.bezeichnung || '—';
+  document.getElementById('nachweis-zahn').textContent = caseMetadata.zahnRegion || '—';
+  document.getElementById('nachweis-material').textContent = caseMetadata.material || '—';
+  document.getElementById('nachweis-praxis').textContent = caseMetadata.praxis || '—';
   document.getElementById('nachweis-fall').textContent = c.proc;
   document.getElementById('nachweis-decision').textContent = t.verdictBlock;
   document.getElementById('nachweis-grundlage').textContent = t.decisionBlockedExplanation;
@@ -791,6 +911,10 @@ function showResult(filename) {
   const auditVerdict = !c.ok ? t.verdictBlock : selectedDecision === 'proceed_with_risk' ? t.verdictRisk : t.verdictOk;
   document.getElementById('audit-status').textContent = auditVerdict;
 
+  document.getElementById('nachweis-bezeichnung').textContent = caseMetadata.bezeichnung || '—';
+  document.getElementById('nachweis-zahn').textContent = caseMetadata.zahnRegion || '—';
+  document.getElementById('nachweis-material').textContent = caseMetadata.material || '—';
+  document.getElementById('nachweis-praxis').textContent = caseMetadata.praxis || '—';
   document.getElementById('nachweis-fall').textContent = c.proc;
   document.getElementById('nachweis-decision').textContent = auditVerdict;
   const nachweisGrundlage = (c.ok && selectedDecision === 'proceed_with_risk') ? t.explanationRisk : c.ok ? t.explanationOk : t.explanationBlock;
@@ -850,17 +974,184 @@ function resetDemo() {
   currentFilename = null;
   selectedDecision = null;
   labComment = '';
+  caseMetadata = {bezeichnung:'',zahnRegion:'',material:'',praxis:''};
+  _pendingBuffer = null;
+  disposeViewer();
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-visual').style.display = 'none';
   document.getElementById('phase-decision').style.display = 'none';
   document.getElementById('phase-upload').style.display = 'block';
   document.getElementById('lab-comment').value = '';
+  document.getElementById('meta-bezeichnung').value = '';
+  document.getElementById('meta-zahn').value = '';
+  document.getElementById('meta-material').value = '';
+  document.getElementById('meta-praxis').value = '';
   document.getElementById('proof-section').style.display = 'none';
   document.getElementById('proof-receipt-json').textContent = '';
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function initViewer(buffer, filename) {
+  disposeViewer();
+  const wrap = document.getElementById('stl-viewer-wrap');
+  const canvas = document.getElementById('stl-canvas');
+  if (!window.THREE) { showViewerFallback(true); return; }
+  try {
+    const w = wrap.clientWidth > 0 ? wrap.clientWidth : 540;
+    const h = 280;
+    const renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(w, h);
+    renderer.setClearColor(0xeceff4, 1);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 1000);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(1, 2, 2);
+    scene.add(dir);
+    _threeVars.scene = scene;
+    _threeVars.camera = camera;
+    _threeVars.renderer = renderer;
+    _threeVars.mesh = null;
+    let geometry = null;
+    if (buffer) { geometry = loadFileGeometry(buffer); }
+    if (geometry) {
+      _isDemoMesh = false;
+      document.getElementById('t-viewer-label').textContent = T[lang].viewerLabelLocal;
+    } else {
+      geometry = loadDemoMesh();
+      _isDemoMesh = true;
+      document.getElementById('t-viewer-label').textContent = T[lang].viewerLabelDemo;
+    }
+    document.getElementById('t-viewer-hint').textContent = T[lang].viewerHint;
+    if (geometry) {
+      geometry.computeBoundingBox();
+      const box = geometry.boundingBox;
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      geometry.translate(-center.x, -center.y, -center.z);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      _orbit.zoom = Math.max(size.x, size.y, size.z) * 2.5;
+      const mat = new THREE.MeshPhongMaterial({color:0xd4c5b0, specular:0x888888, shininess:40});
+      const mesh = new THREE.Mesh(geometry, mat);
+      scene.add(mesh);
+      _threeVars.mesh = mesh;
+    }
+    setupViewerControls(canvas);
+    startRenderLoop();
+    showViewerFallback(false);
+  } catch(e) {
+    console.warn('[viewer] init failed:', e);
+    showViewerFallback(true);
+  }
+}
+
+function loadDemoMesh() {
+  if (!window.THREE) return null;
+  return new THREE.CylinderGeometry(4.5, 5.5, 9, 32);
+}
+
+function loadFileGeometry(buffer) {
+  try {
+    const data = parseSTLBinary(buffer);
+    if (!data) return null;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(data.positions), 3));
+    if (data.normals.length === data.positions.length) {
+      geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normals), 3));
+    } else {
+      geo.computeVertexNormals();
+    }
+    return geo;
+  } catch(e) { return null; }
+}
+
+function parseSTLBinary(buffer) {
+  const view = new DataView(buffer);
+  if (buffer.byteLength < 84) return null;
+  const triCount = view.getUint32(80, true);
+  if (84 + triCount * 50 > buffer.byteLength) return null;
+  const positions = [], normals = [];
+  let off = 84;
+  for (let i = 0; i < triCount; i++) {
+    const nx = view.getFloat32(off, true), ny = view.getFloat32(off+4, true), nz = view.getFloat32(off+8, true);
+    off += 12;
+    for (let v = 0; v < 3; v++) {
+      positions.push(view.getFloat32(off, true), view.getFloat32(off+4, true), view.getFloat32(off+8, true));
+      normals.push(nx, ny, nz);
+      off += 12;
+    }
+    off += 2;
+  }
+  return {positions, normals};
+}
+
+function setupViewerControls(canvas) {
+  canvas.addEventListener('mousedown', e => { _orbit.dragging = true; _orbit.lastX = e.clientX; _orbit.lastY = e.clientY; });
+  window.addEventListener('mouseup', () => { _orbit.dragging = false; });
+  window.addEventListener('mousemove', e => {
+    if (!_orbit.dragging) return;
+    _orbit.rotY += (e.clientX - _orbit.lastX) * 0.01;
+    _orbit.rotX += (e.clientY - _orbit.lastY) * 0.01;
+    _orbit.rotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, _orbit.rotX));
+    _orbit.lastX = e.clientX; _orbit.lastY = e.clientY;
+  });
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    _orbit.zoom *= 1 + e.deltaY * 0.001;
+    _orbit.zoom = Math.max(1, Math.min(500, _orbit.zoom));
+  }, {passive:false});
+  let lastPinch = 0;
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) { _orbit.dragging = true; _orbit.lastX = e.touches[0].clientX; _orbit.lastY = e.touches[0].clientY; }
+    if (e.touches.length === 2) lastPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  }, {passive:true});
+  canvas.addEventListener('touchend', () => { _orbit.dragging = false; }, {passive:true});
+  canvas.addEventListener('touchmove', e => {
+    if (e.touches.length === 1 && _orbit.dragging) {
+      _orbit.rotY += (e.touches[0].clientX - _orbit.lastX) * 0.01;
+      _orbit.rotX += (e.touches[0].clientY - _orbit.lastY) * 0.01;
+      _orbit.rotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, _orbit.rotX));
+      _orbit.lastX = e.touches[0].clientX; _orbit.lastY = e.touches[0].clientY;
+    }
+    if (e.touches.length === 2) {
+      const p = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      _orbit.zoom *= lastPinch / p; _orbit.zoom = Math.max(1, Math.min(500, _orbit.zoom)); lastPinch = p;
+    }
+  }, {passive:true});
+}
+
+function startRenderLoop() {
+  function render() {
+    _threeVars.animId = requestAnimationFrame(render);
+    if (!_threeVars.renderer || !_threeVars.scene || !_threeVars.camera) return;
+    const r = _orbit.zoom;
+    _threeVars.camera.position.set(
+      r * Math.sin(_orbit.rotY) * Math.cos(_orbit.rotX),
+      r * Math.sin(_orbit.rotX),
+      r * Math.cos(_orbit.rotY) * Math.cos(_orbit.rotX)
+    );
+    _threeVars.camera.lookAt(0, 0, 0);
+    _threeVars.renderer.render(_threeVars.scene, _threeVars.camera);
+  }
+  render();
+}
+
+function disposeViewer() {
+  if (_threeVars.animId !== null) { cancelAnimationFrame(_threeVars.animId); _threeVars.animId = null; }
+  if (_threeVars.renderer) { _threeVars.renderer.dispose(); _threeVars.renderer = null; }
+  if (_threeVars.mesh && _threeVars.mesh.geometry) _threeVars.mesh.geometry.dispose();
+  _threeVars.scene = null; _threeVars.camera = null; _threeVars.mesh = null;
+  _orbit.dragging = false;
+}
+
+function showViewerFallback(show) {
+  document.getElementById('stl-viewer-wrap').style.display = show ? 'none' : '';
+  document.getElementById('stl-viewer-fallback').style.display = show ? 'block' : 'none';
+}
 
 (function() {
   const zone = document.getElementById('upload-zone');

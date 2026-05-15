@@ -232,6 +232,49 @@ async fn reviewer_shell_visual_step_translations_complete() {
     assert!(html.contains("nachweisKommentarLbl"),"nachweisKommentarLbl key must be in T");
 }
 
+/// STL viewer canvas and controls must be present for the interactive 3D view.
+#[tokio::test]
+async fn reviewer_shell_stl_viewer_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("stl-canvas"),          "stl-canvas id must be present");
+    assert!(html.contains("stl-viewer-wrap"),      "stl-viewer-wrap id must be present");
+    assert!(html.contains("stl-viewer-fallback"),  "stl-viewer-fallback id must be present for WebGL fallback");
+    assert!(html.contains("initViewer"),           "initViewer JS function must be present");
+    assert!(html.contains("disposeViewer"),        "disposeViewer JS function must be present");
+    assert!(html.contains("three@0.158.0"),        "Three.js CDN script must be present");
+}
+
+/// Case metadata form must be present with all four fields and privacy notice.
+#[tokio::test]
+async fn reviewer_shell_case_metadata_form_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("meta-bezeichnung"),           "meta-bezeichnung input id must be present");
+    assert!(html.contains("meta-zahn"),                  "meta-zahn input id must be present");
+    assert!(html.contains("meta-material"),              "meta-material input id must be present");
+    assert!(html.contains("meta-praxis"),                "meta-praxis input id must be present");
+    assert!(html.contains("Bitte keine Patientennamen"), "privacy notice DE must be present");
+    assert!(html.contains("Please do not enter patient names"), "privacy notice EN must be present");
+}
+
+/// Audit receipt must include the four case-metadata rows added in Phase 3.
+#[tokio::test]
+async fn reviewer_shell_nachweis_metadata_rows_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(html.contains("nachweis-bezeichnung"), "nachweis-bezeichnung id must be present");
+    assert!(html.contains("nachweis-zahn"),        "nachweis-zahn id must be present");
+    assert!(html.contains("nachweis-material"),    "nachweis-material id must be present");
+    assert!(html.contains("nachweis-praxis"),      "nachweis-praxis id must be present");
+}
+
 // ── Decision gate tests ───────────────────────────────────────────────────────
 
 /// Decision gate must have all three choice buttons and confirm logic.

@@ -1,6 +1,6 @@
 //! Public landing page for PostCAD.
 //!
-//! Served at `GET /`. Single-page scroll: hero → flow diagram → upload demo.
+//! Served at `GET /`. Minimal hero: headline, subtitle, safety note, CTA to /reviewer, feature list.
 
 pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
 <html lang="de">
@@ -11,115 +11,39 @@ pub const OPERATOR_UI_HTML: &str = r##"<!DOCTYPE html>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0f12;
-  --surface:#131720;
-  --border:#1e2535;
-  --green:#22c55e;
-  --red:#ef4444;
-  --text:#f1f5f9;
-  --sub:#94a3b8;
-  --dim:#4b5a6e;
+  --bg:#f8fafc;
+  --border:#e2e8f0;
+  --text:#0f172a;
+  --sub:#475569;
+  --dim:#94a3b8;
+  --accent:#1d4ed8;
 }
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-
-/* HEADER */
-header{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;z-index:100;background:var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+header{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;z-index:100;background:var(--bg);border-bottom:1px solid var(--border)}
 .brand{font-size:.78rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
 .brand span{color:var(--sub)}
 .lang-toggle{display:flex;gap:1px}
 .lang-btn{padding:3px 9px;font-size:.7rem;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;border-radius:4px;transition:color .15s,border-color .15s}
 .lang-btn.active{color:var(--sub);border-color:var(--dim)}
-
-section{padding:0 24px}
-.inner{max-width:580px;margin:0 auto}
-
-/* SECTION 1: HERO */
-#hero{min-height:100vh;display:flex;align-items:center}
+#hero{min-height:100vh;display:flex;align-items:center;padding:0 24px}
+.inner{max-width:600px;margin:0 auto}
 #hero .inner{padding:96px 0 80px}
-.hero-h1{font-size:clamp(2.4rem,6.5vw,4rem);font-weight:900;line-height:1.08;letter-spacing:-.02em;margin-bottom:20px}
-.hero-sub{font-size:1rem;color:var(--sub);line-height:1.65;margin-bottom:44px;max-width:420px}
-.hero-cta{display:inline-flex;align-items:center;gap:10px;font-size:.9rem;font-weight:600;color:var(--sub);text-decoration:none;transition:color .15s}
-.hero-cta:hover{color:var(--text)}
-.hero-cta-arrow{transition:transform .15s}
-.hero-cta:hover .hero-cta-arrow{transform:translateY(3px)}
-
-/* SECTION 2: FLOW */
-#flow{padding-top:100px;padding-bottom:120px;border-top:1px solid var(--border)}
-.flow-heading{font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:48px}
-.flow-node{display:flex;gap:20px;align-items:flex-start}
-.flow-spine{display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:6px}
-.flow-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
-.flow-dot.lit{background:var(--sub)}
-.flow-line{width:1px;height:40px;background:var(--border);margin:3px 0}
-.flow-body{padding-bottom:8px}
-.flow-n{font-size:.58rem;font-weight:700;letter-spacing:.1em;color:var(--dim);margin-bottom:4px;text-transform:uppercase}
-.flow-label{font-size:1.1rem;font-weight:600;color:var(--sub)}
-.flow-label.primary{color:var(--text)}
-.flow-outcomes{display:flex;gap:40px;padding-top:4px;padding-left:28px}
-.outcome-v{font-size:1.6rem;font-weight:900;letter-spacing:.03em}
-.outcome-v.blocked{color:var(--red)}
-.outcome-v.ok{color:var(--green)}
-.outcome-sub{font-size:.78rem;color:var(--dim);margin-top:4px}
-
-/* SECTION 3: DEMO */
-#demo{padding-top:80px;padding-bottom:120px;border-top:1px solid var(--border)}
-
-/* Upload */
-.upload-zone{
-  border:1px dashed #2d3d54;border-radius:8px;
-  padding:44px 24px;text-align:center;cursor:pointer;
-  display:block;transition:border-color .15s;margin-bottom:16px;
-  text-decoration:none;color:inherit;
-}
-.upload-zone:hover,.upload-zone.drag-over{border-color:var(--sub)}
-.upload-icon{font-size:1.4rem;color:var(--dim);margin-bottom:12px}
-.upload-title{font-size:1.05rem;font-weight:700;margin-bottom:6px}
-.upload-sub{font-size:.85rem;color:var(--sub)}
-.demo-files{display:flex;gap:8px;flex-wrap:wrap}
-.demo-file-btn{padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--sub);font-size:.8rem;font-family:'SF Mono','Fira Code',monospace;cursor:pointer;transition:border-color .15s,color .15s}
-.demo-file-btn:hover{border-color:var(--sub);color:var(--text)}
-
-/* Processing */
-#phase-processing{display:none;padding:52px 0}
-.proc-filename{font-size:.78rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;margin-bottom:20px}
-.proc-step{font-size:.95rem;color:var(--sub);padding:6px 0;opacity:0;transition:opacity .2s}
-.proc-step.visible{opacity:1}
-.upload-zone.has-file{border-color:var(--green);border-style:solid;cursor:default;pointer-events:none}
-.upload-zone.has-file .upload-icon{color:var(--green)}
-.proc-running{font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin:18px 0 10px;display:none}
-.proc-check-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:.93rem;color:var(--sub);opacity:0;transition:opacity .2s}
-.proc-check-row.visible{opacity:1}
-
-/* Result */
-#phase-result{display:none;animation:fadein .25s ease-out}
-@keyframes fadein{from{opacity:0}to{opacity:1}}
-.res-section{padding:32px 0}
-.res-label{font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:16px}
-.case-proc{font-size:1.35rem;font-weight:700;margin-bottom:14px;line-height:1.2}
-.case-row{font-size:.92rem;color:var(--sub);margin-bottom:6px;display:flex;gap:8px}
-.case-row-lbl{color:var(--dim)}
-.result-verdict{font-size:clamp(2.4rem,8vw,3.2rem);font-weight:900;letter-spacing:.02em;line-height:1;margin-bottom:10px}
-.verdict-ok{color:var(--green)}
-.verdict-blocked{color:var(--red)}
-.result-sub{font-size:1rem;color:var(--sub);margin-bottom:6px}
-.result-explanation{font-size:.88rem;color:var(--dim);margin-top:10px;line-height:1.5}
-.check-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:.93rem}
-.check-row-lbl{color:var(--sub)}
-.chk-ok{color:var(--green);font-weight:700;font-size:1.1rem}
-.chk-fail{color:var(--red);font-weight:700;font-size:1.1rem}
-.check-ergebnis{font-size:.9rem;color:var(--sub);margin-top:14px;font-weight:600}
-.lab-item{font-size:.95rem;color:var(--sub);padding:6px 0}
-.lab-item::before{content:'— ';color:var(--dim)}
-.audit-row{display:flex;font-size:.85rem;padding:5px 0;gap:12px}
-.audit-row-lbl{color:var(--dim);flex-shrink:0;min-width:80px}
-.audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.78rem}
-.reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);font-size:.9rem;font-weight:600;padding:13px 22px;cursor:pointer;transition:border-color .15s,color .15s;margin-top:4px}
-.reset-btn:hover{border-color:var(--sub);color:var(--text)}
+.hero-h1{font-size:clamp(2rem,5.5vw,3.2rem);font-weight:900;line-height:1.1;letter-spacing:-.02em;margin-bottom:20px}
+.hero-sub{font-size:1rem;color:var(--sub);line-height:1.65;margin-bottom:24px;max-width:480px}
+.safety-note{font-size:.8rem;color:var(--dim);line-height:1.6;margin-bottom:40px;max-width:480px;border-left:2px solid var(--border);padding-left:12px}
+.hero-cta{display:inline-flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600;color:#fff;background:var(--accent);text-decoration:none;padding:13px 24px;border-radius:8px;transition:background .15s}
+.hero-cta:hover{background:#1e3a8a}
+.cta-arrow{transition:transform .15s}
+.hero-cta:hover .cta-arrow{transform:translateX(3px)}
+#features{padding:80px 24px 100px;border-top:1px solid var(--border)}
+.features-heading{font-size:.62rem;font-weight:700;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:32px}
+.feature-item{display:flex;gap:16px;align-items:flex-start;margin-bottom:24px}
+.feature-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:7px}
+.feature-text{font-size:1rem;color:var(--sub);line-height:1.5}
 </style>
 </head>
 <body>
-
 <header>
   <div class="brand">Post<span>CAD</span></div>
   <div class="lang-toggle">
@@ -128,126 +52,32 @@ section{padding:0 24px}
   </div>
 </header>
 
-<!-- ── HERO ── -->
 <section id="hero">
   <div class="inner">
-    <h1 class="hero-h1" id="t-h1">Nicht jeder Fall<br>ist vor der Fertigung ausreichend geklärt.</h1>
-    <p class="hero-sub" id="t-sub">PostCAD dokumentiert die Entscheidung vor der Fertigung.</p>
-    <div class="det-note" id="t-det-note" style="margin-top:.9rem;max-width:40rem;font-size:.8rem;line-height:1.6">
-      PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.
-    </div>
-    <a class="hero-cta" href="#" onclick="startGuidedDemo(); return false;">
-      <span id="t-cta">Demo ansehen</span>
-      <span class="hero-cta-arrow">→</span>
+    <h1 class="hero-h1" id="t-h1">Digitale Fälle vor der Herstellung klar dokumentieren.</h1>
+    <p class="hero-sub" id="t-sub">PostCAD hilft Praxis und Labor, STL-/Scan-Fälle vor der Fertigung visuell zu klären, Hinweise festzuhalten und Entscheidungen nachvollziehbar zu dokumentieren.</p>
+    <p class="safety-note" id="t-safety">PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei.</p>
+    <a class="hero-cta" href="/reviewer">
+      <span id="t-cta">Reviewer öffnen</span>
+      <span class="cta-arrow">→</span>
     </a>
   </div>
 </section>
 
-<!-- ── FLOW ── -->
-<section id="flow">
+<section id="features">
   <div class="inner">
-    <div class="flow-heading" id="t-flow-heading">Ablauf</div>
-    <div>
-      <div class="flow-node">
-        <div class="flow-spine"><div class="flow-dot lit"></div><div class="flow-line"></div></div>
-        <div class="flow-body"><div class="flow-n">01</div><div class="flow-label" id="t-f1">CAD-Datei erstellt</div></div>
-      </div>
-      <div class="flow-node">
-        <div class="flow-spine"><div class="flow-dot lit"></div><div class="flow-line"></div></div>
-        <div class="flow-body"><div class="flow-n">02</div><div class="flow-label primary" id="t-f2">PostCAD dokumentiert die Entscheidung</div></div>
-      </div>
-      <div class="flow-outcomes">
-        <div>
-          <div class="outcome-v blocked" id="t-f3-blocked">KLÄRUNG ERFORDERLICH</div>
-          <div class="outcome-sub" id="t-f3-blocked-sub">Klärung erforderlich</div>
-        </div>
-        <div>
-          <div class="outcome-v ok" id="t-f3-ok">FORTSETZUNG DOKUMENTIERT</div>
-          <div class="outcome-sub" id="t-f3-ok-sub">Fortsetzung dokumentiert</div>
-        </div>
-      </div>
+    <div class="features-heading" id="t-features-heading">Funktionen</div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text" id="t-f1">STL/Scan im Browser ansehen</div>
     </div>
-  </div>
-</section>
-
-<!-- ── DEMO ── -->
-<section id="demo">
-  <div class="inner">
-
-    <!-- upload -->
-    <div id="phase-upload">
-      <label class="upload-zone" id="upload-zone" for="file-input">
-        <div class="upload-icon">↑</div>
-        <div class="upload-title" id="t-upload-title">CAD-Datei hochladen</div>
-        <div class="upload-sub" id="t-upload-sub">Datei hier ablegen oder auswählen (STL, OBJ)</div>
-      </label>
-      <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
-      <div class="demo-files">
-        <button class="demo-file-btn" onclick="loadDemo('Krone_3-6_DE.stl')">Krone_3-6_DE.stl</button>
-        <button class="demo-file-btn" onclick="loadDemo('Bruecke_USA.stl')">Bruecke_USA.stl</button>
-      </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text" id="t-f2">Hinweis an die Praxis dokumentieren</div>
     </div>
-
-    <!-- processing -->
-    <div id="phase-processing">
-      <div class="proc-filename" id="proc-filename"></div>
-      <div class="proc-running" id="proc-running"></div>
-      <div class="proc-check-row" id="pcheck-0"><span id="t-pcheck-0"></span><span class="chk-ok">✓</span></div>
-      <div class="proc-check-row" id="pcheck-1"><span id="t-pcheck-1"></span><span class="chk-ok">✓</span></div>
-      <div class="proc-check-row" id="pcheck-2"><span id="t-pcheck-2"></span><span class="chk-ok">✓</span></div>
-    </div>
-
-    <!-- result -->
-    <div id="phase-result">
-
-      <div class="res-section">
-        <div class="res-label" id="t-case-label">Fall erkannt</div>
-        <div class="case-proc" id="res-proc"></div>
-        <div class="case-row"><span class="case-row-lbl" id="t-material-lbl">Material</span><span id="res-material"></span></div>
-        <div class="case-row"><span class="case-row-lbl" id="t-land-lbl">Land</span><span id="res-land"></span></div>
-        <div class="case-row"><span class="case-row-lbl" id="t-indication-lbl">Indikation</span><span id="res-indication"></span></div>
-      </div>
-
-      <div class="res-section">
-        <div class="res-label" id="t-decision-label">Entscheidung</div>
-        <div class="result-verdict" id="result-verdict"></div>
-        <div class="result-sub" id="result-sub"></div>
-        <div class="result-explanation" id="result-explanation"></div>
-      </div>
-
-      <div class="res-section">
-        <div class="res-label" id="t-pruefung-label">Falldaten</div>
-        <div class="check-row">
-          <span class="check-row-lbl" id="t-chk-material">Materialangabe</span>
-          <span id="chk-material"></span>
-        </div>
-        <div class="check-row">
-          <span class="check-row-lbl" id="t-chk-jurisdiction">Länderangabe</span>
-          <span id="chk-jurisdiction"></span>
-        </div>
-        <div class="check-row">
-          <span class="check-row-lbl" id="t-chk-manufacturing">Herstellungsangabe</span>
-          <span id="chk-manufacturing"></span>
-        </div>
-        <div class="check-ergebnis" id="check-ergebnis"></div>
-      </div>
-
-      <div class="res-section" id="labs-section" style="display:none">
-        <div class="res-label" id="t-fertigung-label">Entscheidungsgrundlage</div>
-        <div id="labs-list"></div>
-      </div>
-
-      <div class="res-section">
-        <div class="res-label" id="t-audit-label">Audit</div>
-        <div class="audit-row"><span class="audit-row-lbl" id="t-audit-id-lbl">Audit-ID</span><span class="audit-row-val" id="audit-id"></span></div>
-        <div class="audit-row"><span class="audit-row-lbl" id="t-audit-time-lbl">Zeitpunkt</span><span class="audit-row-val" id="audit-time"></span></div>
-        <div class="audit-row"><span class="audit-row-lbl" id="t-audit-status-lbl">Status</span><span class="audit-row-val" id="audit-status"></span></div>
-      </div>
-
-      <div class="res-section" style="border-top:none;padding-top:8px">
-        <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neue Datei hochladen</span></button>
-      </div>
-
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text" id="t-f3">Entscheidungsnachweis erzeugen</div>
     </div>
   </div>
 </section>
@@ -255,255 +85,41 @@ section{padding:0 24px}
 <script>
 const T = {
   DE: {
-    h1: 'Nicht jeder Fall<br>ist vor der Fertigung ausreichend geklärt.',
-    sub: 'PostCAD dokumentiert die Entscheidung vor der Fertigung.',
-    detNote: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.',
-    cta: 'Demo ansehen',
-    flowHeading: 'Ablauf',
-    f1: 'CAD-Datei erstellt', f2: 'PostCAD dokumentiert die Entscheidung',
-    f3Blocked: 'KLÄRUNG ERFORDERLICH', f3BlockedSub: 'Klärung erforderlich',
-    f3Ok: 'FORTSETZUNG DOKUMENTIERT', f3OkSub: 'Fortsetzung dokumentiert',
-    uploadTitle: 'CAD-Datei hochladen',
-    uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
-    fileDetected: 'Datei erkannt',
-    procRunning: 'Angaben werden gelesen\u2026',
-    pcheckLabels: ['Materialangabe', 'Länderangabe', 'Herstellungsangabe'],
-    caseLabel: 'Fall erkannt',
-    materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
-    decisionLabel: 'Entscheidung',
-    verdictOk: 'FORTSETZUNG DOKUMENTIERT', verdictBlock: 'KLÄRUNG ERFORDERLICH',
-    subOk: 'Fortsetzung dokumentiert', subBlock: 'Klärung erforderlich',
-    explanationOk: 'Die verantwortliche Person hat dokumentiert, dass die Ausgangslage ausreichend geklärt ist.',
-    explanationBlock: 'Die verantwortliche Person hat dokumentiert, dass vor der Fertigung eine Klärung erforderlich ist.',
-    pruefungLabel: 'Falldaten',
-    chkMaterial: 'Materialangabe', chkJurisdiction: 'Länderangabe', chkManufacturing: 'Herstellungsangabe',
-    ergebnisOk: 'Entscheidung: Fortsetzung dokumentiert', ergebnisBlock: 'Entscheidung: Klärung erforderlich',
-    fertigungLabel: 'Entscheidungsgrundlage',
-    fertigungHint: 'Dokumentierter Hinweis',
-    fertigungBody: 'Die Entscheidungsgrundlage wird durch die verantwortliche Person festgehalten. Ausgangslage und Entscheidungsbasis werden nachvollziehbar dokumentiert.',
-    auditLabel: 'Audit', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
-    reset: 'Neue Datei hochladen',
+    h1: 'Digitale Fälle vor der Herstellung klar dokumentieren.',
+    sub: 'PostCAD hilft Praxis und Labor, STL-/Scan-Fälle vor der Fertigung visuell zu klären, Hinweise festzuhalten und Entscheidungen nachvollziehbar zu dokumentieren.',
+    safety: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei.',
+    cta: 'Reviewer öffnen',
+    featuresHeading: 'Funktionen',
+    f1: 'STL/Scan im Browser ansehen',
+    f2: 'Hinweis an die Praxis dokumentieren',
+    f3: 'Entscheidungsnachweis erzeugen',
   },
   EN: {
-    h1: 'Not every case<br>has been sufficiently clarified before manufacturing.',
-    sub: 'PostCAD documents the decision before manufacturing.',
-    detNote: 'PostCAD does not detect medical or technical errors and does not release manufacturing. The system structures communication between practice and lab, and documents which responsible person decided on which basis.',
-    cta: 'View demo',
-    flowHeading: 'Process',
-    f1: 'CAD file created', f2: 'PostCAD documents the decision',
-    f3Blocked: 'CLARIFICATION REQUIRED', f3BlockedSub: 'Clarification required',
-    f3Ok: 'PROCEED DOCUMENTED', f3OkSub: 'Proceed documented',
-    uploadTitle: 'Upload CAD file',
-    uploadSub: 'Drop file here or select (STL, OBJ)',
-    fileDetected: 'File detected',
-    procRunning: 'Reading details\u2026',
-    pcheckLabels: ['Material information', 'Country information', 'Manufacturing information'],
-    caseLabel: 'Case detected',
-    materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
-    decisionLabel: 'Decision',
-    verdictOk: 'PROCEED DOCUMENTED', verdictBlock: 'CLARIFICATION REQUIRED',
-    subOk: 'Proceed documented', subBlock: 'Clarification required',
-    explanationOk: 'The responsible person documented that the starting situation is sufficiently clarified.',
-    explanationBlock: 'The responsible person documented that clarification is required before manufacturing.',
-    pruefungLabel: 'Case data',
-    chkMaterial: 'Material information', chkJurisdiction: 'Country information', chkManufacturing: 'Manufacturing information',
-    ergebnisOk: 'Decision: Proceed documented', ergebnisBlock: 'Decision: Clarification required',
-    fertigungLabel: 'Decision basis',
-    fertigungHint: 'Documented note',
-    fertigungBody: 'The decision basis is recorded by the responsible person. The starting situation and decision basis are documented traceably.',
-    auditLabel: 'Audit', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
-    reset: 'Upload new file',
+    h1: 'Clearly document digital cases before manufacturing.',
+    sub: 'PostCAD helps practices and labs visually review STL/scan cases before manufacturing, record notes, and document decisions traceably.',
+    safety: 'PostCAD does not detect medical or technical errors and does not release manufacturing.',
+    cta: 'Open Reviewer',
+    featuresHeading: 'Features',
+    f1: 'View STL/scan in the browser',
+    f2: 'Document a note to the practice',
+    f3: 'Generate a decision receipt',
   },
 };
-
-const FILE_CASES = {
-  'krone_zahn_36.stl': {
-    proc: 'Krone \u00b7 Zahn 3\u20136',
-    material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
-    ok: true,
-    checks: {material: true, jurisdiction: true, manufacturing: true},
-    labs: [],
-  },
-  'krone_3-6_de.stl': {
-    proc: 'Krone \u00b7 Zahn 3\u20136',
-    material: 'E.max', land: 'Deutschland', indication: 'Standardversorgung',
-    ok: true,
-    checks: {material: true, jurisdiction: true, manufacturing: true},
-    labs: [],
-  },
-  'bruecke_usa.stl': {
-    proc: 'Br\u00fccke',
-    material: 'Zirkon', land: 'USA', indication: 'Standardversorgung',
-    ok: false,
-    checks: {material: true, jurisdiction: false, manufacturing: true},
-    labs: [],
-  },
-};
-
-function getCaseData(filename) {
-  return FILE_CASES[filename.toLowerCase()] || {
-    proc: filename, material: '\u2014', land: '\u2014', indication: '\u2014',
-    ok: false, checks: {material: false, jurisdiction: false, manufacturing: false}, labs: [],
-  };
-}
-
 let lang = 'DE';
-let lastResultOk = null;
-
 function setLang(l) {
   lang = l;
   document.getElementById('btn-de').classList.toggle('active', l === 'DE');
   document.getElementById('btn-en').classList.toggle('active', l === 'EN');
   const t = T[l];
-  document.getElementById('t-h1').innerHTML = t.h1;
+  document.getElementById('t-h1').textContent = t.h1;
   document.getElementById('t-sub').textContent = t.sub;
-  document.getElementById('t-det-note').textContent = t.detNote;
+  document.getElementById('t-safety').textContent = t.safety;
   document.getElementById('t-cta').textContent = t.cta;
-  document.getElementById('t-flow-heading').textContent = t.flowHeading;
+  document.getElementById('t-features-heading').textContent = t.featuresHeading;
   document.getElementById('t-f1').textContent = t.f1;
   document.getElementById('t-f2').textContent = t.f2;
-  document.getElementById('t-f3-blocked').textContent = t.f3Blocked;
-  document.getElementById('t-f3-blocked-sub').textContent = t.f3BlockedSub;
-  document.getElementById('t-f3-ok').textContent = t.f3Ok;
-  document.getElementById('t-f3-ok-sub').textContent = t.f3OkSub;
-  document.getElementById('t-upload-title').textContent = t.uploadTitle;
-  document.getElementById('t-upload-sub').textContent = t.uploadSub;
-  document.getElementById('t-case-label').textContent = t.caseLabel;
-  document.getElementById('t-material-lbl').textContent = t.materialLbl;
-  document.getElementById('t-land-lbl').textContent = t.landLbl;
-  document.getElementById('t-indication-lbl').textContent = t.indicationLbl;
-  document.getElementById('t-decision-label').textContent = t.decisionLabel;
-  document.getElementById('t-pruefung-label').textContent = t.pruefungLabel;
-  document.getElementById('t-chk-material').textContent = t.chkMaterial;
-  document.getElementById('t-chk-jurisdiction').textContent = t.chkJurisdiction;
-  document.getElementById('t-chk-manufacturing').textContent = t.chkManufacturing;
-  document.getElementById('t-fertigung-label').textContent = t.fertigungLabel;
-  document.getElementById('t-audit-label').textContent = t.auditLabel;
-  document.getElementById('t-audit-id-lbl').textContent = t.auditIdLbl;
-  document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
-  document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
-  document.getElementById('t-reset').textContent = t.reset;
-  if (lastResultOk !== null) {
-    document.getElementById('result-explanation').textContent = lastResultOk ? t.explanationOk : t.explanationBlock;
-    document.getElementById('labs-list').innerHTML = '<div class="case-row-lbl" style="font-size:.78rem;margin-bottom:4px">' + t.fertigungHint + '</div><div style="font-size:.85rem;color:var(--dim);line-height:1.55;margin-top:4px">' + t.fertigungBody + '</div>';
-  }
+  document.getElementById('t-f3').textContent = t.f3;
 }
-
-function onFileInput(input) {
-  if (input.files[0]) { loadDemo(input.files[0].name); input.value = ''; }
-}
-
-function loadDemo(filename) {
-  startProcessing(filename);
-}
-
-async function startProcessing(filename) {
-  const t = T[lang];
-  document.getElementById('proc-filename').textContent = filename;
-  const runEl = document.getElementById('proc-running');
-  runEl.style.display = 'none';
-  for (let i = 0; i < 3; i++) {
-    document.getElementById('t-pcheck-' + i).textContent = t.pcheckLabels[i];
-    document.getElementById('pcheck-' + i).classList.remove('visible');
-  }
-  document.getElementById('phase-upload').style.display = 'none';
-  document.getElementById('phase-processing').style.display = 'block';
-  document.getElementById('phase-result').style.display = 'none';
-
-  await delay(200);
-  runEl.textContent = t.procRunning;
-  runEl.style.display = 'block';
-
-  for (let i = 0; i < 3; i++) {
-    await delay(520);
-    document.getElementById('pcheck-' + i).classList.add('visible');
-  }
-  await delay(400);
-  showResult(filename);
-}
-
-async function startGuidedDemo() {
-  const t = T[lang];
-  const filename = 'krone_zahn_36.stl';
-  document.getElementById('hero').style.display = 'none';
-  document.getElementById('flow').style.display = 'none';
-  document.getElementById('demo').style.borderTop = 'none';
-  document.getElementById('demo').style.paddingTop = '120px';
-  window.scrollTo(0, 0);
-  document.getElementById('phase-upload').style.display = 'block';
-  document.getElementById('phase-processing').style.display = 'none';
-  document.getElementById('phase-result').style.display = 'none';
-
-  await delay(900);
-  document.getElementById('upload-zone').classList.add('has-file');
-  document.getElementById('upload-icon').textContent = '\u2713';
-  document.getElementById('upload-icon').style.color = 'var(--green)';
-  document.getElementById('t-upload-title').textContent = filename;
-  document.getElementById('t-upload-sub').textContent = t.fileDetected;
-
-  await delay(900);
-  startProcessing(filename);
-}
-
-function showResult(filename) {
-  const t = T[lang];
-  const c = getCaseData(filename);
-
-  document.getElementById('res-proc').textContent = c.proc;
-  document.getElementById('res-material').textContent = c.material;
-  document.getElementById('res-land').textContent = c.land;
-  document.getElementById('res-indication').textContent = c.indication;
-
-  lastResultOk = c.ok;
-  const vEl = document.getElementById('result-verdict');
-  if (c.ok) {
-    vEl.className = 'result-verdict verdict-ok';
-    vEl.textContent = t.verdictOk;
-    document.getElementById('result-sub').textContent = t.subOk;
-    document.getElementById('result-explanation').textContent = t.explanationOk;
-  } else {
-    vEl.className = 'result-verdict verdict-blocked';
-    vEl.textContent = t.verdictBlock;
-    document.getElementById('result-sub').textContent = t.subBlock;
-    document.getElementById('result-explanation').textContent = t.explanationBlock;
-  }
-
-  setCheck('chk-material', c.checks.material);
-  setCheck('chk-jurisdiction', c.checks.jurisdiction);
-  setCheck('chk-manufacturing', c.checks.manufacturing);
-  document.getElementById('check-ergebnis').textContent = c.ok ? t.ergebnisOk : t.ergebnisBlock;
-
-  document.getElementById('labs-section').style.display = 'block';
-  document.getElementById('labs-list').innerHTML = '<div class="case-row-lbl" style="font-size:.78rem;margin-bottom:4px">' + t.fertigungHint + '</div><div style="font-size:.85rem;color:var(--dim);line-height:1.55;margin-top:4px">' + t.fertigungBody + '</div>';
-
-  document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
-  document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-  document.getElementById('audit-status').textContent = c.ok ? t.verdictOk : t.verdictBlock;
-
-  document.getElementById('phase-processing').style.display = 'none';
-  document.getElementById('phase-result').style.display = 'block';
-}
-
-function setCheck(id, pass) {
-  const el = document.getElementById(id);
-  el.textContent = pass ? '\u2713' : '\u2715';
-  el.className = pass ? 'chk-ok' : 'chk-fail';
-}
-
-function resetDemo() { window.location.href = '/'; }
-
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// Drag & drop
-(function() {
-  const zone = document.getElementById('upload-zone');
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over'); });
-  zone.addEventListener('drop', e => {
-    e.preventDefault(); zone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) loadDemo(e.dataTransfer.files[0].name);
-  });
-})();
 </script>
 </body>
 </html>

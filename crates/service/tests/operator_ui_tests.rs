@@ -94,8 +94,7 @@ async fn operator_ui_index_serves_html() {
     );
 }
 
-/// The index page body must contain the five section identifiers expected by
-/// the operator workflow (section IDs are stable across UI revisions).
+/// The landing page must have a hero section and a features section.
 #[tokio::test]
 async fn operator_ui_contains_section_anchors() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -103,99 +102,73 @@ async fn operator_ui_contains_section_anchors() {
     let (status, bytes) = get_raw(app, "/").await;
     assert_eq!(status, StatusCode::OK);
     let html = std::str::from_utf8(&bytes).unwrap();
-    for anchor in [
-        "section-intake",
-        "section-cases",
-        "section-receipts",
-        "section-history",
-        "section-status",
-    ] {
-        assert!(html.contains(anchor), "HTML must contain id={anchor}");
+    for anchor in ["id=\"hero\"", "id=\"features\""] {
+        assert!(html.contains(anchor), "HTML must contain {anchor}");
     }
 }
 
-/// The index page must reference all required endpoint paths so the JS can
-/// actually call them.
+/// The landing page CTA must link to /reviewer.
 #[tokio::test]
 async fn operator_ui_references_all_endpoints() {
     let tmp = tempfile::TempDir::new().unwrap();
     let app = make_app(&tmp);
     let (_, bytes) = get_raw(app, "/").await;
     let html = std::str::from_utf8(&bytes).unwrap();
-    let required = [
-        "/cases",
-        "/cases/",
-        "/receipts",
-        "/dispatch/",
-        "/routes",
-        "/health",
-        "/version",
-    ];
-    for path in required {
-        assert!(
-            html.contains(path),
-            "HTML must reference endpoint path '{path}'"
-        );
-    }
+    assert!(
+        html.contains("href=\"/reviewer\""),
+        "CTA must link to /reviewer"
+    );
 }
 
-/// The polished UI must use operator-friendly button labels (not raw endpoint
-/// paths) so the workflow is clear without curl knowledge.
+/// The landing page must contain the DE and EN CTA labels.
 #[tokio::test]
 async fn operator_ui_has_operator_friendly_labels() {
     let tmp = tempfile::TempDir::new().unwrap();
     let (_, bytes) = get_raw(make_app(&tmp), "/").await;
     let html = std::str::from_utf8(&bytes).unwrap();
-    for label in [
-        "Store Case",
-        "Route This Case",
-        "View JSON",
-        "Dispatch",
-        "Verify Integrity",
-        "Refresh",
-    ] {
+    for label in ["Reviewer öffnen", "Open Reviewer"] {
         assert!(
             html.contains(label),
-            "HTML must contain operator label '{label}'"
+            "HTML must contain CTA label '{label}'"
         );
     }
 }
 
-/// The polished UI must expose stable viewer element IDs used by all result
-/// display paths (fixes the pre-class bug and verifies the stable #case-detail
-/// element is not recreated inside dynamic table HTML).
+/// The landing page must expose the stable translatable element IDs for setLang.
 #[tokio::test]
 async fn operator_ui_has_stable_viewer_elements() {
     let tmp = tempfile::TempDir::new().unwrap();
     let (_, bytes) = get_raw(make_app(&tmp), "/").await;
     let html = std::str::from_utf8(&bytes).unwrap();
-    for id in [
-        "case-detail",
-        "receipt-detail",
-        "intake-result",
-        "route-modal-result",
-        "status-detail",
-    ] {
+    for id in ["t-h1", "t-sub", "t-safety", "t-cta", "t-f1", "t-f2", "t-f3"] {
         assert!(
             html.contains(id),
-            "HTML must contain stable element id='{id}'"
+            "HTML must contain translatable element id='{id}'"
         );
     }
 }
 
-/// The UI must include a global Refresh All button for fast full-page reload.
+/// The landing page must contain the safety note and the three feature bullets in both languages.
 #[tokio::test]
 async fn operator_ui_has_refresh_all_button() {
     let tmp = tempfile::TempDir::new().unwrap();
     let (_, bytes) = get_raw(make_app(&tmp), "/").await;
     let html = std::str::from_utf8(&bytes).unwrap();
     assert!(
-        html.contains("refreshAll"),
-        "HTML must contain refreshAll function"
+        html.contains("PostCAD erkennt keine medizinischen oder technischen Fehler"),
+        "HTML must contain DE safety note"
     );
     assert!(
-        html.contains("Refresh all"),
-        "HTML must contain 'Refresh all' button text"
+        html.contains("STL/Scan im Browser ansehen"),
+        "HTML must contain DE feature bullet 1"
+    );
+    assert!(
+        html.contains("Hinweis an die Praxis dokumentieren"),
+        "HTML must contain DE feature bullet 2"
+    );
+    assert!(
+        html.contains("Entscheidungsnachweis erzeugen"),
+        "HTML must contain DE feature bullet 3"
     );
 }
 

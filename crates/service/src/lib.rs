@@ -16,6 +16,7 @@ use axum::{routing, Router};
 
 pub use case_store::CaseStore;
 pub use decision::DecisionStore;
+pub use reviewer::REVIEWER_HTML;
 pub use dispatch_commitment::DispatchCommitmentStore;
 pub use dispatch_store::DispatchStore;
 pub use policy_store::PolicyStore;

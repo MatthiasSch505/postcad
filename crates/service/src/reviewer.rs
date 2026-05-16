@@ -95,6 +95,9 @@ main{width:100%;max-width:560px}
 .audit-row-val{color:var(--sub);font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;word-break:break-word}
 .reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);font-size:.9rem;font-weight:600;padding:13px 22px;cursor:pointer;transition:border-color .15s,color .15s}
 .reset-btn:hover{border-color:var(--sub);color:var(--text)}
+.copy-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--dim);font-size:.9rem;font-weight:600;padding:13px 22px;cursor:pointer;transition:border-color .15s,color .15s}
+.copy-btn:hover{border-color:var(--sub);color:var(--sub)}
+.copy-confirm{font-size:.82rem;color:var(--sub);font-weight:600;align-self:center;display:none}
 .intro-line{font-size:.83rem;color:var(--sub);line-height:1.55;margin-bottom:28px;max-width:480px}
 
 #_legacy{display:none!important}
@@ -361,9 +364,14 @@ main{width:100%;max-width:560px}
       <p class="aha-line" id="aha-line">PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.</p>
     </div>
 
-    <div class="res-section" style="border-top:none;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+    <div class="res-section" style="border-top:none;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
       <button class="reset-btn" onclick="backToDecision()"><span id="t-back-decision">Zurück zur Entscheidung</span></button>
       <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neuen Laborfall öffnen</span></button>
+      <button class="copy-btn" onclick="copyReceipt()"><span id="t-copy-btn">Nachweis kopieren</span></button>
+      <span class="copy-confirm" id="copy-confirm">Nachweis kopiert.</span>
+    </div>
+    <div id="copy-fallback" class="res-section" style="display:none;border-top:none;padding-top:0">
+      <textarea id="copy-fallback-textarea" style="width:100%;min-height:120px;font-size:.72rem;font-family:'SF Mono','Fira Code',monospace;color:var(--sub);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;resize:vertical;line-height:1.5"></textarea>
     </div>
 
   </div>
@@ -476,6 +484,9 @@ const T = {
     nachweisEreignisLbl: 'Ereignis',
     nachweisPersonLbl: 'Verantwortliche Person',
     nachweisPersonValue: 'Reviewer · Labor',
+    copyBtn: 'Nachweis kopieren',
+    copiedConfirm: 'Nachweis kopiert.',
+    safetyCopy: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei.',
   },
   EN: {
     uploadTitle: 'Upload STL file',
@@ -571,6 +582,9 @@ const T = {
     nachweisEreignisLbl: 'Event',
     nachweisPersonLbl: 'Responsible person',
     nachweisPersonValue: 'Reviewer · Lab',
+    copyBtn: 'Copy receipt',
+    copiedConfirm: 'Receipt copied.',
+    safetyCopy: 'PostCAD does not detect medical or technical errors and does not release manufacturing.',
   },
 };
 
@@ -671,6 +685,7 @@ function setLang(l) {
   document.getElementById('t-proc-reset').textContent = t.reset;
   document.getElementById('t-gate-reset').textContent = t.reset;
   document.getElementById('t-back-decision').textContent = t.backToDecision;
+  document.getElementById('t-copy-btn').textContent = t.copyBtn;
   document.getElementById('t-gate-badge').textContent = t.gateBadge;
   document.getElementById('t-gate-title').textContent = t.gateTitle;
   document.getElementById('t-gate-sub').textContent = t.gateSub;
@@ -1208,6 +1223,53 @@ function resetDemo() {
   document.getElementById('comment-error').style.display = 'none';
   document.getElementById('meta-error').style.display = 'none';
   document.getElementById('stl-loaded-banner').style.display = 'none';
+  document.getElementById('copy-confirm').style.display = 'none';
+  document.getElementById('copy-fallback').style.display = 'none';
+  document.getElementById('copy-fallback-textarea').value = '';
+}
+
+function copyReceipt() {
+  const t = T[lang];
+  const fields = [
+    ['Fall-ID',                               document.getElementById('nachweis-caseid').textContent],
+    ['Datei',                                 document.getElementById('nachweis-datei').textContent],
+    ['Ereignis',                              document.getElementById('nachweis-ereignis').textContent],
+    ['Fallbezeichnung',                       document.getElementById('nachweis-bezeichnung').textContent],
+    ['Zahn / Region',                         document.getElementById('nachweis-zahn').textContent],
+    ['Material',                              document.getElementById('nachweis-material').textContent],
+    ['Praxis / Kunde',                        document.getElementById('nachweis-praxis').textContent],
+    ['Visuelle Klärung',                      document.getElementById('nachweis-visual').textContent],
+    ['Hinweis an die Praxis / Laborkommentar',document.getElementById('nachweis-kommentar').textContent],
+    ['Entscheidung',                          document.getElementById('nachweis-decision').textContent],
+    ['Zeitpunkt',                             document.getElementById('audit-time').textContent],
+    ['Verantwortliche Person',                document.getElementById('nachweis-person').textContent],
+  ];
+  const lines = fields.map(function(pair) { return pair[0] + ': ' + pair[1]; });
+  lines.push('');
+  lines.push(t.safetyCopy);
+  const text = lines.join('\n');
+
+  const confirmEl  = document.getElementById('copy-confirm');
+  const fallbackEl = document.getElementById('copy-fallback');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      confirmEl.textContent = t.copiedConfirm;
+      confirmEl.style.display = 'inline';
+      fallbackEl.style.display = 'none';
+      setTimeout(function() { confirmEl.style.display = 'none'; }, 3000);
+    }, function() { showCopyFallback(text); });
+  } else {
+    showCopyFallback(text);
+  }
+}
+
+function showCopyFallback(text) {
+  const ta = document.getElementById('copy-fallback-textarea');
+  ta.value = text;
+  document.getElementById('copy-fallback').style.display = 'block';
+  ta.focus();
+  ta.select();
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }

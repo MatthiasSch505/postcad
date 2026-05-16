@@ -316,6 +316,39 @@ fn viewer_auto_fit_uses_fov_calculation() {
     );
 }
 
+/// Receipt copy button must be present with DE and EN labels.
+#[test]
+fn reviewer_receipt_copy_button_present() {
+    assert!(REVIEWER_HTML.contains("Nachweis kopieren"), "DE copy button label must be present");
+    assert!(REVIEWER_HTML.contains("Copy receipt"),      "EN copy button label must be present");
+    assert!(REVIEWER_HTML.contains("t-copy-btn"),        "t-copy-btn translation ID must be present");
+    assert!(REVIEWER_HTML.contains("copyReceipt()"),     "copy button must call copyReceipt()");
+    assert!(REVIEWER_HTML.contains("copy-confirm"),      "copy-confirm element must be present for feedback");
+}
+
+/// copyReceipt function must use clipboard API with textarea fallback.
+#[test]
+fn reviewer_copy_receipt_function_present() {
+    assert!(REVIEWER_HTML.contains("function copyReceipt()"), "copyReceipt JS function must be defined");
+    assert!(REVIEWER_HTML.contains("navigator.clipboard"),    "must attempt clipboard API");
+    assert!(REVIEWER_HTML.contains("showCopyFallback"),       "fallback function must be called on clipboard failure");
+    assert!(REVIEWER_HTML.contains("copy-fallback-textarea"), "fallback textarea must be present");
+    assert!(REVIEWER_HTML.contains("Nachweis kopiert."),      "DE copy-confirmed text must be in T strings");
+    assert!(REVIEWER_HTML.contains("Receipt copied."),        "EN copy-confirmed text must be in T strings");
+}
+
+/// copyReceipt plain-text output must include the safety note.
+#[test]
+fn reviewer_copy_receipt_includes_safety_note() {
+    let pos = REVIEWER_HTML.find("function copyReceipt()").expect("copyReceipt must be defined");
+    let snippet = &REVIEWER_HTML[pos..pos + 1800];
+    assert!(snippet.contains("safetyCopy"), "copyReceipt must append t.safetyCopy line");
+    assert!(
+        REVIEWER_HTML.contains("PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei."),
+        "DE safetyCopy text must be present in T strings"
+    );
+}
+
 /// STL viewer canvas and controls must be present for the interactive 3D view.
 #[tokio::test]
 async fn reviewer_shell_stl_viewer_present() {

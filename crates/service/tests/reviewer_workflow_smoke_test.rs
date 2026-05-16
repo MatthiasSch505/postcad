@@ -278,9 +278,15 @@ fn stl_file_input_waits_for_filereader() {
 #[test]
 fn stl_load_demo_clears_pending_buffer() {
     assert!(
-        REVIEWER_HTML.contains("_pendingBuffer = null;\n  startProcessing(filename);"),
-        "loadDemo must reset _pendingBuffer = null before startProcessing"
+        REVIEWER_HTML.contains("_pendingBuffer = null;") && REVIEWER_HTML.contains("localStlActive = false;"),
+        "loadDemo must reset _pendingBuffer = null and localStlActive = false before startProcessing"
     );
+    // localStlActive = false must appear before startProcessing(filename) within loadDemo
+    let load_demo_pos = REVIEWER_HTML.find("function loadDemo(filename)").unwrap();
+    let after_load_demo = &REVIEWER_HTML[load_demo_pos..];
+    let flag_pos = after_load_demo.find("localStlActive = false").unwrap();
+    let start_pos = after_load_demo.find("startProcessing(filename)").unwrap();
+    assert!(flag_pos < start_pos, "loadDemo must clear localStlActive before calling startProcessing");
 }
 
 /// When a user file is provided but STL parsing fails, the viewer must show an
@@ -330,12 +336,18 @@ fn stl_viewer_label_uses_middle_dot() {
 }
 
 /// Local STL upload must not trigger "Nur Demo-Dateien werden unterstützt".
-/// The old guard in confirmDecision blocked any filename not in FILE_CASES_API.
+/// confirmDecision must check localStlActive BEFORE the FILE_CASES_API demo guard,
+/// so a successfully-rendered local file always routes to confirmLocalDecision.
 #[test]
 fn local_stl_does_not_show_demo_only_error() {
+    // localStlActive check must appear before the demoOnlyError gate in confirmDecision.
+    let confirm_pos = REVIEWER_HTML.find("async function confirmDecision()").unwrap();
+    let after_confirm = &REVIEWER_HTML[confirm_pos..];
+    let local_check_pos = after_confirm.find("if (localStlActive)").unwrap();
+    let demo_error_pos = after_confirm.find("demoOnlyError").unwrap();
     assert!(
-        !REVIEWER_HTML.contains("{ showGateError(T[lang].demoOnlyError); return; }"),
-        "confirmDecision must not gate-error for non-demo filenames; local path must branch to confirmLocalDecision"
+        local_check_pos < demo_error_pos,
+        "confirmDecision must check localStlActive before reaching demoOnlyError gate"
     );
     assert!(
         REVIEWER_HTML.contains("confirmLocalDecision"),

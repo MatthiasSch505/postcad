@@ -592,6 +592,7 @@ let _pendingBuffer = null;
 let _isDemoMesh = true;
 let caseId = null;
 let displayFilename = null;
+let localStlActive = false;
 const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null};
 const _orbit = {rotX:0.3,rotY:0.4,zoom:16,dragging:false,lastX:0,lastY:0};
 
@@ -712,6 +713,7 @@ function onFileInput(input) {
 
 function loadDemo(filename) {
   _pendingBuffer = null;
+  localStlActive = false;
   startProcessing(filename);
 }
 
@@ -819,8 +821,12 @@ function updateConfirmState() {
 
 async function confirmDecision() {
   if (!selectedDecision) return;
+  // Local STL uploaded and rendered — generate receipt entirely client-side.
+  // This check must come before the demo-file lookup so the flag, not the filename, governs.
+  if (localStlActive) { confirmLocalDecision(); return; }
+  // Demo path — validate the filename against known demo cases.
   const caseObj = currentFilename ? FILE_CASES_API[currentFilename.toLowerCase()] : undefined;
-  if (!caseObj) { confirmLocalDecision(); return; }
+  if (!caseObj) { showGateError(T[lang].demoOnlyError); return; }
 
   const t = T[lang];
   const btn = document.getElementById('confirm-btn');
@@ -1128,6 +1134,7 @@ function resetDemo() {
   _pendingBuffer = null;
   caseId = null;
   displayFilename = null;
+  localStlActive = false;
   disposeViewer();
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('phase-processing').style.display = 'none';
@@ -1172,13 +1179,16 @@ function initViewer(buffer, filename) {
     if (buffer) { geometry = loadFileGeometry(buffer); }
     if (geometry) {
       _isDemoMesh = false;
+      localStlActive = true;
       document.getElementById('t-viewer-label').textContent = T[lang].viewerLabelLocal;
     } else if (!isUserFile) {
       geometry = loadDemoMesh();
       _isDemoMesh = true;
+      localStlActive = false;
       document.getElementById('t-viewer-label').textContent = T[lang].viewerLabelDemo;
     } else {
       _isDemoMesh = false;
+      localStlActive = false;
       document.getElementById('t-visual-placeholder-hint').textContent = T[lang].stlParseError;
       showViewerFallback(true);
       return;

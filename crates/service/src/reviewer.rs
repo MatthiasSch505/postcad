@@ -140,6 +140,8 @@ main{width:100%;max-width:560px}
 .case-meta-label.required::after{content:' *';color:var(--amber);font-size:.75em}
 .comment-label.required::after{content:' *';color:var(--amber);font-size:.75em}
 .nachweis-subtitle{font-size:.78rem;color:var(--sub);line-height:1.5;margin-bottom:14px;font-style:italic}
+.viewer-reset-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--dim);font-size:.63rem;font-weight:600;padding:2px 7px;cursor:pointer;letter-spacing:.04em;white-space:nowrap;line-height:1.6}
+.viewer-reset-btn:hover{border-color:var(--sub);color:var(--sub)}
 </style>
 </head>
 <body>
@@ -200,6 +202,9 @@ main{width:100%;max-width:560px}
         <span class="stl-viewer-label-txt" id="t-viewer-label">Demo-Ansicht · schematische Darstellung</span>
         <span class="stl-viewer-hint-txt" id="t-viewer-hint">Ziehen zum Drehen &middot; Scrollen zum Zoomen</span>
       </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button class="viewer-reset-btn" id="viewer-reset-btn" onclick="resetView()"><span id="t-viewer-reset-btn">&#x21ba; Ansicht zur&#252;cksetzen</span></button>
     </div>
     <div class="stl-viewer-fallback" id="stl-viewer-fallback">
       <div class="visual-tooth-icon">36</div>
@@ -451,6 +456,7 @@ const T = {
     viewerLabelLocal: 'Lokale STL-Datei · nur im Browser dargestellt',
     stlParseError: 'STL konnte lokal nicht dargestellt werden. Bitte Datei prüfen.',
     viewerHint: 'Ziehen zum Drehen · Scrollen zum Zoomen',
+    viewerResetBtn: '↺ Ansicht zurücksetzen',
     viewerFallbackHint: '3D-Ansicht nicht verfügbar.',
     metaBezeichnungLbl: 'Fallbezeichnung',
     metaZahnLbl: 'Zahn / Region',
@@ -545,6 +551,7 @@ const T = {
     viewerLabelLocal: 'Local STL file · browser only',
     stlParseError: 'STL could not be displayed locally. Please check the file.',
     viewerHint: 'Drag to rotate · Scroll to zoom',
+    viewerResetBtn: '↺ Reset view',
     viewerFallbackHint: '3D view unavailable.',
     metaBezeichnungLbl: 'Case name',
     metaZahnLbl: 'Tooth / Region',
@@ -620,7 +627,7 @@ let caseId = null;
 let displayFilename = null;
 let localStlActive = false;
 const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null};
-const _orbit = {rotX:0.3,rotY:0.4,zoom:16,dragging:false,lastX:0,lastY:0};
+const _orbit = {rotX:0.3,rotY:0.4,zoom:16,defaultZoom:16,dragging:false,lastX:0,lastY:0};
 
 function setLang(l) {
   lang = l;
@@ -678,6 +685,7 @@ function setLang(l) {
   document.getElementById('t-visual-disclaimer').textContent = t.visualDisclaimer;
   document.getElementById('t-viewer-label').textContent = _isDemoMesh ? t.viewerLabelDemo : t.viewerLabelLocal;
   document.getElementById('t-viewer-hint').textContent = t.viewerHint;
+  document.getElementById('t-viewer-reset-btn').textContent = t.viewerResetBtn;
   document.getElementById('t-meta-bezeichnung-lbl').textContent = t.metaBezeichnungLbl;
   document.getElementById('t-meta-zahn-lbl').textContent = t.metaZahnLbl;
   document.getElementById('t-meta-material-lbl').textContent = t.metaMaterialLbl;
@@ -1255,7 +1263,16 @@ function initViewer(buffer, filename) {
       geometry.translate(-center.x, -center.y, -center.z);
       const size = new THREE.Vector3();
       box.getSize(size);
-      _orbit.zoom = Math.max(size.x, size.y, size.z) * 2.5;
+      // FOV-aware auto-fit: compute camera distance so model fills ~77% of viewport
+      const vFOVrad = 40 * Math.PI / 180;
+      const hFOVrad = 2 * Math.atan(Math.tan(vFOVrad / 2) * (w / h));
+      const fitH = (size.y / 2) / Math.tan(vFOVrad / 2);
+      const fitW = (size.x / 2) / Math.tan(hFOVrad / 2);
+      const fitZoom = Math.max(fitH, fitW, size.z * 0.6) * 1.3;
+      _orbit.rotX = 0.3;
+      _orbit.rotY = 0.4;
+      _orbit.zoom = fitZoom;
+      _orbit.defaultZoom = fitZoom;
       const mat = new THREE.MeshPhongMaterial({color:0xd4c5b0, specular:0x888888, shininess:40});
       const mesh = new THREE.Mesh(geometry, mat);
       scene.add(mesh);
@@ -1396,6 +1413,12 @@ function disposeViewer() {
   if (_threeVars.mesh && _threeVars.mesh.geometry) _threeVars.mesh.geometry.dispose();
   _threeVars.scene = null; _threeVars.camera = null; _threeVars.mesh = null;
   _orbit.dragging = false;
+}
+
+function resetView() {
+  _orbit.rotX = 0.3;
+  _orbit.rotY = 0.4;
+  _orbit.zoom = _orbit.defaultZoom || 16;
 }
 
 function showViewerFallback(show) {

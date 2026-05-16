@@ -293,6 +293,29 @@ async fn reviewer_shell_visual_step_translations_complete() {
     assert!(html.contains("nachweisKommentarLbl"),"nachweisKommentarLbl key must be in T");
 }
 
+/// Viewer reset button must be present in the viewer bar with DE and EN labels.
+#[test]
+fn viewer_reset_button_present() {
+    assert!(REVIEWER_HTML.contains("viewer-reset-btn"),        "viewer-reset-btn id must be present");
+    assert!(REVIEWER_HTML.contains("function resetView()"),    "resetView JS function must be present");
+    assert!(REVIEWER_HTML.contains("t-viewer-reset-btn"),      "t-viewer-reset-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("Ansicht zur"),             "DE reset view label must be present");
+    assert!(REVIEWER_HTML.contains("Reset view"),              "EN reset view label must be present");
+}
+
+/// Camera auto-fit must use FOV-aware calculation so the model fills the viewport.
+#[test]
+fn viewer_auto_fit_uses_fov_calculation() {
+    assert!(REVIEWER_HTML.contains("hFOVrad"),     "horizontal FOV calculation must be present in initViewer");
+    assert!(REVIEWER_HTML.contains("fitZoom"),     "fitZoom variable must be computed for auto-fit");
+    assert!(REVIEWER_HTML.contains("defaultZoom"), "defaultZoom must be stored so resetView can restore it");
+    // Old naive formula must be gone
+    assert!(
+        !REVIEWER_HTML.contains("Math.max(size.x, size.y, size.z) * 2.5"),
+        "old maxDim * 2.5 formula must be replaced by FOV-aware fit"
+    );
+}
+
 /// STL viewer canvas and controls must be present for the interactive 3D view.
 #[tokio::test]
 async fn reviewer_shell_stl_viewer_present() {

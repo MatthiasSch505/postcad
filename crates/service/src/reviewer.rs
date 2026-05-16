@@ -133,6 +133,13 @@ main{width:100%;max-width:560px}
 .case-meta-value{flex:1;padding:2px 0;font-size:.82rem;color:var(--sub);font-family:'SF Mono','Fira Code',monospace}
 .comment-sub{font-size:.75rem;color:var(--dim);margin:-2px 0 10px;line-height:1.45}
 .ereignis-tag{font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin-bottom:20px;display:inline-block;padding:4px 9px;background:var(--surface);border:1px solid var(--border);border-radius:4px}
+.upload-privacy{font-size:.7rem;color:var(--dim);margin-top:10px;text-align:center;font-style:italic}
+.demo-notice{font-size:.7rem;color:var(--dim);margin-top:6px;text-align:center;font-style:italic}
+.stl-loaded-banner{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:9px 14px;margin-bottom:16px;font-size:.88rem;color:var(--green);font-weight:700}
+.stl-loaded-sub{font-size:.75rem;color:var(--sub);font-weight:400;font-family:'SF Mono','Fira Code',monospace;margin-top:3px}
+.case-meta-label.required::after{content:' *';color:var(--amber);font-size:.75em}
+.comment-label.required::after{content:' *';color:var(--amber);font-size:.75em}
+.nachweis-subtitle{font-size:.78rem;color:var(--sub);line-height:1.5;margin-bottom:14px;font-style:italic}
 </style>
 </head>
 <body>
@@ -150,18 +157,20 @@ main{width:100%;max-width:560px}
 
 <main>
 
-  <p class="intro-line" id="t-intro-line">PostCAD strukturiert kritische Klärungspunkte zwischen Labor und Praxis, bevor ein Fall in die Herstellung geht.</p>
+  <p class="intro-line" id="t-intro-line">STL-Datei hochladen, Fall kurz pr&#252;fen, Hinweis dokumentieren und Entscheidung vor Herstellung festhalten.</p>
 
   <div id="phase-upload">
     <label class="upload-zone" id="upload-zone" for="file-input">
       <div class="upload-icon">↑</div>
-      <div class="upload-title" id="t-upload-title">Digitalen Laborfall öffnen</div>
-      <div class="upload-sub" id="t-upload-sub">Datei hier ablegen oder auswählen (STL, OBJ)</div>
+      <div class="upload-title" id="t-upload-title">STL-Datei hochladen</div>
+      <div class="upload-sub" id="t-upload-sub">STL-Datei aus Scanner/CAD hier ablegen oder ausw&#228;hlen</div>
     </label>
     <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
+    <p class="upload-privacy" id="t-upload-privacy">Die Datei bleibt lokal im Browser und wird nicht auf dem Server gespeichert.</p>
     <div class="demo-files">
-      <button class="demo-file-btn" onclick="loadDemo('Krone_Zahn_36_DE.stl')">Krone &middot; Zahn 36</button>
+      <button class="demo-file-btn" onclick="loadDemo('Krone_Zahn_36_DE.stl')">Demo-Fall ansehen</button>
     </div>
+    <p class="demo-notice" id="t-demo-notice">Nur Beispiel &#8211; f&#252;r echte F&#228;lle bitte STL-Datei hochladen.</p>
   </div>
 
   <div id="phase-processing">
@@ -176,6 +185,10 @@ main{width:100%;max-width:560px}
   </div>
 
   <div id="phase-visual">
+    <div id="stl-loaded-banner" class="stl-loaded-banner" style="display:none">
+      <div id="t-stl-loaded-text">STL geladen · bereit zur Kl&#228;rung</div>
+      <div class="stl-loaded-sub" id="stl-loaded-details"></div>
+    </div>
     <div class="gate-badge" id="t-visual-badge">VISUELLE KLÄRUNG</div>
     <div class="gate-title" id="t-visual-title">Visuelle Klärung vor Herstellung</div>
     <div class="gate-sub" id="t-visual-sub">Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.</div>
@@ -204,26 +217,26 @@ main{width:100%;max-width:560px}
         <span class="case-meta-value" id="datei-display">—</span>
       </div>
       <div class="case-meta-row">
-        <span class="case-meta-label" id="t-meta-bezeichnung-lbl">Fallbezeichnung</span>
+        <span class="case-meta-label required" id="t-meta-bezeichnung-lbl">Fallbezeichnung</span>
         <input class="case-meta-input" id="meta-bezeichnung" type="text" placeholder="z.&#x202F;B. Krone Zahn 36">
       </div>
       <div class="case-meta-row">
-        <span class="case-meta-label" id="t-meta-zahn-lbl">Zahn / Region</span>
+        <span class="case-meta-label required" id="t-meta-zahn-lbl">Zahn / Region</span>
         <input class="case-meta-input" id="meta-zahn" type="text" placeholder="z.&#x202F;B. 36">
       </div>
       <div class="case-meta-row">
-        <span class="case-meta-label" id="t-meta-material-lbl">Material</span>
+        <span class="case-meta-label required" id="t-meta-material-lbl">Material</span>
         <input class="case-meta-input" id="meta-material" type="text" placeholder="z.&#x202F;B. E.max">
       </div>
       <div class="case-meta-row">
-        <span class="case-meta-label" id="t-meta-praxis-lbl">Praxis / Kunde</span>
+        <span class="case-meta-label required" id="t-meta-praxis-lbl">Praxis / Kunde</span>
         <input class="case-meta-input" id="meta-praxis" type="text" placeholder="z.&#x202F;B. Praxis M&#252;ller">
       </div>
-      <div class="case-meta-privacy" id="t-meta-privacy">Bitte keine Patientennamen eingeben.</div>
+      <div class="case-meta-privacy" id="t-meta-privacy">* Pflichtfeld &#183; Bitte keine Patientennamen eingeben.</div>
     </div>
     <div class="gate-error" id="meta-error" style="display:none">Bitte Falldaten vollst&#228;ndig ausf&#252;llen.</div>
     <div class="comment-row">
-      <label class="comment-label" id="t-lab-comment-label" for="lab-comment">Hinweis an die Praxis</label>
+      <label class="comment-label required" id="t-lab-comment-label" for="lab-comment">Hinweis an die Praxis</label>
       <div class="comment-sub" id="t-lab-comment-sub">Was soll vor Herstellung verständlich gemacht oder bestätigt werden?</div>
       <textarea class="comment-area" id="lab-comment" placeholder="z.&#x202F;B. kritischer Randbereich, zu geringer Abstand&#8230;"></textarea>
       <div class="gate-error" id="comment-error" style="display:none">Bitte Hinweis an die Praxis erg&#228;nzen.</div>
@@ -310,7 +323,8 @@ main{width:100%;max-width:560px}
     </div>
 
     <div class="res-section">
-      <div class="res-label" id="t-audit-label">Entscheidungsnachweis</div>
+      <div class="res-label" id="t-audit-label">Entscheidungsnachweis erstellt</div>
+      <div class="nachweis-subtitle" id="t-nachweis-subtitle">Dieser Nachweis dokumentiert die Kl&#228;rung vor Herstellung. Keine automatische technische Pr&#252;fung.</div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-rcid-lbl">Fall-ID</span><span class="audit-row-val" id="nachweis-caseid"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-datei-lbl">Datei</span><span class="audit-row-val" id="nachweis-datei"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-ereignis-lbl">Ereignis</span><span class="audit-row-val" id="nachweis-ereignis"></span></div>
@@ -364,8 +378,12 @@ main{width:100%;max-width:560px}
 <script>
 const T = {
   DE: {
-    uploadTitle: 'Digitalen Laborfall öffnen',
-    uploadSub: 'Datei hier ablegen oder auswählen (STL, OBJ)',
+    uploadTitle: 'STL-Datei hochladen',
+    uploadSub: 'STL-Datei aus Scanner/CAD hier ablegen oder auswählen',
+    uploadPrivacy: 'Die Datei bleibt lokal im Browser und wird nicht auf dem Server gespeichert.',
+    demoNotice: 'Nur Beispiel – für echte Fälle bitte STL-Datei hochladen.',
+    stlLoadedBanner: 'STL geladen · bereit zur Klärung',
+    demoLoadedBanner: 'Demo-Fall geladen · bereit zur Klärung',
     procSteps: ['Datei empfangen', 'Falldaten werden gelesen', 'Angaben werden gelesen', 'Entscheidung vor Herstellung erforderlich'],
     caseLabel: 'Fall erkannt',
     materialLbl: 'Material', landLbl: 'Land', indicationLbl: 'Indikation',
@@ -383,7 +401,7 @@ const T = {
     chkMaterial: 'Materialangabe', chkJurisdiction: 'L\u00e4nderangabe', chkManufacturing: 'Herstellungsangabe',
     ergebnisOk: 'Entscheidung: Fortsetzung dokumentiert', ergebnisRisk: 'Entscheidung: Fortsetzung mit Hinweis', ergebnisBlock: 'Entscheidung: Kl\u00e4rung erforderlich',
     fertigungLabel: 'Entscheidungsgrundlage',
-    auditLabel: 'Entscheidungsnachweis', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
+    auditLabel: 'Entscheidungsnachweis erstellt', nachweisSubtitle: 'Dieser Nachweis dokumentiert die Klärung vor Herstellung. Keine automatische technische Prüfung.', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     nachweisFallLbl: 'Fall', nachweisDecisionLbl: 'Entscheidung', nachweisGrundlageLbl: 'Entscheidungsgrundlage',
     nachweisBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
     proofLabel: 'Technischer Nachweis / Protokollansicht',
@@ -414,7 +432,7 @@ const T = {
     grundManufacturing: 'Hinweis: Kein geeigneter Herstellungspartner in den Systemdaten hinterlegt.',
     nextStepBlock: 'N\u00e4chster Schritt: Vor der Fertigung ist eine Kl\u00e4rung erforderlich.',
     brandTagline: 'Kl\u00e4rung vor Herstellung',
-    introLine: 'Labseitige Kl\u00e4rung und Entscheidungsdokumentation vor Herstellung.',
+    introLine: 'STL-Datei hochladen, Fall kurz pr\u00fcfen, Hinweis dokumentieren und Entscheidung vor Herstellung festhalten.',
     fertigungBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
     visualBadge: 'VISUELLE KLÄRUNG',
     visualTitle: 'Visuelle Klärung vor Herstellung',
@@ -438,7 +456,7 @@ const T = {
     metaZahnLbl: 'Zahn / Region',
     metaMaterialLbl: 'Material',
     metaPraxisLbl: 'Praxis / Kunde',
-    metaPrivacy: 'Bitte keine Patientennamen eingeben.',
+    metaPrivacy: '* Pflichtfeld · Bitte keine Patientennamen eingeben.',
     nachweisBezeichnungLbl: 'Fallbezeichnung',
     nachweisZahnLbl: 'Zahn / Region',
     nachweisMetaMaterialLbl: 'Material',
@@ -454,8 +472,12 @@ const T = {
     nachweisPersonValue: 'Reviewer · Labor',
   },
   EN: {
-    uploadTitle: 'Open digital lab case',
-    uploadSub: 'Drop file here or select (STL, OBJ)',
+    uploadTitle: 'Upload STL file',
+    uploadSub: 'Drop or select STL file from scanner/CAD',
+    uploadPrivacy: 'The file stays local in your browser and is not stored on the server.',
+    demoNotice: 'Demo only – for real cases please upload an STL file.',
+    stlLoadedBanner: 'STL loaded · ready for clarification',
+    demoLoadedBanner: 'Demo case loaded · ready for clarification',
     procSteps: ['File received', 'Case data being read', 'Reading details', 'Decision before manufacturing required'],
     caseLabel: 'Case detected',
     materialLbl: 'Material', landLbl: 'Country', indicationLbl: 'Indication',
@@ -473,7 +495,7 @@ const T = {
     chkMaterial: 'Material information', chkJurisdiction: 'Country information', chkManufacturing: 'Manufacturing information',
     ergebnisOk: 'Decision: Proceed documented', ergebnisRisk: 'Decision: Proceed with note', ergebnisBlock: 'Decision: Clarification required',
     fertigungLabel: 'Decision basis',
-    auditLabel: 'Decision record', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
+    auditLabel: 'Decision record created', nachweisSubtitle: 'This record documents the clarification before manufacturing. No automatic technical inspection.', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     nachweisFallLbl: 'Case', nachweisDecisionLbl: 'Decision', nachweisGrundlageLbl: 'Case basis',
     nachweisBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
     proofLabel: 'Technical record / Protocol view',
@@ -504,7 +526,7 @@ const T = {
     grundManufacturing: 'Note: No eligible manufacturing partner recorded in the system data.',
     nextStepBlock: 'Next step: Clarification is required before manufacturing.',
     brandTagline: 'Clarification before manufacturing',
-    introLine: 'Lab-side clarification and decision documentation before manufacturing.',
+    introLine: 'Upload STL file, briefly review the case, document a note, and record the decision before manufacturing.',
     fertigungBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
     visualBadge: 'VISUAL CLARIFICATION',
     visualTitle: 'Visual clarification before manufacturing',
@@ -528,7 +550,7 @@ const T = {
     metaZahnLbl: 'Tooth / Region',
     metaMaterialLbl: 'Material',
     metaPraxisLbl: 'Practice / Client',
-    metaPrivacy: 'Please do not enter patient names.',
+    metaPrivacy: '* Required field · Please do not enter patient names.',
     nachweisBezeichnungLbl: 'Case name',
     nachweisZahnLbl: 'Tooth / Region',
     nachweisMetaMaterialLbl: 'Material',
@@ -609,6 +631,8 @@ function setLang(l) {
   document.getElementById('t-intro-line').textContent = t.introLine;
   document.getElementById('t-upload-title').textContent = t.uploadTitle;
   document.getElementById('t-upload-sub').textContent = t.uploadSub;
+  document.getElementById('t-upload-privacy').textContent = t.uploadPrivacy;
+  document.getElementById('t-demo-notice').textContent = t.demoNotice;
   document.getElementById('t-case-label').textContent = t.caseLabel;
   document.getElementById('t-material-lbl').textContent = t.materialLbl;
   document.getElementById('t-land-lbl').textContent = t.landLbl;
@@ -624,6 +648,10 @@ function setLang(l) {
       '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
   }
   document.getElementById('t-audit-label').textContent = t.auditLabel;
+  document.getElementById('t-nachweis-subtitle').textContent = t.nachweisSubtitle;
+  if (document.getElementById('stl-loaded-banner').style.display !== 'none') {
+    document.getElementById('t-stl-loaded-text').textContent = localStlActive ? t.stlLoadedBanner : t.demoLoadedBanner;
+  }
   document.getElementById('t-audit-id-lbl').textContent = t.auditIdLbl;
   document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
   document.getElementById('t-audit-status-lbl').textContent = t.auditStatusLbl;
@@ -763,6 +791,10 @@ function showVisualStep(filename) {
   document.getElementById('meta-praxis').value = meta.praxis || '';
   document.getElementById('comment-error').style.display = 'none';
   document.getElementById('meta-error').style.display = 'none';
+  const _isLocalUpload = _pendingBuffer !== null;
+  document.getElementById('t-stl-loaded-text').textContent = _isLocalUpload ? T[lang].stlLoadedBanner : T[lang].demoLoadedBanner;
+  document.getElementById('stl-loaded-details').textContent = (displayFilename || filename) + ' · ' + (caseId || '');
+  document.getElementById('stl-loaded-banner').style.display = 'block';
   document.getElementById('case-id-display').textContent = caseId || '—';
   document.getElementById('datei-display').textContent = displayFilename || '—';
   document.getElementById('phase-processing').style.display = 'none';
@@ -1167,6 +1199,7 @@ function resetDemo() {
   document.getElementById('proof-receipt-json').textContent = '';
   document.getElementById('comment-error').style.display = 'none';
   document.getElementById('meta-error').style.display = 'none';
+  document.getElementById('stl-loaded-banner').style.display = 'none';
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }

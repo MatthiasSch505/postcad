@@ -135,8 +135,67 @@ async fn reviewer_upload_phase_present() {
     assert!(html.contains("phase-upload"),         "phase-upload id must be present");
     assert!(html.contains("upload-zone"),          "upload-zone id must be present");
     assert!(html.contains("file-input"),           "file-input id must be present");
-    assert!(html.contains("Digitalen Laborfall"),  "upload title DE must be present");
-    assert!(html.contains("Open digital lab case"), "upload title EN must be present");
+    assert!(html.contains("STL-Datei hochladen"),  "upload title DE must be present");
+    assert!(html.contains("Upload STL file"),      "upload title EN must be present");
+}
+
+/// Upload zone must include privacy notice and demo notice.
+#[tokio::test]
+async fn reviewer_upload_privacy_and_demo_notice_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert!(html.contains("t-upload-privacy"),                    "t-upload-privacy id must be present");
+    assert!(html.contains("nicht auf dem Server gespeichert"),    "DE upload privacy notice must be present");
+    assert!(html.contains("not stored on the server"),            "EN upload privacy notice must be present");
+    assert!(html.contains("t-demo-notice"),                       "t-demo-notice id must be present");
+    assert!(html.contains("Nur Beispiel"),                        "DE demo notice must be present");
+    assert!(html.contains("Demo only"),                           "EN demo notice must be present");
+    assert!(html.contains("Demo-Fall ansehen"),                   "demo button label must be 'Demo-Fall ansehen'");
+}
+
+/// Workflow intro line must be the assistant-friendly single sentence.
+#[tokio::test]
+async fn reviewer_intro_line_assistant_friendly() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert!(html.contains("STL-Datei hochladen"),                 "DE intro line must mention STL-Datei hochladen");
+    assert!(html.contains("Entscheidung vor Herstellung festhalten"), "DE intro line must mention Entscheidung vor Herstellung festhalten");
+}
+
+/// STL loaded banner must be present in the visual phase.
+#[tokio::test]
+async fn reviewer_stl_loaded_banner_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert!(html.contains("stl-loaded-banner"),          "stl-loaded-banner id must be present");
+    assert!(html.contains("stl-loaded-details"),         "stl-loaded-details id must be present");
+    assert!(html.contains("bereit zur Kl"),              "DE loaded banner text must be present");
+    assert!(html.contains("ready for clarification"),    "EN loaded banner text must be present");
+}
+
+/// Required field markers must be present for the four metadata fields and comment.
+#[tokio::test]
+async fn reviewer_required_field_markers_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, html) = get_html(make_app(&tmp), "/reviewer").await;
+    // CSS pseudo-element via .required class
+    assert!(html.contains("case-meta-label required"), "metadata labels must have required class");
+    assert!(html.contains("comment-label required"),   "comment label must have required class");
+    // Legend in privacy notice
+    assert!(html.contains("Pflichtfeld"),              "Pflichtfeld legend must be present");
+    assert!(html.contains("Required field"),           "Required field legend must be present in EN");
+}
+
+/// Receipt section must have the human headline and subtitle.
+#[tokio::test]
+async fn reviewer_nachweis_headline_and_subtitle_present() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let (_, html) = get_html(make_app(&tmp), "/reviewer").await;
+    assert!(html.contains("Entscheidungsnachweis erstellt"),  "DE receipt headline must read 'Entscheidungsnachweis erstellt'");
+    assert!(html.contains("Decision record created"),          "EN receipt headline must read 'Decision record created'");
+    assert!(html.contains("t-nachweis-subtitle"),              "t-nachweis-subtitle id must be present");
+    assert!(html.contains("Dieser Nachweis dokumentiert"),     "DE nachweis subtitle must be present");
+    assert!(html.contains("This record documents"),            "EN nachweis subtitle must be present");
 }
 
 /// Demo file button must use Zahn 36 filename (not old 3-6 range notation).

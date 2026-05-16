@@ -177,7 +177,8 @@ async fn reviewer_shell_visual_step_present() {
     assert!(html.contains("Demo-Ansicht:"),                "visual placeholder hint must be present");
     assert!(html.contains("Keine automatische technische"), "visual disclaimer must be present");
     assert!(html.contains("id=\"lab-comment\""),               "lab-comment textarea id must be present");
-    assert!(html.contains("Was soll der Praxis vor Herstellung"), "lab comment label must be present");
+    assert!(html.contains("Hinweis an die Praxis"),               "lab comment label must be present");
+    assert!(html.contains("Was soll vor Herstellung"),            "lab comment subtext must be present");
     assert!(html.contains("proceedToDecision"),                "proceedToDecision JS function must be present");
     assert!(html.contains("showVisualStep"),                   "showVisualStep JS function must be present");
 }
@@ -325,6 +326,75 @@ fn stl_viewer_label_uses_middle_dot() {
     assert!(
         REVIEWER_HTML.contains(&format!("Lokale STL-Datei {middle_dot} nur im Browser dargestellt")),
         "local file label must use middle dot"
+    );
+}
+
+/// Local STL upload must not trigger "Nur Demo-Dateien werden unterstützt".
+/// The old guard in confirmDecision blocked any filename not in FILE_CASES_API.
+#[test]
+fn local_stl_does_not_show_demo_only_error() {
+    assert!(
+        !REVIEWER_HTML.contains("{ showGateError(T[lang].demoOnlyError); return; }"),
+        "confirmDecision must not gate-error for non-demo filenames; local path must branch to confirmLocalDecision"
+    );
+    assert!(
+        REVIEWER_HTML.contains("confirmLocalDecision"),
+        "confirmLocalDecision function must exist for the local-upload path"
+    );
+}
+
+/// confirmLocalDecision must generate a client-side receipt without server calls.
+#[test]
+fn local_stl_confirm_local_decision_present() {
+    assert!(
+        REVIEWER_HTML.contains("function confirmLocalDecision()"),
+        "confirmLocalDecision function definition must be present"
+    );
+    assert!(
+        REVIEWER_HTML.contains("nicht auf Server gespeichert"),
+        "local receipt must note that file is not stored on server"
+    );
+    assert!(
+        REVIEWER_HTML.contains("storage: 'Lokale Datei"),
+        "local receipt JSON must include storage field"
+    );
+}
+
+/// Local receipt must include Case-ID and filename from current reviewer state.
+#[test]
+fn local_stl_receipt_includes_case_id_and_filename() {
+    assert!(
+        REVIEWER_HTML.contains("nachweis-caseid"),
+        "receipt must have nachweis-caseid element"
+    );
+    assert!(
+        REVIEWER_HTML.contains("nachweis-datei"),
+        "receipt must have nachweis-datei element"
+    );
+    assert!(
+        REVIEWER_HTML.contains("nachweis-ereignis"),
+        "receipt must have nachweis-ereignis element"
+    );
+    assert!(
+        REVIEWER_HTML.contains("nachweis-person"),
+        "receipt must have nachweis-person element"
+    );
+}
+
+/// Demo path must still use FILE_CASES_API for the server-backed route/receipt.
+#[test]
+fn demo_path_preserved_via_file_cases_api() {
+    assert!(
+        REVIEWER_HTML.contains("const FILE_CASES_API"),
+        "FILE_CASES_API must still be defined for demo routing"
+    );
+    assert!(
+        REVIEWER_HTML.contains("fetch('/cases',"),
+        "demo path must still POST to /cases"
+    );
+    assert!(
+        REVIEWER_HTML.contains("fetch('/decisions',"),
+        "demo path must still POST to /decisions"
     );
 }
 

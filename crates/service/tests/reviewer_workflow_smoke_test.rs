@@ -209,8 +209,8 @@ async fn reviewer_shell_receipt_includes_visual_and_comment() {
     assert!(html.contains("Laborkommentar"),     "Laborkommentar label must appear in receipt section");
 }
 
-/// Visual step must have a proceed button that advances to the decision gate
-/// without requiring any mandatory input so the comment is optional.
+/// Visual step must have a proceed button that attempts to advance to the decision gate.
+/// The proceed action validates that the comment and all metadata fields are filled.
 #[tokio::test]
 async fn reviewer_shell_visual_step_proceed_button_present() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -390,6 +390,96 @@ fn local_stl_receipt_includes_case_id_and_filename() {
     assert!(
         REVIEWER_HTML.contains("nachweis-person"),
         "receipt must have nachweis-person element"
+    );
+}
+
+/// Local STL upload must prefill the metadata form with sensible defaults so the
+/// receipt is never empty when the user has not typed anything yet.
+#[test]
+fn local_stl_upload_prefills_metadata_defaults() {
+    assert!(
+        REVIEWER_HTML.contains("LOCAL_STL_DEFAULTS"),
+        "LOCAL_STL_DEFAULTS constant must be defined for local STL metadata prefill"
+    );
+    let pos = REVIEWER_HTML.find("LOCAL_STL_DEFAULTS").unwrap();
+    let context = &REVIEWER_HTML[pos..pos + 200];
+    assert!(context.contains("Krone Zahn 36"), "local default Fallbezeichnung must be 'Krone Zahn 36'");
+    assert!(context.contains("Demo-Praxis"),   "local default Praxis / Kunde must be 'Demo-Praxis'");
+    assert!(context.contains("E.max"),         "local default Material must be 'E.max'");
+    // The defaults must be applied when _pendingBuffer is set (i.e. a real file was dropped)
+    assert!(
+        REVIEWER_HTML.contains("_pendingBuffer !== null ? LOCAL_STL_DEFAULTS"),
+        "showVisualStep must apply LOCAL_STL_DEFAULTS when _pendingBuffer is set"
+    );
+}
+
+/// Empty comment must block proceedToDecision and show a clear inline message.
+#[test]
+fn empty_comment_blocks_proceed_to_decision() {
+    assert!(
+        REVIEWER_HTML.contains("comment-error"),
+        "comment-error element id must be present"
+    );
+    assert!(
+        REVIEWER_HTML.contains("Bitte Hinweis an die Praxis erg"),
+        "comment-error message must include 'Bitte Hinweis an die Praxis ergänzen'"
+    );
+    // proceedToDecision must guard on an empty comment
+    let proc_pos = REVIEWER_HTML.find("function proceedToDecision()").unwrap();
+    let after = &REVIEWER_HTML[proc_pos..proc_pos + 1100];
+    assert!(
+        after.contains("comment-error"),
+        "proceedToDecision must reference comment-error to block empty submissions"
+    );
+    assert!(
+        after.contains("if (hasError) return"),
+        "proceedToDecision must return early when hasError is true"
+    );
+}
+
+/// Empty metadata fields must block proceedToDecision and show a clear inline message.
+#[test]
+fn empty_metadata_blocks_proceed_to_decision() {
+    assert!(
+        REVIEWER_HTML.contains("meta-error"),
+        "meta-error element id must be present"
+    );
+    assert!(
+        REVIEWER_HTML.contains("Bitte Falldaten vollst"),
+        "meta-error message must include 'Bitte Falldaten vollständig ausfüllen'"
+    );
+    let proc_pos = REVIEWER_HTML.find("function proceedToDecision()").unwrap();
+    let after = &REVIEWER_HTML[proc_pos..proc_pos + 600];
+    assert!(
+        after.contains("meta-error"),
+        "proceedToDecision must reference meta-error to block incomplete metadata"
+    );
+}
+
+/// Receipt rows must never display null — the na() helper must provide the
+/// 'Nicht angegeben' fallback for any field that is somehow empty.
+#[test]
+fn receipt_fallback_uses_nicht_angegeben() {
+    assert!(
+        REVIEWER_HTML.contains("function na("),
+        "na() helper function must be defined"
+    );
+    assert!(
+        REVIEWER_HTML.contains("Nicht angegeben"),
+        "na() must return 'Nicht angegeben' as the fallback string"
+    );
+    // Receipt fields must use na() rather than bare '—'
+    assert!(
+        REVIEWER_HTML.contains("na(caseId)"),
+        "nachweis-caseid must use na() fallback"
+    );
+    assert!(
+        REVIEWER_HTML.contains("na(labComment)"),
+        "nachweis-kommentar must use na() fallback"
+    );
+    assert!(
+        REVIEWER_HTML.contains("na(caseMetadata.bezeichnung)"),
+        "nachweis-bezeichnung must use na() fallback"
     );
 }
 

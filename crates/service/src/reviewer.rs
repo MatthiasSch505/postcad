@@ -180,7 +180,7 @@ main{width:100%;max-width:560px}
     <div class="stl-viewer-wrap" id="stl-viewer-wrap">
       <canvas id="stl-canvas"></canvas>
       <div class="stl-viewer-bar">
-        <span class="stl-viewer-label-txt" id="t-viewer-label">Demo-Ansicht: schematische Darstellung</span>
+        <span class="stl-viewer-label-txt" id="t-viewer-label">Demo-Ansicht · schematische Darstellung</span>
         <span class="stl-viewer-hint-txt" id="t-viewer-hint">Ziehen zum Drehen &middot; Scrollen zum Zoomen</span>
       </div>
     </div>
@@ -409,8 +409,9 @@ const T = {
     visualClarificationSummary: 'Klärungshinweis dokumentiert',
     nachweisVisualLbl: 'Visuelle Klärung',
     nachweisKommentarLbl: 'Laborkommentar',
-    viewerLabelDemo: 'Demo-Ansicht: schematische Darstellung',
+    viewerLabelDemo: 'Demo-Ansicht · schematische Darstellung',
     viewerLabelLocal: 'Lokale STL-Datei · nur im Browser dargestellt',
+    stlParseError: 'STL konnte lokal nicht dargestellt werden. Bitte Datei prüfen.',
     viewerHint: 'Ziehen zum Drehen · Scrollen zum Zoomen',
     viewerFallbackHint: '3D-Ansicht nicht verfügbar.',
     metaBezeichnungLbl: 'Fallbezeichnung',
@@ -488,8 +489,9 @@ const T = {
     visualClarificationSummary: 'Clarification note documented',
     nachweisVisualLbl: 'Visual clarification',
     nachweisKommentarLbl: 'Lab comment',
-    viewerLabelDemo: 'Demo view: schematic representation',
+    viewerLabelDemo: 'Demo view · schematic representation',
     viewerLabelLocal: 'Local STL file · browser only',
+    stlParseError: 'STL could not be displayed locally. Please check the file.',
     viewerHint: 'Drag to rotate · Scroll to zoom',
     viewerFallbackHint: '3D view unavailable.',
     metaBezeichnungLbl: 'Case name',
@@ -651,14 +653,16 @@ function setLang(l) {
 function onFileInput(input) {
   if (!input.files[0]) return;
   const file = input.files[0];
-  const reader = new FileReader();
-  reader.onload = function(e) { _pendingBuffer = e.target.result; };
-  reader.readAsArrayBuffer(file);
-  loadDemo(file.name);
+  const name = file.name;
   input.value = '';
+  const reader = new FileReader();
+  reader.onload = function(e) { _pendingBuffer = e.target.result; startProcessing(name); };
+  reader.onerror = function() { _pendingBuffer = null; startProcessing(name); };
+  reader.readAsArrayBuffer(file);
 }
 
 function loadDemo(filename) {
+  _pendingBuffer = null;
   startProcessing(filename);
 }
 
@@ -997,6 +1001,7 @@ function initViewer(buffer, filename) {
   disposeViewer();
   const wrap = document.getElementById('stl-viewer-wrap');
   const canvas = document.getElementById('stl-canvas');
+  const isUserFile = !!buffer;
   if (!window.THREE) { showViewerFallback(true); return; }
   try {
     const w = wrap.clientWidth > 0 ? wrap.clientWidth : 540;
@@ -1020,10 +1025,15 @@ function initViewer(buffer, filename) {
     if (geometry) {
       _isDemoMesh = false;
       document.getElementById('t-viewer-label').textContent = T[lang].viewerLabelLocal;
-    } else {
+    } else if (!isUserFile) {
       geometry = loadDemoMesh();
       _isDemoMesh = true;
       document.getElementById('t-viewer-label').textContent = T[lang].viewerLabelDemo;
+    } else {
+      _isDemoMesh = false;
+      document.getElementById('t-visual-placeholder-hint').textContent = T[lang].stlParseError;
+      showViewerFallback(true);
+      return;
     }
     document.getElementById('t-viewer-hint').textContent = T[lang].viewerHint;
     if (geometry) {
@@ -1045,6 +1055,7 @@ function initViewer(buffer, filename) {
     showViewerFallback(false);
   } catch(e) {
     console.warn('[viewer] init failed:', e);
+    if (isUserFile) { document.getElementById('t-visual-placeholder-hint').textContent = T[lang].stlParseError; }
     showViewerFallback(true);
   }
 }
@@ -1056,7 +1067,7 @@ function loadDemoMesh() {
 
 function loadFileGeometry(buffer) {
   try {
-    const data = parseSTLBinary(buffer);
+    const data = parseSTL(buffer);
     if (!data) return null;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(data.positions), 3));
@@ -1086,6 +1097,34 @@ function parseSTLBinary(buffer) {
     }
     off += 2;
   }
+  return {positions, normals};
+}
+
+function parseSTL(buffer) {
+  const sample = new TextDecoder('ascii', {fatal: false}).decode(new Uint8Array(buffer, 0, Math.min(1024, buffer.byteLength)));
+  if (sample.includes('facet normal')) {
+    const result = parseSTLAscii(buffer);
+    if (result && result.positions.length > 0) return result;
+  }
+  return parseSTLBinary(buffer);
+}
+
+function parseSTLAscii(buffer) {
+  const text = new TextDecoder().decode(buffer);
+  const positions = [], normals = [];
+  const normRe = /facet\s+normal\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)/g;
+  const vertRe = /vertex\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)/g;
+  let nMatch;
+  while ((nMatch = normRe.exec(text)) !== null) {
+    const nx = parseFloat(nMatch[1]), ny = parseFloat(nMatch[2]), nz = parseFloat(nMatch[3]);
+    for (let v = 0; v < 3; v++) {
+      const vMatch = vertRe.exec(text);
+      if (!vMatch) return null;
+      positions.push(parseFloat(vMatch[1]), parseFloat(vMatch[2]), parseFloat(vMatch[3]));
+      normals.push(nx, ny, nz);
+    }
+  }
+  if (positions.length === 0) return null;
   return {positions, normals};
 }
 
@@ -1159,7 +1198,13 @@ function showViewerFallback(show) {
   zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over'); });
   zone.addEventListener('drop', e => {
     e.preventDefault(); zone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) loadDemo(e.dataTransfer.files[0].name);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const name = file.name;
+    const reader = new FileReader();
+    reader.onload = function(ev) { _pendingBuffer = ev.target.result; startProcessing(name); };
+    reader.onerror = function() { _pendingBuffer = null; startProcessing(name); };
+    reader.readAsArrayBuffer(file);
   });
 })();
 

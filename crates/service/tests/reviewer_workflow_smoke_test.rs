@@ -12,6 +12,7 @@
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use postcad_service::REVIEWER_HTML;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tower::util::ServiceExt;
@@ -245,6 +246,86 @@ async fn reviewer_shell_stl_viewer_present() {
     assert!(html.contains("initViewer"),           "initViewer JS function must be present");
     assert!(html.contains("disposeViewer"),        "disposeViewer JS function must be present");
     assert!(html.contains("three@0.158.0"),        "Three.js CDN script must be present");
+}
+
+/// Drop handler must read the file with FileReader before starting processing.
+/// The primary STL upload bug: old code called loadDemo(filename) without reading
+/// the file bytes, so _pendingBuffer was always null and the demo mesh was shown.
+#[test]
+fn stl_drop_handler_reads_file_with_filereader() {
+    assert!(
+        REVIEWER_HTML.contains("reader.onload = function(ev) { _pendingBuffer = ev.target.result; startProcessing(name); }"),
+        "drop handler must set _pendingBuffer via FileReader.onload before calling startProcessing"
+    );
+    assert!(
+        !REVIEWER_HTML.contains("loadDemo(e.dataTransfer.files[0].name)"),
+        "drop handler must not skip FileReader by calling loadDemo with only the filename"
+    );
+}
+
+/// onFileInput must only start processing inside reader.onload — not before it.
+#[test]
+fn stl_file_input_waits_for_filereader() {
+    assert!(
+        REVIEWER_HTML.contains("reader.onload = function(e) { _pendingBuffer = e.target.result; startProcessing(name); }"),
+        "onFileInput must call startProcessing inside reader.onload, not before readAsArrayBuffer"
+    );
+}
+
+/// loadDemo (demo button) must clear _pendingBuffer so the viewer renders the
+/// schematic mesh, not a leftover buffer from a previously dropped file.
+#[test]
+fn stl_load_demo_clears_pending_buffer() {
+    assert!(
+        REVIEWER_HTML.contains("_pendingBuffer = null;\n  startProcessing(filename);"),
+        "loadDemo must reset _pendingBuffer = null before startProcessing"
+    );
+}
+
+/// When a user file is provided but STL parsing fails, the viewer must show an
+/// explicit error — not silently fall back to the demo cylinder.
+#[test]
+fn stl_parse_error_shown_not_demo_mesh() {
+    assert!(
+        REVIEWER_HTML.contains("STL konnte lokal nicht dargestellt werden"),
+        "HTML must contain German STL parse error message"
+    );
+    assert!(
+        REVIEWER_HTML.contains("stlParseError"),
+        "HTML must define stlParseError translation key"
+    );
+    assert!(
+        REVIEWER_HTML.contains("T[lang].stlParseError"),
+        "error path must surface stlParseError to the user"
+    );
+}
+
+/// parseSTLAscii must be present so ASCII-format STL files render instead of
+/// silently failing (parseSTLBinary alone only handles binary STL).
+#[test]
+fn stl_ascii_parser_present() {
+    assert!(
+        REVIEWER_HTML.contains("function parseSTLAscii(buffer)"),
+        "HTML must include parseSTLAscii for ASCII STL support"
+    );
+    assert!(
+        REVIEWER_HTML.contains("function parseSTL(buffer)"),
+        "HTML must include parseSTL dispatcher that tries ASCII before binary"
+    );
+}
+
+/// Viewer label must use a middle dot (·) not a colon for both demo and local modes.
+#[test]
+fn stl_viewer_label_uses_middle_dot() {
+    let middle_dot = '\u{00b7}';
+    assert!(
+        REVIEWER_HTML.contains(&format!("Demo-Ansicht {middle_dot} schematische Darstellung")),
+        "demo label must use middle dot"
+    );
+    assert!(
+        REVIEWER_HTML.contains(&format!("Lokale STL-Datei {middle_dot} nur im Browser dargestellt")),
+        "local file label must use middle dot"
+    );
 }
 
 /// Case metadata form must be present with all four fields and privacy notice.

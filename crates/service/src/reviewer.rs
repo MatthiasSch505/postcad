@@ -145,6 +145,16 @@ main{width:100%;max-width:560px}
 .nachweis-subtitle{font-size:.78rem;color:var(--sub);line-height:1.5;margin-bottom:14px;font-style:italic}
 .viewer-reset-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--dim);font-size:.63rem;font-weight:600;padding:2px 7px;cursor:pointer;letter-spacing:.04em;white-space:nowrap;line-height:1.6}
 .viewer-reset-btn:hover{border-color:var(--sub);color:var(--sub)}
+
+/* Verlauf */
+.verlauf-note{font-size:.72rem;color:var(--dim);margin-bottom:14px;font-style:italic}
+.verlauf-row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+.verlauf-row:last-child{border-bottom:none}
+.verlauf-row-num{font-size:.7rem;font-weight:800;color:var(--dim);min-width:16px;padding-top:2px}
+.verlauf-row-body{flex:1}
+.verlauf-row-lbl{font-size:.88rem;font-weight:600;color:var(--sub)}
+.verlauf-row-desc{font-size:.76rem;color:var(--dim);line-height:1.4;margin-top:2px}
+.verlauf-row-time{font-size:.72rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;white-space:nowrap;padding-top:2px}
 </style>
 </head>
 <body>
@@ -352,6 +362,12 @@ main{width:100%;max-width:560px}
       <div style="font-size:.82rem;color:var(--dim);line-height:1.55;margin-top:12px" id="t-nachweis-body">Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.</div>
     </div>
 
+    <div class="res-section" id="verlauf-section" style="display:none">
+      <div class="res-label" id="t-verlauf-label">Verlauf</div>
+      <div class="verlauf-note" id="t-verlauf-note">Lokale Dokumentationshistorie &#x2014; nicht serverseitig gespeichert.</div>
+      <div id="verlauf-rows"></div>
+    </div>
+
     <div class="res-section" id="proof-section" style="display:none">
       <div class="res-label" id="t-proof-label">Technischer Nachweis / Protokollansicht</div>
       <details open>
@@ -487,6 +503,15 @@ const T = {
     copyBtn: 'Nachweis kopieren',
     copiedConfirm: 'Nachweis kopiert.',
     safetyCopy: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei.',
+    verlaufLabel: 'Verlauf',
+    verlaufNote: 'Lokale Dokumentationshistorie — nicht serverseitig gespeichert.',
+    verlaufEvents: [
+      {lbl: 'STL-Datei lokal geladen',                    desc: 'Die Datei wurde im Browser geladen und lokal dargestellt.'},
+      {lbl: 'Visuelle Klärung geöffnet',         desc: 'Die 3D-Ansicht wurde zur Klärung vor Herstellung geöffnet.'},
+      {lbl: 'Hinweis an die Praxis dokumentiert',         desc: 'Laborkommentar und Falldaten wurden eingetragen.'},
+      {lbl: 'Entscheidung vor Herstellung festgehalten',  desc: 'Entscheidung und Grundlage wurden dokumentiert.'},
+      {lbl: 'Entscheidungsnachweis erstellt',             desc: 'Nachweis mit Zeitstempel und Audit-ID wurde erzeugt.'},
+    ],
   },
   EN: {
     uploadTitle: 'Upload STL file',
@@ -585,6 +610,15 @@ const T = {
     copyBtn: 'Copy receipt',
     copiedConfirm: 'Receipt copied.',
     safetyCopy: 'PostCAD does not detect medical or technical errors and does not release manufacturing.',
+    verlaufLabel: 'History',
+    verlaufNote: 'Local documentation history — not stored server-side.',
+    verlaufEvents: [
+      {lbl: 'STL file loaded locally',                    desc: 'The file was loaded in the browser and displayed locally.'},
+      {lbl: 'Visual clarification opened',                desc: 'The 3D view was opened for clarification before manufacturing.'},
+      {lbl: 'Note to practice documented',                desc: 'Lab comment and case data were entered.'},
+      {lbl: 'Decision before manufacturing recorded',     desc: 'Decision and basis were documented.'},
+      {lbl: 'Decision record created',                    desc: 'Record with timestamp and audit ID was generated.'},
+    ],
   },
 };
 
@@ -637,6 +671,7 @@ let labComment = '';
 let caseMetadata = {bezeichnung:'',zahnRegion:'',material:'',praxis:''};
 let _pendingBuffer = null;
 let _isDemoMesh = true;
+let _receiptTime = null;
 let caseId = null;
 let displayFilename = null;
 let localStlActive = false;
@@ -753,6 +788,7 @@ function setLang(l) {
     document.getElementById('nachweis-ereignis').textContent = t.ereignisValue;
     document.getElementById('nachweis-person').textContent = t.nachweisPersonValue;
   }
+  if (_receiptTime !== null) { buildVerlauf(_receiptTime); }
 }
 
 function onFileInput(input) {
@@ -995,8 +1031,9 @@ function confirmLocalDecision() {
   document.getElementById('labs-list').innerHTML =
     '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
 
+  const _ts = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   document.getElementById('audit-id').textContent = 'PC-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
-  document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('audit-time').textContent = _ts;
   document.getElementById('audit-status').textContent = auditVerdict;
   document.getElementById('nachweis-caseid').textContent = na(caseId);
   document.getElementById('nachweis-datei').textContent = na(displayFilename);
@@ -1011,6 +1048,7 @@ function confirmLocalDecision() {
   document.getElementById('nachweis-visual').textContent = t.viewerLabelLocal + ' · ' + na(caseMetadata.bezeichnung || currentFilename);
   document.getElementById('nachweis-kommentar').textContent = na(labComment);
   document.getElementById('nachweis-person').textContent = t.nachweisPersonValue;
+  buildVerlauf(_ts);
 
   const reasonVal = document.getElementById('reason-code').value;
   const localReceipt = {
@@ -1068,8 +1106,9 @@ function showResultBlocked(filename) {
   nsElBlocked.textContent = t.nextStepBlock;
   nsElBlocked.style.display = 'block';
 
+  const _tsBlocked = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
-  document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('audit-time').textContent = _tsBlocked;
   document.getElementById('audit-status').textContent = t.verdictBlock;
 
   document.getElementById('nachweis-caseid').textContent = na(caseId);
@@ -1085,6 +1124,7 @@ function showResultBlocked(filename) {
   document.getElementById('nachweis-visual').textContent = t.visualClarificationSummary + ' · ' + c.proc;
   document.getElementById('nachweis-kommentar').textContent = na(labComment);
   document.getElementById('nachweis-person').textContent = t.nachweisPersonValue;
+  buildVerlauf(_tsBlocked);
 
   document.getElementById('proof-section').style.display = 'none';
   document.getElementById('phase-result').style.display = 'block';
@@ -1130,8 +1170,9 @@ function showResult(filename) {
   document.getElementById('labs-list').innerHTML =
     '<div style="font-size:.88rem;color:var(--sub);line-height:1.55">' + t.fertigungBody + '</div>';
 
+  const _tsResult = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   document.getElementById('audit-id').textContent = 'PC-2026-' + String(Math.floor(Math.random() * 99999)).padStart(5, '0');
-  document.getElementById('audit-time').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('audit-time').textContent = _tsResult;
   const auditVerdict = !c.ok ? t.verdictBlock : selectedDecision === 'proceed_with_risk' ? t.verdictRisk : t.verdictOk;
   document.getElementById('audit-status').textContent = auditVerdict;
 
@@ -1149,6 +1190,7 @@ function showResult(filename) {
   document.getElementById('nachweis-visual').textContent = t.visualClarificationSummary + ' · ' + c.proc;
   document.getElementById('nachweis-kommentar').textContent = na(labComment);
   document.getElementById('nachweis-person').textContent = t.nachweisPersonValue;
+  buildVerlauf(_tsResult);
 
   document.getElementById('phase-result').style.display = 'block';
 }
@@ -1204,6 +1246,7 @@ function resetDemo() {
   labComment = '';
   caseMetadata = {bezeichnung:'',zahnRegion:'',material:'',praxis:''};
   _pendingBuffer = null;
+  _receiptTime = null;
   caseId = null;
   displayFilename = null;
   localStlActive = false;
@@ -1226,6 +1269,8 @@ function resetDemo() {
   document.getElementById('copy-confirm').style.display = 'none';
   document.getElementById('copy-fallback').style.display = 'none';
   document.getElementById('copy-fallback-textarea').value = '';
+  document.getElementById('verlauf-section').style.display = 'none';
+  document.getElementById('verlauf-rows').innerHTML = '';
 }
 
 function copyReceipt() {
@@ -1245,6 +1290,18 @@ function copyReceipt() {
     ['Verantwortliche Person',                document.getElementById('nachweis-person').textContent],
   ];
   const lines = fields.map(function(pair) { return pair[0] + ': ' + pair[1]; });
+  const verlaufRows = document.querySelectorAll('#verlauf-rows .verlauf-row');
+  if (verlaufRows.length > 0) {
+    lines.push('');
+    lines.push('--- ' + t.verlaufLabel + ' ---');
+    verlaufRows.forEach(function(row, i) {
+      const lbl = row.querySelector('.verlauf-row-lbl') ? row.querySelector('.verlauf-row-lbl').textContent : '';
+      const desc = row.querySelector('.verlauf-row-desc') ? row.querySelector('.verlauf-row-desc').textContent : '';
+      const ts   = row.querySelector('.verlauf-row-time') ? row.querySelector('.verlauf-row-time').textContent : '';
+      lines.push((i + 1) + '. ' + lbl + ' · ' + ts);
+      if (desc) lines.push('   ' + desc);
+    });
+  }
   lines.push('');
   lines.push(t.safetyCopy);
   const text = lines.join('\n');
@@ -1274,6 +1331,27 @@ function showCopyFallback(text) {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function na(v) { return v || 'Nicht angegeben'; }
+
+function buildVerlauf(ts) {
+  _receiptTime = ts;
+  const t = T[lang];
+  document.getElementById('t-verlauf-label').textContent = t.verlaufLabel;
+  document.getElementById('t-verlauf-note').textContent = t.verlaufNote;
+  const container = document.getElementById('verlauf-rows');
+  container.innerHTML = '';
+  t.verlaufEvents.forEach(function(ev, i) {
+    const row = document.createElement('div');
+    row.className = 'verlauf-row';
+    row.innerHTML = '<span class="verlauf-row-num">' + (i + 1) + '</span>'
+      + '<div class="verlauf-row-body">'
+      + '<div class="verlauf-row-lbl" id="verlauf-lbl-' + i + '">' + ev.lbl + '</div>'
+      + '<div class="verlauf-row-desc">' + ev.desc + '</div>'
+      + '</div>'
+      + '<span class="verlauf-row-time">' + ts + '</span>';
+    container.appendChild(row);
+  });
+  document.getElementById('verlauf-section').style.display = '';
+}
 
 function initViewer(buffer, filename) {
   disposeViewer();

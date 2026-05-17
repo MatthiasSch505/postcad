@@ -341,7 +341,7 @@ fn reviewer_copy_receipt_function_present() {
 #[test]
 fn reviewer_copy_receipt_includes_safety_note() {
     let pos = REVIEWER_HTML.find("function copyReceipt()").expect("copyReceipt must be defined");
-    let snippet = &REVIEWER_HTML[pos..pos + 1800];
+    let snippet = &REVIEWER_HTML[pos..pos + 2400];
     assert!(snippet.contains("safetyCopy"), "copyReceipt must append t.safetyCopy line");
     assert!(
         REVIEWER_HTML.contains("PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei."),
@@ -801,6 +801,102 @@ async fn reviewer_legacy_div_preserved() {
 }
 
 // ── End-to-end API workflow test ──────────────────────────────────────────────
+
+// ── Verlauf section tests ─────────────────────────────────────────────────────
+
+/// Verlauf section must be present in the result phase with the correct label.
+#[test]
+fn reviewer_verlauf_section_present() {
+    assert!(REVIEWER_HTML.contains("verlauf-section"),       "verlauf-section id must be present");
+    assert!(REVIEWER_HTML.contains("verlauf-rows"),          "verlauf-rows id must be present");
+    assert!(REVIEWER_HTML.contains("t-verlauf-label"),       "t-verlauf-label id must be present");
+    assert!(REVIEWER_HTML.contains("t-verlauf-note"),        "t-verlauf-note id must be present");
+    assert!(REVIEWER_HTML.contains("Verlauf"),               "DE section label must be present");
+    assert!(REVIEWER_HTML.contains("History"),               "EN section label must be present");
+}
+
+/// Verlauf local-history note must appear in both DE and EN.
+#[test]
+fn reviewer_verlauf_local_note_present() {
+    assert!(
+        REVIEWER_HTML.contains("nicht serverseitig gespeichert"),
+        "DE verlauf note must mention 'nicht serverseitig gespeichert'"
+    );
+    assert!(
+        REVIEWER_HTML.contains("not stored server-side"),
+        "EN verlauf note must mention 'not stored server-side'"
+    );
+}
+
+/// All 5 DE event labels must be present in the translation table.
+#[test]
+fn reviewer_verlauf_de_event_labels_present() {
+    assert!(REVIEWER_HTML.contains("STL-Datei lokal geladen"),                   "DE event 1 label must be present");
+    assert!(REVIEWER_HTML.contains("Visuelle Kl\u{00e4}rung ge\u{00f6}ffnet"),  "DE event 2 label must be present");
+    assert!(REVIEWER_HTML.contains("Hinweis an die Praxis dokumentiert"),        "DE event 3 label must be present");
+    assert!(REVIEWER_HTML.contains("Entscheidung vor Herstellung festgehalten"), "DE event 4 label must be present");
+    assert!(REVIEWER_HTML.contains("Entscheidungsnachweis erstellt"),            "DE event 5 label must be present");
+}
+
+/// All 5 EN event labels must be present in the translation table.
+#[test]
+fn reviewer_verlauf_en_event_labels_present() {
+    assert!(REVIEWER_HTML.contains("STL file loaded locally"),                   "EN event 1 label must be present");
+    assert!(REVIEWER_HTML.contains("Visual clarification opened"),               "EN event 2 label must be present");
+    assert!(REVIEWER_HTML.contains("Note to practice documented"),               "EN event 3 label must be present");
+    assert!(REVIEWER_HTML.contains("Decision before manufacturing recorded"),    "EN event 4 label must be present");
+    assert!(REVIEWER_HTML.contains("Decision record created"),                   "EN event 5 label must be present");
+}
+
+/// buildVerlauf JS function must be defined and populate verlauf-rows.
+#[test]
+fn reviewer_verlauf_build_function_present() {
+    assert!(REVIEWER_HTML.contains("function buildVerlauf(ts)"), "buildVerlauf JS function must be defined");
+    assert!(REVIEWER_HTML.contains("verlauf-row-lbl"),           "verlauf-row-lbl class must be used in buildVerlauf");
+    assert!(REVIEWER_HTML.contains("verlauf-row-desc"),          "verlauf-row-desc class must be used in buildVerlauf");
+    assert!(REVIEWER_HTML.contains("verlauf-row-time"),          "verlauf-row-time class must be used in buildVerlauf");
+    assert!(REVIEWER_HTML.contains("verlaufEvents"),             "verlaufEvents key must be referenced in buildVerlauf");
+}
+
+/// buildVerlauf must be called from all three result paths.
+#[test]
+fn reviewer_verlauf_called_in_all_result_paths() {
+    assert!(
+        REVIEWER_HTML.contains("buildVerlauf(_ts)"),
+        "confirmLocalDecision must call buildVerlauf"
+    );
+    assert!(
+        REVIEWER_HTML.contains("buildVerlauf(_tsBlocked)"),
+        "showResultBlocked must call buildVerlauf"
+    );
+    assert!(
+        REVIEWER_HTML.contains("buildVerlauf(_tsResult)"),
+        "showResult must call buildVerlauf"
+    );
+}
+
+/// copyReceipt must include the Verlauf section in the copied plain text.
+#[test]
+fn reviewer_copy_receipt_includes_verlauf() {
+    let pos = REVIEWER_HTML.find("function copyReceipt()").expect("copyReceipt must be defined");
+    let snippet = &REVIEWER_HTML[pos..pos + 2400];
+    assert!(snippet.contains("verlauf-rows"),  "copyReceipt must query verlauf-rows for copy text");
+    assert!(snippet.contains("verlauf-row-lbl"), "copyReceipt must include verlauf-row-lbl in copy text");
+    assert!(snippet.contains("verlaufLabel"),  "copyReceipt must use t.verlaufLabel as section header");
+}
+
+/// Safety note must remain unchanged after Verlauf addition.
+#[test]
+fn reviewer_safety_note_unchanged_after_verlauf() {
+    assert!(
+        REVIEWER_HTML.contains("PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei."),
+        "DE safety note must be unchanged"
+    );
+    assert!(
+        REVIEWER_HTML.contains("PostCAD does not detect medical or technical errors and does not release manufacturing."),
+        "EN safety note must be unchanged"
+    );
+}
 
 /// Full pilot workflow: route → dispatch → approve → export.
 ///

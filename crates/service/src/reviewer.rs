@@ -146,6 +146,13 @@ main{width:100%;max-width:560px}
 .viewer-reset-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--dim);font-size:.63rem;font-weight:600;padding:2px 7px;cursor:pointer;letter-spacing:.04em;white-space:nowrap;line-height:1.6}
 .viewer-reset-btn:hover{border-color:var(--sub);color:var(--sub)}
 
+/* Praxis-Erklärung */
+.praxiserklaerung-section{border-top:1px solid var(--border);padding-top:18px;margin-top:4px;margin-bottom:22px}
+.praxiserklaerung-badge{font-size:.63rem;font-weight:800;letter-spacing:.16em;color:var(--sub);text-transform:uppercase;margin-bottom:14px}
+.praxis-video-input{width:100%;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;outline:none}
+.praxis-video-input::placeholder{color:var(--dim)}
+.praxis-video-input:focus{border-color:var(--sub)}
+
 /* Verlauf */
 .verlauf-note{font-size:.72rem;color:var(--dim);margin-bottom:14px;font-style:italic}
 .verlauf-row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
@@ -172,7 +179,7 @@ main{width:100%;max-width:560px}
 
 <main>
 
-  <p class="intro-line" id="t-intro-line">STL-Datei hochladen, Fall kurz pr&#252;fen, Hinweis dokumentieren und Entscheidung vor Herstellung festhalten.</p>
+  <p class="intro-line" id="t-intro-line">Laboransicht: Fall pr&#252;fen, R&#252;ckfrage an die Praxis vorbereiten, Praxis-R&#252;ckmeldung dokumentieren und Entscheidung vor Herstellung festhalten.</p>
 
   <div id="phase-upload">
     <label class="upload-zone" id="upload-zone" for="file-input">
@@ -205,8 +212,8 @@ main{width:100%;max-width:560px}
       <div class="stl-loaded-sub" id="stl-loaded-details"></div>
     </div>
     <div class="gate-badge" id="t-visual-badge">VISUELLE KLÄRUNG</div>
-    <div class="gate-title" id="t-visual-title">Visuelle Klärung vor Herstellung</div>
-    <div class="gate-sub" id="t-visual-sub">Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.</div>
+    <div class="gate-title" id="t-visual-title">Schritt 1 &middot; Laborfall pr&#252;fen</div>
+    <div class="gate-sub" id="t-visual-sub">Das Labor pr&#252;ft den Fall visuell. Die Praxis muss die STL-Datei sp&#228;ter nicht selbst interpretieren.</div>
     <div class="gate-case-ctx" id="visual-case-ctx"></div>
     <div class="ereignis-tag" id="t-ereignis-lbl">Ereignis 1 · Klärung vor Herstellung</div>
     <div class="stl-viewer-wrap" id="stl-viewer-wrap">
@@ -253,12 +260,48 @@ main{width:100%;max-width:560px}
       <div class="case-meta-privacy" id="t-meta-privacy">* Pflichtfeld &#183; Bitte keine Patientennamen eingeben.</div>
     </div>
     <div class="gate-error" id="meta-error" style="display:none">Bitte Falldaten vollst&#228;ndig ausf&#252;llen.</div>
-    <div class="comment-row">
-      <label class="comment-label required" id="t-lab-comment-label" for="lab-comment">Hinweis an die Praxis</label>
-      <div class="comment-sub" id="t-lab-comment-sub">Was soll vor Herstellung verständlich gemacht oder bestätigt werden?</div>
-      <textarea class="comment-area" id="lab-comment" placeholder="z.&#x202F;B. kritischer Randbereich, zu geringer Abstand&#8230;"></textarea>
-      <div class="gate-error" id="comment-error" style="display:none">Bitte Hinweis an die Praxis erg&#228;nzen.</div>
+    <div class="praxiserklaerung-section" id="praxiserklaerung-section">
+      <div class="praxiserklaerung-badge" id="t-praxiserklaerung-badge">Schritt 2 &middot; R&#252;ckfrage an die Praxis vorbereiten</div>
+      <div class="comment-sub" id="t-praxiserklaerung-sub">Formulieren Sie kurz, was die Praxis vor Herstellung best&#228;tigen, korrigieren oder nachreichen soll.</div>
+      <div class="comment-row" style="margin-top:14px">
+        <label class="comment-label required" id="t-lab-comment-label" for="lab-comment">Kurze Laborerkl&#228;rung</label>
+        <textarea class="comment-area" id="lab-comment" placeholder="z.&#x202F;B. Die Pr&#228;p.-Grenze ist distal an Zahn 36 nicht eindeutig nachvollziehbar."></textarea>
+        <div class="gate-error" id="comment-error" style="display:none">Bitte Laborerkl&#228;rung erg&#228;nzen.</div>
+      </div>
+      <div class="comment-row">
+        <label class="comment-label required" id="t-praxis-rueckmeldung-label" for="praxis-rueckmeldung">Was soll die Praxis tun?</label>
+        <textarea class="comment-area" id="praxis-rueckmeldung" placeholder="z.&#x202F;B. Bitte Bereich best&#228;tigen oder neuen Scan senden."></textarea>
+        <div class="gate-error" id="rueckmeldung-error" style="display:none">Bitte ausf&#252;llen.</div>
+      </div>
+      <div class="comment-row">
+        <label class="comment-label" id="t-praxis-video-label" for="praxis-video-link">Video-Link optional</label>
+        <input class="praxis-video-input" id="praxis-video-link" type="text" placeholder="Optional: Link zu kurzem Erkl&#228;rungsvideo">
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="copy-btn" onclick="copyPracticeRequest()"><span id="t-copy-practice-request-btn">Praxis-Anfrage kopieren</span></button>
+        <span class="copy-confirm" id="praxis-request-copy-confirm"></span>
+      </div>
     </div>
+
+    <div class="praxiserklaerung-section" id="praxis-rueckmeldung-section">
+      <div class="praxiserklaerung-badge" id="t-praxis-rueckmeldung-badge">Schritt 3 &middot; R&#252;ckmeldung der Praxis dokumentieren</div>
+      <div class="comment-sub" id="t-praxis-rueckmeldung-sub">Halten Sie fest, was die Praxis geantwortet hat, bevor die Entscheidung getroffen wird.</div>
+      <div class="comment-row" style="margin-top:14px">
+        <label class="comment-label required" id="t-praxis-antwort-label" for="praxis-antwort">Antwort / Best&#228;tigung der Praxis</label>
+        <textarea class="comment-area" id="praxis-antwort" placeholder="z.&#x202F;B. Praxis best&#228;tigt Fortsetzung / neuer Scan folgt / R&#252;cksprache erforderlich &#8230;"></textarea>
+        <div class="gate-error" id="praxis-antwort-error" style="display:none">Bitte Praxis-R&#252;ckmeldung dokumentieren.</div>
+      </div>
+      <div class="comment-row">
+        <label class="comment-label" id="t-praxis-antwort-status-label" for="praxis-antwort-status">R&#252;ckmeldung</label>
+        <select class="praxis-video-input" id="praxis-antwort-status">
+          <option value="" id="t-status-select-opt">&#x2014; R&#252;ckmeldung w&#228;hlen &#x2014;</option>
+          <option value="confirm" id="t-status-confirm-opt">Praxis best&#228;tigt Fortsetzung</option>
+          <option value="correction" id="t-status-correction-opt">Praxis sendet Korrektur / neuen Scan</option>
+          <option value="open" id="t-status-open-opt">Kl&#228;rung bleibt offen</option>
+        </select>
+      </div>
+    </div>
+
     <button class="confirm-btn" id="visual-next-btn" onclick="proceedToDecision()">Weiter zur Entscheidung</button>
     <div style="margin-top:20px;text-align:center">
       <button class="reset-btn" onclick="resetDemo()"><span id="t-visual-reset">Neuen Laborfall öffnen</span></button>
@@ -267,16 +310,16 @@ main{width:100%;max-width:560px}
 
   <div id="phase-decision">
     <div class="gate-badge" id="t-gate-badge">ENTSCHEIDUNG VOR HERSTELLUNG</div>
-    <div class="gate-title" id="t-gate-title">Welche Entscheidung wird vor Herstellung dokumentiert?</div>
+    <div class="gate-title" id="t-gate-title">Schritt 4 &middot; Entscheidung vor Herstellung dokumentieren</div>
     <div class="gate-sub" id="t-gate-sub">Vor Produktionsstart ist eine explizite Entscheidung erforderlich.</div>
     <div class="gate-case-ctx" id="gate-case-ctx"></div>
     <div class="decision-choices">
       <button class="choice-btn" id="choice-proceed" onclick="selectDecision('proceed')">Fortsetzung dokumentiert</button>
-      <div class="choice-hint" id="hint-proceed">Die verantwortliche Person dokumentiert, dass die Ausgangslage ausreichend geklärt ist.</div>
+      <div class="choice-hint" id="hint-proceed">Das Labor dokumentiert, dass die Ausgangslage ausreichend gekl&#228;rt ist.</div>
       <button class="choice-btn" id="choice-proceed_with_risk" onclick="selectDecision('proceed_with_risk')">Fortsetzung mit Hinweis</button>
-      <div class="choice-hint" id="hint-proceed_with_risk">Die verantwortliche Person dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschränkung besteht.</div>
+      <div class="choice-hint" id="hint-proceed_with_risk">Das Labor dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschr&#228;nkung besteht.</div>
       <button class="choice-btn" id="choice-request_correction" onclick="selectDecision('request_correction')">Klärung erforderlich</button>
-      <div class="choice-hint" id="hint-request_correction">Die verantwortliche Person dokumentiert, dass vor der Fertigung eine Rückfrage, Ergänzung oder Korrektur durch die Praxis erforderlich ist.</div>
+      <div class="choice-hint" id="hint-request_correction">Das Labor dokumentiert, dass vor der Fertigung eine R&#252;ckfrage, Erg&#228;nzung oder Korrektur durch die Praxis erforderlich ist.</div>
     </div>
     <div class="reason-row" id="reason-row">
       <label class="reason-label" id="t-reason-label" for="reason-code">Grund (erforderlich)</label>
@@ -340,9 +383,26 @@ main{width:100%;max-width:560px}
       <div id="labs-list"></div>
     </div>
 
+    <div class="res-section" id="praxis-section">
+      <div class="res-label" id="t-praxis-section-label">Für die Praxis</div>
+      <div class="comment-sub" id="t-praxis-section-sub" style="margin-bottom:10px">Einfacher Text f&#252;r Praxis/Behandler &#8211; ohne STL interpretieren zu m&#252;ssen.</div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-fall-lbl">Fall</span><span class="audit-row-val" id="praxis-fall"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-zahn-lbl">Zahn / Region</span><span class="audit-row-val" id="praxis-zahn"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-material-lbl">Material</span><span class="audit-row-val" id="praxis-material"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-erklaerung-lbl">Laborerkl&#228;rung</span><span class="audit-row-val" id="praxis-erklaerung"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-aktion-lbl">Was tun</span><span class="audit-row-val" id="praxis-aktion"></span></div>
+      <div class="audit-row" id="praxis-video-row" style="display:none"><span class="audit-row-lbl" id="t-praxis-video-nachweis-lbl">Video</span><span class="audit-row-val" id="praxis-video-nachweis"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-entscheidung-lbl">Entscheidung</span><span class="audit-row-val" id="praxis-entscheidung"></span></div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="copy-btn" onclick="copyPracticeExplanation()"><span id="t-copy-practice-btn">Praxis-Text kopieren</span></button>
+        <span class="copy-confirm" id="praxis-copy-confirm"></span>
+      </div>
+    </div>
+
     <div class="res-section">
+      <div class="praxiserklaerung-badge" style="color:var(--dim);margin-bottom:12px" id="t-intern-nachweis-badge">INTERNER NACHWEIS</div>
       <div class="res-label" id="t-audit-label">Entscheidungsnachweis erstellt</div>
-      <div class="nachweis-subtitle" id="t-nachweis-subtitle">Dieser Nachweis dokumentiert die Kl&#228;rung vor Herstellung. Keine automatische technische Pr&#252;fung.</div>
+      <div class="nachweis-subtitle" id="t-nachweis-subtitle">Dokumentiert, was gepr&#252;ft, erkl&#228;rt und entschieden wurde.</div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-rcid-lbl">Fall-ID</span><span class="audit-row-val" id="nachweis-caseid"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-datei-lbl">Datei</span><span class="audit-row-val" id="nachweis-datei"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-ereignis-lbl">Ereignis</span><span class="audit-row-val" id="nachweis-ereignis"></span></div>
@@ -355,11 +415,19 @@ main{width:100%;max-width:560px}
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-grundlage-lbl">Entscheidungsgrundlage</span><span class="audit-row-val" id="nachweis-grundlage"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-visual-lbl">Visuelle Klärung</span><span class="audit-row-val" id="nachweis-visual"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-kommentar-lbl">Laborkommentar</span><span class="audit-row-val" id="nachweis-kommentar"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-rueckmeldung-lbl">Was tun</span><span class="audit-row-val" id="nachweis-praxis-rueckmeldung"></span></div>
+      <div class="audit-row" id="nachweis-praxis-video-row" style="display:none"><span class="audit-row-lbl" id="t-nachweis-video-lbl">Erklärungsvideo</span><span class="audit-row-val" id="nachweis-praxis-video"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-praxis-antwort-lbl">Praxis-R&#252;ckmeldung</span><span class="audit-row-val" id="nachweis-praxis-antwort"></span></div>
+      <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-praxis-antwort-status-lbl">R&#252;ckmeldung-Status</span><span class="audit-row-val" id="nachweis-praxis-antwort-status"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-person-lbl">Verantwortliche Person</span><span class="audit-row-val" id="nachweis-person"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-time-lbl">Zeitpunkt</span><span class="audit-row-val" id="audit-time"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-id-lbl">Audit-ID</span><span class="audit-row-val" id="audit-id"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-audit-status-lbl">Status</span><span class="audit-row-val" id="audit-status"></span></div>
       <div style="font-size:.82rem;color:var(--dim);line-height:1.55;margin-top:12px" id="t-nachweis-body">Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.</div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="copy-btn" onclick="copyReceipt()"><span id="t-copy-btn">Nachweis kopieren</span></button>
+        <span class="copy-confirm" id="copy-confirm">Nachweis kopiert.</span>
+      </div>
     </div>
 
     <div class="res-section" id="verlauf-section" style="display:none">
@@ -383,8 +451,6 @@ main{width:100%;max-width:560px}
     <div class="res-section" style="border-top:none;padding-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
       <button class="reset-btn" onclick="backToDecision()"><span id="t-back-decision">Zurück zur Entscheidung</span></button>
       <button class="reset-btn" onclick="resetDemo()"><span id="t-reset">Neuen Laborfall öffnen</span></button>
-      <button class="copy-btn" onclick="copyReceipt()"><span id="t-copy-btn">Nachweis kopieren</span></button>
-      <span class="copy-confirm" id="copy-confirm">Nachweis kopiert.</span>
     </div>
     <div id="copy-fallback" class="res-section" style="display:none;border-top:none;padding-top:0">
       <textarea id="copy-fallback-textarea" style="width:100%;min-height:120px;font-size:.72rem;font-family:'SF Mono','Fira Code',monospace;color:var(--sub);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;resize:vertical;line-height:1.5"></textarea>
@@ -421,22 +487,22 @@ const T = {
     verdictRisk: 'FORTSETZUNG MIT HINWEIS',
     subOk: 'Fortsetzung dokumentiert', subBlock: 'Kl\u00e4rung erforderlich',
     subRisk: 'Fortsetzung mit Hinweis',
-    explanationOk: 'Die verantwortliche Person hat dokumentiert, dass die Ausgangslage ausreichend gekl\u00e4rt ist.',
-    explanationRisk: 'Die verantwortliche Person hat dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschr\u00e4nkung besteht.',
-    explanationBlock: 'Die verantwortliche Person hat dokumentiert, dass vor der Fertigung eine Kl\u00e4rung erforderlich ist.',
+    explanationOk: 'Das Labor hat dokumentiert, dass die Ausgangslage ausreichend gekl\u00e4rt ist.',
+    explanationRisk: 'Das Labor hat dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschr\u00e4nkung besteht.',
+    explanationBlock: 'Das Labor hat dokumentiert, dass vor der Fertigung eine Kl\u00e4rung erforderlich ist.',
     decisionBlockedSub: 'Kl\u00e4rung erforderlich. Herstellung wird nicht gestartet.',
     decisionBlockedExplanation: 'Vor der Fertigung ist eine R\u00fcckfrage, Erg\u00e4nzung oder Korrektur durch die Praxis erforderlich.',
     pruefungLabel: 'Falldaten',
     chkMaterial: 'Materialangabe', chkJurisdiction: 'L\u00e4nderangabe', chkManufacturing: 'Herstellungsangabe',
     ergebnisOk: 'Entscheidung: Fortsetzung dokumentiert', ergebnisRisk: 'Entscheidung: Fortsetzung mit Hinweis', ergebnisBlock: 'Entscheidung: Kl\u00e4rung erforderlich',
     fertigungLabel: 'Entscheidungsgrundlage',
-    auditLabel: 'Entscheidungsnachweis erstellt', nachweisSubtitle: 'Dieser Nachweis dokumentiert die Klärung vor Herstellung. Keine automatische technische Prüfung.', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
+    auditLabel: 'Entscheidungsnachweis erstellt', nachweisSubtitle: 'Dokumentiert, was geprüft, erklärt und entschieden wurde.', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     nachweisFallLbl: 'Fall', nachweisDecisionLbl: 'Entscheidung', nachweisGrundlageLbl: 'Entscheidungsgrundlage',
     nachweisBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
     proofLabel: 'Technischer Nachweis / Protokollansicht',
     reset: 'Neuen Laborfall öffnen',
     gateBadge: 'ENTSCHEIDUNG VOR HERSTELLUNG',
-    gateTitle: 'Welche Entscheidung wird vor Herstellung dokumentiert?',
+    gateTitle: 'Schritt 4 · Entscheidung vor Herstellung dokumentieren',
     gateSub: 'Vor Produktionsstart ist eine explizite Entscheidung erforderlich.',
     optProceed: 'Fortsetzung dokumentiert',
     optRisk: 'Fortsetzung mit Hinweis',
@@ -452,26 +518,25 @@ const T = {
     reasonHint: 'W\u00e4hlen Sie einen Grund, um fortzufahren.',
     demoOnlyError: 'Nur Demo-Dateien werden unterst\u00fctzt. Bitte Demo-Datei ausw\u00e4hlen.',
     backToDecision: 'Zur\u00fcck zur Entscheidung',
-    hintProceed: 'Die verantwortliche Person dokumentiert, dass die Ausgangslage ausreichend geklärt ist.',
-    hintRisk: 'Die verantwortliche Person dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschränkung besteht.',
-    hintCorrection: 'Die verantwortliche Person dokumentiert, dass vor der Fertigung eine Rückfrage, Ergänzung oder Korrektur durch die Praxis erforderlich ist.',
+    hintProceed: 'Das Labor dokumentiert, dass die Ausgangslage ausreichend geklärt ist.',
+    hintRisk: 'Das Labor dokumentiert, dass die Fertigung fortgesetzt wird, aber ein relevanter Hinweis, eine Annahme oder eine Einschränkung besteht.',
+    hintCorrection: 'Das Labor dokumentiert, dass vor der Fertigung eine Rückfrage, Ergänzung oder Korrektur durch die Praxis erforderlich ist.',
     ahaLine: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei. Das System strukturiert die Kommunikation zwischen Praxis und Labor und dokumentiert, welche verantwortliche Person auf welcher Grundlage entschieden hat.',
     grundMaterial: 'Hinweis: Material ist f\u00fcr diesen Produkttyp in den Systemdaten nicht hinterlegt.',
     grundJurisdiction: 'Hinweis: Die hinterlegten Systemdaten decken diese Jurisdiktion nicht ab.',
     grundManufacturing: 'Hinweis: Kein geeigneter Herstellungspartner in den Systemdaten hinterlegt.',
     nextStepBlock: 'N\u00e4chster Schritt: Vor der Fertigung ist eine Kl\u00e4rung erforderlich.',
     brandTagline: 'Kl\u00e4rung vor Herstellung',
-    introLine: 'STL-Datei hochladen, Fall kurz pr\u00fcfen, Hinweis dokumentieren und Entscheidung vor Herstellung festhalten.',
+    introLine: 'Laboransicht: Fall pr\u00fcfen, R\u00fcckfrage an die Praxis vorbereiten, Praxis-R\u00fckmeldung dokumentieren und Entscheidung vor Herstellung festhalten.',
     fertigungBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
     visualBadge: 'VISUELLE KLÄRUNG',
-    visualTitle: 'Visuelle Klärung vor Herstellung',
-    visualSub: 'Halten Sie fest, was der Praxis vor Herstellung verständlich gemacht werden soll.',
+    visualTitle: 'Schritt 1 · Laborfall prüfen',
+    visualSub: 'Das Labor prüft den Fall visuell. Die Praxis muss die STL-Datei später nicht selbst interpretieren.',
     visualPlaceholderLbl: 'Krone · Zahn 36',
     visualPlaceholderHint: 'Demo-Ansicht: hier kann später ein Scan-/CAD-Ausschnitt, Screenshot oder kurzer Clip dokumentiert werden.',
     visualDisclaimer: 'Die 3D-Ansicht dient der gemeinsamen Klärung und Dokumentation. Keine automatische technische Prüfung.',
-    labCommentLabel: 'Hinweis an die Praxis',
-    labCommentSub: 'Was soll vor Herstellung verständlich gemacht oder bestätigt werden?',
-    labCommentPlaceholder: 'z. B. kritischer Randbereich, zu geringer Abstand…',
+    labCommentLabel: 'Kurze Laborerklärung',
+    labCommentPlaceholder: 'z. B. Die Präp.-Grenze ist distal an Zahn 36 nicht eindeutig nachvollziehbar.',
     visualNextBtn: 'Weiter zur Entscheidung',
     visualClarificationSummary: 'Klärungshinweis dokumentiert',
     nachweisVisualLbl: 'Visuelle Klärung',
@@ -503,14 +568,50 @@ const T = {
     copyBtn: 'Nachweis kopieren',
     copiedConfirm: 'Nachweis kopiert.',
     safetyCopy: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei.',
+    praxiserklaerungBadge: 'Schritt 2 · Rückfrage an die Praxis vorbereiten',
+    praxiserklaerungSub: 'Formulieren Sie kurz, was die Praxis vor Herstellung bestätigen, korrigieren oder nachreichen soll.',
+    praxisRueckmeldungLabel: 'Was soll die Praxis tun?',
+    praxisRueckmeldungPlaceholder: 'z. B. Bitte Bereich bestätigen oder neuen Scan senden.',
+    praxisVideoLabel: 'Video-Link optional',
+    nachweisRueckmeldungLbl: 'Was tun',
+    nachweisVideoLbl: 'Erklärungsvideo',
+    nachweisAntwortLbl: 'Praxis-Rückmeldung',
+    nachweisAntwortStatusLbl: 'Rückmeldung-Status',
+    praxisRueckmeldungBadge: 'Schritt 3 · Rückmeldung der Praxis dokumentieren',
+    praxisRueckmeldungSub: 'Halten Sie fest, was die Praxis geantwortet hat, bevor die Entscheidung getroffen wird.',
+    praxisAntwortLabel: 'Antwort / Bestätigung der Praxis',
+    praxisAntwortStatusLabel: 'Rückmeldung',
+    statusSelect: '— Rückmeldung wählen —',
+    statusConfirm: 'Praxis bestätigt Fortsetzung',
+    statusCorrection: 'Praxis sendet Korrektur / neuen Scan',
+    statusOpen: 'Klärung bleibt offen',
+    copyPracticeRequestBtn: 'Praxis-Anfrage kopieren',
+    praxisRequestCopiedConfirm: 'Anfrage kopiert.',
+    copyPracticeRequestHeader: 'PRAXIS-ANFRAGE',
+    copyPracticeRequestPrompt: 'Bitte bestätigen Sie kurz, ob wir auf dieser Grundlage fortfahren sollen oder ob eine Korrektur / ein neuer Scan folgt.',
+    copyPracticeRequestSafety: 'Diese Nachricht ersetzt keine medizinische oder technische Prüfung durch die verantwortlichen Personen.',
+    copyPracticeBtn: 'Praxis-Text kopieren',
+    praxisCopiedConfirm: 'Erklärung kopiert.',
+    praxisSafetyNote: 'Diese Erklärung ersetzt keine medizinische oder technische Prüfung durch die verantwortlichen Personen.',
+    praxisSectionLabel: 'Für die Praxis',
+    praxisSectionSub: 'Einfacher Text für Praxis/Behandler – ohne STL interpretieren zu müssen.',
+    praxisFallLbl: 'Fall',
+    praxisZahnLbl: 'Zahn / Region',
+    praxisMaterialLbl: 'Material',
+    praxisErklaerungLbl: 'Laborerklärung',
+    praxisAktionLbl: 'Was tun',
+    praxisVideoNachweisLbl: 'Video',
+    praxisEntscheidungLbl: 'Entscheidung',
+    internNachweisBadge: 'INTERNER NACHWEIS',
     verlaufLabel: 'Verlauf',
     verlaufNote: 'Lokale Dokumentationshistorie — nicht serverseitig gespeichert.',
     verlaufEvents: [
-      {lbl: 'STL-Datei lokal geladen',                    desc: 'Die Datei wurde im Browser geladen und lokal dargestellt.'},
-      {lbl: 'Visuelle Klärung geöffnet',         desc: 'Die 3D-Ansicht wurde zur Klärung vor Herstellung geöffnet.'},
-      {lbl: 'Hinweis an die Praxis dokumentiert',         desc: 'Laborkommentar und Falldaten wurden eingetragen.'},
-      {lbl: 'Entscheidung vor Herstellung festgehalten',  desc: 'Entscheidung und Grundlage wurden dokumentiert.'},
-      {lbl: 'Entscheidungsnachweis erstellt',             desc: 'Nachweis mit Zeitstempel und Audit-ID wurde erzeugt.'},
+      {lbl: 'STL-Datei lokal geladen',                     desc: 'Die Datei wurde im Browser geladen und lokal dargestellt.'},
+      {lbl: 'Laborfall visuell geprüft',                   desc: 'Das Labor hat den Fall visuell geprüft.'},
+      {lbl: 'Praxis-Anfrage vorbereitet',                  desc: 'Das Labor hat eine Rückfrage für die Praxis vorbereitet.'},
+      {lbl: 'Praxis-Rückmeldung dokumentiert',             desc: 'Die Antwort der Praxis wurde dokumentiert.'},
+      {lbl: 'Entscheidung vor Herstellung festgehalten',   desc: 'Entscheidung und Grundlage wurden dokumentiert.'},
+      {lbl: 'Entscheidungsnachweis erstellt',              desc: 'Nachweis mit Zeitstempel und Audit-ID wurde erzeugt.'},
     ],
   },
   EN: {
@@ -528,22 +629,22 @@ const T = {
     verdictRisk: 'PROCEED WITH NOTE',
     subOk: 'Proceed documented', subBlock: 'Clarification required',
     subRisk: 'Proceed with note',
-    explanationOk: 'The responsible person documented that the starting situation is sufficiently clarified.',
-    explanationRisk: 'The responsible person documented that manufacturing proceeds, but a relevant note, assumption, or limitation exists.',
-    explanationBlock: 'The responsible person documented that clarification is required before manufacturing.',
+    explanationOk: 'The lab has documented that the starting situation is sufficiently clarified.',
+    explanationRisk: 'The lab has documented that manufacturing proceeds, but a relevant note, assumption, or limitation exists.',
+    explanationBlock: 'The lab has documented that clarification is required before manufacturing.',
     decisionBlockedSub: 'Clarification required. Manufacturing is not started.',
     decisionBlockedExplanation: 'A follow-up, addition or correction by the practice is required before manufacturing.',
     pruefungLabel: 'Case data',
     chkMaterial: 'Material information', chkJurisdiction: 'Country information', chkManufacturing: 'Manufacturing information',
     ergebnisOk: 'Decision: Proceed documented', ergebnisRisk: 'Decision: Proceed with note', ergebnisBlock: 'Decision: Clarification required',
     fertigungLabel: 'Decision basis',
-    auditLabel: 'Decision record created', nachweisSubtitle: 'This record documents the clarification before manufacturing. No automatic technical inspection.', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
+    auditLabel: 'Decision record created', nachweisSubtitle: 'Documents what was reviewed, explained, and decided.', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     nachweisFallLbl: 'Case', nachweisDecisionLbl: 'Decision', nachweisGrundlageLbl: 'Case basis',
     nachweisBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
     proofLabel: 'Technical record / Protocol view',
     reset: 'Open new lab case',
     gateBadge: 'DECISION BEFORE MANUFACTURING',
-    gateTitle: 'Which decision is documented before manufacturing?',
+    gateTitle: 'Step 4 · Document decision before manufacturing',
     gateSub: 'An explicit decision is required before production can start.',
     optProceed: 'Proceed documented',
     optRisk: 'Proceed with note',
@@ -559,26 +660,24 @@ const T = {
     reasonHint: 'Select a reason to continue.',
     demoOnlyError: 'Only demo files are supported. Please select a demo file.',
     backToDecision: 'Back to Decision',
-    hintProceed: 'The situation has been documented by the responsible person as sufficiently clarified.',
-    hintRisk: 'Manufacturing proceeds, but a relevant note, assumption or constraint is documented.',
-    hintCorrection: 'A follow-up, addition or correction by the practice is required before manufacturing.',
+    hintProceed: 'The lab documents that the starting situation is sufficiently clarified.',
+    hintRisk: 'The lab documents that manufacturing proceeds, but a relevant note, assumption or constraint exists.',
+    hintCorrection: 'The lab documents that a follow-up, addition or correction by the practice is required before manufacturing.',
     ahaLine: 'PostCAD does not detect medical or technical errors and does not release manufacturing. The system structures communication between practice and lab, and documents which responsible person decided on which basis.',
     grundMaterial: 'Note: Material is not recorded for this procedure type in the system data.',
     grundJurisdiction: 'Note: The system data does not cover this jurisdiction.',
     grundManufacturing: 'Note: No eligible manufacturing partner recorded in the system data.',
     nextStepBlock: 'Next step: Clarification is required before manufacturing.',
     brandTagline: 'Clarification before manufacturing',
-    introLine: 'Upload STL file, briefly review the case, document a note, and record the decision before manufacturing.',
+    introLine: 'Lab view: Review case, prepare practice query, document practice response, and record decision before manufacturing.',
     fertigungBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
     visualBadge: 'VISUAL CLARIFICATION',
-    visualTitle: 'Visual clarification before manufacturing',
-    visualSub: 'Document what should be communicated to the practice before manufacturing.',
+    visualTitle: 'Step 1 · Review lab case',
+    visualSub: 'The lab reviews the case visually. The practice does not need to interpret the STL file later.',
     visualPlaceholderLbl: 'Crown · Tooth 36',
     visualPlaceholderHint: 'Demo view: a scan/CAD excerpt, screenshot or short clip can be documented here.',
     visualDisclaimer: 'The 3D view is for joint clarification and documentation. No automatic technical inspection.',
-    labCommentLabel: 'Note to practice',
-    labCommentSub: 'What should be clarified or confirmed before manufacturing?',
-    labCommentPlaceholder: 'e.g. critical margin area, insufficient clearance…',
+    labCommentLabel: 'Short lab explanation',
     visualNextBtn: 'Proceed to decision',
     visualClarificationSummary: 'Clarification note documented',
     nachweisVisualLbl: 'Visual clarification',
@@ -610,12 +709,48 @@ const T = {
     copyBtn: 'Copy receipt',
     copiedConfirm: 'Receipt copied.',
     safetyCopy: 'PostCAD does not detect medical or technical errors and does not release manufacturing.',
+    praxiserklaerungBadge: 'Step 2 · Prepare practice query',
+    praxiserklaerungSub: 'Briefly state what the practice should confirm, correct, or provide before manufacturing.',
+    praxisRueckmeldungLabel: 'What should the practice do?',
+    praxisRueckmeldungPlaceholder: 'e.g. Please confirm the area or send a new scan.',
+    praxisVideoLabel: 'Video link (optional)',
+    nachweisRueckmeldungLbl: 'Action',
+    nachweisVideoLbl: 'Explanation video',
+    nachweisAntwortLbl: 'Practice response',
+    nachweisAntwortStatusLbl: 'Response status',
+    praxisRueckmeldungBadge: 'Step 3 · Document practice response',
+    praxisRueckmeldungSub: 'Record what the practice responded before the decision is made.',
+    praxisAntwortLabel: 'Response / confirmation from practice',
+    praxisAntwortStatusLabel: 'Response',
+    statusSelect: '— Select response —',
+    statusConfirm: 'Practice confirms continuation',
+    statusCorrection: 'Practice sends correction / new scan',
+    statusOpen: 'Clarification remains open',
+    copyPracticeRequestBtn: 'Copy practice query',
+    praxisRequestCopiedConfirm: 'Query copied.',
+    copyPracticeRequestHeader: 'PRACTICE QUERY',
+    copyPracticeRequestPrompt: 'Please confirm briefly whether we should proceed on this basis or whether a correction / new scan will follow.',
+    copyPracticeRequestSafety: 'This message does not replace medical or technical review by the responsible persons.',
+    copyPracticeBtn: 'Copy practice text',
+    praxisCopiedConfirm: 'Explanation copied.',
+    praxisSafetyNote: 'This explanation does not replace medical or technical review by the responsible persons.',
+    praxisSectionLabel: 'For the practice',
+    praxisSectionSub: 'Plain text for the practice/practitioner – no need to interpret the STL.',
+    praxisFallLbl: 'Case',
+    praxisZahnLbl: 'Tooth / Region',
+    praxisMaterialLbl: 'Material',
+    praxisErklaerungLbl: 'Lab explanation',
+    praxisAktionLbl: 'Action',
+    praxisVideoNachweisLbl: 'Video',
+    praxisEntscheidungLbl: 'Decision',
+    internNachweisBadge: 'INTERNAL RECORD',
     verlaufLabel: 'History',
     verlaufNote: 'Local documentation history — not stored server-side.',
     verlaufEvents: [
       {lbl: 'STL file loaded locally',                    desc: 'The file was loaded in the browser and displayed locally.'},
-      {lbl: 'Visual clarification opened',                desc: 'The 3D view was opened for clarification before manufacturing.'},
-      {lbl: 'Note to practice documented',                desc: 'Lab comment and case data were entered.'},
+      {lbl: 'Lab case reviewed visually',                 desc: 'The lab reviewed the case visually.'},
+      {lbl: 'Practice query prepared',                    desc: 'The lab prepared a query for the practice.'},
+      {lbl: 'Practice response documented',               desc: 'The practice response was documented.'},
       {lbl: 'Decision before manufacturing recorded',     desc: 'Decision and basis were documented.'},
       {lbl: 'Decision record created',                    desc: 'Record with timestamp and audit ID was generated.'},
     ],
@@ -675,6 +810,10 @@ let _receiptTime = null;
 let caseId = null;
 let displayFilename = null;
 let localStlActive = false;
+let praxisRueckmeldung = '';
+let praxisVideoLink = '';
+let praxisAntwort = '';
+let praxisAntwortStatus = '';
 const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null};
 const _orbit = {rotX:0.3,rotY:0.4,zoom:16,defaultZoom:16,dragging:false,lastX:0,lastY:0};
 
@@ -744,7 +883,35 @@ function setLang(l) {
   document.getElementById('t-meta-caseid-lbl').textContent = t.metaCaseidLbl;
   document.getElementById('t-meta-datei-lbl').textContent = t.metaDateiLbl;
   document.getElementById('t-lab-comment-label').textContent = t.labCommentLabel;
-  document.getElementById('t-lab-comment-sub').textContent = t.labCommentSub;
+  document.getElementById('t-praxiserklaerung-badge').textContent = t.praxiserklaerungBadge;
+  document.getElementById('t-praxiserklaerung-sub').textContent = t.praxiserklaerungSub;
+  document.getElementById('t-praxis-rueckmeldung-label').textContent = t.praxisRueckmeldungLabel;
+  document.getElementById('praxis-rueckmeldung').placeholder = t.praxisRueckmeldungPlaceholder;
+  document.getElementById('t-praxis-video-label').textContent = t.praxisVideoLabel;
+  document.getElementById('t-nachweis-rueckmeldung-lbl').textContent = t.nachweisRueckmeldungLbl;
+  document.getElementById('t-nachweis-video-lbl').textContent = t.nachweisVideoLbl;
+  document.getElementById('t-copy-practice-btn').textContent = t.copyPracticeBtn;
+  document.getElementById('t-praxis-section-label').textContent = t.praxisSectionLabel;
+  document.getElementById('t-praxis-section-sub').textContent = t.praxisSectionSub;
+  document.getElementById('t-praxis-rueckmeldung-badge').textContent = t.praxisRueckmeldungBadge;
+  document.getElementById('t-praxis-rueckmeldung-sub').textContent = t.praxisRueckmeldungSub;
+  document.getElementById('t-praxis-antwort-label').textContent = t.praxisAntwortLabel;
+  document.getElementById('t-praxis-antwort-status-label').textContent = t.praxisAntwortStatusLabel;
+  document.getElementById('t-status-select-opt').textContent = t.statusSelect;
+  document.getElementById('t-status-confirm-opt').textContent = t.statusConfirm;
+  document.getElementById('t-status-correction-opt').textContent = t.statusCorrection;
+  document.getElementById('t-status-open-opt').textContent = t.statusOpen;
+  document.getElementById('t-copy-practice-request-btn').textContent = t.copyPracticeRequestBtn;
+  document.getElementById('t-nachweis-praxis-antwort-lbl').textContent = t.nachweisAntwortLbl;
+  document.getElementById('t-nachweis-praxis-antwort-status-lbl').textContent = t.nachweisAntwortStatusLbl;
+  document.getElementById('t-praxis-fall-lbl').textContent = t.praxisFallLbl;
+  document.getElementById('t-praxis-zahn-lbl').textContent = t.praxisZahnLbl;
+  document.getElementById('t-praxis-material-lbl').textContent = t.praxisMaterialLbl;
+  document.getElementById('t-praxis-erklaerung-lbl').textContent = t.praxisErklaerungLbl;
+  document.getElementById('t-praxis-aktion-lbl').textContent = t.praxisAktionLbl;
+  document.getElementById('t-praxis-video-nachweis-lbl').textContent = t.praxisVideoNachweisLbl;
+  document.getElementById('t-praxis-entscheidung-lbl').textContent = t.praxisEntscheidungLbl;
+  document.getElementById('t-intern-nachweis-badge').textContent = t.internNachweisBadge;
   document.getElementById('t-ereignis-lbl').textContent = t.ereignisLbl;
   document.getElementById('visual-next-btn').textContent = t.visualNextBtn;
   document.getElementById('t-visual-reset').textContent = t.reset;
@@ -842,6 +1009,8 @@ function showVisualStep(filename) {
   const c = getCaseData(filename);
   document.getElementById('visual-case-ctx').textContent = c.proc + ' · ' + c.material + ' · ' + c.land;
   document.getElementById('lab-comment').value = '';
+  document.getElementById('praxis-rueckmeldung').value = '';
+  document.getElementById('praxis-video-link').value = '';
   const dm = DEMO_META[filename.toLowerCase()];
   const meta = dm || (_pendingBuffer !== null ? LOCAL_STL_DEFAULTS : {});
   document.getElementById('meta-bezeichnung').value = meta.bezeichnung || '';
@@ -869,17 +1038,29 @@ function proceedToDecision() {
   const zahnRegion  = document.getElementById('meta-zahn').value.trim();
   const material    = document.getElementById('meta-material').value.trim();
   const praxis      = document.getElementById('meta-praxis').value.trim();
+  const rueckmeldung = document.getElementById('praxis-rueckmeldung').value.trim();
+  const antwort     = document.getElementById('praxis-antwort').value.trim();
 
-  const commentErrEl = document.getElementById('comment-error');
-  const metaErrEl    = document.getElementById('meta-error');
+  const commentErrEl    = document.getElementById('comment-error');
+  const rueckmErrEl     = document.getElementById('rueckmeldung-error');
+  const antwortErrEl    = document.getElementById('praxis-antwort-error');
+  const metaErrEl       = document.getElementById('meta-error');
   let hasError = false;
-  if (!comment) { commentErrEl.style.display = 'block'; hasError = true; }
-  else           { commentErrEl.style.display = 'none'; }
+  if (!comment)      { commentErrEl.style.display = 'block'; hasError = true; }
+  else               { commentErrEl.style.display = 'none'; }
+  if (!rueckmeldung) { rueckmErrEl.style.display = 'block'; hasError = true; }
+  else               { rueckmErrEl.style.display = 'none'; }
+  if (!antwort)      { antwortErrEl.style.display = 'block'; hasError = true; }
+  else               { antwortErrEl.style.display = 'none'; }
   if (!bezeichnung || !zahnRegion || !material || !praxis) { metaErrEl.style.display = 'block'; hasError = true; }
-  else                                                     { metaErrEl.style.display = 'none'; }
+  else               { metaErrEl.style.display = 'none'; }
   if (hasError) return;
 
-  labComment = comment;
+  labComment         = comment;
+  praxisRueckmeldung = rueckmeldung;
+  praxisVideoLink    = document.getElementById('praxis-video-link').value.trim();
+  praxisAntwort      = antwort;
+  praxisAntwortStatus = document.getElementById('praxis-antwort-status').value;
   caseMetadata = { bezeichnung, zahnRegion, material, praxis };
   disposeViewer();
   document.getElementById('phase-visual').style.display = 'none';
@@ -1047,6 +1228,7 @@ function confirmLocalDecision() {
   document.getElementById('nachweis-grundlage').textContent = grundlage;
   document.getElementById('nachweis-visual').textContent = t.viewerLabelLocal + ' · ' + na(caseMetadata.bezeichnung || currentFilename);
   document.getElementById('nachweis-kommentar').textContent = na(labComment);
+  fillPraxisNachweisRows();
   document.getElementById('nachweis-person').textContent = t.nachweisPersonValue;
   buildVerlauf(_ts);
 
@@ -1123,6 +1305,7 @@ function showResultBlocked(filename) {
   document.getElementById('nachweis-grundlage').textContent = t.decisionBlockedExplanation;
   document.getElementById('nachweis-visual').textContent = t.visualClarificationSummary + ' · ' + c.proc;
   document.getElementById('nachweis-kommentar').textContent = na(labComment);
+  fillPraxisNachweisRows();
   document.getElementById('nachweis-person').textContent = t.nachweisPersonValue;
   buildVerlauf(_tsBlocked);
 
@@ -1189,6 +1372,7 @@ function showResult(filename) {
   document.getElementById('nachweis-grundlage').textContent = nachweisGrundlage;
   document.getElementById('nachweis-visual').textContent = t.visualClarificationSummary + ' · ' + c.proc;
   document.getElementById('nachweis-kommentar').textContent = na(labComment);
+  fillPraxisNachweisRows();
   document.getElementById('nachweis-person').textContent = t.nachweisPersonValue;
   buildVerlauf(_tsResult);
 
@@ -1245,6 +1429,10 @@ function resetDemo() {
   selectedDecision = null;
   labComment = '';
   caseMetadata = {bezeichnung:'',zahnRegion:'',material:'',praxis:''};
+  praxisRueckmeldung = '';
+  praxisVideoLink = '';
+  praxisAntwort = '';
+  praxisAntwortStatus = '';
   _pendingBuffer = null;
   _receiptTime = null;
   caseId = null;
@@ -1257,6 +1445,10 @@ function resetDemo() {
   document.getElementById('phase-decision').style.display = 'none';
   document.getElementById('phase-upload').style.display = 'block';
   document.getElementById('lab-comment').value = '';
+  document.getElementById('praxis-rueckmeldung').value = '';
+  document.getElementById('praxis-video-link').value = '';
+  document.getElementById('praxis-antwort').value = '';
+  document.getElementById('praxis-antwort-status').value = '';
   document.getElementById('meta-bezeichnung').value = '';
   document.getElementById('meta-zahn').value = '';
   document.getElementById('meta-material').value = '';
@@ -1264,13 +1456,19 @@ function resetDemo() {
   document.getElementById('proof-section').style.display = 'none';
   document.getElementById('proof-receipt-json').textContent = '';
   document.getElementById('comment-error').style.display = 'none';
+  document.getElementById('rueckmeldung-error').style.display = 'none';
+  document.getElementById('praxis-antwort-error').style.display = 'none';
   document.getElementById('meta-error').style.display = 'none';
   document.getElementById('stl-loaded-banner').style.display = 'none';
   document.getElementById('copy-confirm').style.display = 'none';
+  document.getElementById('praxis-copy-confirm').style.display = 'none';
+  document.getElementById('praxis-request-copy-confirm').style.display = 'none';
   document.getElementById('copy-fallback').style.display = 'none';
   document.getElementById('copy-fallback-textarea').value = '';
   document.getElementById('verlauf-section').style.display = 'none';
   document.getElementById('verlauf-rows').innerHTML = '';
+  document.getElementById('nachweis-praxis-video-row').style.display = 'none';
+  if (document.getElementById('praxis-section')) document.getElementById('praxis-video-row').style.display = 'none';
 }
 
 function copyReceipt() {
@@ -1284,7 +1482,9 @@ function copyReceipt() {
     ['Material',                              document.getElementById('nachweis-material').textContent],
     ['Praxis / Kunde',                        document.getElementById('nachweis-praxis').textContent],
     ['Visuelle Klärung',                      document.getElementById('nachweis-visual').textContent],
-    ['Hinweis an die Praxis / Laborkommentar',document.getElementById('nachweis-kommentar').textContent],
+    ['Laborerklärung an die Praxis',           document.getElementById('nachweis-kommentar').textContent],
+    ['Praxis-Rückmeldung',                    document.getElementById('nachweis-praxis-antwort').textContent],
+    ['Rückmeldung-Status',                    document.getElementById('nachweis-praxis-antwort-status').textContent],
     ['Entscheidung',                          document.getElementById('nachweis-decision').textContent],
     ['Zeitpunkt',                             document.getElementById('audit-time').textContent],
     ['Verantwortliche Person',                document.getElementById('nachweis-person').textContent],
@@ -1327,6 +1527,106 @@ function showCopyFallback(text) {
   document.getElementById('copy-fallback').style.display = 'block';
   ta.focus();
   ta.select();
+}
+
+function fillPraxisNachweisRows() {
+  const t = T[lang];
+  document.getElementById('nachweis-praxis-rueckmeldung').textContent = na(praxisRueckmeldung);
+  if (praxisVideoLink) {
+    document.getElementById('nachweis-praxis-video').textContent = praxisVideoLink;
+    document.getElementById('nachweis-praxis-video-row').style.display = '';
+  } else {
+    document.getElementById('nachweis-praxis-video-row').style.display = 'none';
+  }
+  document.getElementById('nachweis-praxis-antwort').textContent = na(praxisAntwort);
+  const statusLabels = {confirm: t.statusConfirm, correction: t.statusCorrection, open: t.statusOpen};
+  document.getElementById('nachweis-praxis-antwort-status').textContent = praxisAntwortStatus ? (statusLabels[praxisAntwortStatus] || praxisAntwortStatus) : t.statusSelect;
+  fillPraxisSection();
+}
+
+function fillPraxisSection() {
+  document.getElementById('praxis-fall').textContent = na(caseMetadata.bezeichnung);
+  document.getElementById('praxis-zahn').textContent = na(caseMetadata.zahnRegion);
+  document.getElementById('praxis-material').textContent = na(caseMetadata.material);
+  document.getElementById('praxis-erklaerung').textContent = na(labComment);
+  document.getElementById('praxis-aktion').textContent = na(praxisRueckmeldung);
+  if (praxisVideoLink) {
+    document.getElementById('praxis-video-nachweis').textContent = praxisVideoLink;
+    document.getElementById('praxis-video-row').style.display = '';
+  } else {
+    document.getElementById('praxis-video-row').style.display = 'none';
+  }
+  document.getElementById('praxis-entscheidung').textContent = document.getElementById('nachweis-decision').textContent;
+}
+
+function copyPracticeRequest() {
+  const t = T[lang];
+  const bezeichnung = document.getElementById('meta-bezeichnung').value.trim() || na('');
+  const zahnRegion  = document.getElementById('meta-zahn').value.trim() || na('');
+  const material    = document.getElementById('meta-material').value.trim() || na('');
+  const comment     = document.getElementById('lab-comment').value.trim() || na('');
+  const aktion      = document.getElementById('praxis-rueckmeldung').value.trim() || na('');
+  const video       = document.getElementById('praxis-video-link').value.trim();
+  const lines = [
+    t.copyPracticeRequestHeader,
+    '',
+    t.praxisFallLbl + ': ' + bezeichnung,
+    t.praxisZahnLbl + ': ' + zahnRegion,
+    t.praxisMaterialLbl + ': ' + material,
+    '',
+    t.praxisErklaerungLbl + ': ' + comment,
+    t.praxisAktionLbl + ': ' + aktion,
+  ];
+  if (video) lines.push(t.praxisVideoNachweisLbl + ': ' + video);
+  lines.push('');
+  lines.push(t.copyPracticeRequestPrompt);
+  lines.push('');
+  lines.push(t.copyPracticeRequestSafety);
+  const text = lines.join('\n');
+  const confirmEl  = document.getElementById('praxis-request-copy-confirm');
+  const fallbackEl = document.getElementById('copy-fallback');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      confirmEl.textContent = t.praxisRequestCopiedConfirm;
+      confirmEl.style.display = 'inline';
+      fallbackEl.style.display = 'none';
+      setTimeout(function() { confirmEl.style.display = 'none'; }, 3000);
+    }, function() { showCopyFallback(text); });
+  } else {
+    showCopyFallback(text);
+  }
+}
+
+function copyPracticeExplanation() {
+  const t = T[lang];
+  const lines = [
+    'PRAXIS-ERKLÄRUNG',
+    '',
+    'Fall: ' + na(caseMetadata.bezeichnung),
+    'Zahn / Region: ' + na(caseMetadata.zahnRegion),
+    'Material: ' + na(caseMetadata.material),
+    '',
+    'Laborerklärung: ' + na(labComment),
+    'Was soll die Praxis tun: ' + na(praxisRueckmeldung),
+  ];
+  if (praxisVideoLink) lines.push('Video: ' + praxisVideoLink);
+  lines.push('');
+  lines.push('Entscheidung: ' + document.getElementById('nachweis-decision').textContent);
+  lines.push('');
+  lines.push(t.praxisSafetyNote);
+  const text = lines.join('\n');
+  const confirmEl  = document.getElementById('praxis-copy-confirm');
+  const fallbackEl = document.getElementById('copy-fallback');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      confirmEl.textContent = t.praxisCopiedConfirm;
+      confirmEl.style.display = 'inline';
+      fallbackEl.style.display = 'none';
+      setTimeout(function() { confirmEl.style.display = 'none'; }, 3000);
+    }, function() { showCopyFallback(text); });
+  } else {
+    showCopyFallback(text);
+  }
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }

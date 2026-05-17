@@ -153,13 +153,13 @@ async fn reviewer_upload_privacy_and_demo_notice_present() {
     assert!(html.contains("Demo-Fall ansehen"),                   "demo button label must be 'Demo-Fall ansehen'");
 }
 
-/// Workflow intro line must be the assistant-friendly single sentence.
+/// Workflow intro line must clearly identify lab as the actor.
 #[tokio::test]
 async fn reviewer_intro_line_assistant_friendly() {
     let tmp = tempfile::TempDir::new().unwrap();
     let (_, html) = get_html(make_app(&tmp), "/reviewer").await;
-    assert!(html.contains("STL-Datei hochladen"),                 "DE intro line must mention STL-Datei hochladen");
-    assert!(html.contains("Entscheidung vor Herstellung festhalten"), "DE intro line must mention Entscheidung vor Herstellung festhalten");
+    assert!(html.contains("Laboransicht"),                            "DE intro line must begin with Laboransicht");
+    assert!(html.contains("Entscheidung vor Herstellung dokumentieren"), "DE intro line must mention Entscheidung vor Herstellung dokumentieren");
 }
 
 /// STL loaded banner must be present in the visual phase.
@@ -194,8 +194,8 @@ async fn reviewer_nachweis_headline_and_subtitle_present() {
     assert!(html.contains("Entscheidungsnachweis erstellt"),  "DE receipt headline must read 'Entscheidungsnachweis erstellt'");
     assert!(html.contains("Decision record created"),          "EN receipt headline must read 'Decision record created'");
     assert!(html.contains("t-nachweis-subtitle"),              "t-nachweis-subtitle id must be present");
-    assert!(html.contains("Dieser Nachweis dokumentiert"),     "DE nachweis subtitle must be present");
-    assert!(html.contains("This record documents"),            "EN nachweis subtitle must be present");
+    assert!(html.contains("Dokumentiert, was gepr"),           "DE nachweis subtitle must be present");
+    assert!(html.contains("Documents what was reviewed"),      "EN nachweis subtitle must be present");
 }
 
 /// Demo file button must use Zahn 36 filename (not old 3-6 range notation).
@@ -231,15 +231,16 @@ async fn reviewer_shell_visual_step_present() {
     let (status, html) = get_html(make_app(&tmp), "/reviewer").await;
     assert_eq!(status, StatusCode::OK);
 
-    assert!(html.contains("phase-visual"),                     "phase-visual id must be present");
-    assert!(html.contains("Visuelle Klärung vor Herstellung"), "visual step title must be present");
-    assert!(html.contains("Demo-Ansicht:"),                "visual placeholder hint must be present");
-    assert!(html.contains("Keine automatische technische"), "visual disclaimer must be present");
-    assert!(html.contains("id=\"lab-comment\""),               "lab-comment textarea id must be present");
-    assert!(html.contains("Hinweis an die Praxis"),               "lab comment label must be present");
-    assert!(html.contains("Was soll vor Herstellung"),            "lab comment subtext must be present");
-    assert!(html.contains("proceedToDecision"),                "proceedToDecision JS function must be present");
-    assert!(html.contains("showVisualStep"),                   "showVisualStep JS function must be present");
+    assert!(html.contains("phase-visual"),                         "phase-visual id must be present");
+    assert!(html.contains("Schritt 1"),                            "visual step must be labelled Schritt 1");
+    assert!(html.contains("Laborfall"),                            "visual step title must mention Laborfall");
+    assert!(html.contains("Demo-Ansicht:"),                        "visual placeholder hint must be present");
+    assert!(html.contains("Keine automatische technische"),        "visual disclaimer must be present");
+    assert!(html.contains("id=\"lab-comment\""),                   "lab-comment textarea id must be present");
+    assert!(html.contains("Kurze Laborerkl"),                      "lab comment label must be present");
+    assert!(html.contains("Formulieren Sie kurz"),                 "praxis-erklaerung subtext must be present");
+    assert!(html.contains("proceedToDecision"),                    "proceedToDecision JS function must be present");
+    assert!(html.contains("showVisualStep"),                       "showVisualStep JS function must be present");
 }
 
 /// Visual step must show a Zahn 36 placeholder so the demo always represents
@@ -536,15 +537,23 @@ fn empty_comment_blocks_proceed_to_decision() {
         "comment-error element id must be present"
     );
     assert!(
-        REVIEWER_HTML.contains("Bitte Hinweis an die Praxis erg"),
-        "comment-error message must include 'Bitte Hinweis an die Praxis ergänzen'"
+        REVIEWER_HTML.contains("Bitte Laborerkl"),
+        "comment-error message must mention Laborerklärung"
     );
     // proceedToDecision must guard on an empty comment
     let proc_pos = REVIEWER_HTML.find("function proceedToDecision()").unwrap();
-    let after = &REVIEWER_HTML[proc_pos..proc_pos + 1100];
+    let after = &REVIEWER_HTML[proc_pos..proc_pos + 1600];
     assert!(
         after.contains("comment-error"),
         "proceedToDecision must reference comment-error to block empty submissions"
+    );
+    assert!(
+        after.contains("rueckmeldung-error"),
+        "proceedToDecision must reference rueckmeldung-error to block empty submissions"
+    );
+    assert!(
+        after.contains("praxis-antwort-error"),
+        "proceedToDecision must reference praxis-antwort-error to block missing response"
     );
     assert!(
         after.contains("if (hasError) return"),
@@ -564,7 +573,7 @@ fn empty_metadata_blocks_proceed_to_decision() {
         "meta-error message must include 'Bitte Falldaten vollständig ausfüllen'"
     );
     let proc_pos = REVIEWER_HTML.find("function proceedToDecision()").unwrap();
-    let after = &REVIEWER_HTML[proc_pos..proc_pos + 600];
+    let after = &REVIEWER_HTML[proc_pos..proc_pos + 1200];
     assert!(
         after.contains("meta-error"),
         "proceedToDecision must reference meta-error to block incomplete metadata"
@@ -828,24 +837,26 @@ fn reviewer_verlauf_local_note_present() {
     );
 }
 
-/// All 5 DE event labels must be present in the translation table.
+/// All 6 DE event labels must be present in the translation table.
 #[test]
 fn reviewer_verlauf_de_event_labels_present() {
     assert!(REVIEWER_HTML.contains("STL-Datei lokal geladen"),                   "DE event 1 label must be present");
-    assert!(REVIEWER_HTML.contains("Visuelle Kl\u{00e4}rung ge\u{00f6}ffnet"),  "DE event 2 label must be present");
-    assert!(REVIEWER_HTML.contains("Hinweis an die Praxis dokumentiert"),        "DE event 3 label must be present");
-    assert!(REVIEWER_HTML.contains("Entscheidung vor Herstellung festgehalten"), "DE event 4 label must be present");
-    assert!(REVIEWER_HTML.contains("Entscheidungsnachweis erstellt"),            "DE event 5 label must be present");
+    assert!(REVIEWER_HTML.contains("Laborfall visuell gepr\u{00fc}ft"),          "DE event 2 label must be present");
+    assert!(REVIEWER_HTML.contains("Praxis-Anfrage vorbereitet"),                "DE event 3 label must be present");
+    assert!(REVIEWER_HTML.contains("Praxis-R\u{00fc}ckmeldung dokumentiert"),    "DE event 4 label must be present");
+    assert!(REVIEWER_HTML.contains("Entscheidung vor Herstellung festgehalten"), "DE event 5 label must be present");
+    assert!(REVIEWER_HTML.contains("Entscheidungsnachweis erstellt"),            "DE event 6 label must be present");
 }
 
-/// All 5 EN event labels must be present in the translation table.
+/// All 6 EN event labels must be present in the translation table.
 #[test]
 fn reviewer_verlauf_en_event_labels_present() {
     assert!(REVIEWER_HTML.contains("STL file loaded locally"),                   "EN event 1 label must be present");
-    assert!(REVIEWER_HTML.contains("Visual clarification opened"),               "EN event 2 label must be present");
-    assert!(REVIEWER_HTML.contains("Note to practice documented"),               "EN event 3 label must be present");
-    assert!(REVIEWER_HTML.contains("Decision before manufacturing recorded"),    "EN event 4 label must be present");
-    assert!(REVIEWER_HTML.contains("Decision record created"),                   "EN event 5 label must be present");
+    assert!(REVIEWER_HTML.contains("Lab case reviewed visually"),                "EN event 2 label must be present");
+    assert!(REVIEWER_HTML.contains("Practice query prepared"),                   "EN event 3 label must be present");
+    assert!(REVIEWER_HTML.contains("Practice response documented"),              "EN event 4 label must be present");
+    assert!(REVIEWER_HTML.contains("Decision before manufacturing recorded"),    "EN event 5 label must be present");
+    assert!(REVIEWER_HTML.contains("Decision record created"),                   "EN event 6 label must be present");
 }
 
 /// buildVerlauf JS function must be defined and populate verlauf-rows.
@@ -896,6 +907,191 @@ fn reviewer_safety_note_unchanged_after_verlauf() {
         REVIEWER_HTML.contains("PostCAD does not detect medical or technical errors and does not release manufacturing."),
         "EN safety note must be unchanged"
     );
+}
+
+// ── Praxis-Erklärung section tests ───────────────────────────────────────────
+
+/// Praxis-Erklärung section must be present in the visual phase with simplified fields.
+#[test]
+fn reviewer_praxiserklaerung_section_present() {
+    assert!(REVIEWER_HTML.contains("praxiserklaerung-section"),              "praxiserklaerung-section id must be present");
+    assert!(REVIEWER_HTML.contains("t-praxiserklaerung-badge"),              "t-praxiserklaerung-badge id must be present");
+    assert!(REVIEWER_HTML.contains("Schritt 2"),                              "Schritt 2 badge must be present");
+    assert!(REVIEWER_HTML.contains("t-praxiserklaerung-sub"),                "t-praxiserklaerung-sub id must be present");
+    assert!(REVIEWER_HTML.contains("Formulieren Sie kurz"),                  "DE section subtext must be present");
+    assert!(REVIEWER_HTML.contains("praxis-rueckmeldung"),                   "praxis-rueckmeldung textarea id must be present");
+    assert!(REVIEWER_HTML.contains("praxis-video-link"),                     "praxis-video-link input id must be present");
+    assert!(REVIEWER_HTML.contains("Kurze Laborerkl"),                       "DE lab explanation label must be present");
+    assert!(REVIEWER_HTML.contains("Was soll die Praxis tun"),               "DE practice action label must be present");
+    assert!(REVIEWER_HTML.contains("Video-Link optional"),                   "DE video link label must be present");
+    assert!(REVIEWER_HTML.contains("rueckmeldung-error"),                    "rueckmeldung-error id must be present for validation");
+}
+
+/// Reviewer must be clearly labelled as a lab tool in intro, step badges, and hints.
+#[test]
+fn reviewer_lab_first_wording_present() {
+    // Intro
+    assert!(REVIEWER_HTML.contains("Laboransicht"),               "intro must identify lab as actor");
+    assert!(REVIEWER_HTML.contains("Lab view"),                   "EN intro must say Lab view");
+    // Numbered steps
+    assert!(REVIEWER_HTML.contains("Schritt 1"),                  "visual step must carry Schritt 1 badge");
+    assert!(REVIEWER_HTML.contains("Step 1"),                     "EN visual step must carry Step 1 badge");
+    assert!(REVIEWER_HTML.contains("Schritt 2"),                  "explanation step must carry Schritt 2 badge");
+    assert!(REVIEWER_HTML.contains("Step 2"),                     "EN explanation step must carry Step 2 badge");
+    assert!(REVIEWER_HTML.contains("Schritt 3"),                  "decision step must carry Schritt 3 badge");
+    assert!(REVIEWER_HTML.contains("Step 3"),                     "EN decision step must carry Step 3 badge");
+    // Decision actor wording
+    assert!(REVIEWER_HTML.contains("Das Labor dokumentiert"),     "decision hints must explicitly name Das Labor");
+    assert!(REVIEWER_HTML.contains("The lab documents"),          "EN decision hints must explicitly name The lab");
+    // Result subtexts
+    assert!(REVIEWER_HTML.contains("t-praxis-section-sub"),       "t-praxis-section-sub id must be present");
+    assert!(REVIEWER_HTML.contains("ohne STL interpretieren"),    "praxis section subtext must be present");
+    assert!(REVIEWER_HTML.contains("no need to interpret the STL"), "EN praxis section subtext must be present");
+    // Verlauf event 3 description
+    assert!(REVIEWER_HTML.contains("Das Labor hat eine R\u{00fc}ckfrage"), "Verlauf event 3 must attribute action to Das Labor");
+    assert!(REVIEWER_HTML.contains("The lab prepared"),            "EN Verlauf event 3 must attribute action to The lab");
+}
+
+/// Video link field must be a text/url input — not a file upload.
+#[test]
+fn reviewer_praxiserklaerung_video_link_is_link_only() {
+    assert!(REVIEWER_HTML.contains("praxis-video-link"),  "praxis-video-link must be present");
+    assert!(
+        !REVIEWER_HTML.contains(r#"id="praxis-video-link" type="file""#),
+        "praxis-video-link must not be a file input"
+    );
+    assert!(
+        REVIEWER_HTML.contains("Optional"),
+        "video link field must be marked as optional"
+    );
+}
+
+/// Praxis-Erklärung kopieren button must be present with correct callback.
+#[test]
+fn reviewer_praxiserklaerung_copy_button_present() {
+    assert!(REVIEWER_HTML.contains("copyPracticeExplanation()"),   "copy button must call copyPracticeExplanation()");
+    assert!(REVIEWER_HTML.contains("t-copy-practice-btn"),         "t-copy-practice-btn translation id must be present");
+    assert!(REVIEWER_HTML.contains("praxis-copy-confirm"),         "praxis-copy-confirm element must be present");
+    assert!(REVIEWER_HTML.contains("Praxis-Text kopieren"), "DE copy practice button label must be present");
+}
+
+/// copyPracticeExplanation function must be defined and use clipboard API.
+#[test]
+fn reviewer_copy_practice_explanation_function_present() {
+    assert!(REVIEWER_HTML.contains("function copyPracticeExplanation()"), "copyPracticeExplanation JS function must be defined");
+    assert!(REVIEWER_HTML.contains("fillPraxisSection"),                  "fillPraxisSection helper must be defined");
+    assert!(
+        REVIEWER_HTML.contains("function copyPracticeExplanation()") &&
+        REVIEWER_HTML.contains("navigator.clipboard"),
+        "copyPracticeExplanation must attempt clipboard API"
+    );
+}
+
+/// Copied practice explanation must include the safety wording for the practice.
+#[test]
+fn reviewer_copy_practice_explanation_includes_safety_wording() {
+    let pos = REVIEWER_HTML.find("function copyPracticeExplanation()").expect("copyPracticeExplanation must be defined");
+    let snippet = &REVIEWER_HTML[pos..pos + 2000];
+    assert!(snippet.contains("praxisSafetyNote"),  "copyPracticeExplanation must append t.praxisSafetyNote");
+    assert!(
+        REVIEWER_HTML.contains("Diese Erkl\u{00e4}rung ersetzt keine medizinische"),
+        "DE praxisSafetyNote text must be present in T strings"
+    );
+    assert!(
+        REVIEWER_HTML.contains("This explanation does not replace medical"),
+        "EN praxisSafetyNote text must be present in T strings"
+    );
+}
+
+/// Result phase must include both practice-facing and internal nachweis sections.
+#[test]
+fn reviewer_receipt_includes_praxiserklaerung_rows() {
+    assert!(REVIEWER_HTML.contains("praxis-section"),              "praxis-section id must be present in result");
+    assert!(REVIEWER_HTML.contains("praxis-erklaerung"),           "praxis-erklaerung id must be present for practice display");
+    assert!(REVIEWER_HTML.contains("praxis-aktion"),               "praxis-aktion id must be present for practice display");
+    assert!(REVIEWER_HTML.contains("praxis-video-row"),            "praxis-video-row id must be present (conditional)");
+    assert!(REVIEWER_HTML.contains("nachweis-praxis-rueckmeldung"),"nachweis-praxis-rueckmeldung id must be present in internal nachweis");
+    assert!(REVIEWER_HTML.contains("nachweis-praxis-video-row"),   "nachweis-praxis-video-row id must be present in internal nachweis");
+    assert!(REVIEWER_HTML.contains("t-intern-nachweis-badge"),     "intern nachweis badge must be present");
+}
+
+/// Praxis-Anfrage kopieren button must be present in the explanation step.
+#[test]
+fn reviewer_copy_practice_request_button_present() {
+    assert!(REVIEWER_HTML.contains("copyPracticeRequest()"),         "copy button must call copyPracticeRequest()");
+    assert!(REVIEWER_HTML.contains("t-copy-practice-request-btn"),   "t-copy-practice-request-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("praxis-request-copy-confirm"),   "praxis-request-copy-confirm confirm element must be present");
+    assert!(REVIEWER_HTML.contains("Praxis-Anfrage kopieren"),       "DE copy practice request button label must be present");
+    assert!(REVIEWER_HTML.contains("Copy practice query"),           "EN copy practice request button label must be present");
+}
+
+/// copyPracticeRequest function must be defined and include required text.
+#[test]
+fn reviewer_copy_practice_request_function_present() {
+    assert!(REVIEWER_HTML.contains("function copyPracticeRequest()"), "copyPracticeRequest JS function must be defined");
+    let pos = REVIEWER_HTML.find("function copyPracticeRequest()").expect("copyPracticeRequest must be defined");
+    let snippet = &REVIEWER_HTML[pos..pos + 2000];
+    assert!(snippet.contains("navigator.clipboard"),           "copyPracticeRequest must attempt clipboard API");
+    assert!(snippet.contains("copyPracticeRequestPrompt"),     "copyPracticeRequest must include the confirmation request prompt");
+    assert!(snippet.contains("copyPracticeRequestSafety"),     "copyPracticeRequest must include safety wording");
+}
+
+/// The copied practice request must include the safety wording.
+#[test]
+fn reviewer_copy_practice_request_includes_safety_wording() {
+    assert!(
+        REVIEWER_HTML.contains("Diese Nachricht ersetzt keine medizinische"),
+        "DE copyPracticeRequestSafety text must be present in T strings"
+    );
+    assert!(
+        REVIEWER_HTML.contains("This message does not replace medical"),
+        "EN copyPracticeRequestSafety text must be present in T strings"
+    );
+    assert!(
+        REVIEWER_HTML.contains("Bitte best\u{00e4}tigen Sie kurz"),
+        "DE copyPracticeRequestPrompt confirmation request must be present"
+    );
+}
+
+/// Practice response documentation section (Step 3) must be present.
+#[test]
+fn reviewer_practice_response_section_present() {
+    assert!(REVIEWER_HTML.contains("praxis-rueckmeldung-section"),    "praxis-rueckmeldung-section id must be present");
+    assert!(REVIEWER_HTML.contains("t-praxis-rueckmeldung-badge"),    "t-praxis-rueckmeldung-badge id must be present");
+    assert!(REVIEWER_HTML.contains("Schritt 3"),                      "Step 3 badge must be present");
+    assert!(REVIEWER_HTML.contains("Step 3"),                         "EN Step 3 badge must be present");
+    assert!(REVIEWER_HTML.contains("praxis-antwort"),                 "praxis-antwort textarea id must be present");
+    assert!(REVIEWER_HTML.contains("praxis-antwort-status"),          "praxis-antwort-status select id must be present");
+    assert!(REVIEWER_HTML.contains("praxis-antwort-error"),           "praxis-antwort-error validation element must be present");
+    assert!(REVIEWER_HTML.contains("Praxis best\u{00e4}tigt Fortsetzung"), "DE confirm status option must be present");
+    assert!(REVIEWER_HTML.contains("Practice confirms continuation"), "EN confirm status option must be present");
+}
+
+/// Internal nachweis must include practice response rows.
+#[test]
+fn reviewer_internal_proof_includes_practice_response() {
+    assert!(REVIEWER_HTML.contains("nachweis-praxis-antwort"),        "nachweis-praxis-antwort id must be present in internal nachweis");
+    assert!(REVIEWER_HTML.contains("nachweis-praxis-antwort-status"), "nachweis-praxis-antwort-status id must be present");
+    assert!(REVIEWER_HTML.contains("t-nachweis-praxis-antwort-lbl"),  "t-nachweis-praxis-antwort-lbl id must be present");
+    assert!(REVIEWER_HTML.contains("Praxis-R\u{00fc}ckmeldung"),      "DE practice response label must be present in nachweis");
+    assert!(REVIEWER_HTML.contains("Practice response"),              "EN practice response label must be present in nachweis");
+}
+
+/// Step 4 decision wording must be present.
+#[test]
+fn reviewer_step4_decision_wording_present() {
+    assert!(REVIEWER_HTML.contains("Schritt 4"),                           "decision section must carry Schritt 4 badge");
+    assert!(REVIEWER_HTML.contains("Step 4"),                              "EN decision section must carry Step 4 badge");
+    assert!(REVIEWER_HTML.contains("Entscheidung vor Herstellung dokumentieren"), "decision section title must be present");
+}
+
+/// Verlauf must include Praxis-Anfrage and Praxis-Rückmeldung events.
+#[test]
+fn reviewer_verlauf_includes_practice_handoff_events() {
+    assert!(REVIEWER_HTML.contains("Praxis-Anfrage vorbereitet"),            "DE Praxis-Anfrage event must be in verlauf");
+    assert!(REVIEWER_HTML.contains("Practice query prepared"),               "EN practice query event must be in verlauf");
+    assert!(REVIEWER_HTML.contains("Praxis-R\u{00fc}ckmeldung dokumentiert"),"DE Praxis-Rückmeldung event must be in verlauf");
+    assert!(REVIEWER_HTML.contains("Practice response documented"),          "EN practice response event must be in verlauf");
 }
 
 /// Full pilot workflow: route → dispatch → approve → export.

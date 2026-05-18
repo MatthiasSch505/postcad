@@ -162,6 +162,10 @@ main{width:100%;max-width:560px}
 .verlauf-row-lbl{font-size:.88rem;font-weight:600;color:var(--sub)}
 .verlauf-row-desc{font-size:.76rem;color:var(--dim);line-height:1.4;margin-top:2px}
 .verlauf-row-time{font-size:.72rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;white-space:nowrap;padding-top:2px}
+
+/* Erklärclip */
+.erklarclip-section{border-top:1px solid var(--border);padding-top:14px;margin-top:14px}
+.clip-status-line{font-size:.78rem;margin-top:6px;color:var(--sub)}
 </style>
 </head>
 <body>
@@ -277,6 +281,18 @@ main{width:100%;max-width:560px}
       <div class="comment-row">
         <label class="comment-label" id="t-praxis-video-label" for="praxis-video-link">Video-Link optional</label>
         <input class="praxis-video-input" id="praxis-video-link" type="text" placeholder="Optional: Link zu kurzem Erkl&#228;rungsvideo">
+      </div>
+      <div class="erklarclip-section" id="erklarclip-section">
+        <div class="praxiserklaerung-badge" id="t-erklarclip-badge">Erkl&#228;rclip optional</div>
+        <div class="comment-sub" id="t-erklarclip-sub">Nehmen Sie optional einen kurzen Clip der 3D-Ansicht mit Mikrofon auf. Die Datei bleibt lokal und kann anschlie&#223;end per bestehendem Kanal an die Praxis gesendet werden.</div>
+        <div id="clip-fallback" style="display:none;font-size:.78rem;color:var(--amber);margin-top:8px">Aufnahme im Browser nicht verf&#252;gbar. Bitte externen Video-Link einf&#252;gen.</div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="copy-btn" id="clip-record-btn" onclick="startClipRecording()"><span id="t-clip-record-btn">Erkl&#228;rclip aufnehmen</span></button>
+          <button class="copy-btn" id="clip-stop-btn" onclick="stopClipRecording()" style="display:none"><span id="t-clip-stop-btn">Aufnahme stoppen</span></button>
+          <button class="copy-btn" id="clip-download-btn" onclick="downloadClip()" style="display:none"><span id="t-clip-download-btn">Clip herunterladen</span></button>
+        </div>
+        <div id="clip-status" class="clip-status-line" style="display:none"></div>
+        <div class="comment-sub" id="t-clip-privacy" style="margin-top:6px">Der Clip wird nicht hochgeladen oder gespeichert.</div>
       </div>
       <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
         <button class="copy-btn" onclick="copyPracticeRequest()"><span id="t-copy-practice-request-btn">Praxis-Anfrage kopieren</span></button>
@@ -419,6 +435,7 @@ main{width:100%;max-width:560px}
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-kommentar-lbl">Laborkommentar</span><span class="audit-row-val" id="nachweis-kommentar"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-rueckmeldung-lbl">Was tun</span><span class="audit-row-val" id="nachweis-praxis-rueckmeldung"></span></div>
       <div class="audit-row" id="nachweis-praxis-video-row" style="display:none"><span class="audit-row-lbl" id="t-nachweis-video-lbl">Erklärungsvideo</span><span class="audit-row-val" id="nachweis-praxis-video"></span></div>
+      <div class="audit-row" id="nachweis-erklarclip-row"><span class="audit-row-lbl" id="t-nachweis-erklarclip-lbl">Erkl&#228;rclip</span><span class="audit-row-val" id="nachweis-erklarclip">Nicht angegeben</span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-praxis-antwort-lbl">Praxis-R&#252;ckmeldung</span><span class="audit-row-val" id="nachweis-praxis-antwort"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-praxis-antwort-status-lbl">R&#252;ckmeldung-Status</span><span class="audit-row-val" id="nachweis-praxis-antwort-status"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-person-lbl">Verantwortliche Person</span><span class="audit-row-val" id="nachweis-person"></span></div>
@@ -574,6 +591,18 @@ const T = {
     praxiserklaerungBadge: 'Schritt 2 · Praxis-Anfrage vorbereiten',
     praxiserklaerungSub: 'Formulieren Sie eine kurze Rückfrage, die anschließend per WhatsApp, E-Mail oder bestehendem Praxis-/Labor-Kanal gesendet werden kann.',
     copyRequestHelper: 'Die Anfrage wird kopiert und kann extern an die Praxis gesendet werden. PostCAD versendet noch nicht automatisch.',
+    erklarclipBadge: 'Erklärclip optional',
+    erklarclipSub: 'Nehmen Sie optional einen kurzen Clip der 3D-Ansicht mit Mikrofon auf. Die Datei bleibt lokal und kann anschließend per bestehendem Kanal an die Praxis gesendet werden.',
+    clipRecordBtn: 'Erklärclip aufnehmen',
+    clipStopBtn: 'Aufnahme stoppen',
+    clipDownloadBtn: 'Clip herunterladen',
+    clipRecording: 'Aufnahme läuft …',
+    clipReady: 'Erklärclip lokal erstellt · bitte extern an die Praxis anhängen',
+    clipPrivacy: 'Der Clip wird nicht hochgeladen oder gespeichert.',
+    clipFallback: 'Aufnahme im Browser nicht verfügbar. Bitte externen Video-Link einfügen.',
+    nachweisErklarclipLbl: 'Erklärclip',
+    clipRecordedNote: 'Erklärclip: lokal erstellt und als Datei beizufügen.',
+    clipLocalValue: 'Lokal erstellt · nicht serverseitig gespeichert',
     praxisRueckmeldungLabel: 'Was soll die Praxis tun?',
     praxisRueckmeldungPlaceholder: 'z. B. Bitte Bereich bestätigen oder neuen Scan senden.',
     praxisVideoLabel: 'Video-Link optional',
@@ -717,6 +746,18 @@ const T = {
     praxiserklaerungBadge: 'Step 2 · Prepare practice query',
     praxiserklaerungSub: 'Formulate a short query that can then be sent via WhatsApp, email, or the existing practice/lab channel.',
     copyRequestHelper: 'The query is copied and can be sent externally to the practice. PostCAD does not send automatically yet.',
+    erklarclipBadge: 'Explanation clip (optional)',
+    erklarclipSub: 'Optionally record a short clip of the 3D view with microphone audio. The file stays local and can be sent to the practice via the existing channel.',
+    clipRecordBtn: 'Record explanation clip',
+    clipStopBtn: 'Stop recording',
+    clipDownloadBtn: 'Download clip',
+    clipRecording: 'Recording …',
+    clipReady: 'Explanation clip created locally · please attach externally for the practice',
+    clipPrivacy: 'The clip is not uploaded or stored.',
+    clipFallback: 'Recording not available in this browser. Please enter an external video link.',
+    nachweisErklarclipLbl: 'Explanation clip',
+    clipRecordedNote: 'Explanation clip: created locally and to be attached as a file.',
+    clipLocalValue: 'Created locally · not stored server-side',
     praxisRueckmeldungLabel: 'What should the practice do?',
     praxisRueckmeldungPlaceholder: 'e.g. Please confirm the area or send a new scan.',
     praxisVideoLabel: 'Video link (optional)',
@@ -820,6 +861,12 @@ let praxisRueckmeldung = '';
 let praxisVideoLink = '';
 let praxisAntwort = '';
 let praxisAntwortStatus = '';
+let _clipBlobUrl = null;
+let _clipMediaRecorder = null;
+let _clipChunks = [];
+let _clipFilename = null;
+let _clipTimerInterval = null;
+let _clipSeconds = 0;
 const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null};
 const _orbit = {rotX:0.3,rotY:0.4,zoom:16,defaultZoom:16,dragging:false,lastX:0,lastY:0};
 
@@ -910,6 +957,13 @@ function setLang(l) {
   document.getElementById('t-status-open-opt').textContent = t.statusOpen;
   document.getElementById('t-copy-practice-request-btn').textContent = t.copyPracticeRequestBtn;
   document.getElementById('t-copy-request-helper').textContent = t.copyRequestHelper;
+  document.getElementById('t-erklarclip-badge').textContent = t.erklarclipBadge;
+  document.getElementById('t-erklarclip-sub').textContent = t.erklarclipSub;
+  document.getElementById('t-clip-record-btn').textContent = t.clipRecordBtn;
+  document.getElementById('t-clip-stop-btn').textContent = t.clipStopBtn;
+  document.getElementById('t-clip-download-btn').textContent = t.clipDownloadBtn;
+  document.getElementById('t-clip-privacy').textContent = t.clipPrivacy;
+  document.getElementById('t-nachweis-erklarclip-lbl').textContent = t.nachweisErklarclipLbl;
   document.getElementById('t-nachweis-praxis-antwort-lbl').textContent = t.nachweisAntwortLbl;
   document.getElementById('t-nachweis-praxis-antwort-status-lbl').textContent = t.nachweisAntwortStatusLbl;
   document.getElementById('t-praxis-fall-lbl').textContent = t.praxisFallLbl;
@@ -1476,6 +1530,18 @@ function resetDemo() {
   document.getElementById('verlauf-section').style.display = 'none';
   document.getElementById('verlauf-rows').innerHTML = '';
   document.getElementById('nachweis-praxis-video-row').style.display = 'none';
+  if (_clipTimerInterval) { clearInterval(_clipTimerInterval); _clipTimerInterval = null; }
+  if (_clipMediaRecorder && _clipMediaRecorder.state !== 'inactive') { _clipMediaRecorder.stop(); }
+  _clipMediaRecorder = null;
+  _clipChunks = [];
+  if (_clipBlobUrl) { URL.revokeObjectURL(_clipBlobUrl); _clipBlobUrl = null; }
+  _clipFilename = null;
+  _clipSeconds = 0;
+  document.getElementById('clip-record-btn').style.display = 'inline-block';
+  document.getElementById('clip-stop-btn').style.display = 'none';
+  document.getElementById('clip-download-btn').style.display = 'none';
+  document.getElementById('clip-status').style.display = 'none';
+  document.getElementById('clip-fallback').style.display = 'none';
   if (document.getElementById('praxis-section')) document.getElementById('praxis-video-row').style.display = 'none';
 }
 
@@ -1549,6 +1615,8 @@ function fillPraxisNachweisRows() {
   document.getElementById('nachweis-praxis-antwort').textContent = na(praxisAntwort);
   const statusLabels = {confirm: t.statusConfirm, correction: t.statusCorrection, open: t.statusOpen};
   document.getElementById('nachweis-praxis-antwort-status').textContent = praxisAntwortStatus ? (statusLabels[praxisAntwortStatus] || praxisAntwortStatus) : t.statusSelect;
+  const erklarclipVal = _clipBlobUrl ? t.clipLocalValue : praxisVideoLink ? praxisVideoLink : 'Nicht angegeben';
+  document.getElementById('nachweis-erklarclip').textContent = erklarclipVal;
   fillPraxisSection();
 }
 
@@ -1585,7 +1653,11 @@ function copyPracticeRequest() {
     t.praxisErklaerungLbl + ': ' + comment,
     t.praxisAktionLbl + ': ' + aktion,
   ];
-  if (video) lines.push(t.praxisVideoNachweisLbl + ': ' + video);
+  if (_clipBlobUrl) {
+    lines.push(t.clipRecordedNote);
+  } else if (video) {
+    lines.push(t.praxisVideoNachweisLbl + ': ' + video);
+  }
   lines.push('');
   lines.push(t.copyPracticeRequestPrompt);
   lines.push('');
@@ -1635,6 +1707,74 @@ function copyPracticeExplanation() {
   } else {
     showCopyFallback(text);
   }
+}
+
+async function startClipRecording() {
+  const canvas = document.getElementById('stl-canvas');
+  if (!window.MediaRecorder || !canvas.captureStream) { showClipFallback(); return; }
+  let audioStream = null;
+  try {
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) { showClipFallback(); return; }
+  if (_clipBlobUrl) { URL.revokeObjectURL(_clipBlobUrl); _clipBlobUrl = null; }
+  const videoStream = canvas.captureStream(25);
+  const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+  const mime = (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus'))
+    ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+  _clipChunks = [];
+  try { _clipMediaRecorder = new MediaRecorder(combined, {mimeType: mime}); }
+  catch(e) { showClipFallback(); audioStream.getAudioTracks().forEach(function(t){t.stop();}); return; }
+  _clipMediaRecorder.ondataavailable = function(e) { if (e.data && e.data.size > 0) _clipChunks.push(e.data); };
+  _clipMediaRecorder.onstop = function() {
+    const blob = new Blob(_clipChunks, {type: 'video/webm'});
+    _clipBlobUrl = URL.createObjectURL(blob);
+    _clipFilename = 'postcad-erklaerclip-' + (caseId || ('RC-' + Date.now())) + '.webm';
+    audioStream.getAudioTracks().forEach(function(t){t.stop();});
+    showClipReady();
+  };
+  _clipMediaRecorder.start();
+  _clipSeconds = 0;
+  _clipTimerInterval = setInterval(function() {
+    _clipSeconds++;
+    document.getElementById('clip-status').textContent = T[lang].clipRecording + ' ' + _clipSeconds + 's';
+    if (_clipSeconds >= 60) stopClipRecording();
+  }, 1000);
+  document.getElementById('clip-record-btn').style.display = 'none';
+  document.getElementById('clip-stop-btn').style.display = 'inline-block';
+  document.getElementById('clip-download-btn').style.display = 'none';
+  const statusEl = document.getElementById('clip-status');
+  statusEl.textContent = T[lang].clipRecording + ' 0s';
+  statusEl.style.display = 'block';
+}
+
+function stopClipRecording() {
+  if (_clipTimerInterval) { clearInterval(_clipTimerInterval); _clipTimerInterval = null; }
+  if (_clipMediaRecorder && _clipMediaRecorder.state !== 'inactive') _clipMediaRecorder.stop();
+}
+
+function downloadClip() {
+  if (!_clipBlobUrl) return;
+  const a = document.createElement('a');
+  a.href = _clipBlobUrl;
+  a.download = _clipFilename || 'postcad-erklaerclip.webm';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function showClipFallback() {
+  document.getElementById('clip-fallback').textContent = T[lang].clipFallback;
+  document.getElementById('clip-fallback').style.display = 'block';
+  document.getElementById('clip-record-btn').style.display = 'none';
+}
+
+function showClipReady() {
+  document.getElementById('clip-stop-btn').style.display = 'none';
+  document.getElementById('clip-record-btn').style.display = 'inline-block';
+  document.getElementById('clip-download-btn').style.display = 'inline-block';
+  const statusEl = document.getElementById('clip-status');
+  statusEl.textContent = T[lang].clipReady;
+  statusEl.style.display = 'block';
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }

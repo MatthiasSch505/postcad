@@ -1134,6 +1134,83 @@ fn reviewer_praxis_section_mentions_communication_channel() {
     assert!(REVIEWER_HTML.contains("existing communication channel"),  "EN praxis section must mention existing communication channel");
 }
 
+/// Erklärclip optional section must be present with badge, subtext, and buttons.
+#[test]
+fn reviewer_erklarclip_section_present() {
+    assert!(REVIEWER_HTML.contains("erklarclip-section"),           "erklarclip-section id must be present");
+    assert!(REVIEWER_HTML.contains("t-erklarclip-badge"),           "t-erklarclip-badge id must be present");
+    assert!(REVIEWER_HTML.contains("t-erklarclip-sub"),             "t-erklarclip-sub id must be present");
+    assert!(REVIEWER_HTML.contains("Erkl\u{00e4}rclip optional"),   "DE badge text must be present");
+    assert!(REVIEWER_HTML.contains("Explanation clip"),             "EN badge text must be present");
+    assert!(REVIEWER_HTML.contains("bleibt lokal"),                 "DE subtext must mention file stays local");
+}
+
+/// Record, stop, and download buttons must all be present.
+#[test]
+fn reviewer_erklarclip_buttons_present() {
+    assert!(REVIEWER_HTML.contains("clip-record-btn"),              "clip-record-btn id must be present");
+    assert!(REVIEWER_HTML.contains("clip-stop-btn"),                "clip-stop-btn id must be present");
+    assert!(REVIEWER_HTML.contains("clip-download-btn"),            "clip-download-btn id must be present");
+    assert!(REVIEWER_HTML.contains("t-clip-record-btn"),            "t-clip-record-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("t-clip-stop-btn"),              "t-clip-stop-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("t-clip-download-btn"),          "t-clip-download-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("Erkl\u{00e4}rclip aufnehmen"), "DE record button label must be present");
+    assert!(REVIEWER_HTML.contains("Aufnahme stoppen"),             "DE stop button label must be present");
+    assert!(REVIEWER_HTML.contains("Clip herunterladen"),           "DE download button label must be present");
+}
+
+/// MediaRecorder and canvas.captureStream logic must be present in startClipRecording.
+#[test]
+fn reviewer_erklarclip_recording_logic_present() {
+    assert!(REVIEWER_HTML.contains("function startClipRecording()"),  "startClipRecording function must be defined");
+    assert!(REVIEWER_HTML.contains("function stopClipRecording()"),   "stopClipRecording function must be defined");
+    assert!(REVIEWER_HTML.contains("function downloadClip()"),        "downloadClip function must be defined");
+    assert!(REVIEWER_HTML.contains("MediaRecorder"),                  "MediaRecorder must be referenced");
+    assert!(REVIEWER_HTML.contains("canvas.captureStream"),           "canvas.captureStream must be used");
+    assert!(REVIEWER_HTML.contains("getUserMedia"),                   "getUserMedia must be used for microphone");
+    assert!(REVIEWER_HTML.contains("postcad-erklaerclip-"),           "generated filename must contain postcad-erklaerclip-");
+    assert!(REVIEWER_HTML.contains(".webm"),                          "recording must target webm format");
+}
+
+/// Privacy wording must clearly state the clip is not uploaded or stored.
+#[test]
+fn reviewer_erklarclip_privacy_wording_present() {
+    assert!(REVIEWER_HTML.contains("t-clip-privacy"),                           "t-clip-privacy id must be present");
+    assert!(REVIEWER_HTML.contains("nicht hochgeladen oder gespeichert"),        "DE privacy text must be present");
+    assert!(REVIEWER_HTML.contains("not uploaded or stored"),                    "EN privacy text must be present");
+}
+
+/// copyPracticeRequest must include the recorded clip note when a clip exists.
+#[test]
+fn reviewer_copy_practice_request_includes_clip_note() {
+    let pos = REVIEWER_HTML.find("function copyPracticeRequest()").expect("copyPracticeRequest must be defined");
+    let snippet = &REVIEWER_HTML[pos..pos + 2400];
+    assert!(snippet.contains("_clipBlobUrl"),                      "copyPracticeRequest must check _clipBlobUrl");
+    assert!(snippet.contains("clipRecordedNote"),                   "copyPracticeRequest must include t.clipRecordedNote");
+    assert!(
+        REVIEWER_HTML.contains("lokal erstellt und als Datei beizuf"),
+        "DE clipRecordedNote text must be present in T strings"
+    );
+}
+
+/// Internal nachweis must include an Erklärclip row.
+#[test]
+fn reviewer_nachweis_includes_erklarclip_row() {
+    assert!(REVIEWER_HTML.contains("nachweis-erklarclip-row"),     "nachweis-erklarclip-row id must be present");
+    assert!(REVIEWER_HTML.contains("nachweis-erklarclip"),         "nachweis-erklarclip value span id must be present");
+    assert!(REVIEWER_HTML.contains("t-nachweis-erklarclip-lbl"),   "t-nachweis-erklarclip-lbl id must be present");
+    assert!(REVIEWER_HTML.contains("Erkl\u{00e4}rclip"),          "Erklärclip label must appear in nachweis section");
+}
+
+/// Fallback wording must be present for unsupported browsers.
+#[test]
+fn reviewer_erklarclip_fallback_present() {
+    assert!(REVIEWER_HTML.contains("clip-fallback"),                               "clip-fallback element id must be present");
+    assert!(REVIEWER_HTML.contains("function showClipFallback()"),                  "showClipFallback function must be defined");
+    assert!(REVIEWER_HTML.contains("im Browser nicht verf"),                        "DE fallback wording must be present");
+    assert!(REVIEWER_HTML.contains("Recording not available in this browser"),       "EN fallback wording must be present");
+}
+
 /// Full pilot workflow: route → dispatch → approve → export.
 ///
 /// Exercises the API backend that the reviewer demo calls.

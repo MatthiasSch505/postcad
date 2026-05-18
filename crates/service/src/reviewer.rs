@@ -179,7 +179,8 @@ main{width:100%;max-width:560px}
 
 <main>
 
-  <p class="intro-line" id="t-intro-line">Laboransicht: Fall pr&#252;fen, R&#252;ckfrage an die Praxis vorbereiten, Praxis-R&#252;ckmeldung dokumentieren und Entscheidung vor Herstellung festhalten.</p>
+  <p class="intro-line" id="t-intro-line">Laboransicht: Die Praxis sendet den Fall wie bisher. PostCAD beginnt, wenn das Labor vor Herstellung eine R&#252;ckfrage, R&#252;ckmeldung und Entscheidung sauber dokumentieren will.</p>
+  <p class="comment-sub" id="t-workflow-note" style="margin-bottom:20px">Typischer Ablauf: Fall erhalten &#x2192; Labor pr&#252;ft &#x2192; Praxis-Anfrage kopieren/senden &#x2192; Praxis-R&#252;ckmeldung dokumentieren &#x2192; Entscheidung festhalten.</p>
 
   <div id="phase-upload">
     <label class="upload-zone" id="upload-zone" for="file-input">
@@ -213,7 +214,7 @@ main{width:100%;max-width:560px}
     </div>
     <div class="gate-badge" id="t-visual-badge">VISUELLE KLÄRUNG</div>
     <div class="gate-title" id="t-visual-title">Schritt 1 &middot; Laborfall pr&#252;fen</div>
-    <div class="gate-sub" id="t-visual-sub">Das Labor pr&#252;ft den Fall visuell. Die Praxis muss die STL-Datei sp&#228;ter nicht selbst interpretieren.</div>
+    <div class="gate-sub" id="t-visual-sub">Das Labor pr&#252;ft den erhaltenen STL-/Scan-Fall. Die Praxis muss die STL-Datei sp&#228;ter nicht selbst interpretieren.</div>
     <div class="gate-case-ctx" id="visual-case-ctx"></div>
     <div class="ereignis-tag" id="t-ereignis-lbl">Ereignis 1 · Klärung vor Herstellung</div>
     <div class="stl-viewer-wrap" id="stl-viewer-wrap">
@@ -261,8 +262,8 @@ main{width:100%;max-width:560px}
     </div>
     <div class="gate-error" id="meta-error" style="display:none">Bitte Falldaten vollst&#228;ndig ausf&#252;llen.</div>
     <div class="praxiserklaerung-section" id="praxiserklaerung-section">
-      <div class="praxiserklaerung-badge" id="t-praxiserklaerung-badge">Schritt 2 &middot; R&#252;ckfrage an die Praxis vorbereiten</div>
-      <div class="comment-sub" id="t-praxiserklaerung-sub">Formulieren Sie kurz, was die Praxis vor Herstellung best&#228;tigen, korrigieren oder nachreichen soll.</div>
+      <div class="praxiserklaerung-badge" id="t-praxiserklaerung-badge">Schritt 2 &middot; Praxis-Anfrage vorbereiten</div>
+      <div class="comment-sub" id="t-praxiserklaerung-sub">Formulieren Sie eine kurze R&#252;ckfrage, die anschlie&#223;end per WhatsApp, E-Mail oder bestehendem Praxis-/Labor-Kanal gesendet werden kann.</div>
       <div class="comment-row" style="margin-top:14px">
         <label class="comment-label required" id="t-lab-comment-label" for="lab-comment">Kurze Laborerkl&#228;rung</label>
         <textarea class="comment-area" id="lab-comment" placeholder="z.&#x202F;B. Die Pr&#228;p.-Grenze ist distal an Zahn 36 nicht eindeutig nachvollziehbar."></textarea>
@@ -281,11 +282,12 @@ main{width:100%;max-width:560px}
         <button class="copy-btn" onclick="copyPracticeRequest()"><span id="t-copy-practice-request-btn">Praxis-Anfrage kopieren</span></button>
         <span class="copy-confirm" id="praxis-request-copy-confirm"></span>
       </div>
+      <div class="comment-sub" id="t-copy-request-helper" style="margin-top:8px">Die Anfrage wird kopiert und kann extern an die Praxis gesendet werden. PostCAD versendet noch nicht automatisch.</div>
     </div>
 
     <div class="praxiserklaerung-section" id="praxis-rueckmeldung-section">
-      <div class="praxiserklaerung-badge" id="t-praxis-rueckmeldung-badge">Schritt 3 &middot; R&#252;ckmeldung der Praxis dokumentieren</div>
-      <div class="comment-sub" id="t-praxis-rueckmeldung-sub">Halten Sie fest, was die Praxis geantwortet hat, bevor die Entscheidung getroffen wird.</div>
+      <div class="praxiserklaerung-badge" id="t-praxis-rueckmeldung-badge">Schritt 3 &middot; Antwort der Praxis dokumentieren</div>
+      <div class="comment-sub" id="t-praxis-rueckmeldung-sub">Tragen Sie hier ein, was die Praxis nach der R&#252;ckfrage geantwortet hat.</div>
       <div class="comment-row" style="margin-top:14px">
         <label class="comment-label required" id="t-praxis-antwort-label" for="praxis-antwort">Antwort / Best&#228;tigung der Praxis</label>
         <textarea class="comment-area" id="praxis-antwort" placeholder="z.&#x202F;B. Praxis best&#228;tigt Fortsetzung / neuer Scan folgt / R&#252;cksprache erforderlich &#8230;"></textarea>
@@ -385,7 +387,7 @@ main{width:100%;max-width:560px}
 
     <div class="res-section" id="praxis-section">
       <div class="res-label" id="t-praxis-section-label">Für die Praxis</div>
-      <div class="comment-sub" id="t-praxis-section-sub" style="margin-bottom:10px">Einfacher Text f&#252;r Praxis/Behandler &#8211; ohne STL interpretieren zu m&#252;ssen.</div>
+      <div class="comment-sub" id="t-praxis-section-sub" style="margin-bottom:10px">Einfacher Text f&#252;r Praxis/Behandler &#8211; zum Kopieren in den bestehenden Kommunikationskanal.</div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-fall-lbl">Fall</span><span class="audit-row-val" id="praxis-fall"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-zahn-lbl">Zahn / Region</span><span class="audit-row-val" id="praxis-zahn"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-praxis-material-lbl">Material</span><span class="audit-row-val" id="praxis-material"></span></div>
@@ -402,7 +404,7 @@ main{width:100%;max-width:560px}
     <div class="res-section">
       <div class="praxiserklaerung-badge" style="color:var(--dim);margin-bottom:12px" id="t-intern-nachweis-badge">INTERNER NACHWEIS</div>
       <div class="res-label" id="t-audit-label">Entscheidungsnachweis erstellt</div>
-      <div class="nachweis-subtitle" id="t-nachweis-subtitle">Dokumentiert, was gepr&#252;ft, erkl&#228;rt und entschieden wurde.</div>
+      <div class="nachweis-subtitle" id="t-nachweis-subtitle">Dokumentiert, was gepr&#252;ft, angefragt, beantwortet und entschieden wurde.</div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-rcid-lbl">Fall-ID</span><span class="audit-row-val" id="nachweis-caseid"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-datei-lbl">Datei</span><span class="audit-row-val" id="nachweis-datei"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-ereignis-lbl">Ereignis</span><span class="audit-row-val" id="nachweis-ereignis"></span></div>
@@ -496,7 +498,7 @@ const T = {
     chkMaterial: 'Materialangabe', chkJurisdiction: 'L\u00e4nderangabe', chkManufacturing: 'Herstellungsangabe',
     ergebnisOk: 'Entscheidung: Fortsetzung dokumentiert', ergebnisRisk: 'Entscheidung: Fortsetzung mit Hinweis', ergebnisBlock: 'Entscheidung: Kl\u00e4rung erforderlich',
     fertigungLabel: 'Entscheidungsgrundlage',
-    auditLabel: 'Entscheidungsnachweis erstellt', nachweisSubtitle: 'Dokumentiert, was geprüft, erklärt und entschieden wurde.', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
+    auditLabel: 'Entscheidungsnachweis erstellt', nachweisSubtitle: 'Dokumentiert, was geprüft, angefragt, beantwortet und entschieden wurde.', auditIdLbl: 'Audit-ID', auditTimeLbl: 'Zeitpunkt', auditStatusLbl: 'Status',
     nachweisFallLbl: 'Fall', nachweisDecisionLbl: 'Entscheidung', nachweisGrundlageLbl: 'Entscheidungsgrundlage',
     nachweisBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
     proofLabel: 'Technischer Nachweis / Protokollansicht',
@@ -527,11 +529,12 @@ const T = {
     grundManufacturing: 'Hinweis: Kein geeigneter Herstellungspartner in den Systemdaten hinterlegt.',
     nextStepBlock: 'N\u00e4chster Schritt: Vor der Fertigung ist eine Kl\u00e4rung erforderlich.',
     brandTagline: 'Kl\u00e4rung vor Herstellung',
-    introLine: 'Laboransicht: Fall pr\u00fcfen, R\u00fcckfrage an die Praxis vorbereiten, Praxis-R\u00fckmeldung dokumentieren und Entscheidung vor Herstellung festhalten.',
+    introLine: 'Laboransicht: Die Praxis sendet den Fall wie bisher. PostCAD beginnt, wenn das Labor vor Herstellung eine R\u00fcckfrage, R\u00fcckmeldung und Entscheidung sauber dokumentieren will.',
+    workflowNote: 'Typischer Ablauf: Fall erhalten \u2192 Labor pr\u00fcft \u2192 Praxis-Anfrage kopieren/senden \u2192 Praxis-R\u00fcckmeldung dokumentieren \u2192 Entscheidung festhalten.',
     fertigungBody: 'Die Entscheidung wird durch die verantwortliche Person dokumentiert. Ausgangslage und Entscheidungsgrundlage werden nachvollziehbar festgehalten.',
     visualBadge: 'VISUELLE KLÄRUNG',
     visualTitle: 'Schritt 1 · Laborfall prüfen',
-    visualSub: 'Das Labor prüft den Fall visuell. Die Praxis muss die STL-Datei später nicht selbst interpretieren.',
+    visualSub: 'Das Labor prüft den erhaltenen STL-/Scan-Fall. Die Praxis muss die STL-Datei später nicht selbst interpretieren.',
     visualPlaceholderLbl: 'Krone · Zahn 36',
     visualPlaceholderHint: 'Demo-Ansicht: hier kann später ein Scan-/CAD-Ausschnitt, Screenshot oder kurzer Clip dokumentiert werden.',
     visualDisclaimer: 'Die 3D-Ansicht dient der gemeinsamen Klärung und Dokumentation. Keine automatische technische Prüfung.',
@@ -568,8 +571,9 @@ const T = {
     copyBtn: 'Nachweis kopieren',
     copiedConfirm: 'Nachweis kopiert.',
     safetyCopy: 'PostCAD erkennt keine medizinischen oder technischen Fehler und gibt keine Herstellung frei.',
-    praxiserklaerungBadge: 'Schritt 2 · Rückfrage an die Praxis vorbereiten',
-    praxiserklaerungSub: 'Formulieren Sie kurz, was die Praxis vor Herstellung bestätigen, korrigieren oder nachreichen soll.',
+    praxiserklaerungBadge: 'Schritt 2 · Praxis-Anfrage vorbereiten',
+    praxiserklaerungSub: 'Formulieren Sie eine kurze Rückfrage, die anschließend per WhatsApp, E-Mail oder bestehendem Praxis-/Labor-Kanal gesendet werden kann.',
+    copyRequestHelper: 'Die Anfrage wird kopiert und kann extern an die Praxis gesendet werden. PostCAD versendet noch nicht automatisch.',
     praxisRueckmeldungLabel: 'Was soll die Praxis tun?',
     praxisRueckmeldungPlaceholder: 'z. B. Bitte Bereich bestätigen oder neuen Scan senden.',
     praxisVideoLabel: 'Video-Link optional',
@@ -577,8 +581,8 @@ const T = {
     nachweisVideoLbl: 'Erklärungsvideo',
     nachweisAntwortLbl: 'Praxis-Rückmeldung',
     nachweisAntwortStatusLbl: 'Rückmeldung-Status',
-    praxisRueckmeldungBadge: 'Schritt 3 · Rückmeldung der Praxis dokumentieren',
-    praxisRueckmeldungSub: 'Halten Sie fest, was die Praxis geantwortet hat, bevor die Entscheidung getroffen wird.',
+    praxisRueckmeldungBadge: 'Schritt 3 · Antwort der Praxis dokumentieren',
+    praxisRueckmeldungSub: 'Tragen Sie hier ein, was die Praxis nach der Rückfrage geantwortet hat.',
     praxisAntwortLabel: 'Antwort / Bestätigung der Praxis',
     praxisAntwortStatusLabel: 'Rückmeldung',
     statusSelect: '— Rückmeldung wählen —',
@@ -594,7 +598,7 @@ const T = {
     praxisCopiedConfirm: 'Erklärung kopiert.',
     praxisSafetyNote: 'Diese Erklärung ersetzt keine medizinische oder technische Prüfung durch die verantwortlichen Personen.',
     praxisSectionLabel: 'Für die Praxis',
-    praxisSectionSub: 'Einfacher Text für Praxis/Behandler – ohne STL interpretieren zu müssen.',
+    praxisSectionSub: 'Einfacher Text für Praxis/Behandler – zum Kopieren in den bestehenden Kommunikationskanal.',
     praxisFallLbl: 'Fall',
     praxisZahnLbl: 'Zahn / Region',
     praxisMaterialLbl: 'Material',
@@ -608,8 +612,8 @@ const T = {
     verlaufEvents: [
       {lbl: 'STL-Datei lokal geladen',                     desc: 'Die Datei wurde im Browser geladen und lokal dargestellt.'},
       {lbl: 'Laborfall visuell geprüft',                   desc: 'Das Labor hat den Fall visuell geprüft.'},
-      {lbl: 'Praxis-Anfrage vorbereitet',                  desc: 'Das Labor hat eine Rückfrage für die Praxis vorbereitet.'},
-      {lbl: 'Praxis-Rückmeldung dokumentiert',             desc: 'Die Antwort der Praxis wurde dokumentiert.'},
+      {lbl: 'Praxis-Anfrage vorbereitet',                  desc: 'Das Labor hat eine Rückfrage vorbereitet und kann sie extern an die Praxis senden.'},
+      {lbl: 'Praxis-Antwort dokumentiert',                 desc: 'Die Rückmeldung der Praxis wurde im Fall dokumentiert.'},
       {lbl: 'Entscheidung vor Herstellung festgehalten',   desc: 'Entscheidung und Grundlage wurden dokumentiert.'},
       {lbl: 'Entscheidungsnachweis erstellt',              desc: 'Nachweis mit Zeitstempel und Audit-ID wurde erzeugt.'},
     ],
@@ -638,7 +642,7 @@ const T = {
     chkMaterial: 'Material information', chkJurisdiction: 'Country information', chkManufacturing: 'Manufacturing information',
     ergebnisOk: 'Decision: Proceed documented', ergebnisRisk: 'Decision: Proceed with note', ergebnisBlock: 'Decision: Clarification required',
     fertigungLabel: 'Decision basis',
-    auditLabel: 'Decision record created', nachweisSubtitle: 'Documents what was reviewed, explained, and decided.', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
+    auditLabel: 'Decision record created', nachweisSubtitle: 'Documents what was reviewed, queried, answered, and decided.', auditIdLbl: 'Audit ID', auditTimeLbl: 'Time', auditStatusLbl: 'Status',
     nachweisFallLbl: 'Case', nachweisDecisionLbl: 'Decision', nachweisGrundlageLbl: 'Case basis',
     nachweisBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
     proofLabel: 'Technical record / Protocol view',
@@ -669,11 +673,12 @@ const T = {
     grundManufacturing: 'Note: No eligible manufacturing partner recorded in the system data.',
     nextStepBlock: 'Next step: Clarification is required before manufacturing.',
     brandTagline: 'Clarification before manufacturing',
-    introLine: 'Lab view: Review case, prepare practice query, document practice response, and record decision before manufacturing.',
+    introLine: 'Lab view: The practice sends the case as usual. PostCAD starts when the lab wants to clearly document a query, response, and decision before manufacturing.',
+    workflowNote: 'Typical workflow: Receive case → Lab reviews → Copy/send practice query → Document practice response → Record decision.',
     fertigungBody: 'The decision is documented by the responsible person. Initial situation and decision basis are recorded traceably.',
     visualBadge: 'VISUAL CLARIFICATION',
     visualTitle: 'Step 1 · Review lab case',
-    visualSub: 'The lab reviews the case visually. The practice does not need to interpret the STL file later.',
+    visualSub: 'The lab reviews the received STL/scan case. The practice does not need to interpret the STL file later.',
     visualPlaceholderLbl: 'Crown · Tooth 36',
     visualPlaceholderHint: 'Demo view: a scan/CAD excerpt, screenshot or short clip can be documented here.',
     visualDisclaimer: 'The 3D view is for joint clarification and documentation. No automatic technical inspection.',
@@ -710,7 +715,8 @@ const T = {
     copiedConfirm: 'Receipt copied.',
     safetyCopy: 'PostCAD does not detect medical or technical errors and does not release manufacturing.',
     praxiserklaerungBadge: 'Step 2 · Prepare practice query',
-    praxiserklaerungSub: 'Briefly state what the practice should confirm, correct, or provide before manufacturing.',
+    praxiserklaerungSub: 'Formulate a short query that can then be sent via WhatsApp, email, or the existing practice/lab channel.',
+    copyRequestHelper: 'The query is copied and can be sent externally to the practice. PostCAD does not send automatically yet.',
     praxisRueckmeldungLabel: 'What should the practice do?',
     praxisRueckmeldungPlaceholder: 'e.g. Please confirm the area or send a new scan.',
     praxisVideoLabel: 'Video link (optional)',
@@ -719,7 +725,7 @@ const T = {
     nachweisAntwortLbl: 'Practice response',
     nachweisAntwortStatusLbl: 'Response status',
     praxisRueckmeldungBadge: 'Step 3 · Document practice response',
-    praxisRueckmeldungSub: 'Record what the practice responded before the decision is made.',
+    praxisRueckmeldungSub: 'Enter what the practice responded after the query.',
     praxisAntwortLabel: 'Response / confirmation from practice',
     praxisAntwortStatusLabel: 'Response',
     statusSelect: '— Select response —',
@@ -735,7 +741,7 @@ const T = {
     praxisCopiedConfirm: 'Explanation copied.',
     praxisSafetyNote: 'This explanation does not replace medical or technical review by the responsible persons.',
     praxisSectionLabel: 'For the practice',
-    praxisSectionSub: 'Plain text for the practice/practitioner – no need to interpret the STL.',
+    praxisSectionSub: 'Plain text for the practice/practitioner – to copy into the existing communication channel.',
     praxisFallLbl: 'Case',
     praxisZahnLbl: 'Tooth / Region',
     praxisMaterialLbl: 'Material',
@@ -749,8 +755,8 @@ const T = {
     verlaufEvents: [
       {lbl: 'STL file loaded locally',                    desc: 'The file was loaded in the browser and displayed locally.'},
       {lbl: 'Lab case reviewed visually',                 desc: 'The lab reviewed the case visually.'},
-      {lbl: 'Practice query prepared',                    desc: 'The lab prepared a query for the practice.'},
-      {lbl: 'Practice response documented',               desc: 'The practice response was documented.'},
+      {lbl: 'Practice query prepared',                    desc: 'The lab prepared a query and can send it externally to the practice.'},
+      {lbl: 'Practice response documented',               desc: 'The practice response was recorded in the case.'},
       {lbl: 'Decision before manufacturing recorded',     desc: 'Decision and basis were documented.'},
       {lbl: 'Decision record created',                    desc: 'Record with timestamp and audit ID was generated.'},
     ],
@@ -824,6 +830,7 @@ function setLang(l) {
   const t = T[l];
   document.getElementById('t-brand-tagline').textContent = t.brandTagline;
   document.getElementById('t-intro-line').textContent = t.introLine;
+  document.getElementById('t-workflow-note').textContent = t.workflowNote;
   document.getElementById('t-upload-title').textContent = t.uploadTitle;
   document.getElementById('t-upload-sub').textContent = t.uploadSub;
   document.getElementById('t-upload-privacy').textContent = t.uploadPrivacy;
@@ -902,6 +909,7 @@ function setLang(l) {
   document.getElementById('t-status-correction-opt').textContent = t.statusCorrection;
   document.getElementById('t-status-open-opt').textContent = t.statusOpen;
   document.getElementById('t-copy-practice-request-btn').textContent = t.copyPracticeRequestBtn;
+  document.getElementById('t-copy-request-helper').textContent = t.copyRequestHelper;
   document.getElementById('t-nachweis-praxis-antwort-lbl').textContent = t.nachweisAntwortLbl;
   document.getElementById('t-nachweis-praxis-antwort-status-lbl').textContent = t.nachweisAntwortStatusLbl;
   document.getElementById('t-praxis-fall-lbl').textContent = t.praxisFallLbl;

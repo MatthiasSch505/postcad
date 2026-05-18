@@ -238,7 +238,7 @@ async fn reviewer_shell_visual_step_present() {
     assert!(html.contains("Keine automatische technische"),        "visual disclaimer must be present");
     assert!(html.contains("id=\"lab-comment\""),                   "lab-comment textarea id must be present");
     assert!(html.contains("Kurze Laborerkl"),                      "lab comment label must be present");
-    assert!(html.contains("Formulieren Sie kurz"),                 "praxis-erklaerung subtext must be present");
+    assert!(html.contains("WhatsApp"),                             "praxis-erklaerung subtext must mention WhatsApp/existing channels");
     assert!(html.contains("proceedToDecision"),                    "proceedToDecision JS function must be present");
     assert!(html.contains("showVisualStep"),                       "showVisualStep JS function must be present");
 }
@@ -843,7 +843,7 @@ fn reviewer_verlauf_de_event_labels_present() {
     assert!(REVIEWER_HTML.contains("STL-Datei lokal geladen"),                   "DE event 1 label must be present");
     assert!(REVIEWER_HTML.contains("Laborfall visuell gepr\u{00fc}ft"),          "DE event 2 label must be present");
     assert!(REVIEWER_HTML.contains("Praxis-Anfrage vorbereitet"),                "DE event 3 label must be present");
-    assert!(REVIEWER_HTML.contains("Praxis-R\u{00fc}ckmeldung dokumentiert"),    "DE event 4 label must be present");
+    assert!(REVIEWER_HTML.contains("Praxis-Antwort dokumentiert"),               "DE event 4 label must be present");
     assert!(REVIEWER_HTML.contains("Entscheidung vor Herstellung festgehalten"), "DE event 5 label must be present");
     assert!(REVIEWER_HTML.contains("Entscheidungsnachweis erstellt"),            "DE event 6 label must be present");
 }
@@ -918,7 +918,7 @@ fn reviewer_praxiserklaerung_section_present() {
     assert!(REVIEWER_HTML.contains("t-praxiserklaerung-badge"),              "t-praxiserklaerung-badge id must be present");
     assert!(REVIEWER_HTML.contains("Schritt 2"),                              "Schritt 2 badge must be present");
     assert!(REVIEWER_HTML.contains("t-praxiserklaerung-sub"),                "t-praxiserklaerung-sub id must be present");
-    assert!(REVIEWER_HTML.contains("Formulieren Sie kurz"),                  "DE section subtext must be present");
+    assert!(REVIEWER_HTML.contains("WhatsApp"),                              "DE section subtext must mention WhatsApp/existing channels");
     assert!(REVIEWER_HTML.contains("praxis-rueckmeldung"),                   "praxis-rueckmeldung textarea id must be present");
     assert!(REVIEWER_HTML.contains("praxis-video-link"),                     "praxis-video-link input id must be present");
     assert!(REVIEWER_HTML.contains("Kurze Laborerkl"),                       "DE lab explanation label must be present");
@@ -945,8 +945,8 @@ fn reviewer_lab_first_wording_present() {
     assert!(REVIEWER_HTML.contains("The lab documents"),          "EN decision hints must explicitly name The lab");
     // Result subtexts
     assert!(REVIEWER_HTML.contains("t-praxis-section-sub"),       "t-praxis-section-sub id must be present");
-    assert!(REVIEWER_HTML.contains("ohne STL interpretieren"),    "praxis section subtext must be present");
-    assert!(REVIEWER_HTML.contains("no need to interpret the STL"), "EN praxis section subtext must be present");
+    assert!(REVIEWER_HTML.contains("bestehenden Kommunikationskanal"),    "praxis section subtext must mention existing communication channel");
+    assert!(REVIEWER_HTML.contains("existing communication channel"), "EN praxis section subtext must mention existing communication channel");
     // Verlauf event 3 description
     assert!(REVIEWER_HTML.contains("Das Labor hat eine R\u{00fc}ckfrage"), "Verlauf event 3 must attribute action to Das Labor");
     assert!(REVIEWER_HTML.contains("The lab prepared"),            "EN Verlauf event 3 must attribute action to The lab");
@@ -1090,8 +1090,48 @@ fn reviewer_step4_decision_wording_present() {
 fn reviewer_verlauf_includes_practice_handoff_events() {
     assert!(REVIEWER_HTML.contains("Praxis-Anfrage vorbereitet"),            "DE Praxis-Anfrage event must be in verlauf");
     assert!(REVIEWER_HTML.contains("Practice query prepared"),               "EN practice query event must be in verlauf");
-    assert!(REVIEWER_HTML.contains("Praxis-R\u{00fc}ckmeldung dokumentiert"),"DE Praxis-Rückmeldung event must be in verlauf");
+    assert!(REVIEWER_HTML.contains("Praxis-Antwort dokumentiert"),         "DE practice response event must be in verlauf");
     assert!(REVIEWER_HTML.contains("Practice response documented"),          "EN practice response event must be in verlauf");
+}
+
+/// Intro line must explain that the practice sends the case via existing channels and
+/// that PostCAD starts at the lab clarification step.
+#[test]
+fn reviewer_intro_explains_existing_channels() {
+    assert!(REVIEWER_HTML.contains("Die Praxis sendet den Fall wie bisher"), "DE intro must state practice sends case as usual");
+    assert!(REVIEWER_HTML.contains("PostCAD beginnt"),                        "DE intro must explain when PostCAD starts");
+    assert!(REVIEWER_HTML.contains("Lab view"),                               "EN intro must identify lab view");
+}
+
+/// Typical workflow note must be present near the top in both DE and EN.
+#[test]
+fn reviewer_workflow_note_present() {
+    assert!(REVIEWER_HTML.contains("t-workflow-note"),     "t-workflow-note element must be present");
+    assert!(REVIEWER_HTML.contains("Typischer Ablauf"),    "DE workflow note must be present");
+    assert!(REVIEWER_HTML.contains("Typical workflow"),    "EN workflow note must be present");
+}
+
+/// Step 2 subtext must mention WhatsApp, E-Mail, and existing channel as sending options.
+#[test]
+fn reviewer_step2_mentions_existing_channels() {
+    assert!(REVIEWER_HTML.contains("WhatsApp"),            "Step 2 subtext must mention WhatsApp");
+    assert!(REVIEWER_HTML.contains("E-Mail"),              "Step 2 subtext must mention E-Mail");
+    assert!(REVIEWER_HTML.contains("Praxis-/Labor-Kanal"),"Step 2 subtext must mention existing practice/lab channel");
+}
+
+/// Helper text under copy button must clarify PostCAD does not send automatically.
+#[test]
+fn reviewer_copy_request_helper_text_present() {
+    assert!(REVIEWER_HTML.contains("t-copy-request-helper"),                     "t-copy-request-helper element must be present");
+    assert!(REVIEWER_HTML.contains("PostCAD versendet noch nicht automatisch"),   "DE helper text must say PostCAD does not send automatically");
+    assert!(REVIEWER_HTML.contains("PostCAD does not send automatically yet"),    "EN helper text must be present");
+}
+
+/// Praxis section subtext must reference the existing communication channel.
+#[test]
+fn reviewer_praxis_section_mentions_communication_channel() {
+    assert!(REVIEWER_HTML.contains("bestehenden Kommunikationskanal"), "DE praxis section must mention existing communication channel");
+    assert!(REVIEWER_HTML.contains("existing communication channel"),  "EN praxis section must mention existing communication channel");
 }
 
 /// Full pilot workflow: route → dispatch → approve → export.

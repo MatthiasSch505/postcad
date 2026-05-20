@@ -62,6 +62,8 @@ main{width:100%;max-width:560px}
 .confirm-btn{width:100%;padding:15px;border:none;border-radius:8px;background:var(--green);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;transition:opacity .15s;letter-spacing:.01em}
 .confirm-btn:disabled{opacity:.25;cursor:not-allowed}
 .confirm-btn:not(:disabled):hover{opacity:.85}
+.stl-pick-btn{display:inline-block;background:var(--green);color:#fff;border-radius:5px;padding:9px 16px;font-size:.85rem;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap;line-height:1}
+.stl-pick-btn--opt{background:var(--dim)}
 .confirm-hint{font-size:.78rem;color:var(--dim);margin-top:8px;text-align:center;min-height:1.1em}
 .choice-hint{font-size:.78rem;color:var(--dim);padding:2px 16px 8px;line-height:1.4}
 .aha-line{font-size:.85rem;color:var(--sub);line-height:1.55;font-style:italic}
@@ -194,12 +196,17 @@ main{width:100%;max-width:560px}
   <p class="comment-sub" id="t-workflow-note" style="margin-bottom:20px">Typischer Ablauf: Fall erhalten &#x2192; Labor pr&#252;ft &#x2192; Praxis-Anfrage kopieren/senden &#x2192; Praxis-R&#252;ckmeldung dokumentieren &#x2192; Entscheidung festhalten.</p>
 
   <div id="phase-upload">
-    <label class="upload-zone" id="upload-zone" for="file-input">
+    <div class="upload-zone" id="upload-zone">
       <div class="upload-icon">↑</div>
       <div class="upload-title" id="t-upload-title">STL-Datens&#228;tze lokal laden</div>
       <div class="upload-sub" id="t-upload-sub">Laden Sie einen oder zwei Datens&#228;tze, z.&#x202F;B. Oberkiefer und Unterkiefer. Die Dateien bleiben lokal im Browser.</div>
-    </label>
-    <input type="file" id="file-input" accept=".stl,.obj" style="display:none" multiple onchange="onFileInput(this)">
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap">
+        <label class="stl-pick-btn" for="file-input-1"><span id="t-stl1-select-btn">STL 1 ausw&#228;hlen</span></label>
+        <label class="stl-pick-btn stl-pick-btn--opt" for="file-input-2"><span id="t-stl2-select-btn">STL 2 (optional)</span></label>
+      </div>
+    </div>
+    <input type="file" id="file-input-1" accept=".stl,.obj" style="display:none" onchange="onFileInput1(this)">
+    <input type="file" id="file-input-2" accept=".stl,.obj" style="display:none" onchange="onFileInput2(this)">
     <p class="upload-privacy" id="t-upload-privacy">Die Datei bleibt lokal im Browser und wird nicht auf dem Server gespeichert.</p>
     <p class="upload-privacy" id="t-upload-local-note">Die Dateien bleiben lokal im Browser und werden erst nach Klick auf &#187;Fall pr&#252;fen&#171; ge&#246;ffnet.</p>
     <div id="staged-files-section" style="display:none;margin-top:14px">
@@ -725,6 +732,8 @@ const T = {
     stagedFilesLabel: 'Ausgewählte Dateien',
     startReviewBtn: 'Fall prüfen',
     uploadLocalNote: 'Die Dateien bleiben lokal im Browser und werden erst nach Klick auf »Fall prüfen« geöffnet.',
+    stl1SelectBtn: 'STL 1 auswählen',
+    stl2SelectBtn: 'STL 2 (optional)',
   },
   EN: {
     uploadTitle: 'Load STL datasets locally',
@@ -904,6 +913,8 @@ const T = {
     stagedFilesLabel: 'Selected files',
     startReviewBtn: 'Check case',
     uploadLocalNote: 'Files stay local in your browser and are only opened after clicking “Check case”.',
+    stl1SelectBtn: 'Select STL 1',
+    stl2SelectBtn: 'STL 2 (optional)',
   },
 };
 
@@ -997,6 +1008,8 @@ function setLang(l) {
   document.getElementById('t-upload-local-note').textContent = t.uploadLocalNote;
   document.getElementById('t-staged-files-label').textContent = t.stagedFilesLabel;
   document.getElementById('t-start-review-btn').textContent = t.startReviewBtn;
+  document.getElementById('t-stl1-select-btn').textContent = t.stl1SelectBtn;
+  document.getElementById('t-stl2-select-btn').textContent = t.stl2SelectBtn;
   document.getElementById('t-demo-notice').textContent = t.demoNotice;
   document.getElementById('t-case-label').textContent = t.caseLabel;
   document.getElementById('t-material-lbl').textContent = t.materialLbl;
@@ -1153,35 +1166,32 @@ function setLang(l) {
   if (_receiptTime !== null) { buildVerlauf(_receiptTime); }
 }
 
-function onFileInput(input) {
+function onFileInput1(input) {
   if (!input.files || !input.files[0]) return;
-  const file1 = input.files[0];
-  const file2 = input.files.length > 1 ? input.files[1] : null;
-  const name = file1.name;
+  const file = input.files[0];
+  const name = file.name;
   input.value = '';
   _stagedPrimaryFilename = name;
   _pendingBuffer = null;
+  _showStagedFiles(name, _pendingFilename2);
+  const reader = new FileReader();
+  reader.onload = function(e) { _pendingBuffer = e.target.result; _enableStartReview(); };
+  reader.onerror = function() { _pendingBuffer = null; _enableStartReview(); };
+  reader.readAsArrayBuffer(file);
+}
+
+function onFileInput2(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const name = file.name;
+  input.value = '';
+  _pendingFilename2 = name;
   _pendingBuffer2 = null;
-  _pendingFilename2 = null;
-  _showStagedFiles(name, file2 ? file2.name : null);
-  if (!file2) {
-    const reader = new FileReader();
-    reader.onload = function(e) { _pendingBuffer = e.target.result; _enableStartReview(); };
-    reader.onerror = function() { _pendingBuffer = null; _enableStartReview(); };
-    reader.readAsArrayBuffer(file1);
-  } else {
-    _pendingFilename2 = file2.name;
-    let _b1 = null, _b2 = null, _done = 0;
-    function _onBoth() { _pendingBuffer = _b1; _pendingBuffer2 = _b2; _enableStartReview(); }
-    const _r1 = new FileReader();
-    _r1.onload = function(e) { _b1 = e.target.result; _done++; if (_done === 2) _onBoth(); };
-    _r1.onerror = function() { _done++; if (_done === 2) _onBoth(); };
-    _r1.readAsArrayBuffer(file1);
-    const _r2 = new FileReader();
-    _r2.onload = function(e) { _b2 = e.target.result; _done++; if (_done === 2) _onBoth(); };
-    _r2.onerror = function() { _pendingFilename2 = null; _done++; if (_done === 2) _onBoth(); };
-    _r2.readAsArrayBuffer(file2);
-  }
+  _updateStagedFile2(name);
+  const reader = new FileReader();
+  reader.onload = function(e) { _pendingBuffer2 = e.target.result; };
+  reader.onerror = function() { _pendingBuffer2 = null; _pendingFilename2 = null; _updateStagedFile2(null); };
+  reader.readAsArrayBuffer(file);
 }
 
 function _showStagedFiles(name, name2) {
@@ -1193,6 +1203,12 @@ function _showStagedFiles(name, name2) {
   const btn = document.getElementById('start-review-btn');
   btn.style.display = 'block';
   btn.disabled = true;
+}
+
+function _updateStagedFile2(name2) {
+  const row2 = document.getElementById('staged-filename-2-row');
+  if (name2) { document.getElementById('staged-filename-2').textContent = name2; row2.style.display = ''; }
+  else { row2.style.display = 'none'; }
 }
 
 function _enableStartReview() {

@@ -148,7 +148,8 @@ fn reviewer_multi_stl_upload_text() {
     assert!(REVIEWER_HTML.contains("upper and lower jaw"),                 "EN upload sub must mention upper and lower jaw");
     assert!(REVIEWER_HTML.contains("Die Dateien bleiben lokal"),           "local-only wording must be present in upload sub");
     assert!(REVIEWER_HTML.contains("Files stay local"),                    "EN local-only wording must be present");
-    assert!(REVIEWER_HTML.contains("multiple"),                            "file-input must have multiple attribute");
+    assert!(REVIEWER_HTML.contains("file-input-1"),                        "file-input-1 for STL 1 must be present");
+    assert!(REVIEWER_HTML.contains("file-input-2"),                        "file-input-2 for STL 2 must be present");
 }
 
 /// Multi-STL controls section with show/hide toggles must be present.
@@ -226,48 +227,47 @@ fn reviewer_show_visual_step_no_stale_display_mode_reference() {
     );
 }
 
-/// Two-file upload must use a _done counter so _enableStartReview is called exactly
-/// once after both FileReaders complete, regardless of order.
+/// Two-file upload uses two separate functions — onFileInput1 for STL 1 and
+/// onFileInput2 for STL 2 — so each file can be selected independently.
 #[test]
 fn reviewer_two_file_upload_synchronizes_readers() {
-    let pos = REVIEWER_HTML
-        .find("function onFileInput(")
-        .expect("onFileInput must be defined");
-    let after = &REVIEWER_HTML[pos..pos + 1200];
-    assert!(after.contains("_done++"),               "two-file branch must increment a _done counter");
-    assert!(after.contains("_done === 2"),           "two-file branch must gate _onBoth on _done reaching 2");
-    assert!(after.contains("_enableStartReview()"),  "two-file _onBoth must call _enableStartReview");
+    assert!(REVIEWER_HTML.contains("function onFileInput1("), "onFileInput1 must be defined for STL 1 selection");
+    assert!(REVIEWER_HTML.contains("function onFileInput2("), "onFileInput2 must be defined for STL 2 selection");
+    let pos2 = REVIEWER_HTML.find("function onFileInput2(").expect("onFileInput2 must be defined");
+    let after2 = &REVIEWER_HTML[pos2..pos2 + 600];
+    assert!(after2.contains("_pendingBuffer2 = e.target.result"), "onFileInput2 must read into _pendingBuffer2");
+    assert!(after2.contains("_pendingFilename2 = name"),          "onFileInput2 must set _pendingFilename2");
 }
 
-/// When the second FileReader fails, _pendingFilename2 must be cleared so stale
-/// filename state does not bleed into the visual step.
+/// When the STL 2 FileReader fails, _pendingFilename2 must be cleared and the
+/// STL 2 row hidden so stale filename state does not bleed into the visual step.
 #[test]
 fn reviewer_two_file_second_read_failure_clears_pending_filename() {
     let pos = REVIEWER_HTML
-        .find("function onFileInput(")
-        .expect("onFileInput must be defined");
-    let after = &REVIEWER_HTML[pos..pos + 1200];
+        .find("function onFileInput2(")
+        .expect("onFileInput2 must be defined");
+    let after = &REVIEWER_HTML[pos..pos + 600];
     assert!(
         after.contains("_pendingFilename2 = null"),
-        "_r2.onerror must clear _pendingFilename2 on second-file read failure"
+        "onFileInput2 onerror must clear _pendingFilename2 on read failure"
     );
 }
 
-/// Single-file upload path must stage _pendingBuffer via FileReader.onload and call
-/// _enableStartReview — not startProcessing directly. startReview() is the deliberate gate.
+/// onFileInput1 must stage _pendingBuffer via FileReader.onload and call
+/// _enableStartReview — not startProcessing directly. STL 2 is managed independently.
 #[test]
 fn reviewer_single_file_upload_path_preserved() {
     let pos = REVIEWER_HTML
-        .find("function onFileInput(")
-        .expect("onFileInput must be defined");
-    let after = &REVIEWER_HTML[pos..pos + 1200];
+        .find("function onFileInput1(")
+        .expect("onFileInput1 must be defined");
+    let after = &REVIEWER_HTML[pos..pos + 600];
     assert!(
         after.contains("_pendingBuffer = e.target.result; _enableStartReview()"),
-        "single-file onload must set _pendingBuffer and call _enableStartReview"
+        "onFileInput1 must stage buffer via reader.onload and call _enableStartReview"
     );
     assert!(
-        after.contains("_pendingBuffer2 = null"),
-        "single-file branch must clear _pendingBuffer2"
+        after.contains("_stagedPrimaryFilename = name"),
+        "onFileInput1 must set _stagedPrimaryFilename"
     );
 }
 
@@ -283,6 +283,10 @@ fn reviewer_staged_upload_ui_present() {
     assert!(REVIEWER_HTML.contains("start-review-btn"),      "start-review-btn id must be present");
     assert!(REVIEWER_HTML.contains("t-start-review-btn"),    "t-start-review-btn span id must be present");
     assert!(REVIEWER_HTML.contains("startReview()"),         "start-review-btn must call startReview()");
+    assert!(REVIEWER_HTML.contains("file-input-1"),          "file-input-1 for STL 1 must be present");
+    assert!(REVIEWER_HTML.contains("file-input-2"),          "file-input-2 for STL 2 must be present");
+    assert!(REVIEWER_HTML.contains("onFileInput1("),         "onFileInput1 must be wired to file-input-1");
+    assert!(REVIEWER_HTML.contains("onFileInput2("),         "onFileInput2 must be wired to file-input-2");
 }
 
 /// "Fall prüfen" button must start disabled so the user cannot click it before a file
@@ -299,12 +303,38 @@ fn reviewer_start_review_btn_initially_disabled() {
     );
 }
 
-/// _showStagedFiles, _enableStartReview, and startReview must all be defined.
+/// _showStagedFiles, _updateStagedFile2, _enableStartReview, and startReview must all be defined.
 #[test]
 fn reviewer_staged_upload_helper_functions_present() {
-    assert!(REVIEWER_HTML.contains("function _showStagedFiles("),  "_showStagedFiles function must be defined");
-    assert!(REVIEWER_HTML.contains("function _enableStartReview("),"_enableStartReview function must be defined");
-    assert!(REVIEWER_HTML.contains("function startReview()"),       "startReview function must be defined");
+    assert!(REVIEWER_HTML.contains("function _showStagedFiles("),   "_showStagedFiles function must be defined");
+    assert!(REVIEWER_HTML.contains("function _updateStagedFile2("), "_updateStagedFile2 function must be defined");
+    assert!(REVIEWER_HTML.contains("function _enableStartReview("), "_enableStartReview function must be defined");
+    assert!(REVIEWER_HTML.contains("function startReview()"),        "startReview function must be defined");
+}
+
+/// Upload phase must show two separate selection buttons — STL 1 (required) and
+/// STL 2 (optional) — so the user can add files independently one by one.
+#[test]
+fn reviewer_separate_stl_select_buttons_present() {
+    assert!(REVIEWER_HTML.contains("t-stl1-select-btn"),           "t-stl1-select-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("t-stl2-select-btn"),           "t-stl2-select-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("STL 1 ausw\u{00e4}hlen"),      "DE STL 1 select button label must be present");
+    assert!(REVIEWER_HTML.contains("STL 2 (optional)"),            "STL 2 optional button label must be present");
+    assert!(REVIEWER_HTML.contains("Select STL 1"),                "EN STL 1 select button label must be present");
+    assert!(REVIEWER_HTML.contains("stl-pick-btn"),                "stl-pick-btn CSS class must be present");
+    assert!(REVIEWER_HTML.contains("stl-pick-btn--opt"),           "stl-pick-btn--opt CSS class must be present for STL 2");
+}
+
+/// onFileInput2 must read STL 2 into _pendingBuffer2 independently — it must not
+/// touch _pendingBuffer or _stagedPrimaryFilename so STL 1 selection is preserved.
+#[test]
+fn reviewer_stl2_select_independent_of_stl1() {
+    let pos = REVIEWER_HTML.find("function onFileInput2(").expect("onFileInput2 must be defined");
+    let after = &REVIEWER_HTML[pos..pos + 600];
+    assert!(after.contains("_pendingBuffer2 = e.target.result"),   "onFileInput2 must write to _pendingBuffer2");
+    assert!(after.contains("_pendingFilename2 = name"),            "onFileInput2 must set _pendingFilename2");
+    assert!(!after.contains("_pendingBuffer = "),                  "onFileInput2 must not overwrite _pendingBuffer");
+    assert!(!after.contains("_stagedPrimaryFilename = "),          "onFileInput2 must not overwrite _stagedPrimaryFilename");
 }
 
 /// startReview must call startProcessing with the staged primary filename.

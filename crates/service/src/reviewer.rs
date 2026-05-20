@@ -196,10 +196,10 @@ main{width:100%;max-width:560px}
   <div id="phase-upload">
     <label class="upload-zone" id="upload-zone" for="file-input">
       <div class="upload-icon">↑</div>
-      <div class="upload-title" id="t-upload-title">STL-Datei hochladen</div>
-      <div class="upload-sub" id="t-upload-sub">STL-Datei aus Scanner/CAD hier ablegen oder ausw&#228;hlen</div>
+      <div class="upload-title" id="t-upload-title">STL-Datens&#228;tze lokal laden</div>
+      <div class="upload-sub" id="t-upload-sub">Laden Sie einen oder zwei Datens&#228;tze, z.&#x202F;B. Oberkiefer und Unterkiefer. Die Dateien bleiben lokal im Browser.</div>
     </label>
-    <input type="file" id="file-input" accept=".stl,.obj" style="display:none" onchange="onFileInput(this)">
+    <input type="file" id="file-input" accept=".stl,.obj" style="display:none" multiple onchange="onFileInput(this)">
     <p class="upload-privacy" id="t-upload-privacy">Die Datei bleibt lokal im Browser und wird nicht auf dem Server gespeichert.</p>
     <div class="demo-files">
       <button class="demo-file-btn" onclick="loadDemo('Krone_Zahn_36_DE.stl')">Demo-Fall ansehen</button>
@@ -238,6 +238,25 @@ main{width:100%;max-width:560px}
     </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
       <button class="viewer-reset-btn" id="viewer-reset-btn" onclick="resetView()"><span id="t-viewer-reset-btn">&#x21ba; Ansicht zur&#252;cksetzen</span></button>
+    </div>
+    <div id="stl-datasets-section" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;margin-bottom:12px">
+      <div class="praxiserklaerung-badge" id="t-stl-datasets-badge">STL-Datens&#228;tze anzeigen</div>
+      <div id="stl-filename-labels" style="font-size:.82rem;color:var(--dim);font-family:'SF Mono','Fira Code',monospace;margin:6px 0 8px 0;line-height:1.6">
+        <div>STL 1: <span id="stl-filename-1">&#8212;</span></div>
+        <div>STL 2: <span id="stl-filename-2">&#8212;</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin:4px 0 10px 0">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.88rem;color:var(--sub);cursor:pointer">
+          <input type="checkbox" id="stl1-toggle" checked onchange="toggleStl1(this.checked)">
+          <span id="t-stl1-label">STL 1 anzeigen</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:.88rem;color:var(--sub);cursor:pointer">
+          <input type="checkbox" id="stl2-toggle" checked onchange="toggleStl2(this.checked)">
+          <span id="t-stl2-label">STL 2 anzeigen</span>
+        </label>
+      </div>
+      <div class="comment-sub" id="t-stl-datasets-hint">Die Datens&#228;tze k&#246;nnen f&#252;r die Erkl&#228;rung ein- und ausgeblendet werden. Sie werden so angezeigt, wie sie exportiert wurden. Keine automatische Ausrichtung, keine Okklusionspr&#252;fung.</div>
+      <div id="stl-multi-note" style="display:none;font-size:.78rem;color:var(--amber);line-height:1.5;margin-top:8px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:5px">2 STL-Datens&#228;tze geladen. F&#252;r eine korrekte Lagebeziehung m&#252;ssen die Datens&#228;tze bereits aus dem Scanner/CAD-System passend exportiert sein.</div>
     </div>
     <div class="erklarclip-section" id="erklarclip-section">
       <div class="praxiserklaerung-badge" id="t-erklarclip-badge">Erkl&#228;rung aufnehmen</div>
@@ -462,6 +481,7 @@ main{width:100%;max-width:560px}
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-rueckmeldung-lbl">Was tun</span><span class="audit-row-val" id="nachweis-praxis-rueckmeldung"></span></div>
       <div class="audit-row" id="nachweis-praxis-video-row" style="display:none"><span class="audit-row-lbl" id="t-nachweis-video-lbl">Erklärungsvideo</span><span class="audit-row-val" id="nachweis-praxis-video"></span></div>
       <div class="audit-row" id="nachweis-erklarclip-row"><span class="audit-row-lbl" id="t-nachweis-erklarclip-lbl">Erkl&#228;rclip</span><span class="audit-row-val" id="nachweis-erklarclip">Nicht angegeben</span></div>
+      <div class="audit-row" id="nachweis-stl-datensaetze-row"><span class="audit-row-lbl" id="t-nachweis-stl-datensaetze-lbl">STL-Datens&#228;tze</span><span class="audit-row-val" id="nachweis-stl-datensaetze">&#8212;</span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-praxis-antwort-lbl">Praxis-R&#252;ckmeldung</span><span class="audit-row-val" id="nachweis-praxis-antwort"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-praxis-antwort-status-lbl">R&#252;ckmeldung-Status</span><span class="audit-row-val" id="nachweis-praxis-antwort-status"></span></div>
       <div class="audit-row"><span class="audit-row-lbl" id="t-nachweis-person-lbl">Verantwortliche Person</span><span class="audit-row-val" id="nachweis-person"></span></div>
@@ -518,8 +538,8 @@ main{width:100%;max-width:560px}
 <script>
 const T = {
   DE: {
-    uploadTitle: 'STL-Datei hochladen',
-    uploadSub: 'STL-Datei aus Scanner/CAD hier ablegen oder auswählen',
+    uploadTitle: 'STL-Datensätze lokal laden',
+    uploadSub: 'Laden Sie einen oder zwei Datensätze, z. B. Oberkiefer und Unterkiefer. Die Dateien bleiben lokal im Browser.',
     uploadPrivacy: 'Die Datei bleibt lokal im Browser und wird nicht auf dem Server gespeichert.',
     demoNotice: 'Nur Beispiel – für echte Fälle bitte STL-Datei hochladen.',
     stlLoadedBanner: 'STL geladen · bereit zur Klärung',
@@ -676,17 +696,27 @@ const T = {
     verlaufLabel: 'Verlauf',
     verlaufNote: 'Lokale Dokumentationshistorie — nicht serverseitig gespeichert.',
     verlaufEvents: [
-      {lbl: 'STL-Datei lokal geladen',                     desc: 'Die Datei wurde im Browser geladen und lokal dargestellt.'},
+      {lbl: 'STL-Datei lokal geladen',                     desc: 'Eine oder mehrere Dateien wurden im Browser geladen und lokal dargestellt.'},
       {lbl: 'Laborfall visuell geprüft',                   desc: 'Das Labor hat den Fall visuell geprüft.'},
       {lbl: 'Praxis-Anfrage vorbereitet',                  desc: 'Das Labor hat eine Rückfrage vorbereitet und kann sie extern an die Praxis senden.'},
       {lbl: 'Praxis-Antwort dokumentiert',                 desc: 'Die Rückmeldung der Praxis wurde im Fall dokumentiert.'},
       {lbl: 'Laboraktion festgehalten',                    desc: 'Das Labor hat dokumentiert, ob die Herstellung startet oder der Fall offen bleibt.'},
       {lbl: 'Entscheidungsnachweis erstellt',              desc: 'Nachweis mit Zeitstempel und Audit-ID wurde erzeugt.'},
     ],
+    stlDatasetsSection: 'STL-Datensätze anzeigen',
+    stl1Label: 'STL 1 anzeigen',
+    stl2Label: 'STL 2 anzeigen',
+    stlDatasetsHint: 'Die Datensätze können für die Erklärung ein- und ausgeblendet werden. Sie werden so angezeigt, wie sie exportiert wurden. Keine automatische Ausrichtung, keine Okklusionsprüfung.',
+    stlMultiBanner: '2 STL-Dateien geladen · bereit zur Klärung',
+    stlMultiNote: '2 STL-Datensätze geladen. Für eine korrekte Lagebeziehung müssen die Datensätze bereits aus dem Scanner/CAD-System passend exportiert sein.',
+    stlMultiNachweis1: '1 Datei lokal geladen',
+    stlMultiNachweis2: '2 Dateien lokal geladen',
+    stlMultiPraxisNote: 'Es wurden zwei STL-Datensätze zur visuellen Klärung geladen. Die Darstellung dient der Kommunikation; keine automatische Ausrichtung oder Okklusionsprüfung.',
+    nachweisStlDatensaetzeLbl: 'STL-Datensätze',
   },
   EN: {
-    uploadTitle: 'Upload STL file',
-    uploadSub: 'Drop or select STL file from scanner/CAD',
+    uploadTitle: 'Load STL datasets locally',
+    uploadSub: 'Load one or two datasets, e.g. upper and lower jaw. Files stay local in the browser.',
     uploadPrivacy: 'The file stays local in your browser and is not stored on the server.',
     demoNotice: 'Demo only – for real cases please upload an STL file.',
     stlLoadedBanner: 'STL loaded · ready for clarification',
@@ -842,13 +872,23 @@ const T = {
     verlaufLabel: 'History',
     verlaufNote: 'Local documentation history — not stored server-side.',
     verlaufEvents: [
-      {lbl: 'STL file loaded locally',                    desc: 'The file was loaded in the browser and displayed locally.'},
+      {lbl: 'STL file loaded locally',                    desc: 'One or more files were loaded in the browser and displayed locally.'},
       {lbl: 'Lab case reviewed visually',                 desc: 'The lab reviewed the case visually.'},
       {lbl: 'Practice query prepared',                    desc: 'The lab prepared a query and can send it externally to the practice.'},
       {lbl: 'Practice response documented',               desc: 'The practice response was recorded in the case.'},
       {lbl: 'Lab action recorded',                         desc: 'The lab has documented whether manufacturing starts or the case remains open.'},
       {lbl: 'Decision record created',                    desc: 'Record with timestamp and audit ID was generated.'},
     ],
+    stlDatasetsSection: 'Show STL datasets',
+    stl1Label: 'Show STL 1',
+    stl2Label: 'Show STL 2',
+    stlDatasetsHint: 'Datasets can be shown or hidden for explanation. They are displayed as exported. No automatic alignment, no occlusion inspection.',
+    stlMultiBanner: '2 STL files loaded · ready for clarification',
+    stlMultiNote: '2 STL datasets loaded. For correct positional relation, datasets must already be exported correctly from the scanner/CAD system.',
+    stlMultiNachweis1: '1 file loaded locally',
+    stlMultiNachweis2: '2 files loaded locally',
+    stlMultiPraxisNote: 'Two STL datasets were loaded for visual clarification. The view is for communication only; no automatic alignment or occlusion inspection.',
+    nachweisStlDatensaetzeLbl: 'STL datasets',
   },
 };
 
@@ -900,6 +940,10 @@ let selectedDecision = null;
 let labComment = '';
 let caseMetadata = {bezeichnung:'',zahnRegion:'',material:'',praxis:''};
 let _pendingBuffer = null;
+let _pendingBuffer2 = null;
+let _pendingFilename2 = null;
+let stl1Visible = true;
+let stl2Visible = true;
 let _isDemoMesh = true;
 let _receiptTime = null;
 let caseId = null;
@@ -920,7 +964,7 @@ let _pointerNX = null;
 let _pointerNY = null;
 let _compositeCanvas = null;
 let _compositeRAF = null;
-const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null};
+const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null,mesh2:null};
 const _orbit = {rotX:0.3,rotY:0.4,zoom:16,defaultZoom:16,dragging:false,lastX:0,lastY:0};
 
 function setLang(l) {
@@ -952,7 +996,16 @@ function setLang(l) {
   document.getElementById('t-audit-label').textContent = t.auditLabel;
   document.getElementById('t-nachweis-subtitle').textContent = t.nachweisSubtitle;
   if (document.getElementById('stl-loaded-banner').style.display !== 'none') {
-    document.getElementById('t-stl-loaded-text').textContent = localStlActive ? t.stlLoadedBanner : t.demoLoadedBanner;
+    const _isTwoLang = _pendingBuffer2 !== null;
+    document.getElementById('t-stl-loaded-text').textContent = _isTwoLang ? t.stlMultiBanner : (localStlActive ? t.stlLoadedBanner : t.demoLoadedBanner);
+  }
+  document.getElementById('t-stl-datasets-badge').textContent = t.stlDatasetsSection;
+  document.getElementById('t-stl1-label').textContent = t.stl1Label;
+  document.getElementById('t-stl2-label').textContent = t.stl2Label;
+  document.getElementById('t-stl-datasets-hint').textContent = t.stlDatasetsHint;
+  document.getElementById('t-nachweis-stl-datensaetze-lbl').textContent = t.nachweisStlDatensaetzeLbl;
+  if (document.getElementById('stl-multi-note').style.display !== 'none') {
+    document.getElementById('stl-multi-note').textContent = t.stlMultiNote;
   }
   document.getElementById('t-audit-id-lbl').textContent = t.auditIdLbl;
   document.getElementById('t-audit-time-lbl').textContent = t.auditTimeLbl;
@@ -1082,18 +1135,37 @@ function setLang(l) {
 }
 
 function onFileInput(input) {
-  if (!input.files[0]) return;
-  const file = input.files[0];
-  const name = file.name;
+  if (!input.files || !input.files[0]) return;
+  const file1 = input.files[0];
+  const file2 = input.files.length > 1 ? input.files[1] : null;
+  const name = file1.name;
   input.value = '';
-  const reader = new FileReader();
-  reader.onload = function(e) { _pendingBuffer = e.target.result; startProcessing(name); };
-  reader.onerror = function() { _pendingBuffer = null; startProcessing(name); };
-  reader.readAsArrayBuffer(file);
+  if (!file2) {
+    _pendingBuffer2 = null;
+    _pendingFilename2 = null;
+    const reader = new FileReader();
+    reader.onload = function(e) { _pendingBuffer = e.target.result; startProcessing(name); };
+    reader.onerror = function() { _pendingBuffer = null; startProcessing(name); };
+    reader.readAsArrayBuffer(file1);
+  } else {
+    _pendingFilename2 = file2.name;
+    let _b1 = null, _b2 = null, _done = 0;
+    function _onBoth() { _pendingBuffer = _b1; _pendingBuffer2 = _b2; startProcessing(name); }
+    const _r1 = new FileReader();
+    _r1.onload = function(e) { _b1 = e.target.result; _done++; if (_done === 2) _onBoth(); };
+    _r1.onerror = function() { _done++; if (_done === 2) _onBoth(); };
+    _r1.readAsArrayBuffer(file1);
+    const _r2 = new FileReader();
+    _r2.onload = function(e) { _b2 = e.target.result; _done++; if (_done === 2) _onBoth(); };
+    _r2.onerror = function() { _pendingFilename2 = null; _done++; if (_done === 2) _onBoth(); };
+    _r2.readAsArrayBuffer(file2);
+  }
 }
 
 function loadDemo(filename) {
   _pendingBuffer = null;
+  _pendingBuffer2 = null;
+  _pendingFilename2 = null;
   localStlActive = false;
   startProcessing(filename);
 }
@@ -1143,15 +1215,31 @@ function showVisualStep(filename) {
   document.getElementById('comment-error').style.display = 'none';
   document.getElementById('meta-error').style.display = 'none';
   const _isLocalUpload = _pendingBuffer !== null;
-  document.getElementById('t-stl-loaded-text').textContent = _isLocalUpload ? T[lang].stlLoadedBanner : T[lang].demoLoadedBanner;
-  document.getElementById('stl-loaded-details').textContent = (displayFilename || filename) + ' · ' + (caseId || '');
+  const isTwoFiles = _pendingBuffer2 !== null;
+  document.getElementById('t-stl-loaded-text').textContent = isTwoFiles ? T[lang].stlMultiBanner : (_isLocalUpload ? T[lang].stlLoadedBanner : T[lang].demoLoadedBanner);
+  const _det = isTwoFiles
+    ? (filename + ' · ' + (_pendingFilename2 || 'STL 2') + ' · ' + (caseId || ''))
+    : ((displayFilename || filename) + ' · ' + (caseId || ''));
+  document.getElementById('stl-loaded-details').textContent = _det;
   document.getElementById('stl-loaded-banner').style.display = 'block';
   document.getElementById('case-id-display').textContent = caseId || '—';
   document.getElementById('datei-display').textContent = displayFilename || '—';
+  document.getElementById('stl-datasets-section').style.display = isTwoFiles ? 'block' : 'none';
+  if (isTwoFiles) {
+    stl1Visible = true; stl2Visible = true;
+    document.getElementById('stl1-toggle').checked = true;
+    document.getElementById('stl2-toggle').checked = true;
+    document.getElementById('stl-filename-1').textContent = filename;
+    document.getElementById('stl-filename-2').textContent = _pendingFilename2 || 'STL 2';
+    document.getElementById('stl-multi-note').textContent = T[lang].stlMultiNote;
+    document.getElementById('stl-multi-note').style.display = 'block';
+  } else {
+    document.getElementById('stl-multi-note').style.display = 'none';
+  }
   document.getElementById('phase-processing').style.display = 'none';
   document.getElementById('phase-visual').style.display = 'block';
   requestAnimationFrame(function() {
-    requestAnimationFrame(function() { initViewer(_pendingBuffer, filename); });
+    requestAnimationFrame(function() { initViewer(_pendingBuffer, filename, _pendingBuffer2, _pendingFilename2); });
   });
 }
 
@@ -1561,6 +1649,11 @@ function resetDemo() {
   praxisAntwort = '';
   praxisAntwortStatus = '';
   _pendingBuffer = null;
+  _pendingBuffer2 = null;
+  _pendingFilename2 = null;
+  stl1Visible = true;
+  stl2Visible = true;
+  stlDisplayMode = 'together';
   _receiptTime = null;
   caseId = null;
   displayFilename = null;
@@ -1617,6 +1710,14 @@ function resetDemo() {
   if (_po) { _po.style.display = 'none'; const _poctx = _po.getContext('2d'); _poctx.clearRect(0, 0, _po.width, _po.height); }
   document.getElementById('t-pointer-toggle-btn').textContent = T[lang].pointerShow;
   document.getElementById('erklarungspaket-section').style.display = 'none';
+  document.getElementById('stl-datasets-section').style.display = 'none';
+  document.getElementById('stl-multi-note').style.display = 'none';
+  const _st1 = document.getElementById('stl1-toggle');
+  if (_st1) _st1.checked = true;
+  const _st2 = document.getElementById('stl2-toggle');
+  if (_st2) _st2.checked = true;
+  const _dmr = document.getElementById('display-mode-together');
+  if (_dmr) _dmr.checked = true;
   const _pnt = document.getElementById('praxis-nachricht-textarea');
   if (_pnt) _pnt.value = '';
   const _pnc = document.getElementById('praxis-nachricht-copy-confirm');
@@ -1695,6 +1796,17 @@ function fillPraxisNachweisRows() {
   document.getElementById('nachweis-praxis-antwort-status').textContent = praxisAntwortStatus ? (statusLabels[praxisAntwortStatus] || praxisAntwortStatus) : t.statusSelect;
   const erklarclipVal = _clipBlobUrl ? t.clipLocalValue : praxisVideoLink ? praxisVideoLink : 'Nicht angegeben';
   document.getElementById('nachweis-erklarclip').textContent = erklarclipVal;
+  document.getElementById('nachweis-stl-datensaetze').textContent = _pendingBuffer2 !== null ? t.stlMultiNachweis2 : t.stlMultiNachweis1;
+  const _darRow = document.getElementById('nachweis-stl-darstellung-row');
+  if (_darRow) {
+    if (_pendingBuffer2 !== null) {
+      const _modeVal = stlDisplayMode === 'offset' ? t.stlNachweisModeOffset : stlDisplayMode === 'sidebyside' ? t.stlNachweisModeSideBySide : t.stlNachweisModeTogether;
+      document.getElementById('nachweis-stl-darstellung').textContent = _modeVal;
+      _darRow.style.display = '';
+    } else {
+      _darRow.style.display = 'none';
+    }
+  }
   fillPraxisSection();
 }
 
@@ -1984,6 +2096,10 @@ function buildPraxisNachrichtText() {
   } else if (video) {
     lines.push(t.praxisVideoNachweisLbl + ': ' + video);
   }
+  if (_pendingBuffer2 !== null) {
+    lines.push('');
+    lines.push(t.stlMultiPraxisNote);
+  }
   lines.push('');
   lines.push(t.copyPracticeRequestPrompt);
   lines.push('');
@@ -2052,7 +2168,7 @@ function buildVerlauf(ts) {
   document.getElementById('verlauf-section').style.display = '';
 }
 
-function initViewer(buffer, filename) {
+function initViewer(buffer, filename, buffer2, filename2) {
   disposeViewer();
   const wrap = document.getElementById('stl-viewer-wrap');
   const canvas = document.getElementById('stl-canvas');
@@ -2116,6 +2232,23 @@ function initViewer(buffer, filename) {
       const mesh = new THREE.Mesh(geometry, mat);
       scene.add(mesh);
       _threeVars.mesh = mesh;
+    }
+    if (buffer2) {
+      try {
+        const geo2 = loadFileGeometry(buffer2);
+        if (geo2) {
+          geo2.computeBoundingBox();
+          const box2 = geo2.boundingBox;
+          const ctr2 = new THREE.Vector3();
+          box2.getCenter(ctr2);
+          geo2.translate(-ctr2.x, -ctr2.y, -ctr2.z);
+          const mat2 = new THREE.MeshPhongMaterial({color:0xb0c5d4, specular:0x888888, shininess:40});
+          const mesh2 = new THREE.Mesh(geo2, mat2);
+          mesh2.visible = stl2Visible;
+          scene.add(mesh2);
+          _threeVars.mesh2 = mesh2;
+        }
+      } catch(e2) {}
     }
     setupViewerControls(canvas);
     startRenderLoop();
@@ -2250,7 +2383,8 @@ function disposeViewer() {
   if (_threeVars.animId !== null) { cancelAnimationFrame(_threeVars.animId); _threeVars.animId = null; }
   if (_threeVars.renderer) { _threeVars.renderer.dispose(); _threeVars.renderer = null; }
   if (_threeVars.mesh && _threeVars.mesh.geometry) _threeVars.mesh.geometry.dispose();
-  _threeVars.scene = null; _threeVars.camera = null; _threeVars.mesh = null;
+  if (_threeVars.mesh2 && _threeVars.mesh2.geometry) _threeVars.mesh2.geometry.dispose();
+  _threeVars.scene = null; _threeVars.camera = null; _threeVars.mesh = null; _threeVars.mesh2 = null;
   _orbit.dragging = false;
 }
 
@@ -2258,6 +2392,30 @@ function resetView() {
   _orbit.rotX = 0.3;
   _orbit.rotY = 0.4;
   _orbit.zoom = _orbit.defaultZoom || 16;
+}
+
+function toggleStl1(checked) {
+  stl1Visible = checked;
+  if (_threeVars.mesh) _threeVars.mesh.visible = checked;
+}
+
+function toggleStl2(checked) {
+  stl2Visible = checked;
+  if (_threeVars.mesh2) _threeVars.mesh2.visible = checked;
+}
+
+function setDisplayMode(mode) {
+  stlDisplayMode = mode;
+  if (mode === 'offset') {
+    if (_threeVars.mesh) _threeVars.mesh.position.x = 0;
+    if (_threeVars.mesh2) _threeVars.mesh2.position.x = 120;
+  } else if (mode === 'sidebyside') {
+    if (_threeVars.mesh) _threeVars.mesh.position.x = -50;
+    if (_threeVars.mesh2) _threeVars.mesh2.position.x = 50;
+  } else {
+    if (_threeVars.mesh) _threeVars.mesh.position.x = 0;
+    if (_threeVars.mesh2) _threeVars.mesh2.position.x = 0;
+  }
 }
 
 function showViewerFallback(show) {

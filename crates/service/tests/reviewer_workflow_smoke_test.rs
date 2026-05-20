@@ -132,11 +132,191 @@ async fn reviewer_page_language_toggle_present() {
 async fn reviewer_upload_phase_present() {
     let tmp = tempfile::TempDir::new().unwrap();
     let (_, html) = get_html(make_app(&tmp), "/reviewer").await;
-    assert!(html.contains("phase-upload"),         "phase-upload id must be present");
-    assert!(html.contains("upload-zone"),          "upload-zone id must be present");
-    assert!(html.contains("file-input"),           "file-input id must be present");
-    assert!(html.contains("STL-Datei hochladen"),  "upload title DE must be present");
-    assert!(html.contains("Upload STL file"),      "upload title EN must be present");
+    assert!(html.contains("phase-upload"),               "phase-upload id must be present");
+    assert!(html.contains("upload-zone"),                "upload-zone id must be present");
+    assert!(html.contains("file-input"),                 "file-input id must be present");
+    assert!(html.contains("STL-Datens\u{00e4}tze lokal laden"), "upload title DE must say STL-Datensätze lokal laden");
+    assert!(html.contains("Load STL datasets locally"),        "upload title EN must say Load STL datasets locally");
+}
+
+/// Upload area must allow one or two STL files with correct labelling.
+#[test]
+fn reviewer_multi_stl_upload_text() {
+    assert!(REVIEWER_HTML.contains("STL-Datens\u{00e4}tze lokal laden"),  "DE upload title must say STL-Datensätze lokal laden");
+    assert!(REVIEWER_HTML.contains("Load STL datasets locally"),           "EN upload title must say Load STL datasets locally");
+    assert!(REVIEWER_HTML.contains("Oberkiefer und Unterkiefer"),          "DE upload sub must mention Oberkiefer und Unterkiefer");
+    assert!(REVIEWER_HTML.contains("upper and lower jaw"),                 "EN upload sub must mention upper and lower jaw");
+    assert!(REVIEWER_HTML.contains("Die Dateien bleiben lokal"),           "local-only wording must be present in upload sub");
+    assert!(REVIEWER_HTML.contains("Files stay local"),                    "EN local-only wording must be present");
+    assert!(REVIEWER_HTML.contains("multiple"),                            "file-input must have multiple attribute");
+}
+
+/// Multi-STL controls section with show/hide toggles must be present.
+#[test]
+fn reviewer_multi_stl_controls_present() {
+    assert!(REVIEWER_HTML.contains("stl-datasets-section"),      "stl-datasets-section id must be present");
+    assert!(REVIEWER_HTML.contains("stl1-toggle"),               "stl1-toggle checkbox id must be present");
+    assert!(REVIEWER_HTML.contains("stl2-toggle"),               "stl2-toggle checkbox id must be present");
+    assert!(REVIEWER_HTML.contains("STL 1 anzeigen"),            "STL 1 toggle label DE must be present");
+    assert!(REVIEWER_HTML.contains("STL 2 anzeigen"),            "STL 2 toggle label DE must be present");
+    assert!(REVIEWER_HTML.contains("toggleStl1"),                "toggleStl1 function must be callable");
+    assert!(REVIEWER_HTML.contains("toggleStl2"),                "toggleStl2 function must be callable");
+    assert!(REVIEWER_HTML.contains("function toggleStl1"),       "toggleStl1 function must be defined");
+    assert!(REVIEWER_HTML.contains("function toggleStl2"),       "toggleStl2 function must be defined");
+    assert!(REVIEWER_HTML.contains("t-stl-datasets-badge"),      "t-stl-datasets-badge id must be present");
+    assert!(REVIEWER_HTML.contains("t-stl-datasets-hint"),       "t-stl-datasets-hint id must be present");
+    assert!(REVIEWER_HTML.contains("STL-Datens\u{00e4}tze anzeigen"), "DE badge must say STL-Datensätze anzeigen");
+    assert!(REVIEWER_HTML.contains("Show STL datasets"),         "EN badge must say Show STL datasets");
+}
+
+/// Simplified multi-STL UI must have show/hide checkboxes and a hint stating
+/// no automatic alignment and no occlusion check.
+#[test]
+fn reviewer_multi_stl_simple_show_hide_controls() {
+    assert!(REVIEWER_HTML.contains("STL 1 anzeigen"),                 "STL 1 toggle label DE must be present");
+    assert!(REVIEWER_HTML.contains("STL 2 anzeigen"),                 "STL 2 toggle label DE must be present");
+    assert!(REVIEWER_HTML.contains("Keine automatische Ausrichtung"), "DE hint must state no automatic alignment");
+    assert!(REVIEWER_HTML.contains("keine Okklusionspr\u{00fc}fung"),"DE hint must state no occlusion inspection");
+}
+
+/// Filename labels STL 1 / STL 2 must be shown in the datasets section.
+#[test]
+fn reviewer_multi_stl_filename_labels() {
+    assert!(REVIEWER_HTML.contains("stl-filename-1"),    "stl-filename-1 span id must be present");
+    assert!(REVIEWER_HTML.contains("stl-filename-2"),    "stl-filename-2 span id must be present");
+    assert!(REVIEWER_HTML.contains("stl-filename-labels"), "stl-filename-labels container must be present");
+}
+
+/// Two-dataset note must reflect the simplified wording: datasets shown as exported,
+/// no automatic alignment, no occlusion check.
+#[test]
+fn reviewer_multi_stl_two_dataset_note() {
+    assert!(REVIEWER_HTML.contains("stl-multi-note"),                        "stl-multi-note element id must be present");
+    assert!(REVIEWER_HTML.contains("2 STL-Datens\u{00e4}tze geladen"),      "DE note must say 2 STL-Datensätze geladen");
+    assert!(REVIEWER_HTML.contains("wie sie exportiert wurden"),             "hint must say datasets shown as exported");
+    assert!(REVIEWER_HTML.contains("Keine automatische Ausrichtung"),        "DE hint must state no automatic alignment");
+    assert!(REVIEWER_HTML.contains("keine Okklusionspr\u{00fc}fung"),       "DE hint must state no occlusion inspection");
+    assert!(REVIEWER_HTML.contains("stlMultiNote"),                          "stlMultiNote T key must be referenced");
+}
+
+/// Hint text must clearly state no automatic alignment and no occlusion inspection.
+#[test]
+fn reviewer_multi_stl_no_auto_alignment() {
+    assert!(REVIEWER_HTML.contains("Keine automatische Ausrichtung"),  "DE multi-STL hint must state no automatic alignment");
+    assert!(REVIEWER_HTML.contains("No automatic alignment"),          "EN multi-STL hint must state no automatic alignment");
+    assert!(REVIEWER_HTML.contains("keine Okklusionspr\u{00fc}fung"), "DE hint must state no occlusion inspection");
+    assert!(REVIEWER_HTML.contains("no occlusion inspection"),         "EN hint must state no occlusion inspection");
+}
+
+/// showVisualStep must not reference the removed display-mode-together element.
+/// If it did, getElementById returns null and .checked throws, hanging the processing screen.
+#[test]
+fn reviewer_show_visual_step_no_stale_display_mode_reference() {
+    let pos = REVIEWER_HTML
+        .find("function showVisualStep(")
+        .expect("showVisualStep must be defined");
+    let after = &REVIEWER_HTML[pos..];
+    let fn_end = after
+        .find("function proceedToDecision")
+        .unwrap_or(after.len());
+    let body = &after[..fn_end];
+    assert!(
+        !body.contains("display-mode-together"),
+        "showVisualStep must not reference display-mode-together (element was removed; null.checked throws)"
+    );
+}
+
+/// Two-file upload must use a _done counter so startProcessing is called exactly
+/// once after both FileReaders complete, regardless of order.
+#[test]
+fn reviewer_two_file_upload_synchronizes_readers() {
+    let pos = REVIEWER_HTML
+        .find("function onFileInput(")
+        .expect("onFileInput must be defined");
+    let after = &REVIEWER_HTML[pos..pos + 1200];
+    assert!(after.contains("_done++"),             "two-file branch must increment a _done counter");
+    assert!(after.contains("_done === 2"),         "two-file branch must gate _onBoth on _done reaching 2");
+    assert!(after.contains("startProcessing(name)"), "two-file _onBoth must call startProcessing");
+}
+
+/// When the second FileReader fails, _pendingFilename2 must be cleared so stale
+/// filename state does not bleed into the visual step.
+#[test]
+fn reviewer_two_file_second_read_failure_clears_pending_filename() {
+    let pos = REVIEWER_HTML
+        .find("function onFileInput(")
+        .expect("onFileInput must be defined");
+    let after = &REVIEWER_HTML[pos..pos + 1200];
+    assert!(
+        after.contains("_pendingFilename2 = null"),
+        "_r2.onerror must clear _pendingFilename2 on second-file read failure"
+    );
+}
+
+/// Single-file upload path must still set _pendingBuffer via FileReader.onload
+/// and call startProcessing — the two-file fix must not break the one-file path.
+#[test]
+fn reviewer_single_file_upload_path_preserved() {
+    let pos = REVIEWER_HTML
+        .find("function onFileInput(")
+        .expect("onFileInput must be defined");
+    let after = &REVIEWER_HTML[pos..pos + 1200];
+    assert!(
+        after.contains("_pendingBuffer = e.target.result; startProcessing(name)"),
+        "single-file onload must set _pendingBuffer and call startProcessing"
+    );
+    assert!(
+        after.contains("_pendingBuffer2 = null"),
+        "single-file branch must clear _pendingBuffer2"
+    );
+}
+
+/// Nachweis must include an STL-Datensätze row.
+#[test]
+fn reviewer_nachweis_includes_stl_datensaetze_row() {
+    assert!(REVIEWER_HTML.contains("nachweis-stl-datensaetze-row"),   "nachweis-stl-datensaetze-row id must be present");
+    assert!(REVIEWER_HTML.contains("nachweis-stl-datensaetze"),       "nachweis-stl-datensaetze value span must be present");
+    assert!(REVIEWER_HTML.contains("t-nachweis-stl-datensaetze-lbl"), "t-nachweis-stl-datensaetze-lbl id must be present");
+    assert!(
+        REVIEWER_HTML.contains("STL-Datens\u{00e4}tze"),
+        "STL-Datensätze label must be present in nachweis"
+    );
+}
+
+/// Praxis-Nachricht must include a note when two STL datasets are loaded.
+#[test]
+fn reviewer_multi_stl_praxis_nachricht_note() {
+    let pos = REVIEWER_HTML.find("function buildPraxisNachrichtText()").expect("buildPraxisNachrichtText must be defined");
+    let snippet = &REVIEWER_HTML[pos..pos + 2200];
+    assert!(snippet.contains("_pendingBuffer2"),    "buildPraxisNachrichtText must check _pendingBuffer2 for two-STL note");
+    assert!(snippet.contains("stlMultiPraxisNote"), "buildPraxisNachrichtText must include stlMultiPraxisNote when two files loaded");
+    assert!(
+        REVIEWER_HTML.contains("Es wurden zwei STL-Datens\u{00e4}tze"),
+        "DE stlMultiPraxisNote text must be present in T strings"
+    );
+    assert!(
+        REVIEWER_HTML.contains("Two STL datasets were loaded"),
+        "EN stlMultiPraxisNote text must be present in T strings"
+    );
+    assert!(
+        REVIEWER_HTML.contains("keine automatische Ausrichtung oder Okklusionspr\u{00fc}fung"),
+        "DE praxis note must state no alignment and no occlusion inspection"
+    );
+    assert!(
+        REVIEWER_HTML.contains("no automatic alignment or occlusion inspection"),
+        "EN praxis note must state no alignment and no occlusion inspection"
+    );
+}
+
+/// Nachweis STL-Datensätze row must represent 1 or 2 files loaded locally.
+#[test]
+fn reviewer_nachweis_stl_datensaetze_values() {
+    assert!(REVIEWER_HTML.contains("nachweis-stl-datensaetze-row"),  "nachweis-stl-datensaetze-row id must be present");
+    assert!(REVIEWER_HTML.contains("nachweis-stl-datensaetze"),      "nachweis-stl-datensaetze value span must be present");
+    assert!(REVIEWER_HTML.contains("1 Datei lokal geladen"),         "DE 1-file nachweis value must be present");
+    assert!(REVIEWER_HTML.contains("2 Dateien lokal geladen"),       "DE 2-file nachweis value must be present");
+    assert!(REVIEWER_HTML.contains("stlMultiNachweis1"),             "stlMultiNachweis1 T key must be referenced");
+    assert!(REVIEWER_HTML.contains("stlMultiNachweis2"),             "stlMultiNachweis2 T key must be referenced");
 }
 
 /// Upload zone must include privacy notice and demo notice.

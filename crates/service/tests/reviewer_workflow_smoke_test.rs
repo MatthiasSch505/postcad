@@ -226,7 +226,7 @@ fn reviewer_show_visual_step_no_stale_display_mode_reference() {
     );
 }
 
-/// Two-file upload must use a _done counter so startProcessing is called exactly
+/// Two-file upload must use a _done counter so _enableStartReview is called exactly
 /// once after both FileReaders complete, regardless of order.
 #[test]
 fn reviewer_two_file_upload_synchronizes_readers() {
@@ -234,9 +234,9 @@ fn reviewer_two_file_upload_synchronizes_readers() {
         .find("function onFileInput(")
         .expect("onFileInput must be defined");
     let after = &REVIEWER_HTML[pos..pos + 1200];
-    assert!(after.contains("_done++"),             "two-file branch must increment a _done counter");
-    assert!(after.contains("_done === 2"),         "two-file branch must gate _onBoth on _done reaching 2");
-    assert!(after.contains("startProcessing(name)"), "two-file _onBoth must call startProcessing");
+    assert!(after.contains("_done++"),               "two-file branch must increment a _done counter");
+    assert!(after.contains("_done === 2"),           "two-file branch must gate _onBoth on _done reaching 2");
+    assert!(after.contains("_enableStartReview()"),  "two-file _onBoth must call _enableStartReview");
 }
 
 /// When the second FileReader fails, _pendingFilename2 must be cleared so stale
@@ -253,8 +253,8 @@ fn reviewer_two_file_second_read_failure_clears_pending_filename() {
     );
 }
 
-/// Single-file upload path must still set _pendingBuffer via FileReader.onload
-/// and call startProcessing — the two-file fix must not break the one-file path.
+/// Single-file upload path must stage _pendingBuffer via FileReader.onload and call
+/// _enableStartReview — not startProcessing directly. startReview() is the deliberate gate.
 #[test]
 fn reviewer_single_file_upload_path_preserved() {
     let pos = REVIEWER_HTML
@@ -262,12 +262,99 @@ fn reviewer_single_file_upload_path_preserved() {
         .expect("onFileInput must be defined");
     let after = &REVIEWER_HTML[pos..pos + 1200];
     assert!(
-        after.contains("_pendingBuffer = e.target.result; startProcessing(name)"),
-        "single-file onload must set _pendingBuffer and call startProcessing"
+        after.contains("_pendingBuffer = e.target.result; _enableStartReview()"),
+        "single-file onload must set _pendingBuffer and call _enableStartReview"
     );
     assert!(
         after.contains("_pendingBuffer2 = null"),
         "single-file branch must clear _pendingBuffer2"
+    );
+}
+
+/// Upload phase must show a staged-files section and a "Fall prüfen" button that the
+/// user must click before the viewer opens — files are staged on selection, not immediately
+/// processed.
+#[test]
+fn reviewer_staged_upload_ui_present() {
+    assert!(REVIEWER_HTML.contains("staged-files-section"),  "staged-files-section id must be present");
+    assert!(REVIEWER_HTML.contains("staged-filename-1"),     "staged-filename-1 span id must be present");
+    assert!(REVIEWER_HTML.contains("staged-filename-2-row"), "staged-filename-2-row id must be present");
+    assert!(REVIEWER_HTML.contains("staged-filename-2"),     "staged-filename-2 span id must be present");
+    assert!(REVIEWER_HTML.contains("start-review-btn"),      "start-review-btn id must be present");
+    assert!(REVIEWER_HTML.contains("t-start-review-btn"),    "t-start-review-btn span id must be present");
+    assert!(REVIEWER_HTML.contains("startReview()"),         "start-review-btn must call startReview()");
+}
+
+/// "Fall prüfen" button must start disabled so the user cannot click it before a file
+/// is staged and the FileReader has finished reading the buffer.
+#[test]
+fn reviewer_start_review_btn_initially_disabled() {
+    let pos = REVIEWER_HTML
+        .find("id=\"start-review-btn\"")
+        .expect("start-review-btn must be present");
+    let snippet = &REVIEWER_HTML[pos..pos + 120];
+    assert!(
+        snippet.contains("disabled"),
+        "start-review-btn must be disabled in the initial HTML"
+    );
+}
+
+/// _showStagedFiles, _enableStartReview, and startReview must all be defined.
+#[test]
+fn reviewer_staged_upload_helper_functions_present() {
+    assert!(REVIEWER_HTML.contains("function _showStagedFiles("),  "_showStagedFiles function must be defined");
+    assert!(REVIEWER_HTML.contains("function _enableStartReview("),"_enableStartReview function must be defined");
+    assert!(REVIEWER_HTML.contains("function startReview()"),       "startReview function must be defined");
+}
+
+/// startReview must call startProcessing with the staged primary filename.
+#[test]
+fn reviewer_start_review_calls_start_processing() {
+    let pos = REVIEWER_HTML
+        .find("function startReview()")
+        .expect("startReview must be defined");
+    let snippet = &REVIEWER_HTML[pos..pos + 200];
+    assert!(
+        snippet.contains("startProcessing(_stagedPrimaryFilename)"),
+        "startReview must call startProcessing with _stagedPrimaryFilename"
+    );
+}
+
+/// Upload local note must be present in both DE and EN, separate from the old
+/// privacy notice, and must use the t-upload-local-note element id.
+#[test]
+fn reviewer_upload_local_note_present() {
+    assert!(
+        REVIEWER_HTML.contains("t-upload-local-note"),
+        "t-upload-local-note element id must be present"
+    );
+    assert!(
+        REVIEWER_HTML.contains("bleiben lokal im Browser und werden erst nach Klick"),
+        "DE upload local note must state files stay local until the button is clicked"
+    );
+    assert!(
+        REVIEWER_HTML.contains("Files stay local in your browser and are only opened after clicking"),
+        "EN upload local note must be present"
+    );
+}
+
+/// resetDemo must clear staged state so a fresh upload starts from scratch.
+#[test]
+fn reviewer_reset_demo_clears_staged_state() {
+    let pos = REVIEWER_HTML.find("function resetDemo()").expect("resetDemo must be defined");
+    // resetDemo is a long function; use a 6 000-char window to cover all reset lines
+    let body = &REVIEWER_HTML[pos..pos + 6000];
+    assert!(
+        body.contains("_stagedPrimaryFilename = null"),
+        "resetDemo must clear _stagedPrimaryFilename"
+    );
+    assert!(
+        body.contains("staged-files-section"),
+        "resetDemo must hide staged-files-section"
+    );
+    assert!(
+        body.contains("start-review-btn"),
+        "resetDemo must reset start-review-btn"
     );
 }
 
@@ -560,12 +647,13 @@ fn stl_drop_handler_reads_file_with_filereader() {
     );
 }
 
-/// onFileInput must only start processing inside reader.onload — not before it.
+/// onFileInput must stage the buffer inside reader.onload, then call _enableStartReview —
+/// not call startProcessing directly, so the user must click "Fall prüfen" to proceed.
 #[test]
 fn stl_file_input_waits_for_filereader() {
     assert!(
-        REVIEWER_HTML.contains("reader.onload = function(e) { _pendingBuffer = e.target.result; startProcessing(name); }"),
-        "onFileInput must call startProcessing inside reader.onload, not before readAsArrayBuffer"
+        REVIEWER_HTML.contains("reader.onload = function(e) { _pendingBuffer = e.target.result; _enableStartReview(); }"),
+        "onFileInput must stage buffer via reader.onload and call _enableStartReview, not startProcessing directly"
     );
 }
 

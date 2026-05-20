@@ -201,6 +201,15 @@ main{width:100%;max-width:560px}
     </label>
     <input type="file" id="file-input" accept=".stl,.obj" style="display:none" multiple onchange="onFileInput(this)">
     <p class="upload-privacy" id="t-upload-privacy">Die Datei bleibt lokal im Browser und wird nicht auf dem Server gespeichert.</p>
+    <p class="upload-privacy" id="t-upload-local-note">Die Dateien bleiben lokal im Browser und werden erst nach Klick auf &#187;Fall pr&#252;fen&#171; ge&#246;ffnet.</p>
+    <div id="staged-files-section" style="display:none;margin-top:14px">
+      <div style="font-size:.7rem;font-weight:700;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin-bottom:6px" id="t-staged-files-label">Ausgew&#228;hlte Dateien</div>
+      <div style="font-size:.82rem;color:var(--sub);font-family:'SF Mono','Fira Code',monospace;line-height:1.7">
+        <div>STL 1: <span id="staged-filename-1">&#8212;</span></div>
+        <div id="staged-filename-2-row" style="display:none">STL 2: <span id="staged-filename-2">&#8212;</span></div>
+      </div>
+    </div>
+    <button class="confirm-btn" id="start-review-btn" onclick="startReview()" disabled style="display:none;margin-top:14px"><span id="t-start-review-btn">Fall pr&#252;fen</span></button>
     <div class="demo-files">
       <button class="demo-file-btn" onclick="loadDemo('Krone_Zahn_36_DE.stl')">Demo-Fall ansehen</button>
     </div>
@@ -713,6 +722,9 @@ const T = {
     stlMultiNachweis2: '2 Dateien lokal geladen',
     stlMultiPraxisNote: 'Es wurden zwei STL-Datensätze zur visuellen Klärung geladen. Die Darstellung dient der Kommunikation; keine automatische Ausrichtung oder Okklusionsprüfung.',
     nachweisStlDatensaetzeLbl: 'STL-Datensätze',
+    stagedFilesLabel: 'Ausgewählte Dateien',
+    startReviewBtn: 'Fall prüfen',
+    uploadLocalNote: 'Die Dateien bleiben lokal im Browser und werden erst nach Klick auf »Fall prüfen« geöffnet.',
   },
   EN: {
     uploadTitle: 'Load STL datasets locally',
@@ -889,6 +901,9 @@ const T = {
     stlMultiNachweis2: '2 files loaded locally',
     stlMultiPraxisNote: 'Two STL datasets were loaded for visual clarification. The view is for communication only; no automatic alignment or occlusion inspection.',
     nachweisStlDatensaetzeLbl: 'STL datasets',
+    stagedFilesLabel: 'Selected files',
+    startReviewBtn: 'Check case',
+    uploadLocalNote: 'Files stay local in your browser and are only opened after clicking “Check case”.',
   },
 };
 
@@ -966,6 +981,7 @@ let _compositeCanvas = null;
 let _compositeRAF = null;
 const _threeVars = {scene:null,camera:null,renderer:null,animId:null,mesh:null,mesh2:null};
 const _orbit = {rotX:0.3,rotY:0.4,zoom:16,defaultZoom:16,dragging:false,lastX:0,lastY:0};
+let _stagedPrimaryFilename = null;
 
 function setLang(l) {
   lang = l;
@@ -978,6 +994,9 @@ function setLang(l) {
   document.getElementById('t-upload-title').textContent = t.uploadTitle;
   document.getElementById('t-upload-sub').textContent = t.uploadSub;
   document.getElementById('t-upload-privacy').textContent = t.uploadPrivacy;
+  document.getElementById('t-upload-local-note').textContent = t.uploadLocalNote;
+  document.getElementById('t-staged-files-label').textContent = t.stagedFilesLabel;
+  document.getElementById('t-start-review-btn').textContent = t.startReviewBtn;
   document.getElementById('t-demo-notice').textContent = t.demoNotice;
   document.getElementById('t-case-label').textContent = t.caseLabel;
   document.getElementById('t-material-lbl').textContent = t.materialLbl;
@@ -1140,17 +1159,20 @@ function onFileInput(input) {
   const file2 = input.files.length > 1 ? input.files[1] : null;
   const name = file1.name;
   input.value = '';
+  _stagedPrimaryFilename = name;
+  _pendingBuffer = null;
+  _pendingBuffer2 = null;
+  _pendingFilename2 = null;
+  _showStagedFiles(name, file2 ? file2.name : null);
   if (!file2) {
-    _pendingBuffer2 = null;
-    _pendingFilename2 = null;
     const reader = new FileReader();
-    reader.onload = function(e) { _pendingBuffer = e.target.result; startProcessing(name); };
-    reader.onerror = function() { _pendingBuffer = null; startProcessing(name); };
+    reader.onload = function(e) { _pendingBuffer = e.target.result; _enableStartReview(); };
+    reader.onerror = function() { _pendingBuffer = null; _enableStartReview(); };
     reader.readAsArrayBuffer(file1);
   } else {
     _pendingFilename2 = file2.name;
     let _b1 = null, _b2 = null, _done = 0;
-    function _onBoth() { _pendingBuffer = _b1; _pendingBuffer2 = _b2; startProcessing(name); }
+    function _onBoth() { _pendingBuffer = _b1; _pendingBuffer2 = _b2; _enableStartReview(); }
     const _r1 = new FileReader();
     _r1.onload = function(e) { _b1 = e.target.result; _done++; if (_done === 2) _onBoth(); };
     _r1.onerror = function() { _done++; if (_done === 2) _onBoth(); };
@@ -1160,6 +1182,26 @@ function onFileInput(input) {
     _r2.onerror = function() { _pendingFilename2 = null; _done++; if (_done === 2) _onBoth(); };
     _r2.readAsArrayBuffer(file2);
   }
+}
+
+function _showStagedFiles(name, name2) {
+  document.getElementById('staged-filename-1').textContent = name;
+  const row2 = document.getElementById('staged-filename-2-row');
+  if (name2) { document.getElementById('staged-filename-2').textContent = name2; row2.style.display = ''; }
+  else { row2.style.display = 'none'; }
+  document.getElementById('staged-files-section').style.display = 'block';
+  const btn = document.getElementById('start-review-btn');
+  btn.style.display = 'block';
+  btn.disabled = true;
+}
+
+function _enableStartReview() {
+  const btn = document.getElementById('start-review-btn');
+  if (btn) btn.disabled = false;
+}
+
+function startReview() {
+  if (_stagedPrimaryFilename) startProcessing(_stagedPrimaryFilename);
 }
 
 function loadDemo(filename) {
@@ -1722,6 +1764,10 @@ function resetDemo() {
   if (_pnt) _pnt.value = '';
   const _pnc = document.getElementById('praxis-nachricht-copy-confirm');
   if (_pnc) _pnc.style.display = 'none';
+  _stagedPrimaryFilename = null;
+  document.getElementById('staged-files-section').style.display = 'none';
+  const _srb = document.getElementById('start-review-btn');
+  if (_srb) { _srb.style.display = 'none'; _srb.disabled = true; }
 }
 
 function copyReceipt() {
